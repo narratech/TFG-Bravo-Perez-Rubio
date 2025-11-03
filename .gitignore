@@ -48,22 +48,14 @@ Source/SourceNoRepo/
 
 # Recursos que se usan o no en el proyecto, sean nuestros o de terceros, que en ningún caso queremos o podemos publicar en un repositorio público y con poco espacio como GitHub
 Content/Characters/
-Content/FirstPerson/
-Content/FirstPersonBP/
-Content/Geometry/
-Content/InCamVFXBP/
-Content/LevelPrototyping/
-Content/Mannequin/
-Content/ProductAssets/
-Content/StarterContent/
 Content/ThirdPerson/
-Content/ThirdPersonBP/
-Content/TopDown/
-Content/TopDownBP/
-Content/Track/
+Content/Collections/
+Content/Developers/
+Content/LevelPrototyping/
+Content/Variant_Combat/
 Content/Variant_Platforming/
-Content/Vehicles/
-Content/VehicleTemplate/
+Content/Variant_SideScrolling/
+
 
 Content/ContentNoRepo/
 Content/Megascans/
