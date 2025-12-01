@@ -3,8 +3,8 @@
 
 #include "TFG-Bravo-Perez-Rubio/GravityController.h"
 
-#include "Planet.h"
-#include "Kismet/GameplayStatics.h"
+#include "PlanetComponent.h"
+#include "EngineUtils.h"          
 #include "Components/PrimitiveComponent.h"
 
 AGravityController::AGravityController()
@@ -21,52 +21,59 @@ void AGravityController::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 
-    // Obtener todos los planetas
-    TArray<AActor*> PlanetActors;
-    UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlanet::StaticClass(), PlanetActors);
+    // 1. Recolectar TODOS los PlanetComponent del mundo
+    TArray<UPlanetComponent*> Planets;
 
-    /*if (GEngine)
+    for (TActorIterator<AActor> It(GetWorld()); It; ++It)
     {
-        FString DebugText = FString::Printf(TEXT("Planetas encontrados: %d"), PlanetActors.Num());
-        GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Yellow, DebugText);
-    }*/
+        AActor* Actor = *It;
+        if (!Actor) continue;
 
-    // Calcular fuerzas entre cada par de planetas
-    for (int32 i = 0; i < PlanetActors.Num(); i++)
+        UPlanetComponent* PlanetComp = Actor->FindComponentByClass<UPlanetComponent>();
+        if (PlanetComp)
+        {
+            Planets.Add(PlanetComp);
+        }
+    }
+
+    // 2. Aplicar gravedad entre ellos
+    for (int32 i = 0; i < Planets.Num(); i++)
     {
-        APlanet* PlanetA = Cast<APlanet>(PlanetActors[i]);
-        if (!PlanetA) continue;
+        UPlanetComponent* PlanetA = Planets[i];
+        AActor* OwnerA = PlanetA->GetOwner();
+        if (!OwnerA) continue;
 
-        UPrimitiveComponent* CompA = Cast<UPrimitiveComponent>(PlanetA->GetRootComponent());
-        if (!CompA || !CompA->IsSimulatingPhysics()) continue;
+        UPrimitiveComponent* BodyA =
+            Cast<UPrimitiveComponent>(OwnerA->GetRootComponent());
+
+        if (!BodyA || !BodyA->IsSimulatingPhysics()) continue;
 
         FVector ForceSum = FVector::ZeroVector;
 
-        for (int32 j = 0; j < PlanetActors.Num(); j++)
+        for (int32 j = 0; j < Planets.Num(); j++)
         {
             if (i == j) continue;
 
-            APlanet* PlanetB = Cast<APlanet>(PlanetActors[j]);
-            if (!PlanetB) continue;
+            UPlanetComponent* PlanetB = Planets[j];
+            AActor* OwnerB = PlanetB->GetOwner();
+            if (!OwnerB) continue;
 
-            UPrimitiveComponent* CompB = Cast<UPrimitiveComponent>(PlanetB->GetRootComponent());
-            if (!CompB) continue;
-
-            FVector Dir = (PlanetB->GetActorLocation() - PlanetA->GetActorLocation());
+            FVector Dir = OwnerB->GetActorLocation() - OwnerA->GetActorLocation();
             float Distance = Dir.Size();
+
             if (Distance <= KINDA_SMALL_NUMBER) continue;
 
             Dir.Normalize();
 
-            // Ley de gravitación: F = G * (m1 * m2) / r^2
-            float ForceMag = (GravityConstant * PlanetA->Mass * PlanetB->Mass) / (Distance * Distance);
+            float ForceMag =
+                (GravityConstant * PlanetA->Mass * PlanetB->Mass)
+                / (Distance * Distance);
 
-            // Sumar la fuerza total
             ForceSum += Dir * ForceMag;
         }
 
-        // Aplicar la fuerza resultante a este planeta
-        CompA->AddForce(ForceSum);
+        BodyA->AddForce(ForceSum);
     }
 }
+
 
