@@ -10,7 +10,7 @@ public class CosmicArchitectCommon : ModuleRules
 
         PublicDependencyModuleNames.AddRange(new string[]
         {
-            "Core"
+             "Core"
         });
     }
 }

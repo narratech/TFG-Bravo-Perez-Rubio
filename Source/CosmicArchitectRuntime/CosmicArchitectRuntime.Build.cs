@@ -28,7 +28,7 @@ public class CosmicArchitectRuntime : ModuleRules
                 "Core",
 				"CoreUObject",
 				"Engine",
-                "CosmicArquitectCommon"
+                "CosmicArchitectCommon"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
