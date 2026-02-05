@@ -3,21 +3,22 @@
 
 * Javier Bravo Perucho
 * David Rubio Moreno
-* Sergio P茅rez Robledano
+* Sergio P閞ez Robledano
 
 ### Resumen
 
 El presente Trabajo de Fin de Grado tiene como objetivo el desarrollo
-e implementaci贸n de un plugin para Unreal Engine 5 (UE5) que facilite la
-creaci贸n de sistemas planetarios personalizados. Este plugin busca aprovechar las herramientas de generaci贸n procedimental y simulaci贸n avanzada
-del motor, ofreciendo un entorno modular y flexible para dise帽ar planetas y
+e implementaci髇 de un plugin para Unreal Engine 5 (UE5) que facilite la
+creaci髇 de sistemas planetarios personalizados. Este plugin busca aprovechar las herramientas de generaci髇 procedimental y simulaci髇 avanzada
+del motor, ofreciendo un entorno modular y flexible para dise馻r planetas y
 cuerpos celestes completamente configurables.
 
 ### Memoria del proyecto: 
 
-[Documentaci贸n oficial de Unreal Engine](https://docs.unrealengine.com/)
+[Documentaci髇 oficial de Unreal Engine](https://docs.unrealengine.com/)
 
+Versi髇 soportada actualmente 5.7
 
-Descarga el zip y descomprimelo en la carpeta Content del proyecto:
+Instrucciones de uso:
 
-[Content](https://drive.google.com/drive/u/1/folders/1n-40Ktk1JHD8vp6NgY7ngIcFEDUdzU1r)
+Para ampliar funcionalidades del plugin, crea una carpeta Plugins en la ra韟 de tu proyecto y clona este repositorio dentro.
