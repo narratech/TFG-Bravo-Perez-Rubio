@@ -21,4 +21,4 @@ Versión soportada actualmente 5.7
 
 Instrucciones de uso:
 
-Para ampliar funcionalidades del plugin, crea una carpeta Plugins en la raíz de tu proyecto y clona este repositorio dentro.
+Para ampliar funcionalidades del plugin, crea una carpeta Plugins en la raíz de tu proyecto c++ y clona este repositorio dentro.

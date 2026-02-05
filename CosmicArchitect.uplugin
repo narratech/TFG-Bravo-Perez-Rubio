@@ -16,8 +16,28 @@
 	"Installed": false,
 	"Modules": [
 		{
-			"Name": "CosmicArchitect",
+			"Name": "CosmicArchitectRuntime",
 			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "CosmicArchitectNoise",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "CosmicArchitectFactory",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "CosmicArchitectCommon",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "CosmicArchitectEditor",
+			"Type": "Editor",
 			"LoadingPhase": "Default"
 		}
 	]

@@ -4,7 +4,7 @@
 
 #include "Modules/ModuleManager.h"
 
-class FCosmicArchitectModule : public IModuleInterface
+class FCosmicArchitectNoiseModule : public IModuleInterface
 {
 public:
 

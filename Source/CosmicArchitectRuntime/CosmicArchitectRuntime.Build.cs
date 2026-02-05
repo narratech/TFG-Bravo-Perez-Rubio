@@ -2,9 +2,9 @@
 
 using UnrealBuildTool;
 
-public class CosmicArchitect : ModuleRules
+public class CosmicArchitectRuntime : ModuleRules
 {
-	public CosmicArchitect(ReadOnlyTargetRules Target) : base(Target)
+	public CosmicArchitectRuntime(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 		
@@ -25,7 +25,10 @@ public class CosmicArchitect : ModuleRules
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"Core",
+                "Core",
+				"CoreUObject",
+				"Engine",
+                "CosmicArquitectCommon"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
@@ -34,10 +37,6 @@ public class CosmicArchitect : ModuleRules
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"CoreUObject",
-				"Engine",
-				"Slate",
-				"SlateCore",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
