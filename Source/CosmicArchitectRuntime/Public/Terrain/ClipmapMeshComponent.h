@@ -18,6 +18,7 @@ public:
     int32 LevelIndex;
     int32 Resolution;
     float GridSpacing;
+    float PlanetRadius;
     bool bIsRing;
 
     TArray<FVector> Vertices;

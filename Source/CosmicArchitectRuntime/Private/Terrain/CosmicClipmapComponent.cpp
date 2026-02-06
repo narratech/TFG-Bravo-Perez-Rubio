@@ -23,7 +23,6 @@ UCosmicClipmapComponent::UCosmicClipmapComponent()
 void UCosmicClipmapComponent::BeginPlay()
 {
     Super::BeginPlay();
-    CreateLevels();
 }
 
 
@@ -31,7 +30,7 @@ void UCosmicClipmapComponent::BeginPlay()
 void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
+    UpdatePatchTransform();
 }
 
 void UCosmicClipmapComponent::CreateLevels()
@@ -41,25 +40,65 @@ void UCosmicClipmapComponent::CreateLevels()
 
     for (int32 L = 0; L < NumLevels; ++L)
     {
-        UClipmapMeshComponent* Mesh =
-            NewObject<UClipmapMeshComponent>(GetOwner());
-
+        UClipmapMeshComponent* Mesh = NewObject<UClipmapMeshComponent>(GetOwner());
         Mesh->RegisterComponent();
-        Mesh->AttachToComponent(
-            GetOwner()->GetRootComponent(),
-            FAttachmentTransformRules::KeepRelativeTransform
-        );
+
+        // Adjuntamos al root que nos pasó el actor
+        if (ParentRoot)
+        {
+            Mesh->AttachToComponent(ParentRoot, FAttachmentTransformRules::KeepRelativeTransform);
+        }
 
         Mesh->LevelIndex = L;
         Mesh->Resolution = BaseResolution;
         Mesh->GridSpacing = BaseGridSpacing * (1 << L);
         Mesh->bIsRing = (L > 0);
+        Mesh->PlanetRadius = PlanetRadius;
 
         Mesh->BuildMesh();
 
         Levels[L].Mesh = Mesh;
     }
 }
+
+void UCosmicClipmapComponent::UpdatePatchTransform()
+{
+    AActor* Owner = GetOwner();
+    if (!Owner) return;
+
+    if (Levels.Num() == 0) return;
+
+    // posición del jugador
+    APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+    if (!PC) return;
+
+    FVector ViewerPosWorld = PC->PlayerCameraManager->GetCameraLocation();
+    FVector PlanetCenter = Owner->GetActorLocation();
+
+    for (FCosmicClipmapLevel& Level : Levels)
+    {
+        UClipmapMeshComponent* Mesh = Level.Mesh;
+        if (!Mesh) continue;
+
+        // Normal esférica
+        FVector N = (ViewerPosWorld - PlanetCenter).GetSafeNormal();
+
+        // Punto sobre la superficie
+        FVector SurfacePos = PlanetCenter + N * PlanetRadius * HeightScale;
+
+        // Orientación
+        FVector Up = N;
+        FVector Arbitrary = (FMath::Abs(Up.Z) < 0.99f) ? FVector::UpVector : FVector::ForwardVector;
+        FVector Right = FVector::CrossProduct(Arbitrary, Up).GetSafeNormal();
+        FVector Forward = FVector::CrossProduct(Up, Right).GetSafeNormal();
+        FRotator PatchRotation = FRotationMatrix::MakeFromXZ(Forward, Up).Rotator();
+
+        // Mover la malla procedimental
+        Mesh->SetWorldLocationAndRotation(SurfacePos, PatchRotation);
+    }
+}
+
+
 
 void UCosmicClipmapComponent::UpdateOrigins()
 {

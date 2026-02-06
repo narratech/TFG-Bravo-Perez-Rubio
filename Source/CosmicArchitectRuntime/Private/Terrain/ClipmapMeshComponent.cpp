@@ -19,9 +19,19 @@ void UClipmapMeshComponent::BuildMesh()
     Vertices.Reserve(VertRes * VertRes);
     UVs.Reserve(VertRes * VertRes);
 
+    UE_LOG(LogTemp, Warning, TEXT("Radio Planeta: %f"), PlanetRadius);
+
+    //Variable PlanetRadius
+
     // ------------------
     // VERTICES
     // ------------------
+    // ------------------
+// VERTICES
+// ------------------
+    // ------------------
+// VERTICES
+// ------------------
     for (int32 y = 0; y < VertRes; ++y)
     {
         for (int32 x = 0; x < VertRes; ++x)
@@ -29,15 +39,49 @@ void UClipmapMeshComponent::BuildMesh()
             float WorldX = (x - HalfRes) * GridSpacing;
             float WorldY = (y - HalfRes) * GridSpacing;
 
-            float Height = 0.f; // altura plana por ahora
+            // Calcular la posición proyectada en la esfera
+            FVector SphereCenter = FVector(0, 0, -PlanetRadius);
 
-            Vertices.Add(FVector(WorldX, WorldY, Height));
+            // Vector desde el centro de la esfera al punto en el plano XY
+            FVector ToPoint = FVector(WorldX, WorldY, 0) - SphereCenter;
+
+            // Solo queremos la cara superior (z > -Radius)
+            FVector SpherePosition;
+
+            // Calcular distancia 2D desde el eje de la esfera
+            float Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
+
+            if (Distance2D <= PlanetRadius)
+            {
+                // Punto dentro del radio: está sobre la superficie esférica
+                float ZOffset = FMath::Sqrt(PlanetRadius * PlanetRadius - Distance2D * Distance2D);
+                SpherePosition = FVector(WorldX, WorldY, -PlanetRadius + ZOffset);
+            }
+            else
+            {
+                // Punto fuera del radio: proyectar al borde del círculo en z = -Radius
+                float Scale = PlanetRadius / Distance2D;
+                SpherePosition = FVector(WorldX * Scale, WorldY * Scale, -PlanetRadius);
+            }
+
+            // IMPORTANTE: Usar las coordenadas proyectadas, no las originales
+            Vertices.Add(SpherePosition);
+
             UVs.Add(FVector2D(
                 (float)x / Resolution,
                 (float)y / Resolution
             ));
-            Normals.Add(FVector::UpVector);
-            Tangents.Add(FProcMeshTangent(1, 0, 0));
+
+            // Calcular la normal en la superficie de la esfera
+            FVector Normal = (SpherePosition - SphereCenter);
+            Normal.Normalize();
+
+            Normals.Add(Normal);
+
+            // Calcular tangente (aproximación)
+            FVector Tangent = FVector(-Normal.Y, Normal.X, 0);
+            Tangent.Normalize();
+            Tangents.Add(FProcMeshTangent(Tangent.X, Tangent.Y, Tangent.Z));
         }
     }
 

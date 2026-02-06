@@ -14,14 +14,21 @@ ACosmicPlanet::ACosmicPlanet()
     RootComponent = Root;
 
     ClipmapComponent = CreateDefaultSubobject<UCosmicClipmapComponent>(TEXT("ClipmapComponent"));
-
+    
+    
+    
 }
 
 // Called when the game starts or when spawned
 void ACosmicPlanet::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+    if (ClipmapComponent) {
+        ClipmapComponent->ParentRoot = Root;
+        ClipmapComponent->PlanetRadius = Radius * 100000;
+        ClipmapComponent->CreateLevels();
+    }
 }
 
 // Called every frame

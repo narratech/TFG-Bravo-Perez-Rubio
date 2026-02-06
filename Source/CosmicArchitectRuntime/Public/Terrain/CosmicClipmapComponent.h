@@ -30,6 +30,12 @@ public:
 
     void CreateLevels();
 
+    USceneComponent* ParentRoot = nullptr;
+
+    float PlanetRadius = 1000.f; // default
+
+    float HeightScale = 1.f; // multiplicador altura
+
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "32", ClampMax = "256"))
     int32 BaseResolution = 128;
 
@@ -39,12 +45,15 @@ public:
     UPROPERTY(EditAnywhere, Category = "Clipmap")
     float BaseGridSpacing = 100.f;
 
+
+
 protected:
     TArray<FCosmicClipmapLevel> Levels;
 
     virtual void BeginPlay() override;
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+    void UpdatePatchTransform();
     void UpdateOrigins();
 };
 
