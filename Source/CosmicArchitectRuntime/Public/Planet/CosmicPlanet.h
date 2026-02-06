@@ -18,24 +18,20 @@ public:
 	UPROPERTY(EditAnywhere)
 	float Radius;
 
-	// Sets default values for this actor's properties
-	ACosmicPlanet();
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	USceneComponent* Root;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	UStaticMeshComponent* GridMesh;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UCosmicClipmapComponent* ClipmapComponent;
+
+	// Sets default values for this actor's properties
+	ACosmicPlanet();
+
+	virtual void Tick(float DeltaTime) override;
+
+	virtual void OnConstruction(const FTransform& Transform) override;
 
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-
-public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
-
 };

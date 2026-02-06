@@ -13,11 +13,6 @@ ACosmicPlanet::ACosmicPlanet()
     Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
     RootComponent = Root;
 
-    GridMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GridMesh"));
-    GridMesh->SetupAttachment(Root);
-    GridMesh->SetCastShadow(false);
-    GridMesh->bUseAsOccluder = false;
-
     ClipmapComponent = CreateDefaultSubobject<UCosmicClipmapComponent>(TEXT("ClipmapComponent"));
 
 }
@@ -34,5 +29,15 @@ void ACosmicPlanet::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+}
+
+void ACosmicPlanet::OnConstruction(const FTransform& Transform)
+{
+    Super::OnConstruction(Transform);
+
+    /*if (ClipmapComponent && !GetWorld()->IsGameWorld())
+    {
+        ClipmapComponent->CreateLevels();
+    }*/
 }
 

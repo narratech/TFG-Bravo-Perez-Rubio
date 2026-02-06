@@ -6,85 +6,45 @@
 #include "Components/ActorComponent.h"
 #include "CosmicClipmapComponent.generated.h"
 
-USTRUCT(BlueprintType)
-struct FClipmapLevel
+class UClipmapMeshComponent;
+
+USTRUCT()
+struct FCosmicClipmapLevel
 {
     GENERATED_BODY()
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float GridSpacing = 100.0f;
+    int32 LevelIndex;
+    float GridSpacing;
+    FVector2D Origin;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    FVector2D Origin = FVector2D::ZeroVector;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float AlphaOffset = 0.0f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float AlphaWidth = 100.0f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float Radius = 1000.0f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    bool bActive = false;
+    UClipmapMeshComponent* Mesh = nullptr;
 };
 
-UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class COSMICARCHITECTRUNTIME_API UCosmicClipmapComponent : public UActorComponent
+UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
+class UCosmicClipmapComponent : public UActorComponent
 {
-	GENERATED_BODY()
-
-protected:
-    UCosmicClipmapComponent();
-
-    virtual void BeginPlay() override;
-    virtual void TickComponent(
-        float DeltaTime,
-        ELevelTick TickType,
-        FActorComponentTickFunction* ThisTickFunction
-    ) override;
-
-    void UpdateViewerPosition();
-    void UpdatePatchTransform();
-    void UpdateActiveLevels();
-    void UpdateOrigins();
-    void PushMaterialParameters();
+    GENERATED_BODY()
 
 public:
-    // -------- General settings --------
+    UCosmicClipmapComponent();
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Clipmap")
-    int32 NumLevels = 6;
+    void CreateLevels();
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Clipmap")
-    float BaseGridSpacing = 1.0f;
+    UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "32", ClampMax = "256"))
+    int32 BaseResolution = 128;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Clipmap")
-    float BaseRadius = 5000.0f;
+    UPROPERTY(EditAnywhere, Category = "Clipmap")
+    int32 NumLevels = 8;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Clipmap")
-    float HeightScale = 10000.0f;
+    UPROPERTY(EditAnywhere, Category = "Clipmap")
+    float BaseGridSpacing = 100.f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Clipmap")
-    float PlanetRadius = 6371000.0f;
+protected:
+    TArray<FCosmicClipmapLevel> Levels;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Clipmap")
-    FVector2D OriginOffset = FVector2D::ZeroVector;
+    virtual void BeginPlay() override;
+    virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-    // -------- Runtime --------
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Clipmap")
-    UMaterialInterface* ClipmapMaterial = nullptr;
-
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Clipmap")
-    FVector2D ViewerPos = FVector2D::ZeroVector;
-
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Clipmap")
-    TArray<FClipmapLevel> Levels;
-
-private:
-    UMaterialInstanceDynamic* MID = nullptr;
-
-		
+    void UpdateOrigins();
 };
+
