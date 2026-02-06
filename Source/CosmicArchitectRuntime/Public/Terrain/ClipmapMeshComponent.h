@@ -20,14 +20,25 @@ public:
     float GridSpacing;
     float PlanetRadius;
     bool bIsRing;
+    bool bMeshCreated = false;
 
-    TArray<FVector> Vertices;
+    // Malla base (deformada a la esfera, sin alturas adicionales)
+    TArray<FVector> BaseVertices;
+    TArray<FVector> BaseNormals;
+    TArray<FProcMeshTangent> BaseTangents;
+
+    // Alturas adicionales (para modificar en tiempo de ejecución)
+    TArray<float> HeightOffsets;
+
+    // Malla final (base + alturas)
+    TArray<FVector> CurrentVertices;
     TArray<int32> Triangles;
-    TArray<FVector> Normals;
+    TArray<FVector> CurrentNormals;
+    TArray<FProcMeshTangent> CurrentTangents;
     TArray<FVector2D> UVs;
-    TArray<FProcMeshTangent> Tangents;
 
-    void BuildMesh();
+    void BuildBaseMesh();
+    void UpdateMesh();
     void UpdateHeights(const FVector2D& Origin);
 };
 

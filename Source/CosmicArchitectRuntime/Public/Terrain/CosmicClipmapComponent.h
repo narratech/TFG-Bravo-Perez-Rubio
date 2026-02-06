@@ -45,10 +45,15 @@ public:
     UPROPERTY(EditAnywhere, Category = "Clipmap")
     float BaseGridSpacing = 100.f;
 
+    UPROPERTY(EditAnywhere, Category = "Clipmap")
+    float TimeToRefresh = 0.25f;
 
+    bool bInit = false;
 
 protected:
     TArray<FCosmicClipmapLevel> Levels;
+
+    float ElapsedTime = 0;
 
     virtual void BeginPlay() override;
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;

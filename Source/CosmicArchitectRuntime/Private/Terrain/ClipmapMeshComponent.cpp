@@ -3,32 +3,36 @@
 
 #include "Terrain/ClipmapMeshComponent.h"
 
-void UClipmapMeshComponent::BuildMesh()
+void UClipmapMeshComponent::BuildBaseMesh()
 {
-    ClearAllMeshSections();
-
-    Vertices.Reset();
-    Triangles.Reset();
-    Normals.Reset();
-    UVs.Reset();
-    Tangents.Reset();
+    UE_LOG(LogTemp, Warning, TEXT("UClipmapMeshComponent::BuildBaseMesh() iniciado"));
 
     const int32 VertRes = Resolution + 1;
+    const int32 TotalVertices = VertRes * VertRes;
     const int32 HalfRes = Resolution / 2;
 
-    Vertices.Reserve(VertRes * VertRes);
-    UVs.Reserve(VertRes * VertRes);
+    UE_LOG(LogTemp, Warning, TEXT("  Resolución: %d"), Resolution);
+    UE_LOG(LogTemp, Warning, TEXT("  VertRes: %d"), VertRes);
+    UE_LOG(LogTemp, Warning, TEXT("  Total vértices esperados: %d"), TotalVertices);
 
-    UE_LOG(LogTemp, Warning, TEXT("Radio Planeta: %f"), PlanetRadius);
+    // 1. LIMPIAR TODO primero
+    ClearAllMeshSections();
 
-    // ------------------
-    // VERTICES
-    // ------------------
+    BaseVertices.Empty();
+    BaseNormals.Empty();
+    BaseTangents.Empty();
+    UVs.Empty();
+    Triangles.Empty();
+    HeightOffsets.Empty();
+    CurrentVertices.Empty();
+    CurrentNormals.Empty();
+    CurrentTangents.Empty();
 
-    // Medir tiempo total
-    double TotalStartTime = FPlatformTime::Seconds();
+    // 2. INICIALIZAR con tamaño correcto
+    HeightOffsets.Init(0.0f, TotalVertices);
 
-    double VerticesStartTime = FPlatformTime::Seconds();
+    // 3. CALCULAR VÉRTICES
+    int32 ActualVerticesCalculated = 0;
 
     for (int32 y = 0; y < VertRes; ++y)
     {
@@ -37,71 +41,73 @@ void UClipmapMeshComponent::BuildMesh()
             float WorldX = (x - HalfRes) * GridSpacing;
             float WorldY = (y - HalfRes) * GridSpacing;
 
-            // Calcular la posición proyectada en la esfera
+            // Calcular posición en esfera
             FVector SphereCenter = FVector(0, 0, -PlanetRadius);
-
-            // Vector desde el centro de la esfera al punto en el plano XY
-            FVector ToPoint = FVector(WorldX, WorldY, 0) - SphereCenter;
-
-            // Solo queremos la cara superior (z > -Radius)
-            FVector SpherePosition;
-
-            // Calcular distancia 2D desde el eje de la esfera
             float Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
+            FVector BasePosition;
 
-            if (Distance2D <= PlanetRadius)
+            if (Distance2D <= PlanetRadius && Distance2D > 0.001f) // Evitar división por 0
             {
-                // Punto dentro del radio: está sobre la superficie esférica
                 float ZOffset = FMath::Sqrt(PlanetRadius * PlanetRadius - Distance2D * Distance2D);
-                SpherePosition = FVector(WorldX, WorldY, -PlanetRadius + ZOffset);
+                BasePosition = FVector(WorldX, WorldY, -PlanetRadius + ZOffset);
+            }
+            else if (Distance2D <= 0.001f)
+            {
+                // Centro - evitar NaN
+                BasePosition = FVector(0, 0, 0);
             }
             else
             {
-                // Punto fuera del radio: proyectar al borde del círculo en z = -Radius
                 float Scale = PlanetRadius / Distance2D;
-                SpherePosition = FVector(WorldX * Scale, WorldY * Scale, -PlanetRadius);
+                BasePosition = FVector(WorldX * Scale, WorldY * Scale, -PlanetRadius);
             }
 
-            // IMPORTANTE: Usar las coordenadas proyectadas, no las originales
-            Vertices.Add(SpherePosition);
+            BaseVertices.Add(BasePosition);
+            ActualVerticesCalculated++;
 
+            // Normal
+            FVector Normal = (BasePosition - SphereCenter);
+            if (Normal.SizeSquared() > 0.001f)
+            {
+                Normal.Normalize();
+            }
+            else
+            {
+                Normal = FVector::UpVector;
+            }
+            BaseNormals.Add(Normal);
+
+            // Tangente
+            FVector TangentDir = FVector(-Normal.Y, Normal.X, 0);
+            if (TangentDir.SizeSquared() > 0.001f)
+            {
+                TangentDir.Normalize();
+            }
+            else
+            {
+                TangentDir = FVector(1, 0, 0);
+            }
+            BaseTangents.Add(FProcMeshTangent(TangentDir.X, TangentDir.Y, TangentDir.Z));
+
+            // UVs
             UVs.Add(FVector2D(
                 (float)x / Resolution,
                 (float)y / Resolution
             ));
-
-            // Calcular la normal en la superficie de la esfera
-            FVector Normal = (SpherePosition - SphereCenter);
-            Normal.Normalize();
-
-            Normals.Add(Normal);
-
-            // Calcular tangente (aproximación)
-            FVector Tangent = FVector(-Normal.Y, Normal.X, 0);
-            Tangent.Normalize();
-            Tangents.Add(FProcMeshTangent(Tangent.X, Tangent.Y, Tangent.Z));
         }
     }
 
-    double VerticesEndTime = FPlatformTime::Seconds();
-    double VerticesTime = VerticesEndTime - VerticesStartTime;
+    UE_LOG(LogTemp, Warning, TEXT("  Vértices calculados: %d"), ActualVerticesCalculated);
 
-    UE_LOG(LogTemp, Warning, TEXT("Vértices procesados: %d en %.4f ms (%.6f segundos)"),
-        Vertices.Num(),
-        VerticesTime * 1000.0,
-        VerticesTime);
-
-    // ------------------
-    // TRIÁNGULOS
-    // ------------------
-
-    double TrianglesStartTime = FPlatformTime::Seconds();
+    // 4. CALCULAR TRIÁNGULOS (CORREGIDO)
+    Triangles.Empty();
+    int32 TriangleCount = 0;
 
     for (int32 y = 0; y < Resolution; ++y)
     {
         for (int32 x = 0; x < Resolution; ++x)
         {
-            // --- lógica del anillo ---
+            // Lógica del anillo
             if (bIsRing)
             {
                 bool bInsideInner =
@@ -111,87 +117,126 @@ void UClipmapMeshComponent::BuildMesh()
                     y < Resolution - HalfRes / 2;
 
                 if (bInsideInner)
+                {
                     continue;
+                }
             }
 
+            // Índices de vértices
             int32 i0 = y * VertRes + x;
             int32 i1 = i0 + 1;
             int32 i2 = i0 + VertRes;
             int32 i3 = i2 + 1;
 
-            Triangles.Add(i0);
-            Triangles.Add(i2);
-            Triangles.Add(i1);
+            // VERIFICAR que los índices sean válidos
+            if (i0 < TotalVertices && i1 < TotalVertices &&
+                i2 < TotalVertices && i3 < TotalVertices)
+            {
+                // Primer triángulo (i0, i2, i1)
+                Triangles.Add(i0);
+                Triangles.Add(i2);
+                Triangles.Add(i1);
+                TriangleCount++;
 
-            Triangles.Add(i1);
-            Triangles.Add(i2);
-            Triangles.Add(i3);
+                // Segundo triángulo (i1, i2, i3)
+                Triangles.Add(i1);
+                Triangles.Add(i2);
+                Triangles.Add(i3);
+                TriangleCount++;
+            }
+            else
+            {
+                UE_LOG(LogTemp, Error, TEXT("Índice de triángulo inválido en [%d,%d]"), x, y);
+            }
         }
     }
 
-    double TrianglesEndTime = FPlatformTime::Seconds();
-    double TrianglesTime = TrianglesEndTime - TrianglesStartTime;
+    UE_LOG(LogTemp, Warning, TEXT("  Triángulos calculados: %d"), TriangleCount / 3);
+    UE_LOG(LogTemp, Warning, TEXT("  BaseVertices.Num(): %d"), BaseVertices.Num());
+    UE_LOG(LogTemp, Warning, TEXT("  UVs.Num(): %d"), UVs.Num());
+    UE_LOG(LogTemp, Warning, TEXT("  Triangles.Num(): %d"), Triangles.Num());
 
-    UE_LOG(LogTemp, Warning, TEXT("Triángulos procesados: %d en %.4f ms (%.6f segundos)"),
-        Triangles.Num() / 3,
-        TrianglesTime * 1000.0,
-        TrianglesTime);
+    // 5. COPIAR a Current arrays
+    CurrentVertices = BaseVertices;
+    CurrentNormals = BaseNormals;
+    CurrentTangents = BaseTangents;
 
-    // ------------------
-    // CREAR MALLA
-    // ------------------
-
-    double CreateMeshStartTime = FPlatformTime::Seconds();
+    // 6. CREAR LA MALLA por primera vez
+    double CreateStartTime = FPlatformTime::Seconds();
 
     CreateMeshSection(
-        0,
-        Vertices,
-        Triangles,
-        Normals,
-        UVs,
-        TArray<FColor>(),
-        Tangents,
-        true
+        0,                    // SectionIndex
+        CurrentVertices,      // Vértices
+        Triangles,           // Triángulos
+        CurrentNormals,      // Normales
+        UVs,                 // UVs
+        TArray<FColor>(),    // Colores de vértice
+        CurrentTangents,     // Tangentes
+        true                 // Crear colisión
     );
+
+    double CreateEndTime = FPlatformTime::Seconds();
+
+    UE_LOG(LogTemp, Warning, TEXT("CreateMeshSection tomó: %.4f ms"),
+        (CreateEndTime - CreateStartTime) * 1000.0);
+
+    // 7. VERIFICAR que se creó correctamente
+    if (GetNumSections() > 0)
+    {
+        bMeshCreated = true;
+        UE_LOG(LogTemp, Warning, TEXT("Malla creada exitosamente. Secciones: %d"), GetNumSections());
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("FALLÓ la creación de la malla!"));
+    }
 
     SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-    double CreateMeshEndTime = FPlatformTime::Seconds();
-    double CreateMeshTime = CreateMeshEndTime - CreateMeshStartTime;
+    bMeshCreated = true;
+}
 
-    UE_LOG(LogTemp, Warning, TEXT("Malla creada en %.4f ms (%.6f segundos)"),
-        CreateMeshTime * 1000.0,
-        CreateMeshTime);
+void UClipmapMeshComponent::UpdateMesh()
+{
+    double UpdateMeshStartTime = FPlatformTime::Seconds();
 
-    // ------------------
-    // TIEMPO TOTAL
-    // ------------------
-
-    double TotalEndTime = FPlatformTime::Seconds();
-    double TotalTime = TotalEndTime - TotalStartTime;
-
-    // Estadísticas adicionales
-    UE_LOG(LogTemp, Warning, TEXT("=== RESUMEN DE TIEMPOS ==="));
-    UE_LOG(LogTemp, Warning, TEXT("Resolución: %dx%d (Vértices: %d)"),
-        Resolution, Resolution, VertRes * VertRes);
-    UE_LOG(LogTemp, Warning, TEXT("Tiempo total: %.4f ms (%.6f segundos)"),
-        TotalTime * 1000.0, TotalTime);
-    UE_LOG(LogTemp, Warning, TEXT("  - Vértices: %.4f ms (%.1f%%)"),
-        VerticesTime * 1000.0, (VerticesTime / TotalTime) * 100.0);
-    UE_LOG(LogTemp, Warning, TEXT("  - Triángulos: %.4f ms (%.1f%%)"),
-        TrianglesTime * 1000.0, (TrianglesTime / TotalTime) * 100.0);
-    UE_LOG(LogTemp, Warning, TEXT("  - Crear malla: %.4f ms (%.1f%%)"),
-        CreateMeshTime * 1000.0, (CreateMeshTime / TotalTime) * 100.0);
-
-    // Para análisis de rendimiento por vértice
-    if (Vertices.Num() > 0)
+    if (!bMeshCreated)
     {
-        double TimePerVertex = VerticesTime / Vertices.Num() * 1000000.0; // microsegundos por vértice
-        double TimePerTriangle = TrianglesTime / (Triangles.Num() / 3) * 1000000.0; // microsegundos por triángulo
-
-        UE_LOG(LogTemp, Warning, TEXT("Microsegundos por vértice: %.3f µs"), TimePerVertex);
-        UE_LOG(LogTemp, Warning, TEXT("Microsegundos por triángulo: %.3f µs"), TimePerTriangle);
+        UE_LOG(LogTemp, Error, TEXT("UpdateMesh() llamado pero bMeshCreated = false"));
+        UE_LOG(LogTemp, Error, TEXT("Llamando a BuildBaseMesh() primero..."));
+        BuildBaseMesh();
+        return;
     }
+
+    // VERIFICAR tamaños antes de actualizar
+    //UE_LOG(LogTemp, Warning, TEXT("UpdateMesh() verificando:"));
+    //UE_LOG(LogTemp, Warning, TEXT("  CurrentVertices: %d"), CurrentVertices.Num());
+    //UE_LOG(LogTemp, Warning, TEXT("  CurrentNormals: %d"), CurrentNormals.Num());
+    //UE_LOG(LogTemp, Warning, TEXT("  UVs: %d"), UVs.Num());
+    //UE_LOG(LogTemp, Warning, TEXT("  CurrentTangents: %d"), CurrentTangents.Num());
+
+    if (CurrentVertices.Num() == 0)
+    {
+        UE_LOG(LogTemp, Error, TEXT("CurrentVertices está vacío! Copiando de BaseVertices"));
+        CurrentVertices = BaseVertices;
+        CurrentNormals = BaseNormals;
+        CurrentTangents = BaseTangents;
+    }
+
+    // ACTUALIZAR la malla existente
+    UpdateMeshSection(
+        0,
+        CurrentVertices,
+        CurrentNormals,
+        UVs,
+        TArray<FColor>(),
+        CurrentTangents
+    );
+
+    double UpdateMeshEndTime = FPlatformTime::Seconds();
+    double UpdateMeshTime = UpdateMeshEndTime - UpdateMeshStartTime;
+
+    UE_LOG(LogTemp, Warning, TEXT("Malla actualizada en %.4f ms"), UpdateMeshTime * 1000.0);
 }
 
 

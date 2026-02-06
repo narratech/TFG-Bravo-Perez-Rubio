@@ -30,7 +30,22 @@ void UCosmicClipmapComponent::BeginPlay()
 void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-    UpdatePatchTransform();
+
+    ElapsedTime += DeltaTime;
+
+    if (ElapsedTime > TimeToRefresh) {
+        UpdatePatchTransform();
+
+        if (bInit) {
+            for (size_t i = 0; i < NumLevels; i++)
+            {
+                Levels[i].Mesh->UpdateMesh();
+            }
+        }
+
+        ElapsedTime = 0;
+    }
+     
 }
 
 void UCosmicClipmapComponent::CreateLevels()
@@ -55,10 +70,12 @@ void UCosmicClipmapComponent::CreateLevels()
         Mesh->bIsRing = (L > 0);
         Mesh->PlanetRadius = PlanetRadius;
 
-        Mesh->BuildMesh();
+        Mesh->BuildBaseMesh();
 
         Levels[L].Mesh = Mesh;
     }
+
+    bInit = true;
 }
 
 void UCosmicClipmapComponent::UpdatePatchTransform()
