@@ -12,7 +12,7 @@ struct FClipmapLevel
     GENERATED_BODY()
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
-    float GridSpacing = 1.0f;
+    float GridSpacing = 100.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     FVector2D Origin = FVector2D::ZeroVector;
@@ -22,6 +22,12 @@ struct FClipmapLevel
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     float AlphaWidth = 100.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    float Radius = 1000.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    bool bActive = false;
 };
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
@@ -41,7 +47,7 @@ protected:
 
     void UpdateViewerPosition();
     void UpdatePatchTransform();
-    void UpdateLevels();
+    void UpdateActiveLevels();
     void UpdateOrigins();
     void PushMaterialParameters();
 
@@ -55,15 +61,24 @@ public:
     float BaseGridSpacing = 1.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Clipmap")
+    float BaseRadius = 5000.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Clipmap")
     float HeightScale = 10000.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Clipmap")
     float PlanetRadius = 6371000.0f;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Clipmap")
+    FVector2D OriginOffset = FVector2D::ZeroVector;
+
     // -------- Runtime --------
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Clipmap")
+    UMaterialInterface* ClipmapMaterial = nullptr;
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Clipmap")
-    FVector2D ViewerPos;
+    FVector2D ViewerPos = FVector2D::ZeroVector;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Clipmap")
     TArray<FClipmapLevel> Levels;
