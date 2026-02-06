@@ -21,17 +21,15 @@ void UClipmapMeshComponent::BuildMesh()
 
     UE_LOG(LogTemp, Warning, TEXT("Radio Planeta: %f"), PlanetRadius);
 
-    //Variable PlanetRadius
-
     // ------------------
     // VERTICES
     // ------------------
-    // ------------------
-// VERTICES
-// ------------------
-    // ------------------
-// VERTICES
-// ------------------
+
+    // Medir tiempo total
+    double TotalStartTime = FPlatformTime::Seconds();
+
+    double VerticesStartTime = FPlatformTime::Seconds();
+
     for (int32 y = 0; y < VertRes; ++y)
     {
         for (int32 x = 0; x < VertRes; ++x)
@@ -85,9 +83,20 @@ void UClipmapMeshComponent::BuildMesh()
         }
     }
 
+    double VerticesEndTime = FPlatformTime::Seconds();
+    double VerticesTime = VerticesEndTime - VerticesStartTime;
+
+    UE_LOG(LogTemp, Warning, TEXT("Vértices procesados: %d en %.4f ms (%.6f segundos)"),
+        Vertices.Num(),
+        VerticesTime * 1000.0,
+        VerticesTime);
+
     // ------------------
     // TRIÁNGULOS
     // ------------------
+
+    double TrianglesStartTime = FPlatformTime::Seconds();
+
     for (int32 y = 0; y < Resolution; ++y)
     {
         for (int32 x = 0; x < Resolution; ++x)
@@ -120,9 +129,20 @@ void UClipmapMeshComponent::BuildMesh()
         }
     }
 
+    double TrianglesEndTime = FPlatformTime::Seconds();
+    double TrianglesTime = TrianglesEndTime - TrianglesStartTime;
+
+    UE_LOG(LogTemp, Warning, TEXT("Triángulos procesados: %d en %.4f ms (%.6f segundos)"),
+        Triangles.Num() / 3,
+        TrianglesTime * 1000.0,
+        TrianglesTime);
+
     // ------------------
     // CREAR MALLA
     // ------------------
+
+    double CreateMeshStartTime = FPlatformTime::Seconds();
+
     CreateMeshSection(
         0,
         Vertices,
@@ -135,6 +155,43 @@ void UClipmapMeshComponent::BuildMesh()
     );
 
     SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+    double CreateMeshEndTime = FPlatformTime::Seconds();
+    double CreateMeshTime = CreateMeshEndTime - CreateMeshStartTime;
+
+    UE_LOG(LogTemp, Warning, TEXT("Malla creada en %.4f ms (%.6f segundos)"),
+        CreateMeshTime * 1000.0,
+        CreateMeshTime);
+
+    // ------------------
+    // TIEMPO TOTAL
+    // ------------------
+
+    double TotalEndTime = FPlatformTime::Seconds();
+    double TotalTime = TotalEndTime - TotalStartTime;
+
+    // Estadísticas adicionales
+    UE_LOG(LogTemp, Warning, TEXT("=== RESUMEN DE TIEMPOS ==="));
+    UE_LOG(LogTemp, Warning, TEXT("Resolución: %dx%d (Vértices: %d)"),
+        Resolution, Resolution, VertRes * VertRes);
+    UE_LOG(LogTemp, Warning, TEXT("Tiempo total: %.4f ms (%.6f segundos)"),
+        TotalTime * 1000.0, TotalTime);
+    UE_LOG(LogTemp, Warning, TEXT("  - Vértices: %.4f ms (%.1f%%)"),
+        VerticesTime * 1000.0, (VerticesTime / TotalTime) * 100.0);
+    UE_LOG(LogTemp, Warning, TEXT("  - Triángulos: %.4f ms (%.1f%%)"),
+        TrianglesTime * 1000.0, (TrianglesTime / TotalTime) * 100.0);
+    UE_LOG(LogTemp, Warning, TEXT("  - Crear malla: %.4f ms (%.1f%%)"),
+        CreateMeshTime * 1000.0, (CreateMeshTime / TotalTime) * 100.0);
+
+    // Para análisis de rendimiento por vértice
+    if (Vertices.Num() > 0)
+    {
+        double TimePerVertex = VerticesTime / Vertices.Num() * 1000000.0; // microsegundos por vértice
+        double TimePerTriangle = TrianglesTime / (Triangles.Num() / 3) * 1000000.0; // microsegundos por triángulo
+
+        UE_LOG(LogTemp, Warning, TEXT("Microsegundos por vértice: %.3f µs"), TimePerVertex);
+        UE_LOG(LogTemp, Warning, TEXT("Microsegundos por triángulo: %.3f µs"), TimePerTriangle);
+    }
 }
 
 
