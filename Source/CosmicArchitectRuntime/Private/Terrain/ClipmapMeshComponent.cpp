@@ -191,8 +191,9 @@ void UClipmapMeshComponent::BuildBaseMesh()
         UE_LOG(LogTemp, Error, TEXT("FALLÓ la creación de la malla!"));
     }
 
-    SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
+    SetCollisionEnabled(LevelIndex == 0 ? ECollisionEnabled::PhysicsOnly : ECollisionEnabled::NoCollision);
+          
     bMeshCreated = true;
 }
 
@@ -236,6 +237,8 @@ void UClipmapMeshComponent::UpdateMesh()
         TArray<FColor>(),
         CurrentTangents
     );
+
+    SetCollisionEnabled(LevelIndex == 0 ? ECollisionEnabled::PhysicsOnly : ECollisionEnabled::NoCollision);
 
     double UpdateMeshEndTime = FPlatformTime::Seconds();
     double UpdateMeshTime = UpdateMeshEndTime - UpdateMeshStartTime;

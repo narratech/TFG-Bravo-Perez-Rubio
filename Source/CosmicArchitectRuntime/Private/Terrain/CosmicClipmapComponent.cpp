@@ -72,7 +72,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
                 for (size_t i = 0; i < IntermediateLevel.Mesh->LevelIndex; i++)
                 {
-                    UE_LOG(LogTemp, Warning, TEXT("Actualizando: %d"), IntermediateLevel.Mesh->LevelIndex + 1);
+                    //UE_LOG(LogTemp, Warning, TEXT("Actualizando: %d"), IntermediateLevel.Mesh->LevelIndex + 1);
                     Levels[i].Mesh->UpdateMesh();
                 }
             }
@@ -80,7 +80,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
                 for (size_t i = 0; i < NumLevels; i++)
                 {
-                    UE_LOG(LogTemp, Warning, TEXT("Actualizando: %d"), NumLevels);
+                    //UE_LOG(LogTemp, Warning, TEXT("Actualizando: %d"), NumLevels);
                     Levels[i].Mesh->UpdateMesh();
                 }
             }
