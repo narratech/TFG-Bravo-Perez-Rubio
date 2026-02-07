@@ -34,13 +34,59 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
     ElapsedTime += DeltaTime;
 
     if (ElapsedTime > TimeToRefresh) {
-        UpdatePatchTransform();
+        float DistanceToSurface = UpdatePatchTransform();
 
         if (bInit) {
-            for (size_t i = 0; i < NumLevels; i++)
-            {
-                Levels[i].Mesh->UpdateMesh();
+
+           // UE_LOG(LogTemp, Warning, TEXT("Distancia de cambio: %.4f, Distancia a la superficie:  %.4f"),
+             //   IntermediateLevel.Mesh->GridSpacing * BaseResolution * HeightVisibility, DistanceToSurface);
+
+            if (bIntermediateExists) {
+
+                //Activar/desactivar malla intermedia para mejorar rendimiento
+                if (DistanceToSurface > IntermediateLevel.Mesh->GridSpacing * BaseResolution * HeightVisibility) {
+
+                    if (!IntermediateLevel.Mesh->bActiveMesh)
+                    {
+                        IntermediateLevel.Mesh->SetMeshActive(true);
+                        for (size_t i = 0; i < IntermediateLevel.Mesh->LevelIndex; i++)
+                        {
+                            Levels[i].Mesh->SetMeshActive(false);
+                        }
+                    }
+                }
+                else {
+                    
+                    if (IntermediateLevel.Mesh->bActiveMesh) 
+                    {
+                        IntermediateLevel.Mesh->SetMeshActive(false);
+                        for (size_t i = 0; i < IntermediateLevel.Mesh->LevelIndex; i++)
+                        {
+                            Levels[i].Mesh->SetMeshActive(true);
+                        }
+                    }
+                }
             }
+
+            if (bIntermediateExists && IntermediateLevel.Mesh->bActiveMesh) {
+
+                for (size_t i = 0; i < IntermediateLevel.Mesh->LevelIndex; i++)
+                {
+                    UE_LOG(LogTemp, Warning, TEXT("Actualizando: %d"), IntermediateLevel.Mesh->LevelIndex + 1);
+                    Levels[i].Mesh->UpdateMesh();
+                }
+            }
+            else {
+
+                for (size_t i = 0; i < NumLevels; i++)
+                {
+                    UE_LOG(LogTemp, Warning, TEXT("Actualizando: %d"), NumLevels);
+                    Levels[i].Mesh->UpdateMesh();
+                }
+            }
+
+            
+ 
         }
 
         ElapsedTime = 0;
@@ -69,50 +115,84 @@ void UCosmicClipmapComponent::CreateLevels()
         Mesh->GridSpacing = BaseGridSpacing * (1 << L);
         Mesh->bIsRing = (L > 0);
         Mesh->PlanetRadius = PlanetRadius;
+        Mesh->bActiveMesh = true;
 
         Mesh->BuildBaseMesh();
 
         Levels[L].Mesh = Mesh;
     }
 
+    // Nivel intermedio para mejorar rendimiendo si te encuentras a distancia lejana
+
+    if (NumLevels > 4) {
+
+        UClipmapMeshComponent* Mesh = NewObject<UClipmapMeshComponent>(GetOwner());
+        Mesh->RegisterComponent();
+
+        // Adjuntamos al root que nos pasó el actor
+        if (ParentRoot)
+        {
+            Mesh->AttachToComponent(ParentRoot, FAttachmentTransformRules::KeepRelativeTransform);
+        }
+
+        Mesh->LevelIndex = NumLevels / 2;
+        Mesh->Resolution = BaseResolution;
+        Mesh->GridSpacing = BaseGridSpacing * (1 << NumLevels / 2);
+        Mesh->bIsRing = false;
+        Mesh->PlanetRadius = PlanetRadius;
+
+        Mesh->BuildBaseMesh();
+        Mesh->SetMeshActive(false);
+
+        IntermediateLevel.Mesh = Mesh;
+
+        bIntermediateExists = true;
+    }
+
     bInit = true;
 }
 
-void UCosmicClipmapComponent::UpdatePatchTransform()
+float UCosmicClipmapComponent::UpdatePatchTransform()
 {
     AActor* Owner = GetOwner();
-    if (!Owner) return;
+    if (!Owner) return 0.f;
 
-    if (Levels.Num() == 0) return;
+    if (Levels.Num() == 0) return 0.f;
 
     // posición del jugador
     APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-    if (!PC) return;
+    if (!PC) return 0.f;
 
     FVector ViewerPosWorld = PC->PlayerCameraManager->GetCameraLocation();
     FVector PlanetCenter = Owner->GetActorLocation();
+
+    // Normal esférica
+    FVector N = (ViewerPosWorld - PlanetCenter).GetSafeNormal();
+
+    // Punto sobre la superficie
+    FVector SurfacePos = PlanetCenter + N * PlanetRadius * HeightScale;
+
+    // Orientación
+    FVector Up = N;
+    FVector Arbitrary = (FMath::Abs(Up.Z) < 0.99f) ? FVector::UpVector : FVector::ForwardVector;
+    FVector Right = FVector::CrossProduct(Arbitrary, Up).GetSafeNormal();
+    FVector Forward = FVector::CrossProduct(Up, Right).GetSafeNormal();
+    FRotator PatchRotation = FRotationMatrix::MakeFromXZ(Forward, Up).Rotator();
 
     for (FCosmicClipmapLevel& Level : Levels)
     {
         UClipmapMeshComponent* Mesh = Level.Mesh;
         if (!Mesh) continue;
 
-        // Normal esférica
-        FVector N = (ViewerPosWorld - PlanetCenter).GetSafeNormal();
-
-        // Punto sobre la superficie
-        FVector SurfacePos = PlanetCenter + N * PlanetRadius * HeightScale;
-
-        // Orientación
-        FVector Up = N;
-        FVector Arbitrary = (FMath::Abs(Up.Z) < 0.99f) ? FVector::UpVector : FVector::ForwardVector;
-        FVector Right = FVector::CrossProduct(Arbitrary, Up).GetSafeNormal();
-        FVector Forward = FVector::CrossProduct(Up, Right).GetSafeNormal();
-        FRotator PatchRotation = FRotationMatrix::MakeFromXZ(Forward, Up).Rotator();
-
         // Mover la malla procedimental
         Mesh->SetWorldLocationAndRotation(SurfacePos, PatchRotation);
     }
+
+    if (bIntermediateExists) {
+        IntermediateLevel.Mesh->SetWorldLocationAndRotation(SurfacePos, PatchRotation);
+    }
+
+    return FVector::Distance(ViewerPosWorld, SurfacePos);
 }
 
 

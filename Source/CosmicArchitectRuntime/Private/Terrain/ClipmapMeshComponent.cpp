@@ -215,6 +215,10 @@ void UClipmapMeshComponent::UpdateMesh()
     //UE_LOG(LogTemp, Warning, TEXT("  UVs: %d"), UVs.Num());
     //UE_LOG(LogTemp, Warning, TEXT("  CurrentTangents: %d"), CurrentTangents.Num());
 
+    const FVector2D origin = FVector2D(LevelIndex, Resolution);
+
+    UpdateHeights(origin);
+
     if (CurrentVertices.Num() == 0)
     {
         UE_LOG(LogTemp, Error, TEXT("CurrentVertices está vacío! Copiando de BaseVertices"));
@@ -236,10 +240,22 @@ void UClipmapMeshComponent::UpdateMesh()
     double UpdateMeshEndTime = FPlatformTime::Seconds();
     double UpdateMeshTime = UpdateMeshEndTime - UpdateMeshStartTime;
 
-    UE_LOG(LogTemp, Warning, TEXT("Malla actualizada en %.4f ms"), UpdateMeshTime * 1000.0);
+    //UE_LOG(LogTemp, Warning, TEXT("Malla actualizada en %.4f ms"), UpdateMeshTime * 1000.0);
+}
+
+void UClipmapMeshComponent::SetMeshActive(bool active)
+{
+    bActiveMesh = active;
+    SetMeshSectionVisible(0, active);
 }
 
 
 void UClipmapMeshComponent::UpdateHeights(const FVector2D& Origin)
 {
+
+    //De prueba
+    for (size_t i = 0; i < BaseVertices.Num(); i++)
+    {
+        CurrentVertices[i] = BaseVertices[i] + BaseNormals[i] * Origin.X * Origin.Y;
+    }
 }

@@ -15,7 +15,7 @@ class COSMICARCHITECTRUNTIME_API ACosmicPlanet : public AActor
 	
 public:	
 
-	UPROPERTY(EditAnywhere, Category = "Planet")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Planet")
 	float Radius;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)

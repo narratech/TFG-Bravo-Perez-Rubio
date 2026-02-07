@@ -21,6 +21,7 @@ public:
     float PlanetRadius;
     bool bIsRing;
     bool bMeshCreated = false;
+    bool bActiveMesh;
 
     // Malla base (deformada a la esfera, sin alturas adicionales)
     TArray<FVector> BaseVertices;
@@ -39,6 +40,7 @@ public:
 
     void BuildBaseMesh();
     void UpdateMesh();
+    void SetMeshActive(bool active);
     void UpdateHeights(const FVector2D& Origin);
 };
 
