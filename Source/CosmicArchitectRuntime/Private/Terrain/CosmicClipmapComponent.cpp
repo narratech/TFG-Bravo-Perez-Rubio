@@ -84,14 +84,9 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
                     Levels[i].Mesh->UpdateMesh();
                 }
             }
-
-            
- 
         }
-
         ElapsedTime = 0;
-    }
-     
+    }    
 }
 
 void UCosmicClipmapComponent::CreateLevels()
@@ -118,6 +113,9 @@ void UCosmicClipmapComponent::CreateLevels()
         Mesh->bActiveMesh = true;
 
         Mesh->BuildBaseMesh();
+
+        if (BaseMaterial)
+            Mesh->SetMaterial(0, BaseMaterial);
 
         Levels[L].Mesh = Mesh;
     }

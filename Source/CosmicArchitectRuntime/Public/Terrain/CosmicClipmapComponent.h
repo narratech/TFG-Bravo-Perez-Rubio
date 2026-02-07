@@ -36,6 +36,9 @@ public:
 
     float HeightScale = 1.f; // multiplicador altura
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+    UMaterialInterface* BaseMaterial;
+
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "32", ClampMax = "256"))
     int32 BaseResolution = 128;
 
