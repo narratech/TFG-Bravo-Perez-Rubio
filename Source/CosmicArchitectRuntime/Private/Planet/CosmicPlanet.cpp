@@ -14,9 +14,6 @@ ACosmicPlanet::ACosmicPlanet()
     RootComponent = Root;
 
     ClipmapComponent = CreateDefaultSubobject<UCosmicClipmapComponent>(TEXT("ClipmapComponent"));
-    
-    
-    
 }
 
 // Called when the game starts or when spawned
@@ -24,6 +21,11 @@ void ACosmicPlanet::BeginPlay()
 {
 	Super::BeginPlay();
 
+    InitClipmap();
+}
+
+void ACosmicPlanet::InitClipmap()
+{
     if (ClipmapComponent) {
         ClipmapComponent->ParentRoot = Root;
         ClipmapComponent->PlanetRadius = Radius * 100000;
@@ -42,9 +44,9 @@ void ACosmicPlanet::OnConstruction(const FTransform& Transform)
 {
     Super::OnConstruction(Transform);
 
-    /*if (ClipmapComponent && !GetWorld()->IsGameWorld())
+    if (!GetWorld()->IsGameWorld())
     {
-        ClipmapComponent->CreateLevels();
-    }*/
+        InitClipmap();
+    }
 }
 

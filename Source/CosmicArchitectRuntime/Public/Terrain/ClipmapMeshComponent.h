@@ -29,7 +29,7 @@ public:
     TArray<FProcMeshTangent> BaseTangents;
 
     // Alturas adicionales (para modificar en tiempo de ejecución)
-    TArray<float> HeightOffsets;
+    //TArray<float> HeightOffsets;
 
     // Malla final (base + alturas)
     TArray<FVector> CurrentVertices;

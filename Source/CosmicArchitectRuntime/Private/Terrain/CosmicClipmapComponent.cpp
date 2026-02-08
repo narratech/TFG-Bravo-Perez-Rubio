@@ -13,6 +13,8 @@ UCosmicClipmapComponent::UCosmicClipmapComponent()
 {
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
+    bTickInEditor = true;
+
 	PrimaryComponentTick.bCanEverTick = true;
     
 	// ...
@@ -34,120 +36,214 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
     ElapsedTime += DeltaTime;
 
     if (ElapsedTime > TimeToRefresh) {
-        float DistanceToSurface = UpdatePatchTransform();
 
-        if (bInit) {
+        ElapsedTime = 0;
+
+        if (!bInit || Levels.Num() == 0)
+            return;
+
+        float DistanceToSurface = UpdatePatchTransform();
 
            // UE_LOG(LogTemp, Warning, TEXT("Distancia de cambio: %.4f, Distancia a la superficie:  %.4f"),
              //   IntermediateLevel.Mesh->GridSpacing * BaseResolution * HeightVisibility, DistanceToSurface);
 
-            if (bIntermediateExists) {
+        if (bIntermediateExists) {
 
-                //Activar/desactivar malla intermedia para mejorar rendimiento
-                if (DistanceToSurface > IntermediateLevel.Mesh->GridSpacing * BaseResolution * HeightVisibility) {
+            //Activar/desactivar malla intermedia para mejorar rendimiento
+            if (DistanceToSurface > IntermediateLevel.Mesh->GridSpacing * BaseResolution * HeightVisibility) {
 
-                    if (!IntermediateLevel.Mesh->bActiveMesh)
-                    {
-                        IntermediateLevel.Mesh->SetMeshActive(true);
-                        for (size_t i = 0; i < IntermediateLevel.Mesh->LevelIndex; i++)
-                        {
-                            Levels[i].Mesh->SetMeshActive(false);
-                        }
-                    }
-                }
-                else {
-                    
-                    if (IntermediateLevel.Mesh->bActiveMesh) 
-                    {
-                        IntermediateLevel.Mesh->SetMeshActive(false);
-                        for (size_t i = 0; i < IntermediateLevel.Mesh->LevelIndex; i++)
-                        {
-                            Levels[i].Mesh->SetMeshActive(true);
-                        }
-                    }
-                }
-            }
-
-            if (bIntermediateExists && IntermediateLevel.Mesh->bActiveMesh) {
-
-                for (size_t i = 0; i < IntermediateLevel.Mesh->LevelIndex; i++)
+                if (!IntermediateLevel.Mesh->bActiveMesh)
                 {
-                    //UE_LOG(LogTemp, Warning, TEXT("Actualizando: %d"), IntermediateLevel.Mesh->LevelIndex + 1);
-                    Levels[i].Mesh->UpdateMesh();
+                    IntermediateLevel.Mesh->SetMeshActive(true);
+                    for (size_t i = 0; i < IntermediateLevel.Mesh->LevelIndex; i++)
+                    {
+                        Levels[i].Mesh->SetMeshActive(false);
+                    }
                 }
             }
             else {
 
-                for (size_t i = 0; i < NumLevels; i++)
+                if (IntermediateLevel.Mesh->bActiveMesh)
                 {
-                    //UE_LOG(LogTemp, Warning, TEXT("Actualizando: %d"), NumLevels);
-                    Levels[i].Mesh->UpdateMesh();
+                    IntermediateLevel.Mesh->SetMeshActive(false);
+                    for (size_t i = 0; i < IntermediateLevel.Mesh->LevelIndex; i++)
+                    {
+                        Levels[i].Mesh->SetMeshActive(true);
+                    }
                 }
             }
         }
-        ElapsedTime = 0;
+
+        int LevelsToUpdate = bIntermediateExists && IntermediateLevel.Mesh->bActiveMesh ? IntermediateLevel.Mesh->LevelIndex : NumLevels;
+
+        for (size_t i = 0; i < LevelsToUpdate; i++)
+        {
+            //UE_LOG(LogTemp, Warning, TEXT("Actualizando: %d"), NumLevels);
+            Levels[i].Mesh->UpdateMesh();
+        }
     }    
 }
 
 void UCosmicClipmapComponent::CreateLevels()
 {
+    if (bInit)
+    {
+        ClearLevels();
+    }
+
+    // 2. Validar parámetros
+    if (NumLevels <= 0 || BaseResolution <= 0 || PlanetRadius <= 0)
+    {
+        UE_LOG(LogTemp, Error, TEXT("Parámetros inválidos para CreateLevels"));
+        return;
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("UCosmicClipmapComponent::CreateLevels() - Creando %d niveles"), NumLevels);
+
+    // 3. Inicializar array
     Levels.Empty();
     Levels.SetNum(NumLevels);
 
+    // 4. Crear cada nivel
     for (int32 L = 0; L < NumLevels; ++L)
     {
-        UClipmapMeshComponent* Mesh = NewObject<UClipmapMeshComponent>(GetOwner());
+        // Crear nombre único para el componente
+        FName ComponentName = *FString::Printf(TEXT("ClipmapMesh_Level_%d"), L);
+
+        // Crear componente
+        UClipmapMeshComponent* Mesh = NewObject<UClipmapMeshComponent>(
+            GetOwner(),
+            ComponentName
+        );
+
+        if (!Mesh)
+        {
+            UE_LOG(LogTemp, Error, TEXT("No se pudo crear ClipmapMeshComponent para nivel %d"), L);
+            continue;
+        }
+
+        // Registrar componente
         Mesh->RegisterComponent();
 
-        // Adjuntamos al root que nos pasó el actor
+        // Adjuntar al root
         if (ParentRoot)
         {
             Mesh->AttachToComponent(ParentRoot, FAttachmentTransformRules::KeepRelativeTransform);
         }
 
+        // Configurar propiedades
         Mesh->LevelIndex = L;
         Mesh->Resolution = BaseResolution;
-        Mesh->GridSpacing = BaseGridSpacing * (1 << L);
+        Mesh->GridSpacing = BaseGridSpacing * FMath::Pow(2.0f, L); // (1 << L) para ints
         Mesh->bIsRing = (L > 0);
         Mesh->PlanetRadius = PlanetRadius;
         Mesh->bActiveMesh = true;
 
+        // Construir malla
         Mesh->BuildBaseMesh();
 
+        // Asignar material
         if (BaseMaterial)
-            Mesh->SetMaterial(0, BaseMaterial);
-
-        Levels[L].Mesh = Mesh;
-    }
-
-    // Nivel intermedio para mejorar rendimiendo si te encuentras a distancia lejana
-
-    if (NumLevels > 4) {
-
-        UClipmapMeshComponent* Mesh = NewObject<UClipmapMeshComponent>(GetOwner());
-        Mesh->RegisterComponent();
-
-        // Adjuntamos al root que nos pasó el actor
-        if (ParentRoot)
         {
-            Mesh->AttachToComponent(ParentRoot, FAttachmentTransformRules::KeepRelativeTransform);
+            Mesh->SetMaterial(0, BaseMaterial);
+        }
+        else
+        {
+            // Material por defecto
+            Mesh->SetMaterial(0, UMaterial::GetDefaultMaterial(MD_Surface));
         }
 
-        Mesh->LevelIndex = NumLevels / 2;
-        Mesh->Resolution = BaseResolution;
-        Mesh->GridSpacing = BaseGridSpacing * (1 << NumLevels / 2);
-        Mesh->bIsRing = false;
-        Mesh->PlanetRadius = PlanetRadius;
+        // Guardar referencia
+        Levels[L].Mesh = Mesh;
 
-        Mesh->BuildBaseMesh();
-        Mesh->SetMeshActive(false);
+        UE_LOG(LogTemp, Warning, TEXT("  Nivel %d creado: GridSpacing=%.2f, bIsRing=%s"),
+            L, Mesh->GridSpacing, Mesh->bIsRing ? TEXT("true") : TEXT("false"));
+    }
 
-        IntermediateLevel.Mesh = Mesh;
+    // 5. Crear nivel intermedio (si aplica)
+    bIntermediateExists = false;
+    if (NumLevels > 4)
+    {
+        int32 MidLevel = NumLevels / 2;
+        FName ComponentName = *FString::Printf(TEXT("ClipmapMesh_Intermediate_%d"), MidLevel);
 
-        bIntermediateExists = true;
+        UClipmapMeshComponent* Mesh = NewObject<UClipmapMeshComponent>(
+            GetOwner(),
+            ComponentName
+        );
+
+        if (Mesh)
+        {
+            Mesh->RegisterComponent();
+
+            if (ParentRoot)
+            {
+                Mesh->AttachToComponent(ParentRoot, FAttachmentTransformRules::KeepRelativeTransform);
+            }
+
+            Mesh->LevelIndex = MidLevel;
+            Mesh->Resolution = BaseResolution;
+            Mesh->GridSpacing = BaseGridSpacing * FMath::Pow(2.0f, MidLevel);
+            Mesh->bIsRing = false;
+            Mesh->PlanetRadius = PlanetRadius;
+
+            Mesh->BuildBaseMesh();
+            Mesh->SetMeshActive(false);
+
+            IntermediateLevel.Mesh = Mesh;
+            bIntermediateExists = true;
+
+            UE_LOG(LogTemp, Warning, TEXT("  Nivel intermedio creado en L=%d"), MidLevel);
+        }
     }
 
     bInit = true;
+    UE_LOG(LogTemp, Warning, TEXT("CreateLevels completado. Niveles totales: %d"), Levels.Num());
+}
+
+
+void UCosmicClipmapComponent::ClearLevels()
+{
+    bInit = false;
+    bIntermediateExists = false;
+
+    UE_LOG(LogTemp, Warning, TEXT("UCosmicClipmapComponent::ClearLevels() - Limpiando %d niveles"), Levels.Num());
+
+    // 1. Destruir componentes del array Levels
+    for (FCosmicClipmapLevel& Level : Levels)
+    {
+        if (UClipmapMeshComponent* Mesh = Level.Mesh)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("  Destruyendo nivel %d"), Mesh->LevelIndex);
+
+            // Desactivar y limpiar la malla
+            Mesh->SetMeshActive(false);
+            Mesh->ClearAllMeshSections();
+
+            // Destruir el componente
+            Mesh->DestroyComponent();
+            Mesh = nullptr;
+        }
+        Level.Mesh = nullptr;
+    }
+
+    // 2. Destruir nivel intermedio
+    if (IntermediateLevel.Mesh)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("  Destruyendo nivel intermedio"));
+
+        IntermediateLevel.Mesh->SetMeshActive(false);
+        IntermediateLevel.Mesh->ClearAllMeshSections();
+        IntermediateLevel.Mesh->DestroyComponent();
+        IntermediateLevel.Mesh = nullptr;
+    }
+
+    // 3. Limpiar arrays
+    Levels.Empty();
+    IntermediateLevel = FCosmicClipmapLevel();
+
+    UE_LOG(LogTemp, Warning, TEXT("ClearLevels() completado"));
+
 }
 
 float UCosmicClipmapComponent::UpdatePatchTransform()
@@ -157,11 +253,21 @@ float UCosmicClipmapComponent::UpdatePatchTransform()
 
     if (Levels.Num() == 0) return 0.f;
 
+    FVector ViewerPosWorld;
+
+#if WITH_EDITOR
+
+    //ViewerPosWorld = GetEditorCameraPosition();
+
+#else
     // posición del jugador
     APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
     if (!PC) return 0.f;
 
-    FVector ViewerPosWorld = PC->PlayerCameraManager->GetCameraLocation();
+    ViewerPosWorld = PC->PlayerCameraManager->GetCameraLocation();
+
+#endif
+
     FVector PlanetCenter = Owner->GetActorLocation();
 
     // Normal esférica

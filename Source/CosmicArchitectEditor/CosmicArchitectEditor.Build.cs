@@ -28,7 +28,6 @@ public class CosmicArchitectEditor : ModuleRules
                 "Core",
 				"CoreUObject",
 				"Engine",
-				"UnrealEd",
 				"Slate",
 				"SlateCore",
 				"CosmicArchitectRuntime",
@@ -43,6 +42,8 @@ public class CosmicArchitectEditor : ModuleRules
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
+                "LevelEditor",
+                "UnrealEd"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

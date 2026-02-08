@@ -30,6 +30,8 @@ public:
 
     void CreateLevels();
 
+    void ClearLevels();
+
     USceneComponent* ParentRoot = nullptr;
 
     float PlanetRadius = 1000.f; // default
@@ -40,13 +42,13 @@ public:
     UMaterialInterface* BaseMaterial;
 
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "32", ClampMax = "256"))
-    int32 BaseResolution = 128;
+    int32 BaseResolution = 64;
 
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "1", ClampMax = "15"))
-    int32 NumLevels = 8;
+    int32 NumLevels = 5;
 
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "50", ClampMax = "500"))
-    float BaseGridSpacing = 100.f;
+    float BaseGridSpacing = 200.f;
 
     UPROPERTY(EditAnywhere, Category = "Clipmap")
     float HeightVisibility = 2.5f;

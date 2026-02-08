@@ -5,15 +5,15 @@
 
 void UClipmapMeshComponent::BuildBaseMesh()
 {
-    UE_LOG(LogTemp, Warning, TEXT("UClipmapMeshComponent::BuildBaseMesh() iniciado"));
+    //UE_LOG(LogTemp, Warning, TEXT("UClipmapMeshComponent::BuildBaseMesh() iniciado"));
 
     const int32 VertRes = Resolution + 1;
     const int32 TotalVertices = VertRes * VertRes;
     const int32 HalfRes = Resolution / 2;
 
-    UE_LOG(LogTemp, Warning, TEXT("  Resolución: %d"), Resolution);
-    UE_LOG(LogTemp, Warning, TEXT("  VertRes: %d"), VertRes);
-    UE_LOG(LogTemp, Warning, TEXT("  Total vértices esperados: %d"), TotalVertices);
+    //UE_LOG(LogTemp, Warning, TEXT("  Resolución: %d"), Resolution);
+    //UE_LOG(LogTemp, Warning, TEXT("  VertRes: %d"), VertRes);
+    //UE_LOG(LogTemp, Warning, TEXT("  Total vértices esperados: %d"), TotalVertices);
 
     // 1. LIMPIAR TODO primero
     ClearAllMeshSections();
@@ -23,13 +23,13 @@ void UClipmapMeshComponent::BuildBaseMesh()
     BaseTangents.Empty();
     UVs.Empty();
     Triangles.Empty();
-    HeightOffsets.Empty();
+    //HeightOffsets.Empty();
     CurrentVertices.Empty();
     CurrentNormals.Empty();
     CurrentTangents.Empty();
 
     // 2. INICIALIZAR con tamaño correcto
-    HeightOffsets.Init(0.0f, TotalVertices);
+    //HeightOffsets.Init(0.0f, TotalVertices);
 
     // 3. CALCULAR VÉRTICES
     int32 ActualVerticesCalculated = 0;
@@ -97,7 +97,7 @@ void UClipmapMeshComponent::BuildBaseMesh()
         }
     }
 
-    UE_LOG(LogTemp, Warning, TEXT("  Vértices calculados: %d"), ActualVerticesCalculated);
+    //UE_LOG(LogTemp, Warning, TEXT("  Vértices calculados: %d"), ActualVerticesCalculated);
 
     // 4. CALCULAR TRIÁNGULOS (CORREGIDO)
     Triangles.Empty();
@@ -151,10 +151,10 @@ void UClipmapMeshComponent::BuildBaseMesh()
         }
     }
 
-    UE_LOG(LogTemp, Warning, TEXT("  Triángulos calculados: %d"), TriangleCount / 3);
-    UE_LOG(LogTemp, Warning, TEXT("  BaseVertices.Num(): %d"), BaseVertices.Num());
-    UE_LOG(LogTemp, Warning, TEXT("  UVs.Num(): %d"), UVs.Num());
-    UE_LOG(LogTemp, Warning, TEXT("  Triangles.Num(): %d"), Triangles.Num());
+    //UE_LOG(LogTemp, Warning, TEXT("  Triángulos calculados: %d"), TriangleCount / 3);
+    //UE_LOG(LogTemp, Warning, TEXT("  BaseVertices.Num(): %d"), BaseVertices.Num());
+    //UE_LOG(LogTemp, Warning, TEXT("  UVs.Num(): %d"), UVs.Num());
+    //UE_LOG(LogTemp, Warning, TEXT("  Triangles.Num(): %d"), Triangles.Num());
 
     // 5. COPIAR a Current arrays
     CurrentVertices = BaseVertices;
@@ -199,7 +199,7 @@ void UClipmapMeshComponent::BuildBaseMesh()
 
 void UClipmapMeshComponent::UpdateMesh()
 {
-    double UpdateMeshStartTime = FPlatformTime::Seconds();
+    //double UpdateMeshStartTime = FPlatformTime::Seconds();
 
     if (!bMeshCreated)
     {
@@ -240,8 +240,8 @@ void UClipmapMeshComponent::UpdateMesh()
 
     SetCollisionEnabled(LevelIndex == 0 ? ECollisionEnabled::PhysicsOnly : ECollisionEnabled::NoCollision);
 
-    double UpdateMeshEndTime = FPlatformTime::Seconds();
-    double UpdateMeshTime = UpdateMeshEndTime - UpdateMeshStartTime;
+    //double UpdateMeshEndTime = FPlatformTime::Seconds();
+    //double UpdateMeshTime = UpdateMeshEndTime - UpdateMeshStartTime;
 
     //UE_LOG(LogTemp, Warning, TEXT("Malla actualizada en %.4f ms"), UpdateMeshTime * 1000.0);
 }

@@ -14,6 +14,7 @@ class COSMICARCHITECTEDITOR_API UCosmicEditorUtils : public UBlueprintFunctionLi
 {
 	GENERATED_BODY()
 
+public:
     UFUNCTION(BlueprintCallable, Category = "Editor", meta = (DevelopmentOnly))
     static FVector GetEditorCameraPosition();
 
