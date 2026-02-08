@@ -261,12 +261,14 @@ float UCosmicClipmapComponent::UpdatePatchTransform()
 
 #else
     // posición del jugador
+    
+
+#endif
+
     APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
     if (!PC) return 0.f;
 
     ViewerPosWorld = PC->PlayerCameraManager->GetCameraLocation();
-
-#endif
 
     FVector PlanetCenter = Owner->GetActorLocation();
 
