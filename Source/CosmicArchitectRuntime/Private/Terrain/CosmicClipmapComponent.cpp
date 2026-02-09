@@ -47,40 +47,33 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
            // UE_LOG(LogTemp, Warning, TEXT("Distancia de cambio: %.4f, Distancia a la superficie:  %.4f"),
              //   IntermediateLevel.Mesh->GridSpacing * BaseResolution * HeightVisibility, DistanceToSurface);
 
-        if (bIntermediateExists) {
+        //Activar/desactivar modo rendimiento al alejarte lo suficiente
 
-            //Activar/desactivar malla intermedia para mejorar rendimiento
-            if (DistanceToSurface > IntermediateLevel.Mesh->GridSpacing * BaseResolution * HeightVisibility) {
+        bPerformaceMode = DistanceToSurface > PlanetRadius * HeightVisibility;
 
-                if (!IntermediateLevel.Mesh->bActiveMesh)
-                {
-                    IntermediateLevel.Mesh->SetMeshActive(true);
-                    for (size_t i = 0; i < IntermediateLevel.Mesh->LevelIndex; i++)
-                    {
-                        Levels[i].Mesh->SetMeshActive(false);
-                    }
-                }
-            }
-            else {
-
-                if (IntermediateLevel.Mesh->bActiveMesh)
-                {
-                    IntermediateLevel.Mesh->SetMeshActive(false);
-                    for (size_t i = 0; i < IntermediateLevel.Mesh->LevelIndex; i++)
-                    {
-                        Levels[i].Mesh->SetMeshActive(true);
-                    }
-                }
+        if (FarLevel.Mesh->bActiveMesh && !bPerformaceMode || !FarLevel.Mesh->bActiveMesh && bPerformaceMode)
+        {
+            FarLevel.Mesh->SetMeshActive(bPerformaceMode);
+            for (size_t i = 0; i < Levels.Num(); i++)
+            {
+                Levels[i].Mesh->SetMeshActive(!bPerformaceMode);
             }
         }
 
-        int LevelsToUpdate = bIntermediateExists && IntermediateLevel.Mesh->bActiveMesh ? IntermediateLevel.Mesh->LevelIndex : NumLevels;
+        int LevelsToUpdate = bPerformaceMode ? 0 : Levels.Num();
+
+        if (bPerformaceMode)
+        {
+            FarLevel.Mesh->UpdateMesh();
+        }
 
         for (size_t i = 0; i < LevelsToUpdate; i++)
         {
-            UE_LOG(LogTemp, Warning, TEXT("Actualizando: %d"), NumLevels);
+            //UE_LOG(LogTemp, Warning, TEXT("Actualizando: %d"), NumLevels);
             Levels[i].Mesh->UpdateMesh();
         }
+
+        
     }    
 }
 
@@ -160,42 +153,38 @@ void UCosmicClipmapComponent::CreateLevels()
             L, Mesh->GridSpacing, Mesh->bIsRing ? TEXT("true") : TEXT("false"));
     }
 
-    // 5. Crear nivel intermedio (si aplica)
-    bIntermediateExists = false;
-    if (NumLevels > 4)
+    FName ComponentName = *FString::Printf(TEXT("ClipmapMesh_Performance_%d"), 0);
+
+    UClipmapMeshComponent* Mesh = NewObject<UClipmapMeshComponent>(
+        GetOwner(),
+        ComponentName
+    );
+
+    if (Mesh)
     {
-        int32 MidLevel = NumLevels / 2;
-        FName ComponentName = *FString::Printf(TEXT("ClipmapMesh_Intermediate_%d"), MidLevel);
+        Mesh->RegisterComponent();
 
-        UClipmapMeshComponent* Mesh = NewObject<UClipmapMeshComponent>(
-            GetOwner(),
-            ComponentName
-        );
-
-        if (Mesh)
+        if (ParentRoot)
         {
-            Mesh->RegisterComponent();
-
-            if (ParentRoot)
-            {
-                Mesh->AttachToComponent(ParentRoot, FAttachmentTransformRules::KeepRelativeTransform);
-            }
-
-            Mesh->LevelIndex = MidLevel;
-            Mesh->Resolution = BaseResolution;
-            Mesh->GridSpacing = BaseGridSpacing * FMath::Pow(2.0f, MidLevel);
-            Mesh->bIsRing = false;
-            Mesh->PlanetRadius = PlanetRadius;
-
-            Mesh->BuildBaseMesh();
-            Mesh->SetMeshActive(false);
-
-            IntermediateLevel.Mesh = Mesh;
-            bIntermediateExists = true;
-
-            UE_LOG(LogTemp, Warning, TEXT("  Nivel intermedio creado en L=%d"), MidLevel);
+            Mesh->AttachToComponent(ParentRoot, FAttachmentTransformRules::KeepRelativeTransform);
         }
+
+        Mesh->LevelIndex = NumLevels - 1;
+        Mesh->Resolution = BaseResolution;
+        Mesh->GridSpacing = BaseGridSpacing * FMath::Pow(2.0f, NumLevels - 1);
+        Mesh->bIsRing = false;
+        Mesh->PlanetRadius = PlanetRadius;
+        Mesh->bActiveMesh = false;
+
+        Mesh->BuildBaseMesh();
+        Mesh->SetMeshActive(false);
+
+        FarLevel.Mesh = Mesh;
+
+        UE_LOG(LogTemp, Warning, TEXT("  Nivel Extra creado" ));
     }
+        
+   
 
     bInit = true;
     UE_LOG(LogTemp, Warning, TEXT("CreateLevels completado. Niveles totales: %d"), Levels.Num());
@@ -205,7 +194,7 @@ void UCosmicClipmapComponent::CreateLevels()
 void UCosmicClipmapComponent::ClearLevels()
 {
     bInit = false;
-    bIntermediateExists = false;
+    bPerformaceMode = false;
 
     UE_LOG(LogTemp, Warning, TEXT("UCosmicClipmapComponent::ClearLevels() - Limpiando %d niveles"), Levels.Num());
 
@@ -228,19 +217,19 @@ void UCosmicClipmapComponent::ClearLevels()
     }
 
     // 2. Destruir nivel intermedio
-    if (IntermediateLevel.Mesh)
+    if (FarLevel.Mesh)
     {
         UE_LOG(LogTemp, Warning, TEXT("  Destruyendo nivel intermedio"));
 
-        IntermediateLevel.Mesh->SetMeshActive(false);
-        IntermediateLevel.Mesh->ClearAllMeshSections();
-        IntermediateLevel.Mesh->DestroyComponent();
-        IntermediateLevel.Mesh = nullptr;
+        FarLevel.Mesh->SetMeshActive(false);
+        FarLevel.Mesh->ClearAllMeshSections();
+        FarLevel.Mesh->DestroyComponent();
+        FarLevel.Mesh = nullptr;
     }
 
     // 3. Limpiar arrays
     Levels.Empty();
-    IntermediateLevel = FCosmicClipmapLevel();
+    FarLevel = FCosmicClipmapLevel();
 
     UE_LOG(LogTemp, Warning, TEXT("ClearLevels() completado"));
 
@@ -266,12 +255,22 @@ float UCosmicClipmapComponent::UpdatePatchTransform()
     // Punto sobre la superficie
     FVector SurfacePos = PlanetCenter + N * PlanetRadius * HeightScale;
 
-    // Orientación
-    FVector Up = N;
-    FVector Arbitrary = (FMath::Abs(Up.Z) < 0.99f) ? FVector::UpVector : FVector::ForwardVector;
-    FVector Right = FVector::CrossProduct(Arbitrary, Up).GetSafeNormal();
-    FVector Forward = FVector::CrossProduct(Up, Right).GetSafeNormal();
-    FRotator PatchRotation = FRotationMatrix::MakeFromXZ(Forward, Up).Rotator();
+    const FVector Up = N;
+
+    // Elegimos un vector no colineal (branch barato)
+    const FVector Tangent = (FMath::Abs(Up.Z) < 0.99f)
+        ? FVector(0, 0, 1)
+        : FVector(1, 0, 0);
+
+    // Right sale normalizado si Up y Tangent son unitarios
+    FVector Right = FVector::CrossProduct(Tangent, Up);
+    Right.Normalize(); // solo UNA normalización
+
+    const FVector Forward = FVector::CrossProduct(Up, Right); // ya unitario
+
+    const FRotator PatchRotation =
+        FRotationMatrix::MakeFromXZ(Forward, Up).Rotator();
+
 
     for (FCosmicClipmapLevel& Level : Levels)
     {
@@ -282,8 +281,8 @@ float UCosmicClipmapComponent::UpdatePatchTransform()
         Mesh->SetWorldLocationAndRotation(SurfacePos, PatchRotation);
     }
 
-    if (bIntermediateExists) {
-        IntermediateLevel.Mesh->SetWorldLocationAndRotation(SurfacePos, PatchRotation);
+    if (FarLevel.Mesh) {
+        FarLevel.Mesh->SetWorldLocationAndRotation(SurfacePos, PatchRotation);
     }
 
     return FVector::Distance(ViewerPosWorld, SurfacePos);

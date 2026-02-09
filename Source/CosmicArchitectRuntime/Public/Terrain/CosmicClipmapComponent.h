@@ -60,10 +60,10 @@ public:
 
 protected:
     TArray<FCosmicClipmapLevel> Levels;
-    FCosmicClipmapLevel IntermediateLevel;
+    FCosmicClipmapLevel FarLevel;
 
     float ElapsedTime = 0;
-    bool bIntermediateExists = false;
+    bool bPerformaceMode = false;
 
     virtual void BeginPlay() override;
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;

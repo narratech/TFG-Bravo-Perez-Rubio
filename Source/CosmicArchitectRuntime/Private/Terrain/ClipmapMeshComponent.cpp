@@ -15,6 +15,8 @@ void UClipmapMeshComponent::BuildBaseMesh()
     //UE_LOG(LogTemp, Warning, TEXT("  VertRes: %d"), VertRes);
     //UE_LOG(LogTemp, Warning, TEXT("  Total vértices esperados: %d"), TotalVertices);
 
+    
+
     // 1. LIMPIAR TODO primero
     ClearAllMeshSections();
 
@@ -162,6 +164,7 @@ void UClipmapMeshComponent::BuildBaseMesh()
     CurrentTangents = BaseTangents;
 
     // 6. CREAR LA MALLA por primera vez
+    
     double CreateStartTime = FPlatformTime::Seconds();
 
     CreateMeshSection(
@@ -172,13 +175,12 @@ void UClipmapMeshComponent::BuildBaseMesh()
         UVs,                 // UVs
         TArray<FColor>(),    // Colores de vértice
         CurrentTangents,     // Tangentes
-        true                 // Crear colisión
+        LevelIndex == 0      // Crear colisión
     );
 
     double CreateEndTime = FPlatformTime::Seconds();
 
-    UE_LOG(LogTemp, Warning, TEXT("CreateMeshSection tomó: %.4f ms"),
-        (CreateEndTime - CreateStartTime) * 1000.0);
+    UE_LOG(LogTemp, Warning, TEXT("CreateMeshSection tomo: %.4f ms"), (CreateEndTime - CreateStartTime) * 1000.0);
 
     // 7. VERIFICAR que se creó correctamente
     if (GetNumSections() > 0)
