@@ -42,3 +42,11 @@ void UGravityComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
     Super::EndPlay(EndPlayReason);
 }
+
+void UGravityComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+}
+
+void UGravityComponent::Integrate(double DeltaTime)
+{
+}

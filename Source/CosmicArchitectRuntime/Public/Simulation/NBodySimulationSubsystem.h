@@ -14,7 +14,7 @@ class UGravityComponent;
 UCLASS()
 class COSMICARCHITECTRUNTIME_API UNBodySimulationSubsystem : public UWorldSubsystem, public FTickableGameObject
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
     // UWorldSubsystem
@@ -22,6 +22,10 @@ public:
     virtual void Deinitialize() override;
     virtual void Tick(float DeltaTime) override;
     virtual bool IsTickable() const override { return true; }
+    virtual TStatId GetStatId() const override
+    {
+        RETURN_QUICK_DECLARE_CYCLE_STAT(UNBodySimulationSubsystem, STATGROUP_Tickables);
+    }
 
     // Registro de cuerpos
     void RegisterBody(UGravityComponent* Body);

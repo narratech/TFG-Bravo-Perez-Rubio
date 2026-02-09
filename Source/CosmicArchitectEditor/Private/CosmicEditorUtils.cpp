@@ -35,8 +35,4 @@ bool UCosmicEditorUtils::IsInEditor()
 #endif
 }
 
-//extern "C" COSMICARCHITECTEDITOR_API FVector GetEditorCameraPosition()
-//{
-//    return UCosmicEditorUtils::GetEditorCameraPosition();
-//}
 

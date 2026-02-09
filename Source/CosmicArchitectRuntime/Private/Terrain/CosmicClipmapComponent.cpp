@@ -78,7 +78,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         for (size_t i = 0; i < LevelsToUpdate; i++)
         {
-            //UE_LOG(LogTemp, Warning, TEXT("Actualizando: %d"), NumLevels);
+            UE_LOG(LogTemp, Warning, TEXT("Actualizando: %d"), NumLevels);
             Levels[i].Mesh->UpdateMesh();
         }
     }    
@@ -253,22 +253,10 @@ float UCosmicClipmapComponent::UpdatePatchTransform()
 
     if (Levels.Num() == 0) return 0.f;
 
-    FVector ViewerPosWorld;
-
-#if WITH_EDITOR
-
-    //ViewerPosWorld = GetEditorCameraPosition();
-
-#else
-    // posición del jugador
-    
-
-#endif
-
     APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
     if (!PC) return 0.f;
 
-    ViewerPosWorld = PC->PlayerCameraManager->GetCameraLocation();
+    FVector ViewerPosWorld = PC->PlayerCameraManager->GetCameraLocation();
 
     FVector PlanetCenter = Owner->GetActorLocation();
 
