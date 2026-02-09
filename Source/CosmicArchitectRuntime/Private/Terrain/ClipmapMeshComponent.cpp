@@ -261,6 +261,6 @@ void UClipmapMeshComponent::UpdateHeights(const FVector2D& Origin)
     //De prueba
     for (size_t i = 0; i < BaseVertices.Num(); i++)
     {
-        CurrentVertices[i] = BaseVertices[i] + BaseNormals[i] * Origin.X * Origin.Y;
+        CurrentVertices[i] = BaseVertices[i] + BaseNormals[i] * Origin.X * Origin.Y * 0;
     }
 }

@@ -25,6 +25,8 @@ UCosmicClipmapComponent::UCosmicClipmapComponent()
 void UCosmicClipmapComponent::BeginPlay()
 {
     Super::BeginPlay();
+
+    TimeToRefreshActive = TimeToRefresh;
 }
 
 
@@ -35,7 +37,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
     ElapsedTime += DeltaTime;
 
-    if (ElapsedTime > TimeToRefresh) {
+    if (ElapsedTime > TimeToRefreshActive) {
 
         ElapsedTime = 0;
 
@@ -48,7 +50,6 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
              //   IntermediateLevel.Mesh->GridSpacing * BaseResolution * HeightVisibility, DistanceToSurface);
 
         //Activar/desactivar modo rendimiento al alejarte lo suficiente
-
         bPerformaceMode = DistanceToSurface > PlanetRadius * HeightVisibility;
 
         if (FarLevel.Mesh->bActiveMesh && !bPerformaceMode || !FarLevel.Mesh->bActiveMesh && bPerformaceMode)
@@ -58,6 +59,8 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             {
                 Levels[i].Mesh->SetMeshActive(!bPerformaceMode);
             }
+
+            //TimeToRefreshActive = bPerformaceMode ? 0.5f : TimeToRefresh;
         }
 
         int LevelsToUpdate = bPerformaceMode ? 0 : Levels.Num();
@@ -65,15 +68,38 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         if (bPerformaceMode)
         {
             FarLevel.Mesh->UpdateMesh();
+            return;
         }
 
-        for (size_t i = 0; i < LevelsToUpdate; i++)
+        int LevelsUpdating = 0;
+
+        for (size_t i = 4; i < Levels.Num(); i++)
         {
-            //UE_LOG(LogTemp, Warning, TEXT("Actualizando: %d"), NumLevels);
-            Levels[i].Mesh->UpdateMesh();
+            UClipmapMeshComponent* Mesh = Levels[i].Mesh;
+
+            // Versión simple y rápida para clipmaps concéntricos
+            bool bIsVisible = IsClipmapRingVisible(i, DistanceToSurface);
+
+            if (bIsVisible)
+            {
+                if (!Mesh->bActiveMesh)
+                    Mesh->SetMeshActive(true);
+                LevelsUpdating++;
+            }
+            else if (Mesh->bActiveMesh)
+            {
+                // Desactivar si no es visible para ahorrar recursos
+                Mesh->SetMeshActive(false);
+            }
         }
 
-        
+        UE_LOG(LogTemp, Warning, TEXT("Actualizando: %d"), LevelsUpdating + 4);
+
+        for (size_t i = 0; i < Levels.Num(); i++)
+        { 
+            if (Levels[i].Mesh->bActiveMesh)
+                Levels[i].Mesh->UpdateMesh();
+        }   
     }    
 }
 
@@ -194,7 +220,6 @@ void UCosmicClipmapComponent::CreateLevels()
 void UCosmicClipmapComponent::ClearLevels()
 {
     bInit = false;
-    bPerformaceMode = false;
 
     UE_LOG(LogTemp, Warning, TEXT("UCosmicClipmapComponent::ClearLevels() - Limpiando %d niveles"), Levels.Num());
 
@@ -271,6 +296,12 @@ float UCosmicClipmapComponent::UpdatePatchTransform()
     const FRotator PatchRotation =
         FRotationMatrix::MakeFromXZ(Forward, Up).Rotator();
 
+    /*FVector Up = N;
+    FVector Arbitrary = (FMath::Abs(Up.Z) < 0.99f) ? FVector::UpVector : FVector::ForwardVector;
+    FVector Right = FVector::CrossProduct(Arbitrary, Up).GetSafeNormal();
+    FVector Forward = FVector::CrossProduct(Up, Right).GetSafeNormal();
+    FRotator PatchRotation = FRotationMatrix::MakeFromXZ(Forward, Up).Rotator();*/
+
 
     for (FCosmicClipmapLevel& Level : Levels)
     {
@@ -288,7 +319,17 @@ float UCosmicClipmapComponent::UpdatePatchTransform()
     return FVector::Distance(ViewerPosWorld, SurfacePos);
 }
 
+bool UCosmicClipmapComponent::IsClipmapRingVisible(const int32 LevelIndex, const float DistanceToSurface)
+{  
+    // Calcular el radio del clipmap en la superficie
+    float ClipmapSurfaceRadius = Levels[LevelIndex].Mesh->GridSpacing * Levels[LevelIndex].Mesh->Resolution * 0.5f;
 
+    // Radio maximo visible desde esta altura (proyeccion en la superficie)
+    float VisibleRadius = PlanetRadius * FMath::Sin(FMath::Acos(PlanetRadius / (PlanetRadius + DistanceToSurface)));
+
+    // El clipmap es visible si su radio es menor que el radio visible
+    return ClipmapSurfaceRadius <= VisibleRadius * 2.f; 
+}
 
 void UCosmicClipmapComponent::UpdateOrigins()
 {

@@ -64,11 +64,13 @@ protected:
 
     float ElapsedTime = 0;
     bool bPerformaceMode = false;
+    float TimeToRefreshActive;
 
     virtual void BeginPlay() override;
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
     float UpdatePatchTransform();
+    bool IsClipmapRingVisible(const int32 LevelIndex, const float DistanceToSurface);
     void UpdateOrigins();
 };
 
