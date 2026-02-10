@@ -273,6 +273,9 @@ float UCosmicClipmapComponent::UpdatePatchTransform()
     // Punto sobre la superficie
     FVector SurfacePos = PlanetCenter + N * PlanetRadius * HeightScale;
 
+    if (bPerformaceMode)
+        return FVector::Distance(ViewerPosWorld, SurfacePos);
+
     const FVector Up = N;
 
     // Elegimos un vector no colineal (branch barato)
