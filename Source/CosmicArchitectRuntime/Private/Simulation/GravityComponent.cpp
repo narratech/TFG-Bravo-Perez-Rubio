@@ -10,7 +10,6 @@ UGravityComponent::UGravityComponent()
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
-
 	// ...
 }
 
@@ -45,16 +44,6 @@ void UGravityComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 void UGravityComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
-    // Debug en pantalla: Imprime el nombre, el modo y la fuerza actual
-    //FString DebugMsg = FString::Printf(TEXT("%s: Mode=%d, Force=%s"),
-    //    *GetOwner()->GetName(),
-    //    (int32)GravityMode,
-    //    *AccumulatedForce.ToString());
-
-    //GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Yellow, DebugMsg);
-
-    //// Dibuja una esfera en la posición para confirmar que tickea
-    //DrawDebugSphere(GetWorld(), GetOwner()->GetActorLocation(), 50.0f, 12, FColor::Green, false, -1.0f);
 }
 
 void UGravityComponent::Integrate(double DeltaTime)
