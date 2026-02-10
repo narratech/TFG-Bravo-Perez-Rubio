@@ -52,12 +52,12 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         //Activar/desactivar modo rendimiento al alejarte lo suficiente
         bPerformaceMode = DistanceToSurface > PlanetRadius * HeightVisibility;
 
-        if (FarLevel.Mesh->bActiveMesh && !bPerformaceMode || !FarLevel.Mesh->bActiveMesh && bPerformaceMode)
+        if (FarLevel->bActiveMesh && !bPerformaceMode || !FarLevel->bActiveMesh && bPerformaceMode)
         {
-            FarLevel.Mesh->SetMeshActive(bPerformaceMode);
+            FarLevel->SetMeshActive(bPerformaceMode);
             for (size_t i = 0; i < Levels.Num(); i++)
             {
-                Levels[i].Mesh->SetMeshActive(!bPerformaceMode);
+                Levels[i]->SetMeshActive(!bPerformaceMode);
             }
 
             //TimeToRefreshActive = bPerformaceMode ? 0.5f : TimeToRefresh;
@@ -67,7 +67,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         if (bPerformaceMode)
         {
-            FarLevel.Mesh->UpdateMesh();
+            FarLevel->UpdateMesh();
             return;
         }
 
@@ -75,7 +75,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         for (size_t i = 4; i < Levels.Num(); i++)
         {
-            UClipmapMeshComponent* Mesh = Levels[i].Mesh;
+            UClipmapMeshComponent* Mesh = Levels[i];
 
             // Versión simple y rápida para clipmaps concéntricos
             bool bIsVisible = IsClipmapRingVisible(i, DistanceToSurface);
@@ -97,8 +97,8 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         for (size_t i = 0; i < Levels.Num(); i++)
         { 
-            if (Levels[i].Mesh->bActiveMesh)
-                Levels[i].Mesh->UpdateMesh();
+            if (Levels[i]->bActiveMesh)
+                Levels[i]->UpdateMesh();
         }   
     }    
 }
@@ -173,7 +173,7 @@ void UCosmicClipmapComponent::CreateLevels()
         }
 
         // Guardar referencia
-        Levels[L].Mesh = Mesh;
+        Levels[L] = Mesh;
 
         UE_LOG(LogTemp, Warning, TEXT("  Nivel %d creado: GridSpacing=%.2f, bIsRing=%s"),
             L, Mesh->GridSpacing, Mesh->bIsRing ? TEXT("true") : TEXT("false"));
@@ -205,7 +205,7 @@ void UCosmicClipmapComponent::CreateLevels()
         Mesh->BuildBaseMesh();
         Mesh->SetMeshActive(false);
 
-        FarLevel.Mesh = Mesh;
+        FarLevel = Mesh;
 
         UE_LOG(LogTemp, Warning, TEXT("  Nivel Extra creado" ));
     }
@@ -224,40 +224,34 @@ void UCosmicClipmapComponent::ClearLevels()
     UE_LOG(LogTemp, Warning, TEXT("UCosmicClipmapComponent::ClearLevels() - Limpiando %d niveles"), Levels.Num());
 
     // 1. Destruir componentes del array Levels
-    for (FCosmicClipmapLevel& Level : Levels)
+    for (UClipmapMeshComponent* Mesh : Levels)
     {
-        if (UClipmapMeshComponent* Mesh = Level.Mesh)
-        {
-            UE_LOG(LogTemp, Warning, TEXT("  Destruyendo nivel %d"), Mesh->LevelIndex);
+        UE_LOG(LogTemp, Warning, TEXT("  Destruyendo nivel %d"), Mesh->LevelIndex);
 
-            // Desactivar y limpiar la malla
-            Mesh->SetMeshActive(false);
-            Mesh->ClearAllMeshSections();
+        // Desactivar y limpiar la malla
+        Mesh->SetMeshActive(false);
+        Mesh->ClearAllMeshSections();
 
-            // Destruir el componente
-            Mesh->DestroyComponent();
-            Mesh = nullptr;
-        }
-        Level.Mesh = nullptr;
+        // Destruir el componente
+        Mesh->DestroyComponent();
+        Mesh = nullptr;
     }
 
-    // 2. Destruir nivel intermedio
-    if (FarLevel.Mesh)
+    // 2. Destruir nivel exterior
+    if (FarLevel)
     {
-        UE_LOG(LogTemp, Warning, TEXT("  Destruyendo nivel intermedio"));
+        UE_LOG(LogTemp, Warning, TEXT("  Destruyendo nivel exterior"));
 
-        FarLevel.Mesh->SetMeshActive(false);
-        FarLevel.Mesh->ClearAllMeshSections();
-        FarLevel.Mesh->DestroyComponent();
-        FarLevel.Mesh = nullptr;
+        FarLevel->SetMeshActive(false);
+        FarLevel->ClearAllMeshSections();
+        FarLevel->DestroyComponent();
+        FarLevel = nullptr;
     }
 
     // 3. Limpiar arrays
     Levels.Empty();
-    FarLevel = FCosmicClipmapLevel();
 
     UE_LOG(LogTemp, Warning, TEXT("ClearLevels() completado"));
-
 }
 
 float UCosmicClipmapComponent::UpdatePatchTransform()
@@ -303,17 +297,16 @@ float UCosmicClipmapComponent::UpdatePatchTransform()
     FRotator PatchRotation = FRotationMatrix::MakeFromXZ(Forward, Up).Rotator();*/
 
 
-    for (FCosmicClipmapLevel& Level : Levels)
+    for (UClipmapMeshComponent* Mesh : Levels)
     {
-        UClipmapMeshComponent* Mesh = Level.Mesh;
         if (!Mesh) continue;
 
         // Mover la malla procedimental
         Mesh->SetWorldLocationAndRotation(SurfacePos, PatchRotation);
     }
 
-    if (FarLevel.Mesh) {
-        FarLevel.Mesh->SetWorldLocationAndRotation(SurfacePos, PatchRotation);
+    if (FarLevel) {
+        FarLevel->SetWorldLocationAndRotation(SurfacePos, PatchRotation);
     }
 
     return FVector::Distance(ViewerPosWorld, SurfacePos);
@@ -322,7 +315,7 @@ float UCosmicClipmapComponent::UpdatePatchTransform()
 bool UCosmicClipmapComponent::IsClipmapRingVisible(const int32 LevelIndex, const float DistanceToSurface)
 {  
     // Calcular el radio del clipmap en la superficie
-    float ClipmapSurfaceRadius = Levels[LevelIndex].Mesh->GridSpacing * Levels[LevelIndex].Mesh->Resolution * 0.5f;
+    float ClipmapSurfaceRadius = Levels[LevelIndex]->GridSpacing * Levels[LevelIndex]->Resolution * 0.5f;
 
     // Radio maximo visible desde esta altura (proyeccion en la superficie)
     float VisibleRadius = PlanetRadius * FMath::Sin(FMath::Acos(PlanetRadius / (PlanetRadius + DistanceToSurface)));

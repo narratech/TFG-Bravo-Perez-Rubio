@@ -230,7 +230,8 @@ void UClipmapMeshComponent::UpdateMesh()
         CurrentTangents = BaseTangents;
     }
 
-    // ACTUALIZAR la malla existente
+    // ACTUALIZAR la malla existente 
+    // Tiempo actualizar el nivel 0 que tiene colisión: 32*32 1.2ms, 64*64 5-6ms, 128*128 21ms
     UpdateMeshSection(
         0,
         CurrentVertices,
@@ -242,10 +243,10 @@ void UClipmapMeshComponent::UpdateMesh()
 
     SetCollisionEnabled(LevelIndex == 0 ? ECollisionEnabled::PhysicsOnly : ECollisionEnabled::NoCollision);
 
-    //double UpdateMeshEndTime = FPlatformTime::Seconds();
-    //double UpdateMeshTime = UpdateMeshEndTime - UpdateMeshStartTime;
+    /*double UpdateMeshEndTime = FPlatformTime::Seconds();
+    double UpdateMeshTime = UpdateMeshEndTime - UpdateMeshStartTime;
 
-    //UE_LOG(LogTemp, Warning, TEXT("Malla actualizada en %.4f ms"), UpdateMeshTime * 1000.0);
+    UE_LOG(LogTemp, Warning, TEXT("Malla actualizada en %.4f ms"), UpdateMeshTime * 1000.0);*/
 }
 
 void UClipmapMeshComponent::SetMeshActive(bool active)

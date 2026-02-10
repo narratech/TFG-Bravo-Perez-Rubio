@@ -8,18 +8,6 @@
 
 class UClipmapMeshComponent;
 
-USTRUCT()
-struct FCosmicClipmapLevel
-{
-    GENERATED_BODY()
-
-    int32 LevelIndex;
-    float GridSpacing;
-    FVector2D Origin;
-
-    UClipmapMeshComponent* Mesh = nullptr;
-};
-
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class UCosmicClipmapComponent : public UActorComponent
 {
@@ -59,8 +47,8 @@ public:
     bool bInit = false;
 
 protected:
-    TArray<FCosmicClipmapLevel> Levels;
-    FCosmicClipmapLevel FarLevel;
+    TArray<UClipmapMeshComponent*> Levels;
+    UClipmapMeshComponent* FarLevel;
 
     float ElapsedTime = 0;
     bool bPerformaceMode = false;
