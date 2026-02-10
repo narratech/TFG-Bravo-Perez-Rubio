@@ -51,8 +51,12 @@ void UGravityComponent::Integrate(double DeltaTime)
     if (Mass <= 0.f) return;
 
     FVector Acceleration = AccumulatedForce / Mass;
-
     Velocity += Acceleration * DeltaTime;
+
+    double Damping = 0.02;
+
+    double DampingFactor = FMath::Clamp(1.0 - (Damping * DeltaTime), 0.0, 1.0);
+    Velocity *= DampingFactor;
 
     if (AActor* Owner = GetOwner())
     {
