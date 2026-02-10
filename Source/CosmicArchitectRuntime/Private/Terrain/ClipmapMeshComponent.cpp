@@ -15,8 +15,6 @@ void UClipmapMeshComponent::BuildBaseMesh()
     //UE_LOG(LogTemp, Warning, TEXT("  VertRes: %d"), VertRes);
     //UE_LOG(LogTemp, Warning, TEXT("  Total vértices esperados: %d"), TotalVertices);
 
-    
-
     // 1. LIMPIAR TODO primero
     ClearAllMeshSections();
 
@@ -167,13 +165,13 @@ void UClipmapMeshComponent::BuildBaseMesh()
     
     double CreateStartTime = FPlatformTime::Seconds();
 
-    CreateMeshSection(
+    CreateMeshSection_LinearColor(
         0,                    // SectionIndex
         CurrentVertices,      // Vértices
         Triangles,           // Triángulos
         CurrentNormals,      // Normales
         UVs,                 // UVs
-        TArray<FColor>(),    // Colores de vértice
+        TArray<FLinearColor>(),    // Colores de vértice
         CurrentTangents,     // Tangentes
         LevelIndex == 0      // Crear colisión
     );
@@ -196,6 +194,135 @@ void UClipmapMeshComponent::BuildBaseMesh()
 
     SetCollisionEnabled(LevelIndex == 0 ? ECollisionEnabled::PhysicsOnly : ECollisionEnabled::NoCollision);
           
+    bMeshCreated = true;
+}
+
+void UClipmapMeshComponent::BuildSphereMesh()
+{
+    ClearAllMeshSections();
+
+    BaseVertices.Empty();
+    BaseNormals.Empty();
+    BaseTangents.Empty();
+    UVs.Empty();
+    Triangles.Empty();
+    //HeightOffsets.Empty();
+    CurrentVertices.Empty();
+    CurrentNormals.Empty();
+    CurrentTangents.Empty();
+
+    // Aseguramos múltiplo de 2
+    Resolution = FMath::Max(4, Resolution & ~1);
+
+    const int32 LatSegments = Resolution;
+    const int32 LonSegments = Resolution * 2;
+
+    const int32 VertResX = LonSegments + 1;
+    const int32 VertResY = LatSegments + 1;
+
+    const int32 TotalVertices = VertResX * VertResY;
+
+    BaseVertices.Reserve(TotalVertices);
+    BaseNormals.Reserve(TotalVertices);
+    BaseTangents.Reserve(TotalVertices);
+    UVs.Reserve(TotalVertices);
+
+    // 1. VÉRTICES
+    for (int32 y = 0; y < VertResY; ++y)
+    {
+        float V = (float)y / LatSegments;
+        float Theta = V * PI; // 0..PI
+
+        float SinTheta = FMath::Sin(Theta);
+        float CosTheta = FMath::Cos(Theta);
+
+        for (int32 x = 0; x < VertResX; ++x)
+        {
+            float U = (float)x / LonSegments;
+            float Phi = U * PI * 2.f; // 0..2PI
+
+            float SinPhi = FMath::Sin(Phi);
+            float CosPhi = FMath::Cos(Phi);
+
+            FVector Normal(
+                SinTheta * CosPhi,
+                SinTheta * SinPhi,
+                CosTheta
+            );
+
+            FVector Position = Normal * PlanetRadius;
+
+            BaseVertices.Add(Position);
+            BaseNormals.Add(Normal);
+
+            FVector Tangent = FVector(-SinPhi, CosPhi, 0.f);
+            Tangent.Normalize();
+            BaseTangents.Add(FProcMeshTangent(Tangent, false));
+
+            UVs.Add(FVector2D(U, V));
+        }
+    }
+
+    // 2. TRIÁNGULOS
+    for (int32 y = 0; y < LatSegments; ++y)
+    {
+        for (int32 x = 0; x < LonSegments; ++x)
+        {
+            int32 i0 = y * VertResX + x;
+            int32 i1 = i0 + 1;
+            int32 i2 = i0 + VertResX;
+            int32 i3 = i2 + 1;
+
+            // Triángulo 1
+            Triangles.Add(i0);
+            Triangles.Add(i2);
+            Triangles.Add(i1);
+
+            // Triángulo 2
+            Triangles.Add(i1);
+            Triangles.Add(i2);
+            Triangles.Add(i3);
+        }
+    }
+
+    // 5. COPIAR a Current arrays
+    CurrentVertices = BaseVertices;
+    CurrentNormals = BaseNormals;
+    CurrentTangents = BaseTangents;
+
+    // 6. CREAR LA MALLA por primera vez
+
+    double CreateStartTime = FPlatformTime::Seconds();
+
+    CreateMeshSection_LinearColor(
+        0,                    // SectionIndex
+        CurrentVertices,      // Vértices
+        Triangles,           // Triángulos
+        CurrentNormals,      // Normales
+        UVs,                 // UVs
+        TArray<FLinearColor>(),    // Colores de vértice
+        CurrentTangents,     // Tangentes
+        false      // Crear colisión
+    );
+
+    double CreateEndTime = FPlatformTime::Seconds();
+
+    UE_LOG(LogTemp, Warning, TEXT("CreateSphereMesh tomo: %.4f ms"), (CreateEndTime - CreateStartTime) * 1000.0);
+
+    // 7. VERIFICAR que se creó correctamente
+    if (GetNumSections() > 0)
+    {
+        bMeshCreated = true;
+        UE_LOG(LogTemp, Warning, TEXT("Malla creada exitosamente. Secciones: %d"), GetNumSections());
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("FALLÓ la creación de la malla!"));
+    }
+
+
+    SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
     bMeshCreated = true;
 }
 
@@ -232,12 +359,12 @@ void UClipmapMeshComponent::UpdateMesh()
 
     // ACTUALIZAR la malla existente 
     // Tiempo actualizar el nivel 0 que tiene colisión: 32*32 1.2ms, 64*64 5-6ms, 128*128 21ms
-    UpdateMeshSection(
+    UpdateMeshSection_LinearColor(
         0,
         CurrentVertices,
         CurrentNormals,
         UVs,
-        TArray<FColor>(),
+        TArray<FLinearColor>(),
         CurrentTangents
     );
 

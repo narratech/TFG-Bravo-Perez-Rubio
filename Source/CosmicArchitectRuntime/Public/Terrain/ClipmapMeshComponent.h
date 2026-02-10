@@ -39,6 +39,7 @@ public:
     TArray<FVector2D> UVs;
 
     void BuildBaseMesh();
+    void BuildSphereMesh();
     void UpdateMesh();
     void SetMeshActive(bool active);
     void UpdateHeights(const FVector2D& Origin);

@@ -67,7 +67,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         if (bPerformaceMode)
         {
-            FarLevel->UpdateMesh();
+            //FarLevel->UpdateMesh();
             return;
         }
 
@@ -93,7 +93,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             }
         }
 
-        UE_LOG(LogTemp, Warning, TEXT("Actualizando: %d"), LevelsUpdating + 4);
+        //UE_LOG(LogTemp, Warning, TEXT("Actualizando: %d"), LevelsUpdating + 4);
 
         for (size_t i = 0; i < Levels.Num(); i++)
         { 
@@ -179,6 +179,7 @@ void UCosmicClipmapComponent::CreateLevels()
             L, Mesh->GridSpacing, Mesh->bIsRing ? TEXT("true") : TEXT("false"));
     }
 
+    // 5. Crear nivel performance
     FName ComponentName = *FString::Printf(TEXT("ClipmapMesh_Performance_%d"), 0);
 
     UClipmapMeshComponent* Mesh = NewObject<UClipmapMeshComponent>(
@@ -202,7 +203,7 @@ void UCosmicClipmapComponent::CreateLevels()
         Mesh->PlanetRadius = PlanetRadius;
         Mesh->bActiveMesh = false;
 
-        Mesh->BuildBaseMesh();
+        Mesh->BuildSphereMesh();
         Mesh->SetMeshActive(false);
 
         FarLevel = Mesh;
@@ -210,8 +211,6 @@ void UCosmicClipmapComponent::CreateLevels()
         UE_LOG(LogTemp, Warning, TEXT("  Nivel Extra creado" ));
     }
         
-   
-
     bInit = true;
     UE_LOG(LogTemp, Warning, TEXT("CreateLevels completado. Niveles totales: %d"), Levels.Num());
 }
@@ -305,9 +304,9 @@ float UCosmicClipmapComponent::UpdatePatchTransform()
         Mesh->SetWorldLocationAndRotation(SurfacePos, PatchRotation);
     }
 
-    if (FarLevel) {
+    /*if (FarLevel) {
         FarLevel->SetWorldLocationAndRotation(SurfacePos, PatchRotation);
-    }
+    }*/
 
     return FVector::Distance(ViewerPosWorld, SurfacePos);
 }
