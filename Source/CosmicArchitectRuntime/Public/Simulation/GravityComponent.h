@@ -32,9 +32,13 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
+	
+
 public:	
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+	FTransform getTransform() const { return GetOwner()->GetActorTransform(); }
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EGravityMode GravityMode = EGravityMode::NearestPlanet;
@@ -43,7 +47,7 @@ public:
 	AActor* SpecificGravitySource = nullptr;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float Mass = 100.0f;
+	double Mass = 100.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool AffectsOthers = true;

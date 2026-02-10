@@ -19,10 +19,10 @@ void UGravityComponent::BeginPlay()
 {
     Super::BeginPlay();
 
-    if (UWorld* World = GetWorld())
+    if (GravityMode == EGravityMode::NBody || GravityMode == EGravityMode::Hybrid)
     {
         if (UNBodySimulationSubsystem* Subsystem =
-            World->GetSubsystem<UNBodySimulationSubsystem>())
+            GetWorld()->GetSubsystem<UNBodySimulationSubsystem>())
         {
             Subsystem->RegisterBody(this);
         }
@@ -45,8 +45,31 @@ void UGravityComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 void UGravityComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
+    // Debug en pantalla: Imprime el nombre, el modo y la fuerza actual
+    //FString DebugMsg = FString::Printf(TEXT("%s: Mode=%d, Force=%s"),
+    //    *GetOwner()->GetName(),
+    //    (int32)GravityMode,
+    //    *AccumulatedForce.ToString());
+
+    //GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Yellow, DebugMsg);
+
+    //// Dibuja una esfera en la posición para confirmar que tickea
+    //DrawDebugSphere(GetWorld(), GetOwner()->GetActorLocation(), 50.0f, 12, FColor::Green, false, -1.0f);
 }
 
 void UGravityComponent::Integrate(double DeltaTime)
 {
+    if (Mass <= 0.f) return;
+
+    FVector Acceleration = AccumulatedForce / Mass;
+
+    Velocity += Acceleration * DeltaTime;
+
+    if (AActor* Owner = GetOwner())
+    {
+        FVector NewLocation = Owner->GetActorLocation() + (Velocity * DeltaTime);
+        Owner->SetActorLocation(NewLocation);
+    }
+
+    AccumulatedForce = FVector::ZeroVector;
 }
