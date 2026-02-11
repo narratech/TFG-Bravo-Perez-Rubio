@@ -2,7 +2,7 @@
 
 
 #include "Simulation/GravityComponent.h"
-#include "Simulation/NBodySimulationSubsystem.h"
+#include "Simulation/GravitySubsystem.h"
 
 // Sets default values for this component's properties
 UGravityComponent::UGravityComponent()
@@ -18,22 +18,21 @@ void UGravityComponent::BeginPlay()
 {
     Super::BeginPlay();
 
-    if (GravityMode == EGravityMode::NBody || GravityMode == EGravityMode::Hybrid)
+
+    if (UGravitySubsystem* Subsystem =
+        GetWorld()->GetSubsystem<UGravitySubsystem>())
     {
-        if (UNBodySimulationSubsystem* Subsystem =
-            GetWorld()->GetSubsystem<UNBodySimulationSubsystem>())
-        {
-            Subsystem->RegisterBody(this);
-        }
+        Subsystem->RegisterBody(this);
     }
+    
 }
 
 void UGravityComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     if (UWorld* World = GetWorld())
     {
-        if (UNBodySimulationSubsystem* Subsystem =
-            World->GetSubsystem<UNBodySimulationSubsystem>())
+        if (UGravitySubsystem* Subsystem =
+            World->GetSubsystem<UGravitySubsystem>())
         {
             Subsystem->UnregisterBody(this);
         }
@@ -48,9 +47,14 @@ void UGravityComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 
 void UGravityComponent::Integrate(double DeltaTime)
 {
-    if (Mass <= 0.f) return;
-
     FVector Acceleration = AccumulatedForce / Mass;
+
+    if (GravityMode == EGravityMode::SpecificPlanet) {
+        FVector Direction = (SpecificGravitySource->GetActorLocation() - GetOwner()->GetActorLocation()).GetSafeNormal();
+        double desiredAcc = SurfaceGravity * 100;
+        Acceleration = Direction * desiredAcc;
+    }
+
     Velocity += Acceleration * DeltaTime;
 
     double Damping = 0.02;
@@ -65,4 +69,14 @@ void UGravityComponent::Integrate(double DeltaTime)
     }
 
     AccumulatedForce = FVector::ZeroVector;
+}
+
+float UGravityComponent::GetObjectRadius() const
+{
+    // Obtenemos el radio aproximado del StaticMesh (o del Actor entero)
+    FVector Origin, BoxExtent;
+    GetOwner()->GetActorBounds(true, Origin, BoxExtent);
+
+    // Devolvemos la dimensión más grande (por si no es una esfera perfecta)
+    return BoxExtent.GetMax();
 }

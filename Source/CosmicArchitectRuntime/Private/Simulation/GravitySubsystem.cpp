@@ -1,27 +1,27 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Simulation/NBodySimulationSubsystem.h"
+#include "Simulation/GravitySubsystem.h"
 #include "Simulation/GravityComponent.h"
 
-static const double G = 1000.0; //Constante gravitacional adaptada
+static const double G = 10000.0; //Constante gravitacional adaptada
 
 // Factor de suavizado para evitar que la fuerza sea infinita si dos cuerpos se tocan
 static const double Softening = 100000.0;
 
-void UNBodySimulationSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+void UGravitySubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
     Super::Initialize(Collection);
 
 }
 
-void UNBodySimulationSubsystem::Deinitialize()
+void UGravitySubsystem::Deinitialize()
 {
     Bodies.Empty();
     Super::Deinitialize();
 }
 
-void UNBodySimulationSubsystem::Tick(float DeltaTime)
+void UGravitySubsystem::Tick(float DeltaTime)
 {
 
     const int32 Count = Bodies.Num();
@@ -29,7 +29,7 @@ void UNBodySimulationSubsystem::Tick(float DeltaTime)
 
     for (int32 i = 0; i < Count; ++i) {
         UGravityComponent* BodyA = Bodies[i];
-        if (!BodyA || !BodyA->IsActive()) continue;
+        if (!BodyA || !BodyA->IsActive() || BodyA->GravityMode != EGravityMode::NBody) continue;
 
 
         FVector PosA = BodyA->getTransform().GetLocation();
@@ -37,7 +37,7 @@ void UNBodySimulationSubsystem::Tick(float DeltaTime)
 
         for (int32 j = i + 1; j < Count; ++j) {
             UGravityComponent* BodyB = Bodies[j];
-            if (!BodyB || !BodyB->IsActive()) continue;
+            if (!BodyB || !BodyB->IsActive() || BodyB->GravityMode != EGravityMode::NBody) continue;
 
             FVector Difference = BodyB->getTransform().GetLocation() - PosA; //Vector de A a B
 
@@ -49,8 +49,8 @@ void UNBodySimulationSubsystem::Tick(float DeltaTime)
             double ForceMagnitude = (G * MassA * BodyB->Mass) / DistanceFactor;
             FVector ForceVector = Direction * ForceMagnitude;
 
-            BodyA->AccumulatedForce += ForceVector;
-            BodyB->AccumulatedForce -= ForceVector;
+            if(BodyB->AffectsOthers)BodyA->AccumulatedForce += ForceVector;
+            if(BodyA->AffectsOthers)BodyB->AccumulatedForce -= ForceVector;
         }
     }
 
@@ -64,7 +64,7 @@ void UNBodySimulationSubsystem::Tick(float DeltaTime)
     }
 }
 
-void UNBodySimulationSubsystem::RegisterBody(UGravityComponent* Body)
+void UGravitySubsystem::RegisterBody(UGravityComponent* Body)
 {
     if (Body)
     {
@@ -73,17 +73,17 @@ void UNBodySimulationSubsystem::RegisterBody(UGravityComponent* Body)
     }
 }
 
-void UNBodySimulationSubsystem::UnregisterBody(UGravityComponent* Body)
+void UGravitySubsystem::UnregisterBody(UGravityComponent* Body)
 {
     Bodies.Remove(Body);
 }
 
-UWorld* UNBodySimulationSubsystem::GetTickableGameObjectWorld() const
+UWorld* UGravitySubsystem::GetTickableGameObjectWorld() const
 {
     return GetWorld();
 }
 
-bool UNBodySimulationSubsystem::IsTickable() const
+bool UGravitySubsystem::IsTickable() const
 {
     // 1. Si soy una "plantilla" (CDO), no tickear.
     if (IsTemplate()) return false;

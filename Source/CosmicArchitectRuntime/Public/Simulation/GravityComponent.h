@@ -32,6 +32,8 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
+	float GetObjectRadius() const;
+
 public:	
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
@@ -42,13 +44,17 @@ public:
 	EGravityMode GravityMode = EGravityMode::NearestPlanet;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	AActor* SpecificGravitySource = nullptr;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	double Mass = 100.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config")
 	bool AffectsOthers = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config")
+	AActor* SpecificGravitySource = nullptr;
+
+	// Gravedad en la superficie en m/s^2 (Ej: Tierra = 9.8, Luna = 1.6)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config", meta = (EditCondition = "bUseSurfaceGravity"))
+	float SurfaceGravity = 9.8f;
 
 	FVector Velocity = FVector::ZeroVector;
 	FVector AccumulatedForce = FVector::ZeroVector;
