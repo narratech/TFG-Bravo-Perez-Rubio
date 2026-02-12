@@ -298,6 +298,8 @@ void UCosmicClipmapComponent::ReasignLevels()
 {
     int LevelsReasigned = 0;
 
+    //double UpdateMeshStartTime = FPlatformTime::Seconds();
+
     if (ParentRoot)
     {
         // Obtenemos una copia de los hijos para evitar problemas al modificar el array mientras iteramos
@@ -307,29 +309,22 @@ void UCosmicClipmapComponent::ReasignLevels()
         {
             if (UClipmapMeshComponent* TargetMesh = Cast<UClipmapMeshComponent>(Child))
             {
-                LevelsReasigned++;
-            }
-        }
-
-        Levels.SetNum(LevelsReasigned - 1);
-
-        int i = 0;
-
-        for (USceneComponent* Child : Children)
-        {
-            if (UClipmapMeshComponent* TargetMesh = Cast<UClipmapMeshComponent>(Child))
-            {
-                if (i == 0) {
-                    FarLevel = TargetMesh;
-                    i++;
-                    continue;
+                if (!FarLevel)
+                {
+                    FarLevel = TargetMesh;  // Primer mesh = FarLevel
                 }
-
-                Levels[i - 1] = TargetMesh;
-                i++;
+                else
+                {
+                    Levels.Add(TargetMesh); // Resto = Levels
+                }
             }
         }
     }
+
+    /*double UpdateMeshEndTime = FPlatformTime::Seconds();
+    double UpdateMeshTime = UpdateMeshEndTime - UpdateMeshStartTime;
+
+    UE_LOG(LogTemp, Warning, TEXT("Mallas reasignada en %.4f ms"), UpdateMeshTime * 1000.0);*/
 
     UE_LOG(LogTemp, Warning, TEXT("UCosmicClipmapComponent::ReasignLevels() - Reasignando %d niveles"), LevelsReasigned);
 }
