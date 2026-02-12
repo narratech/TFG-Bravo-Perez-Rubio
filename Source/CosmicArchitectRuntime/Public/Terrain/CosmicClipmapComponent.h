@@ -20,6 +20,7 @@ public:
     void CreatePerformanceLevel(bool bActive);
 
     void ClearLevels();
+    void ReasignLevels();
 
     USceneComponent* ParentRoot = nullptr;
 

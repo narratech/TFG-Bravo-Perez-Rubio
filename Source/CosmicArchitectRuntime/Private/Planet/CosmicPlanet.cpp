@@ -21,7 +21,13 @@ void ACosmicPlanet::BeginPlay()
 {
 	Super::BeginPlay();
 
-    InitClipmap();
+    //InitClipmap();
+    if (ClipmapComponent) {
+        ClipmapComponent->ParentRoot = Root;
+        ClipmapComponent->PlanetRadius = Radius * 100000;
+        ClipmapComponent->ReasignLevels();
+    }
+   
 }
 
 void ACosmicPlanet::InitClipmap()

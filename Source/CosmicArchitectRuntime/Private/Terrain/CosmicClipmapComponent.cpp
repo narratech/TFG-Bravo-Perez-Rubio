@@ -252,7 +252,7 @@ void UCosmicClipmapComponent::ClearLevels()
         // Destruir el componente
         Mesh->DestroyComponent();
         Mesh = nullptr;
-        LevelsCleared++;
+        //LevelsCleared++;
     }
 
     // 2. Destruir nivel exterior
@@ -288,10 +288,52 @@ void UCosmicClipmapComponent::ClearLevels()
                 LevelsCleared++;
             }
         }
+
     }
 
     UE_LOG(LogTemp, Warning, TEXT("UCosmicClipmapComponent::ClearLevels() - Limpiando %d niveles"), LevelsCleared);
 }
+
+void UCosmicClipmapComponent::ReasignLevels()
+{
+    int LevelsReasigned = 0;
+
+    if (ParentRoot)
+    {
+        // Obtenemos una copia de los hijos para evitar problemas al modificar el array mientras iteramos
+        TArray<USceneComponent*> Children = ParentRoot->GetAttachChildren();
+
+        for (USceneComponent* Child : Children)
+        {
+            if (UClipmapMeshComponent* TargetMesh = Cast<UClipmapMeshComponent>(Child))
+            {
+                LevelsReasigned++;
+            }
+        }
+
+        Levels.SetNum(LevelsReasigned - 1);
+
+        int i = 0;
+
+        for (USceneComponent* Child : Children)
+        {
+            if (UClipmapMeshComponent* TargetMesh = Cast<UClipmapMeshComponent>(Child))
+            {
+                if (i == 0) {
+                    FarLevel = TargetMesh;
+                    i++;
+                    continue;
+                }
+
+                Levels[i - 1] = TargetMesh;
+                i++;
+            }
+        }
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("UCosmicClipmapComponent::ReasignLevels() - Reasignando %d niveles"), LevelsReasigned);
+}
+
 
 float UCosmicClipmapComponent::UpdatePatchTransform()
 {
