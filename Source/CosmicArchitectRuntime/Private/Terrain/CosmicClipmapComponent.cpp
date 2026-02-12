@@ -41,16 +41,20 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         ElapsedTime = 0;
 
-        if (!bInit || Levels.Num() == 0)
-            return;
-
         float DistanceToSurface = UpdatePatchTransform();
 
-           // UE_LOG(LogTemp, Warning, TEXT("Distancia de cambio: %.4f, Distancia a la superficie:  %.4f"),
-             //   IntermediateLevel.Mesh->GridSpacing * BaseResolution * HeightVisibility, DistanceToSurface);
+        if (!FarLevel)
+            return;
 
-        //Activar/desactivar modo rendimiento al alejarte lo suficiente
+        // UE_LOG(LogTemp, Warning, TEXT("Distancia de cambio: %.4f, Distancia a la superficie:  %.4f"),
+          //   IntermediateLevel.Mesh->GridSpacing * BaseResolution * HeightVisibility, DistanceToSurface);
+
+     //Activar/desactivar modo rendimiento al alejarte lo suficiente
         bPerformaceMode = DistanceToSurface > PlanetRadius * HeightVisibility;
+
+        if (!bInit && !bPerformaceMode) {
+            CreateLevels();
+        }
 
         if (FarLevel->bActiveMesh && !bPerformaceMode || !FarLevel->bActiveMesh && bPerformaceMode)
         {
@@ -63,7 +67,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             //TimeToRefreshActive = bPerformaceMode ? 0.5f : TimeToRefresh;
         }
 
-        int LevelsToUpdate = bPerformaceMode ? 0 : Levels.Num();
+        //int LevelsToUpdate = bPerformaceMode ? 0 : Levels.Num();
 
         if (bPerformaceMode)
         {
@@ -100,6 +104,8 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             if (Levels[i]->bActiveMesh)
                 Levels[i]->UpdateMesh();
         }   
+
+        UpdatePatchTransform();
     }    
 }
 
@@ -180,6 +186,16 @@ void UCosmicClipmapComponent::CreateLevels()
     }
 
     // 5. Crear nivel performance
+    //CreatePerformanceLevel();
+        
+    bInit = true;
+    UE_LOG(LogTemp, Warning, TEXT("CreateLevels completado. Niveles totales: %d"), Levels.Num());
+}
+
+void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
+{
+    if (FarLevel) return;
+
     FName ComponentName = *FString::Printf(TEXT("ClipmapMesh_Performance_%d"), 0);
 
     UClipmapMeshComponent* Mesh = NewObject<UClipmapMeshComponent>(
@@ -201,18 +217,14 @@ void UCosmicClipmapComponent::CreateLevels()
         Mesh->GridSpacing = BaseGridSpacing * FMath::Pow(2.0f, NumLevels - 1);
         Mesh->bIsRing = false;
         Mesh->PlanetRadius = PlanetRadius;
-        Mesh->bActiveMesh = false;
 
         Mesh->BuildSphereMesh();
-        Mesh->SetMeshActive(false);
+        Mesh->SetMeshActive(bActive);
 
         FarLevel = Mesh;
 
-        UE_LOG(LogTemp, Warning, TEXT("  Nivel Extra creado" ));
+        UE_LOG(LogTemp, Warning, TEXT("  Nivel Extra creado"));
     }
-        
-    bInit = true;
-    UE_LOG(LogTemp, Warning, TEXT("CreateLevels completado. Niveles totales: %d"), Levels.Num());
 }
 
 
@@ -258,8 +270,6 @@ float UCosmicClipmapComponent::UpdatePatchTransform()
     AActor* Owner = GetOwner();
     if (!Owner) return 0.f;
 
-    if (Levels.Num() == 0) return 0.f;
-
     APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
     if (!PC) return 0.f;
 
@@ -273,7 +283,7 @@ float UCosmicClipmapComponent::UpdatePatchTransform()
     // Punto sobre la superficie
     FVector SurfacePos = PlanetCenter + N * PlanetRadius * HeightScale;
 
-    if (bPerformaceMode)
+    if (bPerformaceMode || Levels.Num() == 0)
         return FVector::Distance(ViewerPosWorld, SurfacePos);
 
     const FVector Up = N;

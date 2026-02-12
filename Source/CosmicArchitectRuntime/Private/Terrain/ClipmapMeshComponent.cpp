@@ -334,7 +334,7 @@ void UClipmapMeshComponent::UpdateMesh()
     {
         UE_LOG(LogTemp, Error, TEXT("UpdateMesh() llamado pero bMeshCreated = false"));
         UE_LOG(LogTemp, Error, TEXT("Llamando a BuildBaseMesh() primero..."));
-        BuildBaseMesh();
+        //BuildBaseMesh();
         return;
     }
 

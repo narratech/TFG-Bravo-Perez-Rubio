@@ -17,6 +17,7 @@ public:
     UCosmicClipmapComponent();
 
     void CreateLevels();
+    void CreatePerformanceLevel(bool bActive);
 
     void ClearLevels();
 
