@@ -273,15 +273,14 @@ void UClipmapMeshComponent::BuildSphereMesh()
             int32 i2 = i0 + VertResX;
             int32 i3 = i2 + 1;
 
-            // Triángulo 1
+            // Orden antihorario desde fuera
             Triangles.Add(i0);
-            Triangles.Add(i2);
-            Triangles.Add(i1);
+            Triangles.Add(i1);  
+            Triangles.Add(i2);  
 
-            // Triángulo 2
             Triangles.Add(i1);
-            Triangles.Add(i2);
-            Triangles.Add(i3);
+            Triangles.Add(i3);  
+            Triangles.Add(i2);  
         }
     }
 

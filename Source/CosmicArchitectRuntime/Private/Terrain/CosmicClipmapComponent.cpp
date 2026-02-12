@@ -238,7 +238,7 @@ void UCosmicClipmapComponent::ClearLevels()
 {
     bInit = false;
 
-    UE_LOG(LogTemp, Warning, TEXT("UCosmicClipmapComponent::ClearLevels() - Limpiando %d niveles"), Levels.Num());
+    int LevelsCleared = 0;  
 
     // 1. Destruir componentes del array Levels
     for (UClipmapMeshComponent* Mesh : Levels)
@@ -252,6 +252,7 @@ void UCosmicClipmapComponent::ClearLevels()
         // Destruir el componente
         Mesh->DestroyComponent();
         Mesh = nullptr;
+        LevelsCleared++;
     }
 
     // 2. Destruir nivel exterior
@@ -268,7 +269,28 @@ void UCosmicClipmapComponent::ClearLevels()
     // 3. Limpiar arrays
     Levels.Empty();
 
-    UE_LOG(LogTemp, Warning, TEXT("ClearLevels() completado"));
+    if (ParentRoot)
+    {
+        
+        // Obtenemos una copia de los hijos para evitar problemas al modificar el array mientras iteramos
+        TArray<USceneComponent*> Children = ParentRoot->GetAttachChildren();
+
+        for (USceneComponent* Child : Children)
+        {
+            if (UClipmapMeshComponent* TargetMesh = Cast<UClipmapMeshComponent>(Child))
+            {
+                // 1. Lo desadjuntamos del padre
+                TargetMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+
+                // 2. Lo marcamos para destrucción definitiva
+                TargetMesh->DestroyComponent();
+
+                LevelsCleared++;
+            }
+        }
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("UCosmicClipmapComponent::ClearLevels() - Limpiando %d niveles"), LevelsCleared);
 }
 
 float UCosmicClipmapComponent::UpdatePatchTransform()

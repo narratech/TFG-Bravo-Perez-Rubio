@@ -48,7 +48,7 @@ void ACosmicPlanet::OnConstruction(const FTransform& Transform)
 #if WITH_EDITOR
     if (!GetWorld()->IsGameWorld())
     {
-        //InitClipmap();
+        InitClipmap();
     }
 #endif
 }
