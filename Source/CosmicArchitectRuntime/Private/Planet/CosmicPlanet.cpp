@@ -29,6 +29,7 @@ void ACosmicPlanet::InitClipmap()
     if (ClipmapComponent) {
         ClipmapComponent->ParentRoot = Root;
         ClipmapComponent->PlanetRadius = Radius * 100000;
+        ClipmapComponent->ClearLevels();
         ClipmapComponent->CreatePerformanceLevel(true);
     }
 }
@@ -44,9 +45,11 @@ void ACosmicPlanet::OnConstruction(const FTransform& Transform)
 {
     Super::OnConstruction(Transform);
 
+#if WITH_EDITOR
     if (!GetWorld()->IsGameWorld())
     {
         //InitClipmap();
     }
+#endif
 }
 

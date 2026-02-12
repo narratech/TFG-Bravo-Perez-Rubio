@@ -147,6 +147,10 @@ void UCosmicClipmapComponent::CreateLevels()
             continue;
         }
 
+        Mesh->CreationMethod = EComponentCreationMethod::UserConstructionScript;
+        //Mesh->bCreatedByConstructionScript = true;
+
+
         // Registrar componente
         Mesh->RegisterComponent();
 
@@ -205,6 +209,8 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
 
     if (Mesh)
     {
+        Mesh->CreationMethod = EComponentCreationMethod::UserConstructionScript;
+
         Mesh->RegisterComponent();
 
         if (ParentRoot)
