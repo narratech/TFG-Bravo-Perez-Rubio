@@ -7,6 +7,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Terrain/ClipmapMeshComponent.h"
+#include "CosmicCameraBridge.h"
 
 // Sets default values for this component's properties
 UCosmicClipmapComponent::UCosmicClipmapComponent()
@@ -332,13 +333,28 @@ void UCosmicClipmapComponent::ReasignLevels()
 
 float UCosmicClipmapComponent::UpdatePatchTransform()
 {
+
+    
+
     AActor* Owner = GetOwner();
     if (!Owner) return 0.f;
+
+    FVector ViewerPosWorld = FVector();
+
+#if WITH_EDITOR
+
+    ViewerPosWorld = FCosmicCameraBridge::CameraLocation;
+
+    UE_LOG(LogTemp, Warning, TEXT("Camara X: %.4f, Y: %.4f, Z: %.4f"),
+        FCosmicCameraBridge::CameraLocation.X, FCosmicCameraBridge::CameraLocation.Y, FCosmicCameraBridge::CameraLocation.Z);
+#else
 
     APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
     if (!PC) return 0.f;
 
-    FVector ViewerPosWorld = PC->PlayerCameraManager->GetCameraLocation();
+    ViewerPosWorld = PC->PlayerCameraManager->GetCameraLocation();
+
+#endif
 
     FVector PlanetCenter = Owner->GetActorLocation();
 
