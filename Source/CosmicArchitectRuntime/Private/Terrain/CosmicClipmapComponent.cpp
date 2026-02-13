@@ -334,8 +334,6 @@ void UCosmicClipmapComponent::ReasignLevels()
 float UCosmicClipmapComponent::UpdatePatchTransform()
 {
 
-    
-
     AActor* Owner = GetOwner();
     if (!Owner) return 0.f;
 
@@ -345,17 +343,17 @@ float UCosmicClipmapComponent::UpdatePatchTransform()
 
     ViewerPosWorld = FCosmicCameraBridge::CameraLocation;
 
-    UE_LOG(LogTemp, Warning, TEXT("Camara X: %.4f, Y: %.4f, Z: %.4f"),
-        FCosmicCameraBridge::CameraLocation.X, FCosmicCameraBridge::CameraLocation.Y, FCosmicCameraBridge::CameraLocation.Z);
-#else
-
-    APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-    if (!PC) return 0.f;
-
-    ViewerPosWorld = PC->PlayerCameraManager->GetCameraLocation();
-
+    /*UE_LOG(LogTemp, Warning, TEXT("Camara X: %.4f, Y: %.4f, Z: %.4f"),
+        FCosmicCameraBridge::CameraLocation.X, FCosmicCameraBridge::CameraLocation.Y, FCosmicCameraBridge::CameraLocation.Z);*/
 #endif
 
+    if (GetWorld()->IsGameWorld()) {
+        APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+        if (!PC) return 0.f;
+
+        ViewerPosWorld = PC->PlayerCameraManager->GetCameraLocation();
+    }
+    
     FVector PlanetCenter = Owner->GetActorLocation();
 
     // Normal esférica
