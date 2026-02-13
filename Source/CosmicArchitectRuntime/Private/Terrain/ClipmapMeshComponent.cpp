@@ -192,7 +192,7 @@ void UClipmapMeshComponent::BuildBaseMesh()
     }
 
 
-    SetCollisionEnabled(LevelIndex == 0 ? ECollisionEnabled::PhysicsOnly : ECollisionEnabled::NoCollision);
+    SetCollisionEnabled(LevelIndex == 0 ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
           
     bMeshCreated = true;
 }
@@ -367,7 +367,7 @@ void UClipmapMeshComponent::UpdateMesh()
         CurrentTangents
     );
 
-    SetCollisionEnabled(LevelIndex == 0 ? ECollisionEnabled::PhysicsOnly : ECollisionEnabled::NoCollision);
+    SetCollisionEnabled(LevelIndex == 0 ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
 
     /*double UpdateMeshEndTime = FPlatformTime::Seconds();
     double UpdateMeshTime = UpdateMeshEndTime - UpdateMeshStartTime;
