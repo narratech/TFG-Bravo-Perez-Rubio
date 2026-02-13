@@ -59,7 +59,8 @@ protected:
     virtual void BeginPlay() override;
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-    float UpdatePatchTransform();
+    void UpdatePatchTransform(const FVector& SurfacePos, const FVector& N);
+    float GetDistanceToSurface(FVector& SurfacePos, FVector& N);
     bool IsClipmapRingVisible(const int32 LevelIndex, const float DistanceToSurface);
     void UpdateOrigins();
 };

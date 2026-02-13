@@ -8,13 +8,7 @@
 
 void FCameraViewportDataUpdater::Tick(float DeltaTime)
 {
-    // Opcional: Control de frecuencia de actualización
-    TimeSinceLastUpdate += DeltaTime;
-    if (TimeSinceLastUpdate >= UpdateInterval)
-    {
-        UpdateCameraViewport();
-        TimeSinceLastUpdate = 0.0f;
-    }
+    UpdateCameraViewport();
 }
 
 bool FCameraViewportDataUpdater::IsTickable() const

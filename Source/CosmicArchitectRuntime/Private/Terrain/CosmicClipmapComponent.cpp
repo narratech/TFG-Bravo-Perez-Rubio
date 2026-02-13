@@ -42,7 +42,10 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         ElapsedTime = 0;
 
-        float DistanceToSurface = UpdatePatchTransform();
+        FVector SurfacePos = FVector();
+        FVector N = FVector();
+
+        float DistanceToSurface = GetDistanceToSurface(SurfacePos, N);
 
         if (!FarLevel)
             return;
@@ -50,7 +53,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         // UE_LOG(LogTemp, Warning, TEXT("Distancia de cambio: %.4f, Distancia a la superficie:  %.4f"),
           //   IntermediateLevel.Mesh->GridSpacing * BaseResolution * HeightVisibility, DistanceToSurface);
 
-     //Activar/desactivar modo rendimiento al alejarte lo suficiente
+        //Activar/desactivar modo rendimiento al alejarte lo suficiente
         bPerformaceMode = DistanceToSurface > PlanetRadius * HeightVisibility;
 
         if (!bInit && !bPerformaceMode) {
@@ -106,7 +109,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
                 Levels[i]->UpdateMesh();
         }   
 
-        UpdatePatchTransform();
+        UpdatePatchTransform(SurfacePos, N);
     }    
 }
 
@@ -331,40 +334,8 @@ void UCosmicClipmapComponent::ReasignLevels()
 }
 
 
-float UCosmicClipmapComponent::UpdatePatchTransform()
+void UCosmicClipmapComponent::UpdatePatchTransform(const FVector& SurfacePos, const FVector& N)
 {
-
-    AActor* Owner = GetOwner();
-    if (!Owner) return 0.f;
-
-    FVector ViewerPosWorld = FVector();
-
-#if WITH_EDITOR
-
-    ViewerPosWorld = FCosmicCameraBridge::CameraLocation;
-
-    /*UE_LOG(LogTemp, Warning, TEXT("Camara X: %.4f, Y: %.4f, Z: %.4f"),
-        FCosmicCameraBridge::CameraLocation.X, FCosmicCameraBridge::CameraLocation.Y, FCosmicCameraBridge::CameraLocation.Z);*/
-#endif
-
-    if (GetWorld()->IsGameWorld()) {
-        APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-        if (!PC) return 0.f;
-
-        ViewerPosWorld = PC->PlayerCameraManager->GetCameraLocation();
-    }
-    
-    FVector PlanetCenter = Owner->GetActorLocation();
-
-    // Normal esférica
-    FVector N = (ViewerPosWorld - PlanetCenter).GetSafeNormal();
-
-    // Punto sobre la superficie
-    FVector SurfacePos = PlanetCenter + N * PlanetRadius * HeightScale;
-
-    if (bPerformaceMode || Levels.Num() == 0)
-        return FVector::Distance(ViewerPosWorld, SurfacePos);
-
     const FVector Up = N;
 
     // Elegimos un vector no colineal (branch barato)
@@ -395,10 +366,38 @@ float UCosmicClipmapComponent::UpdatePatchTransform()
         // Mover la malla procedimental
         Mesh->SetWorldLocationAndRotation(SurfacePos, PatchRotation);
     }
+   
+}
 
-    /*if (FarLevel) {
-        FarLevel->SetWorldLocationAndRotation(SurfacePos, PatchRotation);
-    }*/
+float UCosmicClipmapComponent::GetDistanceToSurface(FVector& SurfacePos, FVector& N)
+{
+    AActor* Owner = GetOwner();
+    if (!Owner) return 0.f;
+
+    FVector ViewerPosWorld = FVector();
+
+#if WITH_EDITOR
+
+    ViewerPosWorld = FCosmicCameraBridge::CameraLocation;
+
+    /*UE_LOG(LogTemp, Warning, TEXT("Camara X: %.4f, Y: %.4f, Z: %.4f"),
+        FCosmicCameraBridge::CameraLocation.X, FCosmicCameraBridge::CameraLocation.Y, FCosmicCameraBridge::CameraLocation.Z);*/
+#endif
+
+    if (GetWorld()->IsGameWorld()) {
+        APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+        if (!PC) return 0.f;
+
+        ViewerPosWorld = PC->PlayerCameraManager->GetCameraLocation();
+    }
+
+    FVector PlanetCenter = Owner->GetActorLocation();
+
+    // Normal esférica
+    N = (ViewerPosWorld - PlanetCenter).GetSafeNormal();
+
+    // Punto sobre la superficie
+    SurfacePos = PlanetCenter + N * PlanetRadius * HeightScale;
 
     return FVector::Distance(ViewerPosWorld, SurfacePos);
 }

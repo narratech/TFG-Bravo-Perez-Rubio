@@ -14,8 +14,4 @@ public:
 
 private:
     void UpdateCameraViewport();
-
-    // Para tracking de performance opcional
-    float TimeSinceLastUpdate = 0.0f;
-    static constexpr float UpdateInterval = 0.1f; // 10 updates per second max
 };
