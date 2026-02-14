@@ -240,6 +240,8 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
 
         UE_LOG(LogTemp, Warning, TEXT("  Nivel Extra creado"));
     }
+
+    bInit = false;
 }
 
 

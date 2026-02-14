@@ -26,6 +26,8 @@ public:
 
     float PlanetRadius = 100.f;
 
+    bool bInitializedInEditor = false;
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UMaterialInterface* BaseMaterial;
 

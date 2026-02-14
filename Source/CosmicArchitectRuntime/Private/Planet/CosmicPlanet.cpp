@@ -23,9 +23,14 @@ void ACosmicPlanet::BeginPlay()
 
     //InitClipmap();
     if (ClipmapComponent) {
-        ClipmapComponent->ParentRoot = Root;
-        ClipmapComponent->PlanetRadius = Radius * 100000;
-        ClipmapComponent->ReasignLevels();
+        if (ClipmapComponent->bInitializedInEditor) {
+            ClipmapComponent->ReasignLevels();
+        }
+        else {
+            ClipmapComponent->ParentRoot = Root;
+            ClipmapComponent->PlanetRadius = Radius * 100000;
+            ClipmapComponent->CreatePerformanceLevel(true);
+        }
     }
    
 }
@@ -37,6 +42,7 @@ void ACosmicPlanet::InitClipmap()
         ClipmapComponent->PlanetRadius = Radius * 100000;
         ClipmapComponent->ClearLevels();
         ClipmapComponent->CreatePerformanceLevel(true);
+        ClipmapComponent->bInitializedInEditor = true;
     }
 }
 
@@ -51,11 +57,11 @@ void ACosmicPlanet::OnConstruction(const FTransform& Transform)
 {
     Super::OnConstruction(Transform);
 
-#if WITH_EDITOR
+//#if WITH_EDITOR
     if (!GetWorld()->IsGameWorld())
     {
         InitClipmap();
     }
-#endif
+//#endif
 }
 
