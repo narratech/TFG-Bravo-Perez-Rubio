@@ -151,10 +151,6 @@ void UCosmicClipmapComponent::CreateLevels()
             continue;
         }
 
-        Mesh->CreationMethod = EComponentCreationMethod::UserConstructionScript;
-        //Mesh->bCreatedByConstructionScript = true;
-
-
         // Registrar componente
         Mesh->RegisterComponent();
 
@@ -232,6 +228,16 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
         Mesh->SetMeshActive(bActive);
 
         FarLevel = Mesh;
+
+        if (BaseMaterial)
+        {
+            Mesh->SetMaterial(0, BaseMaterial);
+        }
+        else
+        {
+            // Material por defecto
+            Mesh->SetMaterial(0, UMaterial::GetDefaultMaterial(MD_Surface));
+        }
 
         UE_LOG(LogTemp, Warning, TEXT("  Nivel Extra creado"));
     }
@@ -397,7 +403,7 @@ float UCosmicClipmapComponent::GetDistanceToSurface(FVector& SurfacePos, FVector
     N = (ViewerPosWorld - PlanetCenter).GetSafeNormal();
 
     // Punto sobre la superficie
-    SurfacePos = PlanetCenter + N * PlanetRadius * HeightScale;
+    SurfacePos = PlanetCenter + N * PlanetRadius;
 
     return FVector::Distance(ViewerPosWorld, SurfacePos);
 }

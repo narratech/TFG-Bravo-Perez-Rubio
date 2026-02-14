@@ -24,9 +24,7 @@ public:
 
     USceneComponent* ParentRoot = nullptr;
 
-    float PlanetRadius = 1000.f; // default
-
-    float HeightScale = 1.f; // multiplicador altura
+    float PlanetRadius = 100.f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UMaterialInterface* BaseMaterial;
@@ -46,15 +44,14 @@ public:
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "0", ClampMax = "60"))
     float TimeToRefresh = 0.25f;
 
-    bool bInit = false;
-
 protected:
     TArray<UClipmapMeshComponent*> Levels;
     UClipmapMeshComponent* FarLevel;
 
     float ElapsedTime = 0;
-    bool bPerformaceMode = false;
     float TimeToRefreshActive;
+    bool bPerformaceMode = false;
+    bool bInit = false;
 
     virtual void BeginPlay() override;
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
