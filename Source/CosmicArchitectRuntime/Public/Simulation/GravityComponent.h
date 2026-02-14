@@ -13,8 +13,7 @@ enum class EGravityMode : uint8
 	NearestPlanet  UMETA(DisplayName = "Nearest Planet"),
 	SpecificPlanet UMETA(DisplayName = "Specific Planet"),
 	AllPlanets     UMETA(DisplayName = "All Planets"),
-	NBody          UMETA(DisplayName = "N-Body"),
-	Hybrid         UMETA(DisplayName = "Hybrid")
+	NBody          UMETA(DisplayName = "N-Body")
 };
 
 
@@ -27,43 +26,55 @@ public:
 	// Sets default values for this component's properties
 	UGravityComponent();
 
+	// Called every frame
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+	FTransform getTransform() const { return GetOwner()->GetActorTransform(); }
+
+    // Modo de gravedad - siempre visible
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config")
+    EGravityMode GravityMode = EGravityMode::NearestPlanet;
+
+    // Masa - visible SOLO cuando NO es planeta
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config",
+        meta = (EditCondition = "!IsPlanet", EditConditionHides))
+    double Mass = 100.0f;
+
+    // Radio - visible SOLO cuando es planeta
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config",
+        meta = (EditCondition = "IsPlanet", EditConditionHides, ClampMin = "0.001",
+            UIMin = "0.001", UIMax = "1000000",
+            ToolTip = "Radio del planeta en kilómetros"))
+    float RadiusKm = 1.0f;
+
+    // Gravedad en superficie - visible SOLO cuando es planeta
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config",
+        meta = (EditCondition = "IsPlanet", EditConditionHides, ClampMin = "0.0"))
+    float SurfaceGravity = 9.8f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config")
+    bool AffectsOthers = true;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config")
+    bool IsAffectedByOthers = true;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gravity Config")
+    bool IsPlanet = false;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config",
+        meta = (EditCondition = "GravityMode == EGravityMode::SpecificPlanet", EditConditionHides))
+    AActor* SpecificGravitySource = nullptr;
+
+	FVector Velocity = FVector::ZeroVector;
+	FVector AccumulatedForce = FVector::ZeroVector;
+
+	void Integrate(double DeltaTime);
+	void SetIsPlanet(bool bNewIsPlanet);
+
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	float GetObjectRadius() const;
-
-public:	
-	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
-	FTransform getTransform() const { return GetOwner()->GetActorTransform(); }
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	EGravityMode GravityMode = EGravityMode::NearestPlanet;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	double Mass = 100.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config")
-	bool AffectsOthers = true;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config")
-	bool IsAffectedByOthers = true;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config")
-	bool IsPlanet = false;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config")
-	AActor* SpecificGravitySource = nullptr;
-
-	// Gravedad en la superficie en m/s^2 (Ej: Tierra = 9.8, Luna = 1.6)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config", meta = (EditCondition = "bUseSurfaceGravity"))
-	float SurfaceGravity = 9.8f;
-
-	FVector Velocity = FVector::ZeroVector;
-	FVector AccumulatedForce = FVector::ZeroVector;
-
-	void Integrate(double DeltaTime);
 };

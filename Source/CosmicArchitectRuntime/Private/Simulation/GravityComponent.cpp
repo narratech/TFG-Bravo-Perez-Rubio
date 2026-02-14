@@ -23,19 +23,23 @@ void UGravityComponent::BeginPlay()
         if (UPrimitiveComponent* Root = Cast<UPrimitiveComponent>(Owner->GetRootComponent()))
         {
             // Si no es movible, lo hacemos movible
-            if (Root->Mobility != EComponentMobility::Movable)
+            if (GravityMode != EGravityMode::None && Root->Mobility != EComponentMobility::Movable)
             {
                 Root->SetMobility(EComponentMobility::Movable);
             }
         }
     }
 
-    if (UGravitySubsystem* Subsystem =
-        GetWorld()->GetSubsystem<UGravitySubsystem>())
-    {
-        Subsystem->RegisterBody(this);
+    UGravitySubsystem* Subsystem = GetWorld()->GetSubsystem<UGravitySubsystem>();
+
+    if (!Subsystem) return;
+
+    if (IsPlanet) {
+        Mass = FMath::Square(RadiusKm * 1000) * SurfaceGravity / Subsystem->GetGravityConstant();
+        UE_LOG(LogTemp, Warning, TEXT("Masa %.4f"), Mass);
     }
-    
+
+    Subsystem->RegisterBody(this);
 }
 
 void UGravityComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -60,16 +64,16 @@ void UGravityComponent::Integrate(double DeltaTime)
 {
     // La aceleración ya está acumulada por el subsistema
     // Solo aplicamos la gravedad específica si es necesario
-    if (GravityMode == EGravityMode::SpecificPlanet && SpecificGravitySource) {
-        // Podemos mantener la lógica de superficie aquí si queremos
-        // Pero la fuerza principal ya vino del subsistema
-        FVector Direction = (SpecificGravitySource->GetActorLocation() - GetOwner()->GetActorLocation()).GetSafeNormal();
-        double desiredAcc = SurfaceGravity * 100; // Convertir a cm/s^2
-        // Añadimos esta aceleración a la acumulada
-        AccumulatedForce += Direction * (desiredAcc * Mass);
+    //if (GravityMode == EGravityMode::SpecificPlanet && SpecificGravitySource) {
+    //    // Podemos mantener la lógica de superficie aquí si queremos
+    //    // Pero la fuerza principal ya vino del subsistema
+    //    FVector Direction = (SpecificGravitySource->GetActorLocation() - GetOwner()->GetActorLocation()).GetSafeNormal();
+    //    double desiredAcc = SurfaceGravity * 100; // Convertir a cm/s^2
+    //    // Añadimos esta aceleración a la acumulada
+    //    AccumulatedForce += Direction * (desiredAcc * Mass);
 
-        
-    }
+    //    
+    //}
 
     FVector Acceleration = AccumulatedForce / Mass;
     Velocity += Acceleration * DeltaTime;
@@ -78,7 +82,7 @@ void UGravityComponent::Integrate(double DeltaTime)
     //double DampingFactor = FMath::Clamp(1.0 - (Damping * DeltaTime), 0.0, 1.0);
     //Velocity *= DampingFactor;
 
-    UE_LOG(LogTemp, Warning, TEXT("Velocidad %.4f"), Velocity.Length());
+    //UE_LOG(LogTemp, Warning, TEXT("Velocidad %.4f"), Velocity.Length());
 
     if (AActor* Owner = GetOwner())
     {
@@ -87,6 +91,21 @@ void UGravityComponent::Integrate(double DeltaTime)
     }
 
     AccumulatedForce = FVector::ZeroVector;
+}
+
+void UGravityComponent::SetIsPlanet(bool bNewIsPlanet)
+{
+    if (bNewIsPlanet == IsPlanet) return;
+
+    IsPlanet = bNewIsPlanet;
+
+    // Notificar al subsistema del cambio
+    if (UGravitySubsystem* Subsystem = GetWorld()->GetSubsystem<UGravitySubsystem>())
+    {
+        // Primero removemos y luego volvemos a registrar para actualizar las listas
+        Subsystem->UnregisterBody(this);
+        Subsystem->RegisterBody(this);
+    }
 }
 
 float UGravityComponent::GetObjectRadius() const

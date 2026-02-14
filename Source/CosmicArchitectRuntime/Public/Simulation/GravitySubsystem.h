@@ -29,9 +29,11 @@ public:
     // Registro de cuerpos
     void RegisterBody(UGravityComponent* Body);
     void UnregisterBody(UGravityComponent* Body);
+    double GetGravityConstant() const;
     virtual UWorld* GetTickableGameObjectWorld() const override;
 
 private:
     UPROPERTY()
-    TArray<TObjectPtr<UGravityComponent>> Bodies;
+    TArray<UGravityComponent*> Bodies;
+    TArray<UGravityComponent*> Planets;
 };
