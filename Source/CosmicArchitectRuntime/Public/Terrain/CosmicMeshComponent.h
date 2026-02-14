@@ -4,13 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "ProceduralMeshComponent.h"
-#include "ClipmapMeshComponent.generated.h"
+#include "CosmicMeshComponent.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class UClipmapMeshComponent : public UProceduralMeshComponent
+class UCosmicMeshComponent : public UProceduralMeshComponent
 {
     GENERATED_BODY()
 

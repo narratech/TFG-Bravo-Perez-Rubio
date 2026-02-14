@@ -18,6 +18,17 @@ void UGravityComponent::BeginPlay()
 {
     Super::BeginPlay();
 
+    if (AActor* Owner = GetOwner())
+    {
+        if (UPrimitiveComponent* Root = Cast<UPrimitiveComponent>(Owner->GetRootComponent()))
+        {
+            // Si no es movible, lo hacemos movible
+            if (Root->Mobility != EComponentMobility::Movable)
+            {
+                Root->SetMobility(EComponentMobility::Movable);
+            }
+        }
+    }
 
     if (UGravitySubsystem* Subsystem =
         GetWorld()->GetSubsystem<UGravitySubsystem>())
@@ -47,20 +58,27 @@ void UGravityComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 
 void UGravityComponent::Integrate(double DeltaTime)
 {
-    FVector Acceleration = AccumulatedForce / Mass;
-
-    if (GravityMode == EGravityMode::SpecificPlanet) {
+    // La aceleración ya está acumulada por el subsistema
+    // Solo aplicamos la gravedad específica si es necesario
+    if (GravityMode == EGravityMode::SpecificPlanet && SpecificGravitySource) {
+        // Podemos mantener la lógica de superficie aquí si queremos
+        // Pero la fuerza principal ya vino del subsistema
         FVector Direction = (SpecificGravitySource->GetActorLocation() - GetOwner()->GetActorLocation()).GetSafeNormal();
-        double desiredAcc = SurfaceGravity * 100;
-        Acceleration = Direction * desiredAcc;
+        double desiredAcc = SurfaceGravity * 100; // Convertir a cm/s^2
+        // Añadimos esta aceleración a la acumulada
+        AccumulatedForce += Direction * (desiredAcc * Mass);
+
+        
     }
 
+    FVector Acceleration = AccumulatedForce / Mass;
     Velocity += Acceleration * DeltaTime;
 
-    double Damping = 0.02;
+    //double Damping = 0.02;
+    //double DampingFactor = FMath::Clamp(1.0 - (Damping * DeltaTime), 0.0, 1.0);
+    //Velocity *= DampingFactor;
 
-    double DampingFactor = FMath::Clamp(1.0 - (Damping * DeltaTime), 0.0, 1.0);
-    Velocity *= DampingFactor;
+    UE_LOG(LogTemp, Warning, TEXT("Velocidad %.4f"), Velocity.Length());
 
     if (AActor* Owner = GetOwner())
     {

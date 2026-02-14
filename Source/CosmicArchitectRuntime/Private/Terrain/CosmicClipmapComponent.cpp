@@ -6,7 +6,7 @@
 #include "Camera/PlayerCameraManager.h"
 #include "Components/StaticMeshComponent.h"
 #include "Kismet/GameplayStatics.h"
-#include "Terrain/ClipmapMeshComponent.h"
+#include "Terrain/CosmicMeshComponent.h"
 #include "CosmicCameraBridge.h"
 
 // Sets default values for this component's properties
@@ -83,7 +83,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         for (size_t i = 4; i < Levels.Num(); i++)
         {
-            UClipmapMeshComponent* Mesh = Levels[i];
+            UCosmicMeshComponent* Mesh = Levels[i];
 
             // Versión simple y rápida para clipmaps concéntricos
             bool bIsVisible = IsClipmapRingVisible(i, DistanceToSurface);
@@ -127,7 +127,7 @@ void UCosmicClipmapComponent::CreateLevels()
         return;
     }
 
-    UE_LOG(LogTemp, Warning, TEXT("UCosmicClipmapComponent::CreateLevels() - Creando %d niveles"), NumLevels);
+    //UE_LOG(LogTemp, Warning, TEXT("UCosmicClipmapComponent::CreateLevels() - Creando %d niveles"), NumLevels);
 
     // 3. Inicializar array
     Levels.Empty();
@@ -140,7 +140,7 @@ void UCosmicClipmapComponent::CreateLevels()
         FName ComponentName = *FString::Printf(TEXT("ClipmapMesh_Level_%d"), L);
 
         // Crear componente
-        UClipmapMeshComponent* Mesh = NewObject<UClipmapMeshComponent>(
+        UCosmicMeshComponent* Mesh = NewObject<UCosmicMeshComponent>(
             GetOwner(),
             ComponentName
         );
@@ -185,15 +185,15 @@ void UCosmicClipmapComponent::CreateLevels()
         // Guardar referencia
         Levels[L] = Mesh;
 
-        UE_LOG(LogTemp, Warning, TEXT("  Nivel %d creado: GridSpacing=%.2f, bIsRing=%s"),
-            L, Mesh->GridSpacing, Mesh->bIsRing ? TEXT("true") : TEXT("false"));
+        //UE_LOG(LogTemp, Warning, TEXT("  Nivel %d creado: GridSpacing=%.2f, bIsRing=%s"),
+        //    L, Mesh->GridSpacing, Mesh->bIsRing ? TEXT("true") : TEXT("false"));
     }
 
     // 5. Crear nivel performance
     //CreatePerformanceLevel();
         
     bInit = true;
-    UE_LOG(LogTemp, Warning, TEXT("CreateLevels completado. Niveles totales: %d"), Levels.Num());
+    //UE_LOG(LogTemp, Warning, TEXT("CreateLevels completado. Niveles totales: %d"), Levels.Num());
 }
 
 void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
@@ -202,7 +202,7 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
 
     FName ComponentName = *FString::Printf(TEXT("ClipmapMesh_Performance_%d"), 0);
 
-    UClipmapMeshComponent* Mesh = NewObject<UClipmapMeshComponent>(
+    UCosmicMeshComponent* Mesh = NewObject<UCosmicMeshComponent>(
         GetOwner(),
         ComponentName
     );
@@ -238,7 +238,7 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
             Mesh->SetMaterial(0, UMaterial::GetDefaultMaterial(MD_Surface));
         }
 
-        UE_LOG(LogTemp, Warning, TEXT("  Nivel Extra creado"));
+        //UE_LOG(LogTemp, Warning, TEXT("  Nivel Extra creado"));
     }
 
     bInit = false;
@@ -252,7 +252,7 @@ void UCosmicClipmapComponent::ClearLevels()
     int LevelsCleared = 0;  
 
     // 1. Destruir componentes del array Levels
-    for (UClipmapMeshComponent* Mesh : Levels)
+    for (UCosmicMeshComponent* Mesh : Levels)
     {
         UE_LOG(LogTemp, Warning, TEXT("  Destruyendo nivel %d"), Mesh->LevelIndex);
 
@@ -288,7 +288,7 @@ void UCosmicClipmapComponent::ClearLevels()
 
         for (USceneComponent* Child : Children)
         {
-            if (UClipmapMeshComponent* TargetMesh = Cast<UClipmapMeshComponent>(Child))
+            if (UCosmicMeshComponent* TargetMesh = Cast<UCosmicMeshComponent>(Child))
             {
                 // 1. Lo desadjuntamos del padre
                 TargetMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
@@ -302,7 +302,7 @@ void UCosmicClipmapComponent::ClearLevels()
 
     }
 
-    UE_LOG(LogTemp, Warning, TEXT("UCosmicClipmapComponent::ClearLevels() - Limpiando %d niveles"), LevelsCleared);
+    //UE_LOG(LogTemp, Warning, TEXT("UCosmicClipmapComponent::ClearLevels() - Limpiando %d niveles"), LevelsCleared);
 }
 
 void UCosmicClipmapComponent::ReasignLevels()
@@ -318,7 +318,7 @@ void UCosmicClipmapComponent::ReasignLevels()
 
         for (USceneComponent* Child : Children)
         {
-            if (UClipmapMeshComponent* TargetMesh = Cast<UClipmapMeshComponent>(Child))
+            if (UCosmicMeshComponent* TargetMesh = Cast<UCosmicMeshComponent>(Child))
             {
                 if (!FarLevel)
                 {
@@ -337,7 +337,7 @@ void UCosmicClipmapComponent::ReasignLevels()
 
     UE_LOG(LogTemp, Warning, TEXT("Mallas reasignada en %.4f ms"), UpdateMeshTime * 1000.0);*/
 
-    UE_LOG(LogTemp, Warning, TEXT("UCosmicClipmapComponent::ReasignLevels() - Reasignando %d niveles"), LevelsReasigned);
+    //UE_LOG(LogTemp, Warning, TEXT("UCosmicClipmapComponent::ReasignLevels() - Reasignando %d niveles"), LevelsReasigned);
 }
 
 
@@ -366,7 +366,7 @@ void UCosmicClipmapComponent::UpdatePatchTransform(const FVector& SurfacePos, co
     FRotator PatchRotation = FRotationMatrix::MakeFromXZ(Forward, Up).Rotator();*/
 
 
-    for (UClipmapMeshComponent* Mesh : Levels)
+    for (UCosmicMeshComponent* Mesh : Levels)
     {
         if (!Mesh) continue;
 

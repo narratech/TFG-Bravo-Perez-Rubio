@@ -6,7 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "CosmicClipmapComponent.generated.h"
 
-class UClipmapMeshComponent;
+class UCosmicMeshComponent;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class UCosmicClipmapComponent : public UActorComponent
@@ -47,8 +47,8 @@ public:
     float TimeToRefresh = 0.25f;
 
 protected:
-    TArray<UClipmapMeshComponent*> Levels;
-    UClipmapMeshComponent* FarLevel;
+    TArray<UCosmicMeshComponent*> Levels;
+    UCosmicMeshComponent* FarLevel;
 
     float ElapsedTime = 0;
     float TimeToRefreshActive;

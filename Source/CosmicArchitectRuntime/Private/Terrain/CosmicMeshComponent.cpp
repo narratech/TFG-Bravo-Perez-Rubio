@@ -1,9 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Terrain/ClipmapMeshComponent.h"
+#include "Terrain/CosmicMeshComponent.h"
 
-void UClipmapMeshComponent::BuildBaseMesh()
+void UCosmicMeshComponent::BuildBaseMesh()
 {
     //UE_LOG(LogTemp, Warning, TEXT("UClipmapMeshComponent::BuildBaseMesh() iniciado"));
 
@@ -178,13 +178,13 @@ void UClipmapMeshComponent::BuildBaseMesh()
 
     double CreateEndTime = FPlatformTime::Seconds();
 
-    UE_LOG(LogTemp, Warning, TEXT("CreateMeshSection tomo: %.4f ms"), (CreateEndTime - CreateStartTime) * 1000.0);
+    //UE_LOG(LogTemp, Warning, TEXT("CreateMeshSection tomo: %.4f ms"), (CreateEndTime - CreateStartTime) * 1000.0);
 
     // 7. VERIFICAR que se creó correctamente
     if (GetNumSections() > 0)
     {
         bMeshCreated = true;
-        UE_LOG(LogTemp, Warning, TEXT("Malla creada exitosamente. Secciones: %d"), GetNumSections());
+        //UE_LOG(LogTemp, Warning, TEXT("Malla creada exitosamente. Secciones: %d"), GetNumSections());
     }
     else
     {
@@ -197,7 +197,7 @@ void UClipmapMeshComponent::BuildBaseMesh()
     bMeshCreated = true;
 }
 
-void UClipmapMeshComponent::BuildSphereMesh()
+void UCosmicMeshComponent::BuildSphereMesh()
 {
     ClearAllMeshSections();
 
@@ -306,13 +306,13 @@ void UClipmapMeshComponent::BuildSphereMesh()
 
     double CreateEndTime = FPlatformTime::Seconds();
 
-    UE_LOG(LogTemp, Warning, TEXT("CreateSphereMesh tomo: %.4f ms"), (CreateEndTime - CreateStartTime) * 1000.0);
+    //UE_LOG(LogTemp, Warning, TEXT("CreateSphereMesh tomo: %.4f ms"), (CreateEndTime - CreateStartTime) * 1000.0);
 
     // 7. VERIFICAR que se creó correctamente
     if (GetNumSections() > 0)
     {
         bMeshCreated = true;
-        UE_LOG(LogTemp, Warning, TEXT("Malla creada exitosamente. Secciones: %d"), GetNumSections());
+        //UE_LOG(LogTemp, Warning, TEXT("Malla creada exitosamente. Secciones: %d"), GetNumSections());
     }
     else
     {
@@ -325,7 +325,7 @@ void UClipmapMeshComponent::BuildSphereMesh()
     bMeshCreated = true;
 }
 
-void UClipmapMeshComponent::UpdateMesh()
+void UCosmicMeshComponent::UpdateMesh()
 {
     //double UpdateMeshStartTime = FPlatformTime::Seconds();
 
@@ -375,14 +375,14 @@ void UClipmapMeshComponent::UpdateMesh()
     UE_LOG(LogTemp, Warning, TEXT("Malla actualizada en %.4f ms"), UpdateMeshTime * 1000.0);*/
 }
 
-void UClipmapMeshComponent::SetMeshActive(bool active)
+void UCosmicMeshComponent::SetMeshActive(bool active)
 {
     bActiveMesh = active;
     SetMeshSectionVisible(0, active);
 }
 
 
-void UClipmapMeshComponent::UpdateHeights(const FVector2D& Origin)
+void UCosmicMeshComponent::UpdateHeights(const FVector2D& Origin)
 {
 
     //De prueba

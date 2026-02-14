@@ -9,7 +9,7 @@
 UENUM(BlueprintType)
 enum class EGravityMode : uint8
 {
-	None            UMETA(DisplayName = "None"),
+	None           UMETA(DisplayName = "None"),
 	NearestPlanet  UMETA(DisplayName = "Nearest Planet"),
 	SpecificPlanet UMETA(DisplayName = "Specific Planet"),
 	AllPlanets     UMETA(DisplayName = "All Planets"),
@@ -48,6 +48,12 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config")
 	bool AffectsOthers = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config")
+	bool IsAffectedByOthers = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config")
+	bool IsPlanet = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config")
 	AActor* SpecificGravitySource = nullptr;
