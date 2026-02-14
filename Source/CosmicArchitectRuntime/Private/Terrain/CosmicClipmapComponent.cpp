@@ -209,7 +209,6 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
 
     if (Mesh)
     {
-        Mesh->CreationMethod = EComponentCreationMethod::UserConstructionScript;
 
         Mesh->RegisterComponent();
 

@@ -32,7 +32,7 @@ public:
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "32", ClampMax = "256"))
     int32 BaseResolution = 64;
 
-    UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "1", ClampMax = "15"))
+    UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "1", ClampMax = "20"))
     int32 NumLevels = 5;
 
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "50", ClampMax = "500"))
