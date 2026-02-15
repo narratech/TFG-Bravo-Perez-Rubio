@@ -2,6 +2,7 @@
 
 
 #include "Simulation/OrbitComponent.h"
+#include "Math/UnrealMathUtility.h"
 
 // Sets default values for this component's properties
 UOrbitComponent::UOrbitComponent()
@@ -29,6 +30,38 @@ void UOrbitComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	// ...
+	if (!ParentBody || OrbitalPeriod <= 0.0f) return;
+
+	CurrentOrbitTime += DeltaTime;
+
+	CurrentOrbitTime = FMath::Fmod(CurrentOrbitTime, OrbitalPeriod);
+
+	float MeanMotion = (2.0f * PI) / OrbitalPeriod;
+	float MeanAnomaly = MeanMotion * CurrentOrbitTime;
+
+	float E = MeanAnomaly;
+
+	for (int32 i = 0; i < 5; ++i) {
+		float SinE = FMath::Sin(E);
+		float CosE = FMath::Cos(E);
+
+		float DeltaE = (E - Eccentricity * SinE - MeanAnomaly) / (1.0f - Eccentricity * CosE);
+		E -= DeltaE;
+	}
+
+	float X = SemiMajorAxis * (FMath::Cos(E) - Eccentricity);
+	float Y = SemiMajorAxis * FMath::Sqrt(1.0f - Eccentricity * Eccentricity) * FMath::Sin(E);
+
+	FVector OrbitalPos(X, Y, 0.0f);
+
+	FRotator OrbitTilt(Inclination, 0.0f, 0.0f);
+	FVector RotatedPos = OrbitTilt.RotateVector(OrbitalPos);
+
+	FVector FinalLocation = ParentBody->GetActorLocation() + RotatedPos;
+
+	if (AActor* Owner = GetOwner())
+	{
+		Owner->SetActorLocation(FinalLocation);
+	}
 }
 
