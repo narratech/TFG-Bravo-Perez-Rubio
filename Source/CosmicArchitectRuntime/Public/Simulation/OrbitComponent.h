@@ -27,16 +27,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	AActor* ParentBody;
 
-	UPROPERTY(EditAnywhere)
-	float SemiMajorAxis;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Orbit State")
+	float CurrentOrbitTime = 0.0f;
 
-	UPROPERTY(EditAnywhere)
-	float Eccentricity;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit Params")
+	float SemiMajorAxis = 1000.0f;
 
-	UPROPERTY(EditAnywhere)
-	float OrbitalPeriod;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit Params")
+	float Eccentricity = 0.0f;//0 círculo, 0.99 elipse extrema
 
-	UPROPERTY(EditAnywhere)
-	float Inclination;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit Params")
+	float OrbitalPeriod = 10.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit Params")
+	float Inclination = 0.0f;
 };
