@@ -5,15 +5,29 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Components/BoxComponent.h"
-#include "BodyGeneratorManager.generated.h"
+#include "CosmicSystemGenerator.generated.h"
 
-UCLASS()
-class COSMICARCHITECTRUNTIME_API ABodyGeneratorManager : public AActor
+UCLASS(HideCategories = (
+    Rendering,          // Oculta mallas, sombras, visibilidad
+    Replication,        // Oculta red
+    Input,              // Oculta input
+    Collision,          // Oculta colisiones
+    Actor,              // Oculta Tick, Spawn
+    LOD,                // Oculta Level of Detail
+    Cooking, 
+    Networking,
+    Physics,            // Oculta físicas (Gravity, Mass)
+    Navigation,         // Oculta NavMesh
+    Tags,               // Oculta etiquetas de actor
+    DataLayers,         // Oculta capas de datos
+    LevelInstance       // Oculta instancias de nivel
+), AutoExpandCategories = ("Configuracion", "Acciones")) // Abre tus categorías automáticamente
+class COSMICARCHITECTRUNTIME_API ACosmicSystemGenerator : public AActor
 {
     GENERATED_BODY()
 
 public:
-    ABodyGeneratorManager();
+    ACosmicSystemGenerator();
 
 protected:
     // El volumen visual donde se generarán los cuerpos

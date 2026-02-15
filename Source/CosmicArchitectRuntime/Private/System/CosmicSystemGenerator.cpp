@@ -1,7 +1,7 @@
-#include "Simulation/BodyGeneratorManager.h"
+#include "System/CosmicSystemGenerator.h"
 #include "Kismet/KismetMathLibrary.h"
 
-ABodyGeneratorManager::ABodyGeneratorManager()
+ACosmicSystemGenerator::ACosmicSystemGenerator()
 {
     PrimaryActorTick.bCanEverTick = false;
 
@@ -16,7 +16,7 @@ ABodyGeneratorManager::ABodyGeneratorManager()
     Semilla = 12345;
 }
 
-void ABodyGeneratorManager::GenerarCuerpos()
+void ACosmicSystemGenerator::GenerarCuerpos()
 {
     // 1. Limpiar generación anterior para no acumular basura
     LimpiarCuerpos();
@@ -69,7 +69,7 @@ void ABodyGeneratorManager::GenerarCuerpos()
     }
 }
 
-void ABodyGeneratorManager::LimpiarCuerpos()
+void ACosmicSystemGenerator::LimpiarCuerpos()
 {
     for (AActor* Actor : CuerposGenerados)
     {
