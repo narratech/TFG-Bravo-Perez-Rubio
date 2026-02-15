@@ -33,6 +33,7 @@ public:
     virtual UWorld* GetTickableGameObjectWorld() const override;
 
 private:
+    void BodyAddForce(UGravityComponent* BodyA, UGravityComponent* BodyB);
     UPROPERTY()
     TArray<UGravityComponent*> Bodies;
     TArray<UGravityComponent*> Planets;

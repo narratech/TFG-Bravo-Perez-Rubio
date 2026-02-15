@@ -60,15 +60,8 @@ void UGravitySubsystem::Tick(float DeltaTime)
                     NearestPlanet = Planet;
                 }
             }
-
-            if (NearestPlanet) {
-                FVector Difference = NearestPlanet->getTransform().GetLocation() - PosA;
-                double Distance = Difference.Size();
-                FVector Direction = Difference.GetSafeNormal();
-                double GM = NearestPlanet->SurfaceGravity * FMath::Square(NearestPlanet->RadiusKm * 1000);
-                double ForceMagnitude = (MassA * GM) / Distance;
-                BodyA->AccumulatedForce += Direction * ForceMagnitude;
-            }
+            BodyAddForce(BodyA, NearestPlanet);
+            
             break;
         }
 
@@ -85,14 +78,8 @@ void UGravitySubsystem::Tick(float DeltaTime)
                 }
             }
 
-            if (SpecificPlanetComp && SpecificPlanetComp->AffectsOthers) {
-                FVector Difference = SpecificPlanetComp->getTransform().GetLocation() - PosA;
-                double Distance = Difference.Size();
-                FVector Direction = Difference.GetSafeNormal();
-                double GM = SpecificPlanetComp->SurfaceGravity * FMath::Square(SpecificPlanetComp->RadiusKm * 1000);
-                double ForceMagnitude = (MassA * GM) / Distance;
-                BodyA->AccumulatedForce += Direction * ForceMagnitude;
-            }
+            BodyAddForce(BodyA, SpecificPlanetComp);
+
             break;
         }
 
@@ -102,14 +89,7 @@ void UGravitySubsystem::Tick(float DeltaTime)
 
             // Usar la lista de planetas para mejor rendimiento
             for (UGravityComponent* Planet : Planets) {
-                if (!Planet || !Planet->AffectsOthers) continue;
-
-                FVector Difference = Planet->getTransform().GetLocation() - PosA;
-                double Distance = Difference.Size();
-                FVector Direction = Difference.GetSafeNormal();
-                double GM = Planet->SurfaceGravity * FMath::Square(Planet->RadiusKm * 1000);
-                double ForceMagnitude = (MassA * GM) / Distance;
-                BodyA->AccumulatedForce += Direction * ForceMagnitude;
+                BodyAddForce(BodyA, Planet);
             }
             break;
         }
@@ -121,14 +101,7 @@ void UGravitySubsystem::Tick(float DeltaTime)
 
             for (int32 j = 0; j < Count; ++j) {
                 UGravityComponent* BodyB = Bodies[j];
-                if (!BodyB || !BodyB->AffectsOthers || BodyA == BodyB) continue;
-
-                FVector Difference = BodyB->getTransform().GetLocation() - PosA;
-                double Distance = Difference.Size() / 100;
-                FVector Direction = Difference.GetSafeNormal();
-                double ForceMagnitude = (G * MassA * BodyB->Mass) / FMath::Square(Distance);
-                
-                BodyA->AccumulatedForce += Direction * ForceMagnitude;
+                BodyAddForce(BodyA, BodyB);
             }
             break;
         }
@@ -145,6 +118,18 @@ void UGravitySubsystem::Tick(float DeltaTime)
             Body->Integrate(DeltaTime);
         }
     }
+}
+
+void UGravitySubsystem::BodyAddForce(UGravityComponent* BodyA, UGravityComponent* BodyB)
+{
+    if (!BodyB || !BodyB->AffectsOthers || BodyA == BodyB) return;
+
+    FVector Difference = BodyB->getTransform().GetLocation() - BodyA->getTransform().GetLocation();
+    double Distance = Difference.Size() / 100;
+    FVector Direction = Difference.GetSafeNormal();
+    double ForceMagnitude = (G * BodyA->Mass * BodyB->Mass) / FMath::Square(Distance);
+
+    BodyA->AccumulatedForce += Direction * ForceMagnitude;
 }
 
 void UGravitySubsystem::RegisterBody(UGravityComponent* Body)
@@ -184,6 +169,8 @@ UWorld* UGravitySubsystem::GetTickableGameObjectWorld() const
 {
     return GetWorld();
 }
+
+
 
 bool UGravitySubsystem::IsTickable() const
 {
