@@ -4,7 +4,7 @@
 #include "Simulation/GravitySubsystem.h"
 #include "Simulation/GravityComponent.h"
 
-static const double G = 0.000000000006674; //Constante gravitacional adaptada
+static const double G = 0.00000000006674; //Constante gravitacional adaptada
 
 // Factor de suavizado para evitar que la fuerza sea infinita si dos cuerpos se tocan
 static const double Softening = 100000.0;
@@ -119,19 +119,16 @@ void UGravitySubsystem::Tick(float DeltaTime)
             // Modo N-Body: todos los cuerpos se afectan entre sí
             if (!BodyA->IsAffectedByOthers) break;
 
-            for (int32 j = i + 1; j < Count; ++j) {
+            for (int32 j = 0; j < Count; ++j) {
                 UGravityComponent* BodyB = Bodies[j];
-                if (!BodyB) continue;
-
-                // Verificar si BodyB afecta a otros y si BodyA es afectado por otros
-                if (!BodyB->AffectsOthers || !BodyA->IsAffectedByOthers) continue;
+                if (!BodyB || !BodyB->AffectsOthers || BodyA == BodyB) continue;
 
                 FVector Difference = BodyB->getTransform().GetLocation() - PosA;
-                double DistSq = Difference.SizeSquared();
-                double DistanceFactor = DistSq + Softening;
+                double Distance = Difference.Size() / 100;
                 FVector Direction = Difference.GetSafeNormal();
-                double ForceMagnitude = (G * MassA * BodyB->Mass) / DistanceFactor;
-                BodyA->AccumulatedForce = Direction * ForceMagnitude;
+                double ForceMagnitude = (G * MassA * BodyB->Mass) / FMath::Square(Distance);
+                
+                BodyA->AccumulatedForce += Direction * ForceMagnitude;
             }
             break;
         }

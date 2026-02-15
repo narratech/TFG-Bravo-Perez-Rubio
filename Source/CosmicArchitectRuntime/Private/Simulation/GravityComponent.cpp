@@ -75,14 +75,18 @@ void UGravityComponent::Integrate(double DeltaTime)
     //    
     //}
 
-    FVector Acceleration = AccumulatedForce / Mass;
+    
+
+    FVector Acceleration = AccumulatedForce * 100 / Mass;
     Velocity += Acceleration * DeltaTime;
+
+    UE_LOG(LogTemp, Warning, TEXT("Fuerza %.4f N/m"), Acceleration.Length());
 
     //double Damping = 0.02;
     //double DampingFactor = FMath::Clamp(1.0 - (Damping * DeltaTime), 0.0, 1.0);
     //Velocity *= DampingFactor;
 
-    //UE_LOG(LogTemp, Warning, TEXT("Velocidad %.4f"), Velocity.Length());
+    //UE_LOG(LogTemp, Warning, TEXT("Velocidad %.4f m/s"), Velocity.Length() / 100);
 
     if (AActor* Owner = GetOwner())
     {
