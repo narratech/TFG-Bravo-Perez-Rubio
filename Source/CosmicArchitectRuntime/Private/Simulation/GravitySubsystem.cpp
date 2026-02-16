@@ -25,6 +25,8 @@ void UGravitySubsystem::Tick(float DeltaTime)
 {
    // UE_LOG(LogTemp, Warning, TEXT("Actualizando"));
 
+    double UpdateMeshStartTime = FPlatformTime::Seconds();
+
     const int32 Count = Bodies.Num();
     if (Count == 0) return;
 
@@ -110,6 +112,11 @@ void UGravitySubsystem::Tick(float DeltaTime)
         }
     }
 
+    double UpdateMeshEndTime = FPlatformTime::Seconds();
+    double UpdateMeshTime = UpdateMeshEndTime - UpdateMeshStartTime;
+
+    UE_LOG(LogTemp, Warning, TEXT("Calculo gravitatorio hecho en %.4f ms"), UpdateMeshTime * 1000.0);
+
     // Integramos todos los cuerpos activos
     for (UGravityComponent* Body : Bodies)
     {
@@ -125,11 +132,13 @@ void UGravitySubsystem::BodyAddForce(UGravityComponent* BodyA, UGravityComponent
     if (!BodyB || !BodyB->AffectsOthers || BodyA == BodyB) return;
 
     FVector Difference = BodyB->getTransform().GetLocation() - BodyA->getTransform().GetLocation();
-    double Distance = Difference.Size() / 100;
-    FVector Direction = Difference.GetSafeNormal();
-    double ForceMagnitude = (G * BodyA->Mass * BodyB->Mass) / FMath::Square(Distance);
 
-    BodyA->AccumulatedForce += Direction * ForceMagnitude;
+    // Convertimos a metros²
+    double DistSq_m = Difference.SizeSquared() / 10000.0;
+
+    double ForceMagnitude = (G * BodyA->Mass * BodyB->Mass) / DistSq_m;
+
+    BodyA->AccumulatedForce += Difference.GetSafeNormal() * ForceMagnitude;
 }
 
 void UGravitySubsystem::RegisterBody(UGravityComponent* Body)

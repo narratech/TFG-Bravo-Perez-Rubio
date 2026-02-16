@@ -21,13 +21,24 @@ void UGravityComponent::BeginPlay()
 
     if (AActor* Owner = GetOwner())
     {
-        if (UPrimitiveComponent* Root = Cast<UPrimitiveComponent>(Owner->GetRootComponent()))
+        RootPrimitive = Cast<UPrimitiveComponent>(Owner->GetRootComponent());
+
+        if (RootPrimitive)
         {
-            // Si no es movible, lo hacemos movible
-            if (GravityMode != EGravityMode::None && Root->Mobility != EComponentMobility::Movable)
+            // Asegurar que sea movible
+            if (GravityMode != EGravityMode::None && RootPrimitive->Mobility != EComponentMobility::Movable)
             {
-                Root->SetMobility(EComponentMobility::Movable);
+                RootPrimitive->SetMobility(EComponentMobility::Movable);
             }
+
+            // Si quieres que siempre use físicas:
+            // 
+            if (!IsPlanet) {
+                RootPrimitive->SetSimulatePhysics(true);
+                RootPrimitive->SetEnableGravity(false);
+                RootPrimitive->SetMassOverrideInKg(NAME_None, Mass, true);
+            }
+                
         }
     }
 
@@ -63,24 +74,45 @@ void UGravityComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 
 void UGravityComponent::Integrate(double DeltaTime)
 {
+    //FVector Acceleration = AccumulatedForce * 100 / Mass;
+
+    //UE_LOG(LogTemp, Warning, TEXT("Fuerza %.4f N/m"), Acceleration.Length());
+
+    //AActor* Owner = GetOwner();
+
+    //if (!Owner) return;
+
+    //UPrimitiveComponent* RootPrim = Cast<UPrimitiveComponent>(Owner->GetRootComponent());//Normalmente StaticMesh
+
+    //if (RootPrim && RootPrim->IsSimulatingPhysics()) {
+    //    RootPrim->AddForce(Acceleration, NAME_None, true);
+    //}
+    //else {
+    //    Velocity += Acceleration * DeltaTime;
+
+    //    FVector NewLocation = Owner->GetActorLocation() + (Velocity * DeltaTime);
+    //    Owner->SetActorLocation(NewLocation);
+    //}
+
+    //AccumulatedForce = FVector::ZeroVector;
+
+    if (!RootPrimitive) return;
+
     FVector Acceleration = AccumulatedForce * 100 / Mass;
 
-    UE_LOG(LogTemp, Warning, TEXT("Fuerza %.4f N/m"), Acceleration.Length());
-
-    AActor* Owner = GetOwner();
-
-    if (!Owner) return;
-
-    UPrimitiveComponent* RootPrim = Cast<UPrimitiveComponent>(Owner->GetRootComponent());//Normalmente StaticMesh
-
-    if (RootPrim && RootPrim->IsSimulatingPhysics()) {
-        RootPrim->AddForce(Acceleration, NAME_None, true);
+    if (RootPrimitive->IsSimulatingPhysics())
+    {
+        RootPrimitive->AddForce(Acceleration, NAME_None, true);
     }
-    else {
+    else
+    {
         Velocity += Acceleration * DeltaTime;
 
-        FVector NewLocation = Owner->GetActorLocation() + (Velocity * DeltaTime);
-        Owner->SetActorLocation(NewLocation);
+        FVector NewLocation =
+            RootPrimitive->GetComponentLocation() +
+            (Velocity * DeltaTime);
+
+        RootPrimitive->SetWorldLocation(NewLocation);
     }
 
     AccumulatedForce = FVector::ZeroVector;

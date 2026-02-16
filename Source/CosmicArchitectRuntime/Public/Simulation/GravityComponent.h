@@ -65,6 +65,9 @@ public:
         meta = (EditCondition = "GravityMode == EGravityMode::SpecificPlanet", EditConditionHides))
     AActor* SpecificGravitySource = nullptr;
 
+    UPROPERTY()
+    UPrimitiveComponent* RootPrimitive = nullptr;
+
 	FVector Velocity = FVector::ZeroVector;
 	FVector AccumulatedForce = FVector::ZeroVector;
 
