@@ -51,12 +51,12 @@ void UGravitySubsystem::Tick(float DeltaTime)
             if (!BodyA->IsAffectedByOthers) break;
 
             UGravityComponent* NearestPlanet = nullptr;
-            float NearestDistanceSq = FLT_MAX;
+            double NearestDistanceSq = DBL_MAX;
 
             for (UGravityComponent* Planet : Planets) {
                 if (!Planet || !Planet->AffectsOthers) continue;
 
-                float DistSq = FVector::DistSquared(PosA, Planet->getTransform().GetLocation());
+                double DistSq = FVector::DistSquared(PosA, Planet->getTransform().GetLocation());
                 if (DistSq < NearestDistanceSq) {
                     NearestDistanceSq = DistSq;
                     NearestPlanet = Planet;
@@ -132,10 +132,22 @@ void UGravitySubsystem::BodyAddForce(UGravityComponent* BodyA, UGravityComponent
 
     FVector Difference = BodyB->getTransform().GetLocation() - BodyA->getTransform().GetLocation();
 
-    // Convertimos a metros²
-    double DistSq_m = Difference.SizeSquared();
+    double DistSq_cm = Difference.SizeSquared();
 
-    double ForceMagnitude = (GUnreal * BodyA->Mass * BodyB->Mass) / DistSq_m;
+    double DistRadius = 0.0;
+
+    //Limitamos distancia si atraviesas el planeta para que no aplique mas fuerza de la que debe
+    if (BodyA->IsPlanet) {
+        DistRadius = FMath::Square(BodyA->RadiusKm * 100000);
+    }
+    else if (BodyB->IsPlanet) {
+        DistRadius = FMath::Square(BodyB->RadiusKm * 100000);
+    }
+
+    DistSq_cm = FMath::Max(DistRadius, DistSq_cm);
+
+    //La GUnreal esta multiplicada por 10000 para contrarestar la distancia en cm
+    double ForceMagnitude = (GUnreal * BodyA->Mass * BodyB->Mass) / DistSq_cm;
 
     BodyA->AccumulatedForce += Difference.GetSafeNormal() * ForceMagnitude;
 }
@@ -148,10 +160,21 @@ void UGravitySubsystem::ApplyMutualForce(UGravityComponent* BodyA, UGravityCompo
 
     FVector Difference = BodyB->getTransform().GetLocation() - BodyA->getTransform().GetLocation();
 
-    // Convertimos a metros²
-    double DistSq_m = Difference.SizeSquared();
+    //La GUnreal esta multiplicada por 10000 para contrarestar la distancia en cm
+    double DistSq_cm = Difference.SizeSquared();
 
-    double ForceMagnitude = (GUnreal * BodyA->Mass * BodyB->Mass) / DistSq_m;
+    double DistRadius = 0.0;
+    //Limitamos distancia si atraviesas el planeta para que no aplique mas fuerza de la que debe
+    if (BodyA->IsPlanet) {
+        DistRadius = FMath::Square(BodyA->RadiusKm * 100000);
+    }
+    else if (BodyB->IsPlanet) {
+        DistRadius = FMath::Square(BodyB->RadiusKm * 100000);
+    }
+
+    DistSq_cm = FMath::Max(DistRadius, DistSq_cm);
+
+    double ForceMagnitude = (GUnreal * BodyA->Mass * BodyB->Mass) / DistSq_cm;
 
     FVector Force = Difference.GetSafeNormal() * ForceMagnitude;
 
