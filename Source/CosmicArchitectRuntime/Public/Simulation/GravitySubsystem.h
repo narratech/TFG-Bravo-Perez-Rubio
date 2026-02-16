@@ -34,6 +34,7 @@ public:
 
 private:
     void BodyAddForce(UGravityComponent* BodyA, UGravityComponent* BodyB);
+    void ApplyMutualForce(UGravityComponent* BodyA, UGravityComponent* BodyB);
     UPROPERTY()
     TArray<UGravityComponent*> Bodies;
     TArray<UGravityComponent*> Planets;

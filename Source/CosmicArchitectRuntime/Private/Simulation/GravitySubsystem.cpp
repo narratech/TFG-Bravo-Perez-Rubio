@@ -4,7 +4,8 @@
 #include "Simulation/GravitySubsystem.h"
 #include "Simulation/GravityComponent.h"
 
-static const double G = 0.00000000006674; //Constante gravitacional adaptada
+static const double G = 0.00000000006674; //Constante gravitacional 
+static const double GUnreal = G * 10000; //Constante gravitacional 
 
 // Factor de suavizado para evitar que la fuerza sea infinita si dos cuerpos se tocan
 static const double Softening = 100000.0;
@@ -25,7 +26,7 @@ void UGravitySubsystem::Tick(float DeltaTime)
 {
    // UE_LOG(LogTemp, Warning, TEXT("Actualizando"));
 
-    double UpdateMeshStartTime = FPlatformTime::Seconds();
+    //double UpdateMeshStartTime = FPlatformTime::Seconds();
 
     const int32 Count = Bodies.Num();
     if (Count == 0) return;
@@ -36,7 +37,6 @@ void UGravitySubsystem::Tick(float DeltaTime)
         if (!BodyA) continue;
 
         FVector PosA = BodyA->getTransform().GetLocation();
-        double MassA = BodyA->Mass;
 
         // Switch para manejar los diferentes modos de gravedad
         switch (BodyA->GravityMode)
@@ -99,11 +99,10 @@ void UGravitySubsystem::Tick(float DeltaTime)
         case EGravityMode::NBody:
         {
             // Modo N-Body: todos los cuerpos se afectan entre sí
-            if (!BodyA->IsAffectedByOthers) break;
 
-            for (int32 j = 0; j < Count; ++j) {
+            for (int32 j = i + 1; j < Count; ++j) {
                 UGravityComponent* BodyB = Bodies[j];
-                BodyAddForce(BodyA, BodyB);
+                ApplyMutualForce(BodyA, BodyB);
             }
             break;
         }
@@ -112,10 +111,10 @@ void UGravitySubsystem::Tick(float DeltaTime)
         }
     }
 
-    double UpdateMeshEndTime = FPlatformTime::Seconds();
+    /*double UpdateMeshEndTime = FPlatformTime::Seconds();
     double UpdateMeshTime = UpdateMeshEndTime - UpdateMeshStartTime;
 
-    UE_LOG(LogTemp, Warning, TEXT("Calculo gravitatorio hecho en %.4f ms"), UpdateMeshTime * 1000.0);
+    UE_LOG(LogTemp, Warning, TEXT("Calculo gravitatorio hecho en %.4f ms"), UpdateMeshTime * 1000.0);*/
 
     // Integramos todos los cuerpos activos
     for (UGravityComponent* Body : Bodies)
@@ -134,11 +133,32 @@ void UGravitySubsystem::BodyAddForce(UGravityComponent* BodyA, UGravityComponent
     FVector Difference = BodyB->getTransform().GetLocation() - BodyA->getTransform().GetLocation();
 
     // Convertimos a metros²
-    double DistSq_m = Difference.SizeSquared() / 10000.0;
+    double DistSq_m = Difference.SizeSquared();
 
-    double ForceMagnitude = (G * BodyA->Mass * BodyB->Mass) / DistSq_m;
+    double ForceMagnitude = (GUnreal * BodyA->Mass * BodyB->Mass) / DistSq_m;
 
     BodyA->AccumulatedForce += Difference.GetSafeNormal() * ForceMagnitude;
+}
+
+void UGravitySubsystem::ApplyMutualForce(UGravityComponent* BodyA, UGravityComponent* BodyB)
+{
+    if (!BodyB) return;
+    if (!BodyB->IsAffectedByOthers && !BodyA->IsAffectedByOthers) return;
+    if (!BodyB->AffectsOthers && !BodyA->AffectsOthers) return;
+
+    FVector Difference = BodyB->getTransform().GetLocation() - BodyA->getTransform().GetLocation();
+
+    // Convertimos a metros²
+    double DistSq_m = Difference.SizeSquared();
+
+    double ForceMagnitude = (GUnreal * BodyA->Mass * BodyB->Mass) / DistSq_m;
+
+    FVector Force = Difference.GetSafeNormal() * ForceMagnitude;
+
+    if(BodyA->IsAffectedByOthers && BodyB->AffectsOthers)
+        BodyA->AccumulatedForce += Force;
+    if(BodyB->IsAffectedByOthers && BodyA->AffectsOthers)
+        BodyB->AccumulatedForce -= Force;
 }
 
 void UGravitySubsystem::RegisterBody(UGravityComponent* Body)
