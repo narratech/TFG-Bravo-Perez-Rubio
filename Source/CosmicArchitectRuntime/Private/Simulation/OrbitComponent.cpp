@@ -49,8 +49,10 @@ void UOrbitComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 		E -= DeltaE;
 	}
 
-	float X = SemiMajorAxis * (FMath::Cos(E) - Eccentricity);
-	float Y = SemiMajorAxis * FMath::Sqrt(1.0f - Eccentricity * Eccentricity) * FMath::Sin(E);
+	float SemiMajorAxisCm = SemiMajorAxisKm * 100000;
+
+	float X = SemiMajorAxisCm * (FMath::Cos(E) - Eccentricity);
+	float Y = SemiMajorAxisCm * FMath::Sqrt(1.0f - Eccentricity * Eccentricity) * FMath::Sin(E);
 
 	FVector OrbitalPos(X, Y, 0.0f);
 

@@ -31,14 +31,14 @@ public:
 	float CurrentOrbitTime = 0.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit Params")
-	float SemiMajorAxis = 1000.0f;
+	float SemiMajorAxisKm = 1.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit Params")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit Params", meta = (ClampMin = "0", ClampMax = "1"))
 	float Eccentricity = 0.0f;//0 círculo, 0.99 elipse extrema
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit Params")
 	float OrbitalPeriod = 10.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit Params")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit Params", meta = (ClampMin = "0", ClampMax = "360"))
 	float Inclination = 0.0f;
 };
