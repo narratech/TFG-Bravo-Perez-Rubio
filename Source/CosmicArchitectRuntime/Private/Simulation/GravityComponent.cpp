@@ -3,6 +3,7 @@
 
 #include "Simulation/GravityComponent.h"
 #include "Simulation/GravitySubsystem.h"
+#include "Components/PrimitiveComponent.h"
 
 // Sets default values for this component's properties
 UGravityComponent::UGravityComponent()
@@ -62,34 +63,22 @@ void UGravityComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 
 void UGravityComponent::Integrate(double DeltaTime)
 {
-    // La aceleración ya está acumulada por el subsistema
-    // Solo aplicamos la gravedad específica si es necesario
-    //if (GravityMode == EGravityMode::SpecificPlanet && SpecificGravitySource) {
-    //    // Podemos mantener la lógica de superficie aquí si queremos
-    //    // Pero la fuerza principal ya vino del subsistema
-    //    FVector Direction = (SpecificGravitySource->GetActorLocation() - GetOwner()->GetActorLocation()).GetSafeNormal();
-    //    double desiredAcc = SurfaceGravity * 100; // Convertir a cm/s^2
-    //    // Añadimos esta aceleración a la acumulada
-    //    AccumulatedForce += Direction * (desiredAcc * Mass);
-
-    //    
-    //}
-
-    
-
     FVector Acceleration = AccumulatedForce * 100 / Mass;
-    Velocity += Acceleration * DeltaTime;
 
     UE_LOG(LogTemp, Warning, TEXT("Fuerza %.4f N/m"), Acceleration.Length());
 
-    //double Damping = 0.02;
-    //double DampingFactor = FMath::Clamp(1.0 - (Damping * DeltaTime), 0.0, 1.0);
-    //Velocity *= DampingFactor;
+    AActor* Owner = GetOwner();
 
-    //UE_LOG(LogTemp, Warning, TEXT("Velocidad %.4f m/s"), Velocity.Length() / 100);
+    if (!Owner) return;
 
-    if (AActor* Owner = GetOwner())
-    {
+    UPrimitiveComponent* RootPrim = Cast<UPrimitiveComponent>(Owner->GetRootComponent());//Normalmente StaticMesh
+
+    if (RootPrim && RootPrim->IsSimulatingPhysics()) {
+        RootPrim->AddForce(Acceleration, NAME_None, true);
+    }
+    else {
+        Velocity += Acceleration * DeltaTime;
+
         FVector NewLocation = Owner->GetActorLocation() + (Velocity * DeltaTime);
         Owner->SetActorLocation(NewLocation);
     }
