@@ -26,9 +26,6 @@ public:
 	// Sets default values for this component's properties
 	UGravityComponent();
 
-	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-
 	FTransform getTransform() const { return GetOwner()->GetActorTransform(); }
 
     // Modo de gravedad - siempre visible

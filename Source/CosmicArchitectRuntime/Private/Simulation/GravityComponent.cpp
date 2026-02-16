@@ -8,9 +8,6 @@
 // Sets default values for this component's properties
 UGravityComponent::UGravityComponent()
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
-	PrimaryComponentTick.bCanEverTick = true;
 	// ...
 }
 
@@ -68,51 +65,26 @@ void UGravityComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
     Super::EndPlay(EndPlayReason);
 }
 
-void UGravityComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
-{
-}
-
 void UGravityComponent::Integrate(double DeltaTime)
 {
-    //FVector Acceleration = AccumulatedForce * 100 / Mass;
-
-    //UE_LOG(LogTemp, Warning, TEXT("Fuerza %.4f N/m"), Acceleration.Length());
-
-    //AActor* Owner = GetOwner();
-
-    //if (!Owner) return;
-
-    //UPrimitiveComponent* RootPrim = Cast<UPrimitiveComponent>(Owner->GetRootComponent());//Normalmente StaticMesh
-
-    //if (RootPrim && RootPrim->IsSimulatingPhysics()) {
-    //    RootPrim->AddForce(Acceleration, NAME_None, true);
-    //}
-    //else {
-    //    Velocity += Acceleration * DeltaTime;
-
-    //    FVector NewLocation = Owner->GetActorLocation() + (Velocity * DeltaTime);
-    //    Owner->SetActorLocation(NewLocation);
-    //}
-
-    //AccumulatedForce = FVector::ZeroVector;
-
-    if (!RootPrimitive) return;
 
     FVector Acceleration = AccumulatedForce * 100 / Mass;
 
-    if (RootPrimitive->IsSimulatingPhysics())
+    if (!IsPlanet && RootPrimitive && RootPrimitive->IsSimulatingPhysics())
     {
         RootPrimitive->AddForce(Acceleration, NAME_None, true);
     }
     else
     {
+        AActor* Owner = GetOwner();
+
+        if (!Owner) return;
+
         Velocity += Acceleration * DeltaTime;
 
-        FVector NewLocation =
-            RootPrimitive->GetComponentLocation() +
-            (Velocity * DeltaTime);
+        FVector NewLocation = Owner->GetActorLocation() + (Velocity * DeltaTime);
 
-        RootPrimitive->SetWorldLocation(NewLocation);
+        Owner->SetActorLocation(NewLocation);
     }
 
     AccumulatedForce = FVector::ZeroVector;
