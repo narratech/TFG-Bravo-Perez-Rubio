@@ -85,6 +85,14 @@ void UOrbitComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 	if (!World || World->WorldType == EWorldType::Editor) return;
 #endif
 
+	if (AActor* Owner = GetOwner())
+	{
+		UPrimitiveComponent* RootPrim = Cast<UPrimitiveComponent>(Owner->GetRootComponent());
+
+		FRotator DeltaRotation = FRotator(0.0f, SpinSpeed * DeltaTime, 0.0f);
+		Owner->AddActorLocalRotation(DeltaRotation);
+	}
+
 	if (!ParentBody || OrbitalPeriod <= 0.0f) return;
 
 	CurrentOrbitTime += DeltaTime;
@@ -118,7 +126,7 @@ void UOrbitComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 
 	if (AActor* Owner = GetOwner())
 	{
-		Owner->SetActorLocation(FinalLocation);
+		Owner->SetActorLocation(FinalLocation);		
 	}
 }
 

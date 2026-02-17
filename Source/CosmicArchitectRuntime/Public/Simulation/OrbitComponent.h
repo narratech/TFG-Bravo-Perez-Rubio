@@ -47,6 +47,11 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit Params", meta = (ClampMin = "0", ClampMax = "360"))
 	float Inclination = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rotation")
+	float SpinSpeed = 0.0f; // Grados por segundo en el eje Z (Yaw)
+
+
 protected:
 	bool bIsInEditorPreview = false;
 	void UpdateInitialOrbitPosition();
