@@ -9,11 +9,11 @@ UOrbitComponent::UOrbitComponent()
 {
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
+	bTickInEditor = true;
+
 	PrimaryComponentTick.bCanEverTick = true;
 
-	//Permitir tick en el editor
-	PrimaryComponentTick.bTickEvenWhenPaused = true;
-	PrimaryComponentTick.bStartWithTickEnabled = true;
+	//UE_LOG(LogTemp, Warning, TEXT("Empieza"));
 
 }
 
@@ -32,13 +32,34 @@ void UOrbitComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, SemiMajorAxisKm) ||
 		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, Eccentricity) ||
 		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, Inclination) ||
+		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, OrbitColor) ||
+		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, OrbitSegments) ||
+		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, OrbitThickness) ||
+		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, bShowOrbitInEditor) ||
 		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, OrbitalPeriod));
 
 	// Si estamos en el editor y no jugando, actualizar posición
 	UWorld* World = GetWorld();
 	if (bNeedsUpdate && World && World->WorldType == EWorldType::Editor)
-	{
+	{		
+		//if (!OrbitSpline && GetOwner())
+		//{
+		//	// Buscar si ya existe un spline component
+		//	OrbitSpline = GetOwner()->FindComponentByClass<USplineComponent>();
+
+		//	// Si no existe, crear uno nuevo
+		//	if (!OrbitSpline)
+		//	{
+		//		OrbitSpline = NewObject<USplineComponent>(GetOwner(), TEXT("OrbitSpline"));
+		//		OrbitSpline->SetupAttachment(GetOwner()->GetRootComponent());
+		//		OrbitSpline->RegisterComponent();
+		//		OrbitSpline->SetVisibility(true);
+		//		OrbitSpline->SetHiddenInGame(true); // Oculto en juego
+		//	}
+		//}
+
 		UpdateInitialOrbitPosition();
+		
 	}
 }
 #endif
@@ -49,7 +70,6 @@ void UOrbitComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	UpdateInitialOrbitPosition();
 }
 
 
@@ -57,6 +77,13 @@ void UOrbitComponent::BeginPlay()
 void UOrbitComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+#if WITH_EDITOR
+	UpdateOrbitVisualization();
+
+	UWorld* World = GetWorld();
+	if (!World || World->WorldType == EWorldType::Editor) return;
+#endif
 
 	if (!ParentBody || OrbitalPeriod <= 0.0f) return;
 
@@ -140,4 +167,45 @@ void UOrbitComponent::UpdateInitialOrbitPosition()
 		Owner->SetActorLocation(FinalLocation);
 	}
 }
+
+void UOrbitComponent::UpdateOrbitVisualization()
+{
+	if (!bShowOrbitInEditor || !ParentBody || !GetOwner()) return;
+
+	UWorld* World = GetWorld();
+	if (!World || World->WorldType != EWorldType::Editor) return;
+
+	float SemiMajorAxisCm = SemiMajorAxisKm * 100000.0f;
+	int32 NumPoints = OrbitSegments; // Resolución del círculo
+	FVector BodyLocation = ParentBody->GetActorLocation();
+
+	TArray<FVector> Points;
+
+	for (int32 i = 0; i <= NumPoints; ++i)
+	{
+		float Angle = (2.0f * PI * i) / NumPoints;
+
+		// Calcular punto en la órbita (aproximación circular para simplificar)
+		// Para una elipse real, necesitarías resolver Kepler para cada punto
+		float Radius = SemiMajorAxisCm * (1.0f - Eccentricity * Eccentricity) /
+			(1.0f + Eccentricity * FMath::Cos(Angle));
+
+		FVector LocalPos(
+			Radius * FMath::Cos(Angle),
+			Radius * FMath::Sin(Angle),
+			0.0f
+		);
+
+		FRotator OrbitTilt(Inclination, 0.0f, 0.0f);
+		FVector RotatedPos = OrbitTilt.RotateVector(LocalPos);
+		Points.Add(BodyLocation + RotatedPos);
+	}
+
+	// Dibujar líneas entre puntos
+	for (int32 i = 0; i < Points.Num() - 1; ++i)
+	{
+		DrawDebugLine(World, Points[i], Points[i + 1], OrbitColor, false, -1.0f, 0, OrbitThickness);
+	}
+}
+
 

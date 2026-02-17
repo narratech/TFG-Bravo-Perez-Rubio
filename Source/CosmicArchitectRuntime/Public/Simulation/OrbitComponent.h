@@ -7,6 +7,7 @@
 #include "OrbitComponent.generated.h"
 
 
+
 UCLASS( ClassGroup=(Cosmic), meta=(BlueprintSpawnableComponent) )
 class COSMICARCHITECTRUNTIME_API UOrbitComponent : public UActorComponent
 {
@@ -49,4 +50,24 @@ public:
 protected:
 	bool bIsInEditorPreview = false;
 	void UpdateInitialOrbitPosition();
+private:
+
+    // Función para generar/actualizar la visualización de la órbita
+    void UpdateOrbitVisualization();
+
+    // Número de segmentos para dibujar la órbita
+    UPROPERTY(EditAnywhere, Category = "Orbit Visualization", meta = (ClampMin = "8", ClampMax = "360"))
+    int32 OrbitSegments = 72;
+
+    // Color de la órbita en el editor
+    UPROPERTY(EditAnywhere, Category = "Orbit Visualization")
+    FColor OrbitColor = FColor::White;
+
+    // Grosor de la línea de la órbita
+    UPROPERTY(EditAnywhere, Category = "Orbit Visualization", meta = (ClampMin = "0.1", ClampMax = "100000"))
+    float OrbitThickness = 1000.0f;
+
+    // Si mostrar la órbita en el editor
+    UPROPERTY(EditAnywhere, Category = "Orbit Visualization")
+    bool bShowOrbitInEditor = true;
 };
