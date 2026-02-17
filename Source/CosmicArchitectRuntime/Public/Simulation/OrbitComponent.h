@@ -16,6 +16,11 @@ public:
 	// Sets default values for this component's properties
 	UOrbitComponent();
 
+#if WITH_EDITOR
+	// Called when a property is changed in the editor
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
+
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
@@ -41,4 +46,7 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit Params", meta = (ClampMin = "0", ClampMax = "360"))
 	float Inclination = 0.0f;
+protected:
+	bool bIsInEditorPreview = false;
+	void UpdateInitialOrbitPosition();
 };
