@@ -24,9 +24,6 @@ void UGravitySubsystem::Deinitialize()
 
 void UGravitySubsystem::Tick(float DeltaTime)
 {
-   // UE_LOG(LogTemp, Warning, TEXT("Actualizando"));
-
-    //double UpdateMeshStartTime = FPlatformTime::Seconds();
 
     const int32 Count = Bodies.Num();
     if (Count == 0) return;
@@ -111,11 +108,6 @@ void UGravitySubsystem::Tick(float DeltaTime)
         }
     }
 
-    /*double UpdateMeshEndTime = FPlatformTime::Seconds();
-    double UpdateMeshTime = UpdateMeshEndTime - UpdateMeshStartTime;
-
-    UE_LOG(LogTemp, Warning, TEXT("Calculo gravitatorio hecho en %.4f ms"), UpdateMeshTime * 1000.0);*/
-
     // Integramos todos los cuerpos activos
     for (UGravityComponent* Body : Bodies)
     {
@@ -187,8 +179,7 @@ void UGravitySubsystem::ApplyMutualForce(UGravityComponent* BodyA, UGravityCompo
 void UGravitySubsystem::RegisterBody(UGravityComponent* Body)
 {
     if (!Body) return;
-    
-    UE_LOG(LogTemp, Warning, TEXT("Anadiendo cuerpo %d"), Bodies.Num());
+
     // Añadimos solo si no está ya (evita duplicados)
     Bodies.AddUnique(Body);
 
@@ -208,8 +199,6 @@ void UGravitySubsystem::UnregisterBody(UGravityComponent* Body)
     {
         Planets.Remove(Body);
     }
-
-    UE_LOG(LogTemp, Warning, TEXT("Eliminando cuerpo %d"), Bodies.Num());
 }
 
 double UGravitySubsystem::GetGravityConstant() const
@@ -226,15 +215,7 @@ UWorld* UGravitySubsystem::GetTickableGameObjectWorld() const
 
 bool UGravitySubsystem::IsTickable() const
 {
-    // 1. Si soy una "plantilla" (CDO), no tickear.
-    if (IsTemplate()) return false;
+    if (IsTemplate() || !GetWorld()) return false;
 
-    // 2. Si no tengo mundo, adiós.
-    if (!GetWorld()) return false;
-
-    // 3. (OPCIONAL PERO RECOMENDADO) 
-    // Solo tickear si hay cuerpos registrados. 
-    // Esto optimiza el juego cuando no hay planetas cerca.
-    // Si quieres ver logs de debug aunque esté vacío, comenta esta línea.
     return Bodies.Num() > 0;
 }

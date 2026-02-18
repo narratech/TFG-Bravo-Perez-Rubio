@@ -12,9 +12,6 @@ UOrbitComponent::UOrbitComponent()
 	bTickInEditor = true;
 
 	PrimaryComponentTick.bCanEverTick = true;
-
-	//UE_LOG(LogTemp, Warning, TEXT("Empieza"));
-
 }
 
 #if WITH_EDITOR
@@ -90,7 +87,7 @@ void UOrbitComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 		UPrimitiveComponent* RootPrim = Cast<UPrimitiveComponent>(Owner->GetRootComponent());
 
 		FRotator DeltaRotation = FRotator(0.0f, SpinSpeed * DeltaTime, 0.0f);
-		Owner->AddActorLocalRotation(DeltaRotation);
+		Owner->AddActorLocalRotation(DeltaRotation); //Aplicar rotación sobre si mismo
 	}
 
 	if (!ParentBody || OrbitalPeriod <= 0.0f) return;
@@ -99,12 +96,12 @@ void UOrbitComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 
 	CurrentOrbitTime = FMath::Fmod(CurrentOrbitTime, OrbitalPeriod);
 
-	float MeanMotion = (2.0f * PI) / OrbitalPeriod;
+	float MeanMotion = (2.0f * PI) / OrbitalPeriod; //Calcular el porcentaje de la órbita completado
 	float MeanAnomaly = MeanMotion * CurrentOrbitTime;
 
 	float E = MeanAnomaly;
 
-	for (int32 i = 0; i < 5; ++i) {
+	for (int32 i = 0; i < 5; ++i) { //Iteraciones de la ecuacion de Kepler
 		float SinE = FMath::Sin(E);
 		float CosE = FMath::Cos(E);
 
@@ -114,11 +111,13 @@ void UOrbitComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 
 	float SemiMajorAxisCm = SemiMajorAxisKm * 100000;
 
+	//Calcular posicion final
 	float X = SemiMajorAxisCm * (FMath::Cos(E) - Eccentricity);
 	float Y = SemiMajorAxisCm * FMath::Sqrt(1.0f - Eccentricity * Eccentricity) * FMath::Sin(E);
 
 	FVector OrbitalPos(X, Y, 0.0f);
 
+	//Aplicar inclinacion (Rotar plano de la orbita)
 	FRotator OrbitTilt(Inclination, 0.0f, 0.0f);
 	FVector RotatedPos = OrbitTilt.RotateVector(OrbitalPos);
 
@@ -126,7 +125,7 @@ void UOrbitComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 
 	if (AActor* Owner = GetOwner())
 	{
-		Owner->SetActorLocation(FinalLocation);		
+		Owner->SetActorLocation(FinalLocation);//Mover actor a la posicion
 	}
 }
 

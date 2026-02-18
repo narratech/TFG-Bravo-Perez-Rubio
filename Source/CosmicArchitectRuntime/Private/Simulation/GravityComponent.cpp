@@ -45,7 +45,6 @@ void UGravityComponent::BeginPlay()
 
     if (IsPlanet) {
         Mass = FMath::Square(RadiusKm * 1000) * SurfaceGravity / Subsystem->GetGravityConstant();
-        UE_LOG(LogTemp, Warning, TEXT("Masa %.4f"), Mass);
     }
 
     Subsystem->RegisterBody(this);
@@ -68,13 +67,13 @@ void UGravityComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void UGravityComponent::Integrate(double DeltaTime)
 {
 
-    FVector Acceleration = AccumulatedForce * 100 / Mass;
+    FVector Acceleration = AccumulatedForce * 100 / Mass; //Calcular aceleracion a partir de fuerza y masa, de m a cm
 
     if (!IsPlanet && RootPrimitive && RootPrimitive->IsSimulatingPhysics())
     {
-        RootPrimitive->AddForce(Acceleration, NAME_None, true);
+        RootPrimitive->AddForce(Acceleration, NAME_None, true); //Si simula fisicas, aplicar fuerza
     }
-    else
+    else //Si no, calcular velocidad y actualizar posicion
     {
         AActor* Owner = GetOwner();
 
