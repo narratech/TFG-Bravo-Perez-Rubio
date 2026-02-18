@@ -14,15 +14,16 @@ UCLASS(HideCategories = (
     Collision,          // Oculta colisiones
     Actor,              // Oculta Tick, Spawn
     LOD,                // Oculta Level of Detail
-    Cooking, 
+    Cooking,
     Networking,
     Physics,            // Oculta físicas (Gravity, Mass)
     Navigation,         // Oculta NavMesh
     Tags,               // Oculta etiquetas de actor
     DataLayers,         // Oculta capas de datos
     LevelInstance       // Oculta instancias de nivel
-), AutoExpandCategories = ("Configuracion", "Acciones")) // Abre tus categorías automáticamente
-class COSMICARCHITECTRUNTIME_API ACosmicSystemGenerator : public AActor
+    ), AutoExpandCategories = ("Configuration", "Actions")) // Abre tus categorías automáticamente
+
+    class COSMICARCHITECTRUNTIME_API ACosmicSystemGenerator : public AActor
 {
     GENERATED_BODY()
 
@@ -30,32 +31,34 @@ public:
     ACosmicSystemGenerator();
 
 protected:
-    // El volumen visual donde se generarán los cuerpos
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Generacion")
-    UBoxComponent* VolumenGeneracion;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Generation")
+    UBoxComponent* GenerationVolume;
 
-    // Clase del actor a generar (una esfera)
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuracion")
-    TSubclassOf<AActor> ClaseAGenerar;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration")
+    TSubclassOf<AActor> ClassToGenerate;
 
-    // Número de cuerpos a crear
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuracion", meta = (ClampMin = "1"))
-    int32 CantidadCuerpos;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration", meta = (ClampMin = "1", ClampMax = "50"))
+    int32 NumberOfBodies;
 
-    // La Semilla mágica: Si este número es igual, la generación será idéntica siempre
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuracion")
-    int32 Semilla;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration")
+    int32 Seed;
 
-    // Almacenamos los actores creados para poder borrarlos luego
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration", meta = (ClampMin = "0.1"))
+    FVector VolumeSizeKm;
+
     UPROPERTY()
-    TArray<AActor*> CuerposGenerados;
+    TArray<AActor*> GeneratedBodies;
 
 public:
-    // Función marcada como CallInEditor para que aparezca un botón en el editor
-    UFUNCTION(CallInEditor, Category = "Acciones")
-    void GenerarCuerpos();
+    UFUNCTION(CallInEditor, Category = "Actions")
+    void GenerateBodies();
 
-    // Función para limpiar la escena
-    UFUNCTION(CallInEditor, Category = "Acciones")
-    void LimpiarCuerpos();
+    UFUNCTION(CallInEditor, Category = "Actions")
+    void GenerateWithRandomSeed();
+
+    UFUNCTION(CallInEditor, Category = "Actions")
+    void ClearBodies();
+
+    UFUNCTION(CallInEditor, Category = "Actions")
+    void UpdateVolumeSize();
 };

@@ -5,78 +5,87 @@ ACosmicSystemGenerator::ACosmicSystemGenerator()
 {
     PrimaryActorTick.bCanEverTick = false;
 
-    // Configurar el volumen
-    VolumenGeneracion = CreateDefaultSubobject<UBoxComponent>(TEXT("VolumenGeneracion"));
-    RootComponent = VolumenGeneracion;
-    VolumenGeneracion->SetBoxExtent(FVector(500.f, 500.f, 100.f)); // Tamaño por defecto
-    VolumenGeneracion->SetLineThickness(5.0f);
+    GenerationVolume = CreateDefaultSubobject<UBoxComponent>(TEXT("GenerationVolume"));
+    RootComponent = GenerationVolume;
 
-    // Valores por defecto
-    CantidadCuerpos = 10;
-    Semilla = 12345;
+    VolumeSizeKm = FVector(20.0f, 20.0f, 5.0f);
+
+    GenerationVolume->SetBoxExtent(VolumeSizeKm * 100000.0f);
+    GenerationVolume->SetLineThickness(2000.0f);
+
+    NumberOfBodies = 10;
+    Seed = 12345;
 }
 
-void ACosmicSystemGenerator::GenerarCuerpos()
+void ACosmicSystemGenerator::GenerateBodies()
 {
-    // 1. Limpiar generación anterior para no acumular basura
-    LimpiarCuerpos();
+    ClearBodies();
 
-    if (!ClaseAGenerar)
+    if (!ClassToGenerate)
     {
-        UE_LOG(LogTemp, Warning, TEXT("¡No has seleccionado ninguna clase para generar!"));
+        UE_LOG(LogTemp, Warning, TEXT("No class selected to generate!"));
         return;
     }
 
-    // 2. Inicializar el flujo aleatorio con la Semilla
-    FRandomStream Stream(Semilla);
+    FRandomStream Stream(Seed);
 
-    // 3. Bucle de generación
-    for (int32 i = 0; i < CantidadCuerpos; i++)
+    for (int32 i = 0; i < NumberOfBodies; i++)
     {
-        // Calcular posición aleatoria RELATIVA dentro de la caja usando el Stream
-        // GetRandomPointInBox garantiza que usa nuestra semilla, no el tiempo del sistema
-        FVector Origen = VolumenGeneracion->GetComponentLocation();
-        FVector Extents = VolumenGeneracion->GetScaledBoxExtent();
+        FVector Origin = GenerationVolume->GetComponentLocation();
+        FVector Extents = GenerationVolume->GetScaledBoxExtent();
 
-        // Matemáticas manuales para usar el Stream determinista
-        FVector RandomPoint = UKismetMathLibrary::RandomPointInBoundingBox(Origen, Extents);
-
-        // Si queremos ser PURISTAS con la semilla, lo haríamos así manualmente:
         float RandX = Stream.FRandRange(-Extents.X, Extents.X);
         float RandY = Stream.FRandRange(-Extents.Y, Extents.Y);
         float RandZ = Stream.FRandRange(-Extents.Z, Extents.Z);
 
-        // Transformar la posición relativa a la rotación del actor manager
         FVector LocalPoint = FVector(RandX, RandY, RandZ);
-        FVector WorldPoint = GetActorTransform().TransformPositionNoScale(LocalPoint); // O usar solo location si no rotas la caja interna
+        FVector WorldPoint = GetActorTransform().TransformPositionNoScale(LocalPoint);
 
-        // Rotación aleatoria (también basada en semilla)
         FRotator RandomRot = FRotator(Stream.FRandRange(0, 360), Stream.FRandRange(0, 360), 0);
 
         FActorSpawnParameters SpawnParams;
         SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
-        // 4. Spawneamos el actor
-        AActor* NuevoCuerpo = GetWorld()->SpawnActor<AActor>(ClaseAGenerar, WorldPoint, RandomRot, SpawnParams);
+        AActor* NewBody = GetWorld()->SpawnActor<AActor>(ClassToGenerate, WorldPoint, RandomRot, SpawnParams);
 
-        if (NuevoCuerpo)
+        if (NewBody)
         {
-            // (Opcional) Si quieres que sean hijos de este manager en el Outliner
-            // NuevoCuerpo->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
-
-            CuerposGenerados.Add(NuevoCuerpo);
+            GeneratedBodies.Add(NewBody);
         }
     }
 }
 
-void ACosmicSystemGenerator::LimpiarCuerpos()
+void ACosmicSystemGenerator::GenerateWithRandomSeed()
 {
-    for (AActor* Actor : CuerposGenerados)
+    int32 RandomSeed = 0;
+
+    //Generar semilla aleatoria usando varias fuentes
+    RandomSeed += static_cast<int32>(FDateTime::Now().GetTicks());
+    RandomSeed += static_cast<int32>(FPlatformTime::Cycles());
+    RandomSeed += reinterpret_cast<int64>(this);
+    RandomSeed += FPlatformTLS::GetCurrentThreadId();
+
+    Seed = HashCombine(GetTypeHash(RandomSeed), GetTypeHash(FMath::Rand()));
+
+    GenerateBodies();
+}
+
+void ACosmicSystemGenerator::ClearBodies()
+{
+    for (AActor* Actor : GeneratedBodies)
     {
         if (Actor && IsValid(Actor))
         {
             Actor->Destroy();
         }
     }
-    CuerposGenerados.Empty();
+    GeneratedBodies.Empty();
+}
+
+void ACosmicSystemGenerator::UpdateVolumeSize()
+{
+    if (GenerationVolume)
+    {
+        GenerationVolume->SetBoxExtent(VolumeSizeKm * 100000.0f);
+    }
 }
