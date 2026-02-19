@@ -40,6 +40,7 @@ public:
 
     void BuildBaseMesh();
     void BuildSphereMesh();
+    void RegenerateLevel(float GridSpacing);
     void UpdateMesh();
     void SetMeshActive(bool active);
     void UpdateHeights(const FVector2D& Origin);

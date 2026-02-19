@@ -37,7 +37,10 @@ public:
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "1", ClampMax = "20"))
     int32 NumLevels = 5;
 
-    UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "50", ClampMax = "500"))
+    UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "50"))
+    float MinTriangleSize = 200.f;
+
+    UPROPERTY(VisibleAnywhere, Category = "Clipmap")
     float BaseGridSpacing = 200.f;
 
     UPROPERTY(EditAnywhere, Category = "Clipmap")
@@ -45,6 +48,9 @@ public:
 
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "0", ClampMax = "60"))
     float TimeToRefresh = 0.25f;
+
+    UPROPERTY(EditAnywhere, Category = "Clipmap")
+    bool FreezeGeneration = false;
 
 protected:
     TArray<UCosmicMeshComponent*> Levels;
@@ -61,6 +67,8 @@ protected:
     void UpdatePatchTransform(const FVector& SurfacePos, const FVector& N);
     float GetDistanceToSurface(FVector& SurfacePos, FVector& N);
     bool IsClipmapRingVisible(const int32 LevelIndex, const float DistanceToSurface);
+    void ReduceClimapLevel();
+    void IncreaseClipmapLevel();
     void UpdateOrigins();
 };
 

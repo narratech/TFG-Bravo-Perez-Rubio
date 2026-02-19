@@ -197,6 +197,9 @@ void UCosmicMeshComponent::BuildBaseMesh()
     bMeshCreated = true;
 }
 
+
+
+
 void UCosmicMeshComponent::BuildSphereMesh()
 {
     ClearAllMeshSections();
@@ -323,6 +326,100 @@ void UCosmicMeshComponent::BuildSphereMesh()
     SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
     bMeshCreated = true;
+}
+
+void UCosmicMeshComponent::RegenerateLevel(float newGridSpacing)
+{
+    if (!bMeshCreated)
+    {
+        UE_LOG(LogTemp, Error, TEXT("RegenerateLevel() llamado pero bMeshCreated = false"));
+        return;
+    }
+
+    GridSpacing = newGridSpacing;
+
+    const int32 VertRes = Resolution + 1;
+    const int32 HalfRes = Resolution / 2;
+
+    FVector SphereCenter = FVector(0, 0, -PlanetRadius);
+
+    for (int32 y = 0; y < VertRes; ++y)
+    {
+        for (int32 x = 0; x < VertRes; ++x)
+        {
+            const int32 Index = x + y * VertRes;
+
+            float WorldX = (x - HalfRes) * GridSpacing;
+            float WorldY = (y - HalfRes) * GridSpacing;
+
+            float Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
+            FVector BasePosition;
+
+            if (Distance2D <= PlanetRadius && Distance2D > 0.001f)
+            {
+                float ZOffset = FMath::Sqrt(PlanetRadius * PlanetRadius - Distance2D * Distance2D);
+                BasePosition = FVector(WorldX, WorldY, -PlanetRadius + ZOffset);
+            }
+            else if (Distance2D <= 0.001f)
+            {
+                BasePosition = FVector(0, 0, 0);
+            }
+            else
+            {
+                float Scale = PlanetRadius / Distance2D;
+                BasePosition = FVector(WorldX * Scale, WorldY * Scale, -PlanetRadius);
+            }
+
+            BaseVertices[Index] = BasePosition;
+
+            // Normal
+            FVector Normal = BasePosition - SphereCenter;
+            if (Normal.SizeSquared() > 0.001f)
+            {
+                Normal.Normalize();
+            }
+            else
+            {
+                Normal = FVector::UpVector;
+            }
+
+            BaseNormals[Index] = Normal;
+
+            // Tangente
+            FVector TangentDir = FVector(-Normal.Y, Normal.X, 0);
+            if (TangentDir.SizeSquared() > 0.001f)
+            {
+                TangentDir.Normalize();
+            }
+            else
+            {
+                TangentDir = FVector(1, 0, 0);
+            }
+
+            BaseTangents[Index] = FProcMeshTangent(TangentDir, false);
+
+            // UV
+            UVs[Index] = FVector2D(
+                (float)x / Resolution,
+                (float)y / Resolution
+            );
+        }
+    }
+
+    CurrentVertices = BaseVertices;
+    CurrentNormals = BaseNormals;
+    CurrentTangents = BaseTangents;
+
+    UpdateMeshSection_LinearColor(
+        0,
+        CurrentVertices,
+        CurrentNormals,
+        UVs,
+        TArray<FLinearColor>(),
+        CurrentTangents
+    );
+
+    SetCollisionEnabled(LevelIndex == 0 ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
 }
 
 void UCosmicMeshComponent::UpdateMesh()

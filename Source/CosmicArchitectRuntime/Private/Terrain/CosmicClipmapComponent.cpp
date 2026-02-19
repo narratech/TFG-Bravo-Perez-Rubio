@@ -103,6 +103,10 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         //UE_LOG(LogTemp, Warning, TEXT("Actualizando: %d"), LevelsUpdating + 4);
 
+        if (FreezeGeneration) {
+            return;
+        }
+
         for (size_t i = 0; i < Levels.Num(); i++)
         { 
             if (Levels[i]->bActiveMesh)
@@ -132,6 +136,9 @@ void UCosmicClipmapComponent::CreateLevels()
     // 3. Inicializar array
     Levels.Empty();
     Levels.SetNum(NumLevels);
+
+    BaseGridSpacing = (PlanetRadius * 2.0f) / (BaseResolution * FMath::Pow(2.0f, NumLevels - 1));
+    UE_LOG(LogTemp, Error, TEXT("BaseGridSpacing %.4f"), BaseGridSpacing);
 
     // 4. Crear cada nivel
     for (int32 L = 0; L < NumLevels; ++L)
@@ -172,15 +179,15 @@ void UCosmicClipmapComponent::CreateLevels()
         Mesh->BuildBaseMesh();
 
         // Asignar material
-        if (BaseMaterial)
-        {
-            Mesh->SetMaterial(0, BaseMaterial);
-        }
-        else
-        {
-            // Material por defecto
-            Mesh->SetMaterial(0, UMaterial::GetDefaultMaterial(MD_Surface));
-        }
+        //if (BaseMaterial)
+        //{
+        //    Mesh->SetMaterial(0, BaseMaterial);
+        //}
+        //else
+        //{
+        //    // Material por defecto
+        //    Mesh->SetMaterial(0, UMaterial::GetDefaultMaterial(MD_Surface));
+        //}
 
         // Guardar referencia
         Levels[L] = Mesh;
@@ -189,8 +196,16 @@ void UCosmicClipmapComponent::CreateLevels()
         //    L, Mesh->GridSpacing, Mesh->bIsRing ? TEXT("true") : TEXT("false"));
     }
 
-    // 5. Crear nivel performance
-    //CreatePerformanceLevel();
+    /*ReduceClimapLevel();
+    ReduceClimapLevel();
+    IncreaseClipmapLevel();*/
+
+    FVector SurfacePos = FVector();
+    FVector N = FVector();
+
+    float DistanceToSurface = GetDistanceToSurface(SurfacePos, N);
+    UpdatePatchTransform(SurfacePos, N);
+
         
     bInit = true;
     //UE_LOG(LogTemp, Warning, TEXT("CreateLevels completado. Niveles totales: %d"), Levels.Num());
@@ -228,15 +243,15 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
 
         FarLevel = Mesh;
 
-        if (BaseMaterial)
-        {
-            Mesh->SetMaterial(0, BaseMaterial);
-        }
-        else
-        {
-            // Material por defecto
-            Mesh->SetMaterial(0, UMaterial::GetDefaultMaterial(MD_Surface));
-        }
+        //if (BaseMaterial)
+        //{
+        //    Mesh->SetMaterial(0, BaseMaterial);
+        //}
+        //else
+        //{
+        //    // Material por defecto
+        //    Mesh->SetMaterial(0, UMaterial::GetDefaultMaterial(MD_Surface));
+        //}
 
         //UE_LOG(LogTemp, Warning, TEXT("  Nivel Extra creado"));
     }
@@ -419,6 +434,65 @@ bool UCosmicClipmapComponent::IsClipmapRingVisible(const int32 LevelIndex, const
 
     // El clipmap es visible si su radio es menor que el radio visible
     return ClipmapSurfaceRadius <= VisibleRadius * 2.f; 
+}
+
+void UCosmicClipmapComponent::ReduceClimapLevel()
+{
+    if (NumLevels > 1)
+    {
+        float spacing = Levels[0]->GridSpacing;
+
+        // Guardar ultimo
+        UCosmicMeshComponent* Last = Levels[NumLevels - 1];
+
+        // Shift manual correcto 
+        for (int32 i = NumLevels - 1; i > 1; --i)
+        {
+            Levels[i] = Levels[i - 1];
+        }
+
+        Levels[1] = Last;
+
+        // Reasignar indices coherentes
+        for (int32 i = 0; i < NumLevels; ++i)
+        {
+            Levels[i]->LevelIndex = i;
+        }
+
+        // Solo regenerar los necesarios
+        Levels[0]->RegenerateLevel(spacing / 2.f);
+        Levels[1]->RegenerateLevel(spacing);
+    }
+}
+
+void UCosmicClipmapComponent::IncreaseClipmapLevel()
+{
+    if (NumLevels > 1)
+    {
+        float spacing = Levels[0]->GridSpacing;
+
+        // 1️⃣ Guardar el segundo nivel
+        UCosmicMeshComponent* Second = Levels[1];
+
+        // 2️⃣ Shift hacia la izquierda desde índice 1
+        for (int32 i = 1; i < NumLevels - 1; ++i)
+        {
+            Levels[i] = Levels[i + 1];
+        }
+
+        // 3️⃣ Colocar el antiguo segundo al final
+        Levels[NumLevels - 1] = Second;
+
+        // 4️⃣ Reasignar índices coherentes
+        for (int32 i = 0; i < NumLevels; ++i)
+        {
+            Levels[i]->LevelIndex = i;
+        }
+
+        // 5️⃣ Solo regenerar el central (duplicando tamaño)
+        Levels[0]->RegenerateLevel(spacing * 2.f);
+        Levels[NumLevels - 1]->RegenerateLevel(Levels[NumLevels - 2]->GridSpacing * 2.f);
+    }
 }
 
 void UCosmicClipmapComponent::UpdateOrigins()
