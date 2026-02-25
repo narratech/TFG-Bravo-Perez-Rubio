@@ -9,6 +9,7 @@
 #include "Terrain/CosmicMeshComponent.h"
 #include "CosmicCameraBridge.h"
 
+
 // Sets default values for this component's properties
 UCosmicClipmapComponent::UCosmicClipmapComponent()
 {
@@ -79,27 +80,45 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             return;
         }
 
-        int LevelsUpdating = 0;
-
-        for (size_t i = 4; i < Levels.Num(); i++)
+        if (Levels.Num() > 1)
         {
-            UCosmicMeshComponent* Mesh = Levels[i];
+            UCosmicMeshComponent* MeshLast = Levels.Last();
+            UCosmicMeshComponent* MeshFirst = Levels.Last();
 
             // Versión simple y rápida para clipmaps concéntricos
-            bool bIsVisible = IsClipmapRingVisible(i, DistanceToSurface);
+            bool bIsVisible = IsClipmapRingVisible(Levels.Num() - 1, DistanceToSurface);
 
-            if (bIsVisible)
-            {
-                if (!Mesh->bActiveMesh)
-                    Mesh->SetMeshActive(true);
-                LevelsUpdating++;
+            if (!bIsVisible && MeshFirst->GridSpacing > MinTriangleSize) {
+                ReduceClimapLevel();
             }
-            else if (Mesh->bActiveMesh)
-            {
-                // Desactivar si no es visible para ahorrar recursos
-                Mesh->SetMeshActive(false);
+            else if(IsClipmapRingVisible(MeshLast->GridSpacing * 2, MeshLast->Resolution, DistanceToSurface) 
+                && MeshLast->GridSpacing < BaseGridSpacing * FMath::Pow(2.0f, NumLevels - 1)){
+                IncreaseClipmapLevel();
             }
+            
         }
+
+        //int LevelsUpdating = 0;
+
+        //for (size_t i = 4; i < Levels.Num(); i++)
+        //{
+        //    UCosmicMeshComponent* Mesh = Levels[i];
+
+        //    // Versión simple y rápida para clipmaps concéntricos
+        //    bool bIsVisible = IsClipmapRingVisible(i, DistanceToSurface);
+
+        //    if (bIsVisible)
+        //    {
+        //        if (!Mesh->bActiveMesh)
+        //            Mesh->SetMeshActive(true);
+        //        LevelsUpdating++;
+        //    }
+        //    else if (Mesh->bActiveMesh)
+        //    {
+        //        // Desactivar si no es visible para ahorrar recursos
+        //        Mesh->SetMeshActive(false);
+        //    }
+        //}
 
         //UE_LOG(LogTemp, Warning, TEXT("Actualizando: %d"), LevelsUpdating + 4);
 
@@ -434,6 +453,17 @@ bool UCosmicClipmapComponent::IsClipmapRingVisible(const int32 LevelIndex, const
 
     // El clipmap es visible si su radio es menor que el radio visible
     return ClipmapSurfaceRadius <= VisibleRadius * 2.f; 
+}
+
+bool UCosmicClipmapComponent::IsClipmapRingVisible(const float GridSpacing, const int32 Resolution, const float DistanceToSurface)
+{
+    float ClipmapSurfaceRadius = GridSpacing * Resolution * 0.5f;
+
+    // Radio maximo visible desde esta altura (proyeccion en la superficie)
+    float VisibleRadius = PlanetRadius * FMath::Sin(FMath::Acos(PlanetRadius / (PlanetRadius + DistanceToSurface)));
+
+    // El clipmap es visible si su radio es menor que el radio visible
+    return ClipmapSurfaceRadius <= VisibleRadius * 2.f;
 }
 
 void UCosmicClipmapComponent::ReduceClimapLevel()

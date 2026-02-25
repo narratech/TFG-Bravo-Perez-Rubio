@@ -173,7 +173,8 @@ void UCosmicMeshComponent::BuildBaseMesh()
         UVs,                 // UVs
         TArray<FLinearColor>(),    // Colores de vértice
         CurrentTangents,     // Tangentes
-        LevelIndex == 0      // Crear colisión
+        //LevelIndex == 0      // Crear colisión
+        false
     );
 
     double CreateEndTime = FPlatformTime::Seconds();
@@ -192,7 +193,7 @@ void UCosmicMeshComponent::BuildBaseMesh()
     }
 
 
-    SetCollisionEnabled(LevelIndex == 0 ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
+    SetCollisionEnabled(/*LevelIndex == 0 ? ECollisionEnabled::QueryAndPhysics : */ECollisionEnabled::NoCollision);
           
     bMeshCreated = true;
 }
@@ -419,7 +420,7 @@ void UCosmicMeshComponent::RegenerateLevel(float newGridSpacing)
         CurrentTangents
     );
 
-    SetCollisionEnabled(LevelIndex == 0 ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
+    SetCollisionEnabled(/*LevelIndex == 0 ? ECollisionEnabled::QueryAndPhysics :*/ ECollisionEnabled::NoCollision);
 }
 
 void UCosmicMeshComponent::UpdateMesh()
@@ -464,7 +465,7 @@ void UCosmicMeshComponent::UpdateMesh()
         CurrentTangents
     );
 
-    SetCollisionEnabled(LevelIndex == 0 ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
+    SetCollisionEnabled(/*LevelIndex == 0 ? ECollisionEnabled::QueryAndPhysics :*/ ECollisionEnabled::NoCollision);
 
     /*double UpdateMeshEndTime = FPlatformTime::Seconds();
     double UpdateMeshTime = UpdateMeshEndTime - UpdateMeshStartTime;

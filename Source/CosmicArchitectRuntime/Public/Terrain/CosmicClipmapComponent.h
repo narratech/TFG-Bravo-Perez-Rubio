@@ -67,6 +67,7 @@ protected:
     void UpdatePatchTransform(const FVector& SurfacePos, const FVector& N);
     float GetDistanceToSurface(FVector& SurfacePos, FVector& N);
     bool IsClipmapRingVisible(const int32 LevelIndex, const float DistanceToSurface);
+    bool IsClipmapRingVisible(const float GridSpacing, const int32 Resolution, const float DistanceToSurface);
     void ReduceClimapLevel();
     void IncreaseClipmapLevel();
     void UpdateOrigins();
