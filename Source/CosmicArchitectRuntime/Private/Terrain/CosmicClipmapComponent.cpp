@@ -83,7 +83,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         if (Levels.Num() > 1)
         {
             UCosmicMeshComponent* MeshLast = Levels.Last();
-            UCosmicMeshComponent* MeshFirst = Levels.Last();
+            UCosmicMeshComponent* MeshFirst = Levels[0];
 
             // Versión simple y rápida para clipmaps concéntricos
             bool bIsVisible = IsClipmapRingVisible(Levels.Num() - 1, DistanceToSurface);
