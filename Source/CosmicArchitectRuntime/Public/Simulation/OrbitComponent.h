@@ -42,6 +42,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit Params", meta = (ClampMin = "0", ClampMax = "1"))
 	float Eccentricity = 0.0f;//0 círculo, 0.99 elipse extrema
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit Params", meta = (ClampMin = "0", ClampMax = "1"))
+	float InitialPosition = 0.0f;//0 círculo, 0.99 
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit Params")
 	float OrbitalPeriod = 10.0f;
 
@@ -51,6 +54,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rotation")
 	float SpinSpeed = 0.0f; // Grados por segundo en el eje Z (Yaw)
 
+	void InitOrbit(FColor color = FColor::Cyan);
 
 protected:
 	bool bIsInEditorPreview = false;
@@ -70,7 +74,7 @@ private:
 
     // Grosor de la línea de la órbita
     UPROPERTY(EditAnywhere, Category = "Orbit Visualization", meta = (ClampMin = "0.1", ClampMax = "100000"))
-    float OrbitThickness = 1000.0f;
+    float OrbitThickness = 2000.0f;
 
     // Si mostrar la órbita en el editor
     UPROPERTY(EditAnywhere, Category = "Orbit Visualization")

@@ -1,6 +1,9 @@
 #include "System/CosmicSystemGenerator.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "UObject/ConstructorHelpers.h"
+#include "CosmicArchitectRuntime/Public/Planet/CosmicPlanet.h"
+#include "CosmicArchitectRuntime/Public/Simulation/OrbitComponent.h"
+#include "CosmicArchitectRuntime/Public/Simulation/GravityComponent.h"
 
 ACosmicSystemGenerator::ACosmicSystemGenerator()
 {
@@ -49,158 +52,182 @@ void ACosmicSystemGenerator::OnConstruction(const FTransform& Transform)
     }
 }
 
+void ACosmicSystemGenerator::GenerateStar()
+{
+    
+}
+
 void ACosmicSystemGenerator::GenerateBodies()
 {
-    // E: Limpiamos generación anterior antes de empezar.
-    // I: Clear previous generation before starting.
     ClearBodies();
 
-    if (!SphereMesh)
-    {
-        UE_LOG(LogTemp, Error, TEXT("ACosmicSystemGenerator: No SphereMesh assigned!"));
+    if (!GetWorld())
         return;
-    }
 
     FRandomStream Stream(Seed);
-    FVector BoxExtents = GenerationVolume->GetScaledBoxExtent();
 
-    int32 BodiesSpawned = 0;
+    FActorSpawnParameters SpawnParams;
+    SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-    // E: Bucle principal de generación.
-    // I: Main generation loop.
+    const float SystemRadiusKm = VolumeSizeKm.X * 0.5f;
+
+    //Estrella
+
+    ACosmicPlanet* Star = GetWorld()->SpawnActor<ACosmicPlanet>(
+        ACosmicPlanet::StaticClass(),
+        GetActorLocation(),
+        FRotator::ZeroRotator,
+        SpawnParams
+    );
+
+    if (!Star)
+        return;
+
+    float StarRadiusKm = SystemRadiusKm * 0.15f;
+
+    Star->InitPlanet(StarRadiusKm);
+    Star->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
+
+    UGravityComponent* StarGravity = NewObject<UGravityComponent>(Star);
+    StarGravity->RegisterComponent();
+    StarGravity->SetIsPlanet(true);
+    StarGravity->RadiusKm = StarRadiusKm;
+    StarGravity->SurfaceGravity = 274.0f;
+    StarGravity->GravityMode = EGravityMode::None;
+    Star->AddInstanceComponent(StarGravity);
+    
+    GeneratedBodies.Add(Star);
+
+    FColor color;
+
+    //Crear planetas
+
     for (int32 i = 0; i < NumberOfBodies; i++)
     {
-        FVector CandidateLocation;
-        bool bValidPosition = false;
-        int32 Attempts = 0;
+        ACosmicPlanet* Planet = GetWorld()->SpawnActor<ACosmicPlanet>(
+            ACosmicPlanet::StaticClass(),
+            GetActorLocation(), // posición irrelevante
+            FRotator::ZeroRotator,
+            SpawnParams
+        );
 
-        // E: Algoritmo de 'Rejection Sampling': Intentamos encontrar una posición válida varias veces.
-        // I: 'Rejection Sampling' algorithm: Try to find a valid position multiple times.
-        while (!bValidPosition && Attempts < MaxGenerationAttempts)
+        if (!Planet)
+            continue;
+
+        Planet->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
+
+        // Distancia orbital
+        float OrbitDistanceKm = Stream.FRandRange(StarRadiusKm * 3.0f, SystemRadiusKm);
+
+        // Radio proporcional a distancia
+        float PlanetRadiusKm = OrbitDistanceKm * Stream.FRandRange(0.01f, 0.05f);
+
+        Planet->InitPlanet(PlanetRadiusKm);
+
+        /* Gravity */
+
+        UGravityComponent* Gravity = NewObject<UGravityComponent>(Planet);
+        Gravity->RegisterComponent();
+        Gravity->SetIsPlanet(true);
+        Gravity->RadiusKm = PlanetRadiusKm;
+        Gravity->SurfaceGravity = Stream.FRandRange(3.0f, 25.0f);
+        Gravity->GravityMode = EGravityMode::None;
+
+        Planet->AddInstanceComponent(Gravity);
+
+        /* Orbit */
+
+        UOrbitComponent* Orbit = NewObject<UOrbitComponent>(Planet);
+        Orbit->RegisterComponent();
+
+        Orbit->ParentBody = Star;
+        Orbit->SemiMajorAxisKm = OrbitDistanceKm;
+        Orbit->Eccentricity = Stream.FRandRange(0.0f, 0.15f);
+        Orbit->Inclination = Stream.FRandRange(0.0f, 10.0f);
+        Orbit->InitialPosition = Stream.FRandRange(0.0f, 1.0f);
+
+        // Aproximación simplificada Kepler
+        Orbit->OrbitalPeriod = FMath::Sqrt(FMath::Pow(OrbitDistanceKm, 3) / 1000.0f);
+
+        float Hue = Stream.FRandRange(0.f, 360.f);
+        float Saturation = 0.8f;
+        float Value = 1.0f;
+
+        color = FColor(
+            Stream.RandRange(50, 255),  // R
+            Stream.RandRange(50, 255),  // G
+            Stream.RandRange(50, 255),  // B
+            255
+        );
+
+        Orbit->InitOrbit(color);
+
+        Planet->AddInstanceComponent(Orbit);
+
+        GeneratedBodies.Add(Planet);
+
+        //Generar lunas
+
+        int32 MoonCount = Stream.RandRange(0, 4);
+
+        for (int32 m = 0; m < MoonCount; m++)
         {
-            Attempts++;
+            ACosmicPlanet* Moon = GetWorld()->SpawnActor<ACosmicPlanet>(
+                ACosmicPlanet::StaticClass(),
+                Planet->GetActorLocation(),
+                FRotator::ZeroRotator,
+                SpawnParams
+            );
 
-            // E: 1. Generar punto aleatorio dentro de la caja.
-            // I: 1. Generate random point inside the box.
-            float RandX = Stream.FRandRange(-BoxExtents.X, BoxExtents.X);
-            float RandY = Stream.FRandRange(-BoxExtents.Y, BoxExtents.Y);
-            float RandZ = Stream.FRandRange(-BoxExtents.Z, BoxExtents.Z);
+            if (!Moon)
+                continue;
 
-            FVector LocalPoint = FVector(RandX, RandY, RandZ);
-            CandidateLocation = GetActorTransform().TransformPosition(LocalPoint);
+            Moon->AttachToActor(Planet, FAttachmentTransformRules::KeepWorldTransform);
 
-            // E: 2. Verificar reglas de distancia.
-            // I: 2. Check distance rules.
-            bool bTooClose = false;
-            bool bFarFromEveryone = true;
+            float MoonOrbitKm = PlanetRadiusKm * Stream.FRandRange(5.0f, 15.0f);
 
-            // E: El primer cuerpo siempre es válido.
-            // I: The first body is always valid.
-            if (GeneratedBodies.Num() == 0)
-            {
-                bValidPosition = true;
-                break;
-            }
+            float MoonRadiusKm = PlanetRadiusKm * Stream.FRandRange(0.1f, 0.3f);
 
-            // E: Iteramos sobre los cuerpos existentes para comprobar distancias.
-            // I: Iterate over existing bodies to check distances.
-            for (AActor* ExistingBody : GeneratedBodies)
-            {
-                if (!ExistingBody) continue;
+            Moon->InitPlanet(MoonRadiusKm);
 
-                // E: Usamos DistSquared para optimizar rendimiento (evita raíz cuadrada), pero para claridad usamos Dist normal aquí.
-                // I: Using DistSquared is better for performance, but using normal Dist here for clarity.
-                float Dist = FVector::Dist(CandidateLocation, ExistingBody->GetActorLocation());
+            UGravityComponent* MoonGravity = NewObject<UGravityComponent>(Moon);
 
-                // E: Convertir distancia de Unreal Units (cm) a Kilómetros para comparar con nuestros parámetros.
-                // I: Convert Unreal Units (cm) distance to Kilometers to compare with our parameters.
-                float DistKm = Dist / 100000.0f;
+            MoonGravity->RegisterComponent();
+            MoonGravity->SetIsPlanet(true);
+            MoonGravity->RadiusKm = MoonRadiusKm;
+            MoonGravity->SurfaceGravity =
+                Stream.FRandRange(1.0f, 5.0f);
 
-                // E: Regla de Distancia Mínima (Colisión).
-                // I: Minimum Distance Rule (Collision).
-                if (DistKm < MinDistanceBetweenBodies)
-                {
-                    bTooClose = true;
-                    break;
-                }
+            Moon->AddInstanceComponent(MoonGravity);
 
-                // E: Regla de Distancia Máxima (Agrupamiento).
-                // I: Maximum Distance Rule (Clustering).
-                if (MaxDistanceToNearest > 0.0f && DistKm <= MaxDistanceToNearest)
-                {
-                    bFarFromEveryone = false;
-                }
-            }
+            UOrbitComponent* MoonOrbit = NewObject<UOrbitComponent>(Moon);
 
-            // E: Validación final del intento.
-            // I: Final attempt validation.
-            if (bTooClose)
-            {
-                bValidPosition = false;
-            }
-            else
-            {
-                // E: Si MaxDistance es 0, ignoramos esa regla. Si no, debe tener un vecino cerca.
-                // I: If MaxDistance is 0, ignore that rule. Otherwise, it must have a neighbor nearby.
-                if (MaxDistanceToNearest <= 0.0f)
-                {
-                    bValidPosition = true;
-                }
-                else
-                {
-                    bValidPosition = !bFarFromEveryone;
-                }
-            }
-        }
+            MoonOrbit->RegisterComponent();
+            MoonOrbit->ParentBody = Planet;
+            MoonOrbit->SemiMajorAxisKm = MoonOrbitKm;
+            MoonOrbit->Eccentricity = Stream.FRandRange(0.0f, 0.1f);
+            MoonOrbit->InitialPosition = Stream.FRandRange(0.0f, 1.0f);
 
-        // E: Si encontramos una posición válida, spawneamos el actor.
-        // I: If a valid position was found, spawn the actor.
-        if (bValidPosition)
-        {
-            FActorSpawnParameters SpawnParams;
-            SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+            MoonOrbit->OrbitalPeriod = FMath::Sqrt(FMath::Pow(MoonOrbitKm, 3) / 100.0f);
 
-            AStaticMeshActor* NewBody = GetWorld()->SpawnActor<AStaticMeshActor>(AStaticMeshActor::StaticClass(), CandidateLocation, FRotator::ZeroRotator, SpawnParams);
+            color = FColor(
+                Stream.RandRange(50, 255),  // R
+                Stream.RandRange(50, 255),  // G
+                Stream.RandRange(50, 255),  // B
+                255
+            );
 
-            if (NewBody)
-            {
-                UStaticMeshComponent* MeshComp = NewBody->GetStaticMeshComponent();
-                if (MeshComp)
-                {
-                    MeshComp->SetStaticMesh(SphereMesh);
+            MoonOrbit->InitOrbit(color);
 
-                    // E: Obtener diámetro aleatorio en Kilómetros.
-                    // I: Get random diameter in Kilometers.
-                    float RandomDiameterKm = Stream.FRandRange(BodyDiameterRangeKm.X, BodyDiameterRangeKm.Y);
+            Moon->AddInstanceComponent(MoonOrbit);
 
-                    // E: Conversión: La esfera base mide 1m (100cm). 1 Km = 100,000 cm.
-                    //    Factor de Escala = (Km * 100,000) / 100 = Km * 1000.
-                    // I: Conversion: Base sphere is 1m (100cm). 1 Km = 100,000 cm.
-                    //    Scale Factor = (Km * 100,000) / 100 = Km * 1000.
-                    float NewScale = RandomDiameterKm * 1000.0f;
-
-                    NewBody->SetActorScale3D(FVector(NewScale));
-
-                    MeshComp->SetMobility(EComponentMobility::Movable);
-                }
-
-                // E: Hacemos attach para limpiar la jerarquía.
-                // I: Attach to clean up hierarchy.
-                NewBody->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
-
-                GeneratedBodies.Add(NewBody);
-                BodiesSpawned++;
-            }
-        }
-        else
-        {
-            // E: Advertencia si no se pudo colocar un cuerpo tras los intentos.
-            // I: Warning if a body could not be placed after attempts.
-            UE_LOG(LogTemp, Warning, TEXT("Failed to find valid position for body %d after %d attempts."), i, MaxGenerationAttempts);
+            GeneratedBodies.Add(Moon);
         }
     }
 
-    UE_LOG(LogTemp, Display, TEXT("Generation Complete. Spawned: %d / %d"), BodiesSpawned, NumberOfBodies);
+    UE_LOG(LogTemp, Display,
+        TEXT("System Generation Complete. Bodies: %d"),
+        GeneratedBodies.Num());
 }
 
 void ACosmicSystemGenerator::GenerateWithRandomSeed()
@@ -221,7 +248,7 @@ void ACosmicSystemGenerator::ClearBodies()
 {
     // E: Recorremos el array y destruimos los actores válidos.
     // I: Iterate through the array and destroy valid actors.
-    for (AStaticMeshActor* Actor : GeneratedBodies)
+    for (AActor* Actor : GeneratedBodies)
     {
         if (Actor && Actor->IsValidLowLevel())
         {

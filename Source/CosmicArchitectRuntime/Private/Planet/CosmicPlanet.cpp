@@ -8,13 +8,14 @@
 // Sets default values
 ACosmicPlanet::ACosmicPlanet()
 {
-    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bCanEverTick = false;
 
     Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
     RootComponent = Root;
 
     ClipmapComponent = CreateDefaultSubobject<UCosmicClipmapComponent>(TEXT("ClipmapComponent"));
 }
+
 
 // Called when the game starts or when spawned
 void ACosmicPlanet::BeginPlay()
@@ -37,11 +38,15 @@ void ACosmicPlanet::BeginPlay()
 void ACosmicPlanet::InitClipmap()
 {
     if (ClipmapComponent) {
+
         ClipmapComponent->ParentRoot = Root;
         ClipmapComponent->PlanetRadius = Radius * 100000;
         ClipmapComponent->ClearLevels();
         ClipmapComponent->CreatePerformanceLevel(true);
         ClipmapComponent->bInitializedInEditor = true;
+    }
+    else {
+        UE_LOG(LogTemp, Error, TEXT("No existe el clipmap"));
     }
 }
 
@@ -62,5 +67,12 @@ void ACosmicPlanet::OnConstruction(const FTransform& Transform)
         InitClipmap();
     }
 //#endif
+}
+
+void ACosmicPlanet::InitPlanet(float InRadiusKm)
+{
+    Radius = InRadiusKm;
+
+    InitClipmap();
 }
 

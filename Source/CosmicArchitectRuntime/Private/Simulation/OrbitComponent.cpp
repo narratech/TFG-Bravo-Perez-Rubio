@@ -33,30 +33,14 @@ void UOrbitComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, OrbitSegments) ||
 		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, OrbitThickness) ||
 		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, bShowOrbitInEditor) ||
+		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, InitialPosition) ||
 		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, OrbitalPeriod));
 
 	// Si estamos en el editor y no jugando, actualizar posición
 	UWorld* World = GetWorld();
 	if (bNeedsUpdate && World && World->WorldType == EWorldType::Editor)
 	{		
-		//if (!OrbitSpline && GetOwner())
-		//{
-		//	// Buscar si ya existe un spline component
-		//	OrbitSpline = GetOwner()->FindComponentByClass<USplineComponent>();
-
-		//	// Si no existe, crear uno nuevo
-		//	if (!OrbitSpline)
-		//	{
-		//		OrbitSpline = NewObject<USplineComponent>(GetOwner(), TEXT("OrbitSpline"));
-		//		OrbitSpline->SetupAttachment(GetOwner()->GetRootComponent());
-		//		OrbitSpline->RegisterComponent();
-		//		OrbitSpline->SetVisibility(true);
-		//		OrbitSpline->SetHiddenInGame(true); // Oculto en juego
-		//	}
-		//}
-
-		UpdateInitialOrbitPosition();
-		
+		UpdateInitialOrbitPosition();		
 	}
 }
 #endif
@@ -66,7 +50,7 @@ void UOrbitComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 void UOrbitComponent::BeginPlay()
 {
 	Super::BeginPlay();
-
+	CurrentOrbitTime = OrbitalPeriod * InitialPosition;
 }
 
 
@@ -129,18 +113,26 @@ void UOrbitComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 	}
 }
 
+void UOrbitComponent::InitOrbit(FColor color)
+{
+	OrbitThickness = 5000.0f;
+	OrbitColor = color;
+	UpdateInitialOrbitPosition();
+}
 
 void UOrbitComponent::UpdateInitialOrbitPosition()
 {
 	// Resetear el tiempo orbital
-	CurrentOrbitTime = 0.0f;
+	CurrentOrbitTime = OrbitalPeriod * InitialPosition;
 
 	// Calcular posición inicial (t=0)
 	if (!ParentBody) return;
 
-	float MeanAnomaly = 0.0f; // Para t=0, la anomalía media es 0
+	CurrentOrbitTime = FMath::Fmod(CurrentOrbitTime, OrbitalPeriod);
 
-	// Resolver ecuación de Kepler para t=0
+	float MeanMotion = (2.0f * PI) / OrbitalPeriod; //Calcular el porcentaje de la órbita completado
+	float MeanAnomaly = MeanMotion * CurrentOrbitTime;
+
 	float E = MeanAnomaly;
 	if (Eccentricity > 0.0f)
 	{

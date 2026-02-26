@@ -78,7 +78,9 @@ protected:
     // E: Array para almacenar referencias a los actores generados y poder borrarlos luego.
     // I: Array to store references to generated actors to allow later deletion.
     UPROPERTY()
-    TArray<AStaticMeshActor*> GeneratedBodies;
+    TArray<AActor*> GeneratedBodies;
+
+    void GenerateStar();
 
 public:
     // E: Genera los cuerpos basándose en la configuración actual.
