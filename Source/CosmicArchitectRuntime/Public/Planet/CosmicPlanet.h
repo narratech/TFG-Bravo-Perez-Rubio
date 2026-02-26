@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "../../CosmicArchitectNoise/Public/CosmicArchitectNoiseGenerator.h"
 #include "CosmicPlanet.generated.h"
 
 class UCosmicClipmapComponent;

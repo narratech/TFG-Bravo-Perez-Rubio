@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "ProceduralMeshComponent.h"
+#include "../../CosmicArchitectNoise/Public/CosmicArchitectNoiseGenerator.h"
 #include "CosmicMeshComponent.generated.h"
 
 /**
@@ -22,6 +23,13 @@ public:
     bool bIsRing;
     bool bMeshCreated = false;
     bool bActiveMesh;
+
+    // Parámetros de ruido expuestos al editor
+    UPROPERTY(EditAnywhere, Category = "Cosmic Terrain")
+    float NoiseAmplitude = 50000.0f;
+
+    UPROPERTY(EditAnywhere, Category = "Cosmic Terrain")
+    float NoiseFrequency = 100.0f;
 
     // Malla base (deformada a la esfera, sin alturas adicionales)
     TArray<FVector> BaseVertices;
@@ -44,5 +52,12 @@ public:
     void UpdateMesh();
     void SetMeshActive(bool active);
     void UpdateHeights(const FVector2D& Origin);
+    // Lanza la tarea de ruido
+    void RequestMeshUpdate();
+    // Comprueba si la tarea terminó y aplica la malla
+    bool CheckAndApplyMeshUpdate();
+
+    FAsyncTask<FCosmicArchitectNoiseGenerator>* NoiseTask = nullptr;
+    bool bIsGeneratingNoise = false;
 };
 

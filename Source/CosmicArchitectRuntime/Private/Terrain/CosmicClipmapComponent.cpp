@@ -126,13 +126,25 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             return;
         }
 
-        for (size_t i = 0; i < Levels.Num(); i++)
+        /*for (size_t i = 0; i < Levels.Num(); i++)
         { 
             if (Levels[i]->bActiveMesh)
                 Levels[i]->UpdateMesh();
-        }   
+        }*/   
 
         UpdatePatchTransform(SurfacePos, N);
+
+        for (size_t i = 0; i < Levels.Num(); i++)
+        {
+            if (Levels[i]->bActiveMesh)
+            {
+                // Inicia el cálculo de ruido en hilos de fondo si no está haciéndolo ya
+                Levels[i]->RequestMeshUpdate();
+
+                // Aplica los nuevos vértices a la gráfica si la tarea ya terminó
+                Levels[i]->CheckAndApplyMeshUpdate();
+            }
+        }
     }    
 }
 

@@ -489,3 +489,53 @@ void UCosmicMeshComponent::UpdateHeights(const FVector2D& Origin)
         CurrentVertices[i] = BaseVertices[i] + BaseNormals[i] * Origin.X * Origin.Y * 0;
     }
 }
+
+void UCosmicMeshComponent::RequestMeshUpdate()
+{
+    if (!bMeshCreated || bIsGeneratingNoise) return;
+
+    bIsGeneratingNoise = true;
+
+    // Centro del planeta (asumiendo que el dueño es el actor central)
+    FVector PlanetCenter = GetOwner()->GetActorLocation();
+
+    // Lanzar la tarea asíncrona
+    NoiseTask = new FAsyncTask<FCosmicArchitectNoiseGenerator>(
+        BaseVertices,
+        BaseNormals,
+        GetComponentTransform(),
+        PlanetCenter,
+        NoiseAmplitude,
+        NoiseFrequency
+    );
+
+    NoiseTask->StartBackgroundTask();
+}
+
+bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
+{
+    // Si no hay tarea o no ha terminado, devolvemos false
+    if (!NoiseTask || !NoiseTask->IsDone()) return false;
+
+    // Copiamos los vértices calculados del hilo secundario a nuestro array principal
+    CurrentVertices = NoiseTask->GetTask().CalculatedVertices;
+
+    // Limpiamos la memoria de la tarea
+    delete NoiseTask;
+    NoiseTask = nullptr;
+    bIsGeneratingNoise = false;
+
+    // Actualizamos la sección de la malla (Esto ocurre instantáneamente en el Game Thread)
+    UpdateMeshSection_LinearColor(
+        0,
+        CurrentVertices,
+        CurrentNormals,
+        UVs,
+        TArray<FLinearColor>(),
+        CurrentTangents
+    );
+
+    SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+    return true; // La malla se ha actualizado
+}

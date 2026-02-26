@@ -8,7 +8,7 @@
 // Sets default values
 ACosmicPlanet::ACosmicPlanet()
 {
-    PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bCanEverTick = true;
 
     Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
     RootComponent = Root;
@@ -32,7 +32,6 @@ void ACosmicPlanet::BeginPlay()
             ClipmapComponent->CreatePerformanceLevel(true);
         }
     }
-   
 }
 
 void ACosmicPlanet::InitClipmap()
