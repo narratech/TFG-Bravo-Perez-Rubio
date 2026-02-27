@@ -57,9 +57,6 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             bPerformanceBuild = FarLevel->CheckAndApplyMeshUpdate();
         }
 
-        // UE_LOG(LogTemp, Warning, TEXT("Distancia de cambio: %.4f, Distancia a la superficie:  %.4f"),
-          //   IntermediateLevel.Mesh->GridSpacing * BaseResolution * HeightVisibility, DistanceToSurface);
-
         //Activar/desactivar modo rendimiento al alejarte lo suficiente
         bPerformaceMode = DistanceToSurface > PlanetRadius * HeightVisibility;
 
@@ -74,18 +71,10 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             {
                 Levels[i]->SetMeshActive(!bPerformaceMode);
             }
-
-            //TimeToRefreshActive = bPerformaceMode ? 0.5f : TimeToRefresh;
         }
 
-        //int LevelsToUpdate = bPerformaceMode ? 0 : Levels.Num();
-
-        if (bPerformaceMode)
-        {
-            //FarLevel->UpdateMesh();
-            return;
-        }
-
+        if (bPerformaceMode) return;
+        
         if (Levels.Num() > 1)
         {
             UCosmicMeshComponent* MeshLast = Levels.Last();
@@ -99,47 +88,14 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             else if(IsClipmapRingVisible(MeshLast->GridSpacing * 2, MeshLast->Resolution, DistanceToSurface) 
                 && MeshLast->GridSpacing < BaseGridSpacing * FMath::Pow(2.0f, NumLevels - 1)){
                 IncreaseClipmapLevel();
-            }
-            
+            }         
         }
-
-        //int LevelsUpdating = 0;
-
-        //for (size_t i = 4; i < Levels.Num(); i++)
-        //{
-        //    UCosmicMeshComponent* Mesh = Levels[i];
-
-        //    // Versión simple y rápida para clipmaps concéntricos
-        //    bool bIsVisible = IsClipmapRingVisible(i, DistanceToSurface);
-
-        //    if (bIsVisible)
-        //    {
-        //        if (!Mesh->bActiveMesh)
-        //            Mesh->SetMeshActive(true);
-        //        LevelsUpdating++;
-        //    }
-        //    else if (Mesh->bActiveMesh)
-        //    {
-        //        // Desactivar si no es visible para ahorrar recursos
-        //        Mesh->SetMeshActive(false);
-        //    }
-        //}
-
-        //UE_LOG(LogTemp, Warning, TEXT("Actualizando: %d"), LevelsUpdating + 4);
 
         if (FreezeGeneration) {
             return;
         }
 
-        /*for (size_t i = 0; i < Levels.Num(); i++)
-        { 
-            if (Levels[i]->bActiveMesh)
-                Levels[i]->UpdateMesh();
-        }*/   
-
         UpdatePatchTransform(SurfacePos, N);
-
-        
 
         for (size_t i = 0; i < Levels.Num(); i++)
         {
@@ -233,10 +189,6 @@ void UCosmicClipmapComponent::CreateLevels()
         //UE_LOG(LogTemp, Warning, TEXT("  Nivel %d creado: GridSpacing=%.2f, bIsRing=%s"),
         //    L, Mesh->GridSpacing, Mesh->bIsRing ? TEXT("true") : TEXT("false"));
     }
-
-    /*ReduceClimapLevel();
-    ReduceClimapLevel();
-    IncreaseClipmapLevel();*/
 
     FVector SurfacePos = FVector();
     FVector N = FVector();
