@@ -51,6 +51,12 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         if (!FarLevel)
             return;
 
+        if (!bPerformanceBuild) {
+            //UE_LOG(LogTemp, Error, TEXT("Actualizando"));
+            FarLevel->RequestMeshUpdate();
+            bPerformanceBuild = FarLevel->CheckAndApplyMeshUpdate();
+        }
+
         // UE_LOG(LogTemp, Warning, TEXT("Distancia de cambio: %.4f, Distancia a la superficie:  %.4f"),
           //   IntermediateLevel.Mesh->GridSpacing * BaseResolution * HeightVisibility, DistanceToSurface);
 
@@ -85,7 +91,6 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             UCosmicMeshComponent* MeshLast = Levels.Last();
             UCosmicMeshComponent* MeshFirst = Levels[0];
 
-            // Versión simple y rápida para clipmaps concéntricos
             bool bIsVisible = IsClipmapRingVisible(Levels.Num() - 1, DistanceToSurface);
 
             if (!bIsVisible && MeshFirst->GridSpacing > MinTriangleSize) {
@@ -134,6 +139,8 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         UpdatePatchTransform(SurfacePos, N);
 
+        
+
         for (size_t i = 0; i < Levels.Num(); i++)
         {
             if (Levels[i]->bActiveMesh)
@@ -169,7 +176,7 @@ void UCosmicClipmapComponent::CreateLevels()
     Levels.SetNum(NumLevels);
 
     BaseGridSpacing = (PlanetRadius * 2.0f) / (BaseResolution * FMath::Pow(2.0f, NumLevels - 1));
-    UE_LOG(LogTemp, Error, TEXT("BaseGridSpacing %.4f"), BaseGridSpacing);
+    //UE_LOG(LogTemp, Error, TEXT("BaseGridSpacing %.4f"), BaseGridSpacing);
 
     // 4. Crear cada nivel
     for (int32 L = 0; L < NumLevels; ++L)
@@ -255,7 +262,6 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
 
     if (Mesh)
     {
-
         Mesh->RegisterComponent();
 
         if (ParentRoot)
@@ -273,6 +279,8 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
         Mesh->SetMeshActive(bActive);
 
         FarLevel = Mesh;
+
+       
 
         //if (BaseMaterial)
         //{
@@ -347,6 +355,8 @@ void UCosmicClipmapComponent::ClearLevels()
         }
 
     }
+
+    bPerformanceBuild = false;
 
     //UE_LOG(LogTemp, Warning, TEXT("UCosmicClipmapComponent::ClearLevels() - Limpiando %d niveles"), LevelsCleared);
 }

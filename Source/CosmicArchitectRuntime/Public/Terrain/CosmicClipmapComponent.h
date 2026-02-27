@@ -60,6 +60,7 @@ protected:
     float TimeToRefreshActive;
     bool bPerformaceMode = false;
     bool bInit = false;
+    bool bPerformanceBuild = false;
 
     virtual void BeginPlay() override;
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
