@@ -407,20 +407,20 @@ void UCosmicMeshComponent::RegenerateLevel(float newGridSpacing)
         }
     }
 
-    CurrentVertices = BaseVertices;
+    //CurrentVertices = BaseVertices;
     CurrentNormals = BaseNormals;
     CurrentTangents = BaseTangents;
 
-    UpdateMeshSection_LinearColor(
-        0,
-        CurrentVertices,
-        CurrentNormals,
-        UVs,
-        TArray<FLinearColor>(),
-        CurrentTangents
-    );
+    //UpdateMeshSection_LinearColor(
+    //    0,
+    //    CurrentVertices,
+    //    CurrentNormals,
+    //    UVs,
+    //    TArray<FLinearColor>(),
+    //    CurrentTangents
+    //);
 
-    SetCollisionEnabled(/*LevelIndex == 0 ? ECollisionEnabled::QueryAndPhysics :*/ ECollisionEnabled::NoCollision);
+    //SetCollisionEnabled(/*LevelIndex == 0 ? ECollisionEnabled::QueryAndPhysics :*/ ECollisionEnabled::NoCollision);
 }
 
 void UCosmicMeshComponent::UpdateMesh()

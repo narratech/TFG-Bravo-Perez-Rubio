@@ -52,7 +52,6 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             return;
 
         if (!bPerformanceBuild) {
-            //UE_LOG(LogTemp, Error, TEXT("Actualizando"));
             FarLevel->RequestMeshUpdate();
             bPerformanceBuild = FarLevel->CheckAndApplyMeshUpdate();
         }
@@ -74,6 +73,15 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         }
 
         if (bPerformaceMode) return;
+
+        for (size_t i = 0; i < Levels.Num(); i++)
+        {
+            if (Levels[i]->bActiveMesh)
+            {
+                // Aplica los nuevos vértices a la gráfica si la tarea ya terminó
+                Levels[i]->CheckAndApplyMeshUpdate();
+            }
+        }
         
         if (Levels.Num() > 1)
         {
@@ -103,9 +111,6 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             {
                 // Inicia el cálculo de ruido en hilos de fondo si no está haciéndolo ya
                 Levels[i]->RequestMeshUpdate();
-
-                // Aplica los nuevos vértices a la gráfica si la tarea ya terminó
-                Levels[i]->CheckAndApplyMeshUpdate();
             }
         }
     }    
@@ -475,25 +480,24 @@ void UCosmicClipmapComponent::IncreaseClipmapLevel()
     {
         float spacing = Levels[0]->GridSpacing;
 
-        // 1️⃣ Guardar el segundo nivel
+        // Guardar el segundo nivel
         UCosmicMeshComponent* Second = Levels[1];
 
-        // 2️⃣ Shift hacia la izquierda desde índice 1
+        // Shift hacia la izquierda desde índice 1
         for (int32 i = 1; i < NumLevels - 1; ++i)
         {
             Levels[i] = Levels[i + 1];
         }
 
-        // 3️⃣ Colocar el antiguo segundo al final
+        // Colocar el antiguo segundo al final
         Levels[NumLevels - 1] = Second;
 
-        // 4️⃣ Reasignar índices coherentes
+        // Reasignar índices coherentes
         for (int32 i = 0; i < NumLevels; ++i)
         {
             Levels[i]->LevelIndex = i;
         }
 
-        // 5️⃣ Solo regenerar el central (duplicando tamaño)
         Levels[0]->RegenerateLevel(spacing * 2.f);
         Levels[NumLevels - 1]->RegenerateLevel(Levels[NumLevels - 2]->GridSpacing * 2.f);
     }
