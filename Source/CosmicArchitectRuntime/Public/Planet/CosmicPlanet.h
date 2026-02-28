@@ -3,8 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CosmicNoiseSettings.h"
 #include "GameFramework/Actor.h"
-#include "../../CosmicArchitectNoise/Public/CosmicArchitectNoiseGenerator.h"
 #include "CosmicPlanet.generated.h"
 
 class UCosmicClipmapComponent;
@@ -24,6 +24,9 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UCosmicClipmapComponent* ClipmapComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Noise")
+	UCosmicNoiseSettings* NoiseSettings;
 
 	// Sets default values for this actor's properties
 	ACosmicPlanet();

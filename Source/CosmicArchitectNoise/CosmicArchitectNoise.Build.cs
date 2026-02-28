@@ -25,8 +25,12 @@ public class CosmicArchitectNoise : ModuleRules
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"Core",
-				"CosmicArchitectCommon"
+		        "Core",
+		        "CoreUObject",
+		        "Engine",
+		        "InputCore",
+		        "CosmicArchitectCommon"
+
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);

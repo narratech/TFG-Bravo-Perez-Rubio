@@ -29,7 +29,8 @@ public class CosmicArchitectRuntime : ModuleRules
 				"CoreUObject",
 				"Engine",
                 "CosmicArchitectCommon",
-                "ProceduralMeshComponent"
+                "ProceduralMeshComponent",
+                "CosmicArchitectNoise"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
