@@ -4,12 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "CosmicNoiseTypes.h"
 #include "CosmicNoiseSettings.generated.h"
 
 /**
  * 
  */
-UCLASS()
+UCLASS(BlueprintType)
 class COSMICARCHITECTNOISE_API UCosmicNoiseSettings : public UDataAsset
 {
 	GENERATED_BODY()
@@ -47,6 +48,9 @@ public:
 
     UPROPERTY(EditAnywhere, Category = "Advanced", meta = (EditCondition = "bUseAdvancedSettings"))
     int32 AdvancedSeed = 1337;
+
+    UPROPERTY(EditAnywhere, Category = "Advanced", meta = (EditCondition = "bUseAdvancedSettings"))
+    TArray<UCosmicNoiseTypes*> NoiseLayers;
 
     UPROPERTY(EditAnywhere, Category = "Advanced", meta = (EditCondition = "bUseAdvancedSettings"))
     bool bUseDomainWarp = false;
