@@ -28,8 +28,8 @@ enum class ECosmicFractalType : uint8
 /**
  * 
  */
-UCLASS()
-class COSMICARCHITECTNOISE_API UCosmicNoiseTypes : public UStruct
+USTRUCT(Blueprintable, BlueprintType)
+struct COSMICARCHITECTNOISE_API FCosmicNoiseTypes 
 {
 	GENERATED_BODY()
 	

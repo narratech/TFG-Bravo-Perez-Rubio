@@ -14,6 +14,20 @@ ACosmicPlanet::ACosmicPlanet()
     RootComponent = Root;
 
     ClipmapComponent = CreateDefaultSubobject<UCosmicClipmapComponent>(TEXT("ClipmapComponent"));
+
+    if (!NoiseSettings) {
+        NoiseSettings = NewObject<UCosmicNoiseSettings>(this, TEXT("CustomNoiseSettings"));
+
+        // Configurar valores por defecto
+        NoiseSettings->Seed = 1337;
+        NoiseSettings->MaxMountainHeight = 1.f;
+        NoiseSettings->Mountainous = 0.6f;
+        NoiseSettings->Roughness = 0.4f;
+        NoiseSettings->Detail = 0.7f;
+        NoiseSettings->Smoothness = 0.5f;
+
+        UE_LOG(LogTemp, Log, TEXT("Created transient default NoiseSettings for planet"));
+    }
 }
 
 

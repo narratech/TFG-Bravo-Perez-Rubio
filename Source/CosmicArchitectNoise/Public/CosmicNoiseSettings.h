@@ -50,7 +50,7 @@ public:
     int32 AdvancedSeed = 1337;
 
     UPROPERTY(EditAnywhere, Category = "Advanced", meta = (EditCondition = "bUseAdvancedSettings"))
-    TArray<UCosmicNoiseTypes*> NoiseLayers;
+    TArray<FCosmicNoiseTypes> NoiseLayers;
 
     UPROPERTY(EditAnywhere, Category = "Advanced", meta = (EditCondition = "bUseAdvancedSettings"))
     bool bUseDomainWarp = false;
