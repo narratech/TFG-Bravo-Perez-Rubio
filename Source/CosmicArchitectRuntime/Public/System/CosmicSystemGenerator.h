@@ -4,6 +4,7 @@
 #include "GameFramework/Actor.h"
 #include "Components/BoxComponent.h"
 #include "Engine/StaticMeshActor.h" 
+#include "CosmicNoiseSettings.h"
 #include "CosmicSystemGenerator.generated.h"
 
 // E: Configuramos la clase ocultando categorías innecesarias para mantener el editor limpio.
@@ -81,6 +82,9 @@ protected:
     TArray<AActor*> GeneratedBodies;
 
     void GenerateStar();
+
+private:
+    UCosmicNoiseSettings* CreateRandomNoiseSettings(FRandomStream& Stream);
 
 public:
     // E: Genera los cuerpos basándose en la configuración actual.

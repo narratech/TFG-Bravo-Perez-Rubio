@@ -31,12 +31,13 @@ public:
 	// Sets default values for this actor's properties
 	ACosmicPlanet();
 
-
 	virtual void Tick(float DeltaTime) override;
 
 	virtual void OnConstruction(const FTransform& Transform) override;
 
-	void InitPlanet(float InRadiusKm);
+	void InitPlanet(float InRadiusKm, UCosmicNoiseSettings* NewNoiseSettings);
+
+	void CleanupNoiseSettings();
 
 protected:
 	// Called when the game starts or when spawned

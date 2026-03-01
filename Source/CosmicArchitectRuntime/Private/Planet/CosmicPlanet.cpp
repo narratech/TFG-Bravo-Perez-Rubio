@@ -14,20 +14,15 @@ ACosmicPlanet::ACosmicPlanet()
     RootComponent = Root;
 
     ClipmapComponent = CreateDefaultSubobject<UCosmicClipmapComponent>(TEXT("ClipmapComponent"));
+}
 
-    if (!NoiseSettings) {
-        NoiseSettings = NewObject<UCosmicNoiseSettings>(this, TEXT("CustomNoiseSettings"));
+void ACosmicPlanet::BeginDestroy()
+{
+    
+    CleanupNoiseSettings();
 
-        // Configurar valores por defecto
-        NoiseSettings->Seed = 1337;
-        NoiseSettings->MaxMountainHeight = 1.f;
-        NoiseSettings->Mountainous = 0.6f;
-        NoiseSettings->Roughness = 0.4f;
-        NoiseSettings->Detail = 0.7f;
-        NoiseSettings->Smoothness = 0.5f;
-
-        UE_LOG(LogTemp, Log, TEXT("Created transient default NoiseSettings for planet"));
-    }
+    // Llamar a la implementación base SIEMPRE al final
+    Super::BeginDestroy();
 }
 
 
@@ -83,10 +78,50 @@ void ACosmicPlanet::OnConstruction(const FTransform& Transform)
 //#endif
 }
 
-void ACosmicPlanet::InitPlanet(float InRadiusKm)
+void ACosmicPlanet::InitPlanet(float InRadiusKm, UCosmicNoiseSettings* NewNoiseSettings)
 {
     Radius = InRadiusKm;
 
+    // Limpiar NoiseSettings anterior si existe y es transitorio
+    if (NoiseSettings && (!NoiseSettings->IsAsset() || NoiseSettings->GetOutermost()->HasAnyPackageFlags(PKG_DisallowExport)))
+    {
+        NoiseSettings->ConditionalBeginDestroy();
+        NoiseSettings = nullptr;
+    }
+
+    // Determinar qué NoiseSettings usar
+    if (NewNoiseSettings)
+    {
+        // Usar el que nos pasaron
+        NoiseSettings = NewNoiseSettings;
+    }
+    else if (!NoiseSettings)
+    {
+        // Crear uno por defecto si no tenemos ninguno
+        NoiseSettings = NewObject<UCosmicNoiseSettings>(this, TEXT("CustomNoiseSettings"));
+
+        // Configurar valores por defecto
+        NoiseSettings->Seed = 1337;
+        NoiseSettings->MaxMountainHeight = InRadiusKm * 0.2f;
+        NoiseSettings->Mountainous = 0.6f;
+        NoiseSettings->Roughness = 0.4f;
+        NoiseSettings->Detail = 0.7f;
+        NoiseSettings->Smoothness = 0.5f;
+
+        UE_LOG(LogTemp, Log, TEXT("Created default NoiseSettings for planet"));
+    }
+
     InitClipmap();
+}
+
+void ACosmicPlanet::CleanupNoiseSettings()
+{
+    if (NoiseSettings && !NoiseSettings->IsAsset())
+    {
+        // Marcar para garbage collection
+        UE_LOG(LogTemp, Warning, TEXT("Planet %s cleaning up NoiseSettings"), *GetName());
+        NoiseSettings->ConditionalBeginDestroy();
+        NoiseSettings = nullptr;
+    }
 }
 

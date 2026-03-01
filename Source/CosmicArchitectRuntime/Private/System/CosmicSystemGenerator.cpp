@@ -57,6 +57,50 @@ void ACosmicSystemGenerator::GenerateStar()
     
 }
 
+UCosmicNoiseSettings* ACosmicSystemGenerator::CreateRandomNoiseSettings(FRandomStream& Stream)
+{
+    UCosmicNoiseSettings* NewSettings = NewObject<UCosmicNoiseSettings>(GetTransientPackage(),NAME_None, RF_Transient);
+
+    // Planetas y lunas: variedad de tipos
+    NewSettings->Seed = Stream.RandRange(0, 999999);
+
+    // Altura máxima según tamaño (planetas más grandes pueden tener montañas más altas)
+    NewSettings->MaxMountainHeight = Stream.FRandRange(1000.0f, 8000.0f);
+
+    // Distribución de tipos de planetas
+    float PlanetType = Stream.FRandRange(0.0f, 1.0f);
+
+    if (PlanetType < 0.2f) // 20% - Planetas desérticos/planos
+    {
+        NewSettings->Mountainous = Stream.FRandRange(0.1f, 0.3f);
+        NewSettings->Roughness = Stream.FRandRange(0.2f, 0.4f);
+        NewSettings->Detail = Stream.FRandRange(0.3f, 0.5f);
+        NewSettings->Smoothness = Stream.FRandRange(0.6f, 0.9f);
+    }
+    else if (PlanetType < 0.5f) // 30% - Planetas montañosos
+    {
+        NewSettings->Mountainous = Stream.FRandRange(0.6f, 0.9f);
+        NewSettings->Roughness = Stream.FRandRange(0.5f, 0.8f);
+        NewSettings->Detail = Stream.FRandRange(0.6f, 0.9f);
+        NewSettings->Smoothness = Stream.FRandRange(0.1f, 0.3f);
+    }
+    else if (PlanetType < 0.8f) // 30% - Planetas mixtos
+    {
+        NewSettings->Mountainous = Stream.FRandRange(0.3f, 0.6f);
+        NewSettings->Roughness = Stream.FRandRange(0.4f, 0.6f);
+        NewSettings->Detail = Stream.FRandRange(0.4f, 0.7f);
+        NewSettings->Smoothness = Stream.FRandRange(0.3f, 0.6f);
+    }
+    else {
+        NewSettings->Mountainous = Stream.FRandRange(0.0f, 1.f);
+        NewSettings->Roughness = Stream.FRandRange(0.0f, 1.f);
+        NewSettings->Detail = Stream.FRandRange(0.3f, 1.f);
+        NewSettings->Smoothness = Stream.FRandRange(0.2f, 1.f);
+    }
+
+    return NewSettings;
+}
+
 void ACosmicSystemGenerator::GenerateBodies()
 {
     ClearBodies();
@@ -85,7 +129,7 @@ void ACosmicSystemGenerator::GenerateBodies()
 
     float StarRadiusKm = SystemRadiusKm * 0.15f;
 
-    Star->InitPlanet(StarRadiusKm);
+    Star->InitPlanet(StarRadiusKm, CreateRandomNoiseSettings(Stream));
     Star->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
 
     UGravityComponent* StarGravity = NewObject<UGravityComponent>(Star);
@@ -122,7 +166,7 @@ void ACosmicSystemGenerator::GenerateBodies()
         // Radio proporcional a distancia
         float PlanetRadiusKm = OrbitDistanceKm * Stream.FRandRange(0.01f, 0.05f);
 
-        Planet->InitPlanet(PlanetRadiusKm);
+        Planet->InitPlanet(PlanetRadiusKm, CreateRandomNoiseSettings(Stream));
 
         /* Gravity */
 
@@ -188,7 +232,7 @@ void ACosmicSystemGenerator::GenerateBodies()
 
             float MoonRadiusKm = PlanetRadiusKm * Stream.FRandRange(0.1f, 0.3f);
 
-            Moon->InitPlanet(MoonRadiusKm);
+            Moon->InitPlanet(MoonRadiusKm, CreateRandomNoiseSettings(Stream));
 
             UGravityComponent* MoonGravity = NewObject<UGravityComponent>(Moon);
 
@@ -250,7 +294,11 @@ void ACosmicSystemGenerator::ClearBodies()
     // I: Iterate through the array and destroy valid actors.
     for (AActor* Actor : GeneratedBodies)
     {
-        if (Actor && Actor->IsValidLowLevel())
+        if (ACosmicPlanet* Planet = Cast<ACosmicPlanet>(Actor))
+        {
+            Planet->CleanupNoiseSettings();  // Limpieza explícita
+        }
+        if (Actor)
         {
             Actor->Destroy();
         }
