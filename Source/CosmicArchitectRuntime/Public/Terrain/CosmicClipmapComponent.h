@@ -7,6 +7,7 @@
 #include "CosmicClipmapComponent.generated.h"
 
 class UCosmicMeshComponent;
+class UCosmicNoiseSettings;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class UCosmicClipmapComponent : public UActorComponent
@@ -23,6 +24,7 @@ public:
     void ReasignLevels();
 
     USceneComponent* ParentRoot = nullptr;
+    UCosmicNoiseSettings* NoiseSettings;
 
     float PlanetRadius = 100.f;
 
@@ -55,6 +57,7 @@ public:
 protected:
     TArray<UCosmicMeshComponent*> Levels;
     UCosmicMeshComponent* FarLevel;
+    
 
     float ElapsedTime = 0;
     float TimeToRefreshActive;

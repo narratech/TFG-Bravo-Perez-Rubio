@@ -16,14 +16,6 @@ ACosmicPlanet::ACosmicPlanet()
     ClipmapComponent = CreateDefaultSubobject<UCosmicClipmapComponent>(TEXT("ClipmapComponent"));
 }
 
-void ACosmicPlanet::BeginDestroy()
-{
-    
-    CleanupNoiseSettings();
-
-    // Llamar a la implementación base SIEMPRE al final
-    Super::BeginDestroy();
-}
 
 
 // Called when the game starts or when spawned
@@ -39,7 +31,8 @@ void ACosmicPlanet::BeginPlay()
         else {
             ClipmapComponent->ParentRoot = Root;
             ClipmapComponent->PlanetRadius = Radius * 100000;
-            ClipmapComponent->CreatePerformanceLevel(true);
+            ClipmapComponent->NoiseSettings = NoiseSettings;
+            ClipmapComponent->CreatePerformanceLevel(true);   
         }
     }
 }
@@ -51,8 +44,10 @@ void ACosmicPlanet::InitClipmap()
         ClipmapComponent->ParentRoot = Root;
         ClipmapComponent->PlanetRadius = Radius * 100000;
         ClipmapComponent->ClearLevels();
+        ClipmapComponent->NoiseSettings = NoiseSettings;
         ClipmapComponent->CreatePerformanceLevel(true);
         ClipmapComponent->bInitializedInEditor = true;
+        
     }
     else {
         UE_LOG(LogTemp, Error, TEXT("No existe el clipmap"));
@@ -101,13 +96,6 @@ void ACosmicPlanet::InitPlanet(float InRadiusKm, UCosmicNoiseSettings* NewNoiseS
         NoiseSettings = NewObject<UCosmicNoiseSettings>(this, TEXT("CustomNoiseSettings"));
 
         // Configurar valores por defecto
-        NoiseSettings->Seed = 1337;
-        NoiseSettings->MaxMountainHeight = InRadiusKm * 0.2f;
-        NoiseSettings->Mountainous = 0.6f;
-        NoiseSettings->Roughness = 0.4f;
-        NoiseSettings->Detail = 0.7f;
-        NoiseSettings->Smoothness = 0.5f;
-
         UE_LOG(LogTemp, Log, TEXT("Created default NoiseSettings for planet"));
     }
 

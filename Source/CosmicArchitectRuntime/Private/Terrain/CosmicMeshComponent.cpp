@@ -2,6 +2,7 @@
 
 
 #include "Terrain/CosmicMeshComponent.h"
+#include "CosmicNoiseSettings.h"
 
 void UCosmicMeshComponent::BuildBaseMesh()
 {
@@ -499,14 +500,42 @@ void UCosmicMeshComponent::RequestMeshUpdate()
     // Centro del planeta (asumiendo que el dueño es el actor central)
     FVector PlanetCenter = GetOwner()->GetActorLocation();
 
+    int32 Seed;
+    TArray<FCosmicNoiseTypes> ResolvedLayers;
+    bool bResolvedWarp;
+    float ResolvedWarpStrength, ResolvedWarpFrequency;
+
+    if (NoiseSettings)
+    {
+        Seed = NoiseSettings->Seed;
+        ResolvedLayers = NoiseSettings->NoiseLayers;
+        bResolvedWarp = NoiseSettings->bUseDomainWarp;
+        ResolvedWarpStrength = NoiseSettings->DomainWarpStrength;
+        ResolvedWarpFrequency = NoiseSettings->DomainWarpFrequency;
+    }
+    else
+    {
+        // Valores por defecto
+        Seed = 1337;
+        ResolvedLayers.Empty();
+        bResolvedWarp = false;
+        ResolvedWarpStrength = 0.0f;
+        ResolvedWarpFrequency = 0.0f;
+    }
+
+    
+
     // Lanzar la tarea asíncrona
     NoiseTask = new FAsyncTask<FCosmicArchitectNoiseGenerator>(
         BaseVertices,
         BaseNormals,
         GetComponentTransform(),
         PlanetCenter,
-        NoiseAmplitude,
-        NoiseFrequency
+        Seed,
+        ResolvedLayers,
+        bResolvedWarp,
+        ResolvedWarpStrength,
+        ResolvedWarpFrequency
     );
 
     NoiseTask->StartBackgroundTask();

@@ -17,12 +17,26 @@ class COSMICARCHITECTNOISE_API UCosmicNoiseSettings : public UDataAsset
 	
 public:
 
-    /* ---------------- MODE SWITCH ---------------- */
+    UCosmicNoiseSettings();
+
+    /* PUBLIC METHODS */
+    /** Convierte los parámetros simples a capas avanzadas */
+    UFUNCTION(BlueprintCallable, Category = "Noise")
+    void UpdateAdvancedFromSimple();
+
+#if WITH_EDITOR
+    virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
+
+    /* MODE SWITCH */
 
     UPROPERTY(EditAnywhere, Category = "Mode")
     bool bUseAdvancedSettings = false;
 
-    /* ================= SIMPLE MODE ================= */
+    UPROPERTY(EditAnywhere, Category = "Simple")
+    bool bIsCraterPlanet = false;
+
+    /* SIMPLE MODE */
 
     UPROPERTY(EditAnywhere, Category = "Simple", meta = (EditCondition = "!bUseAdvancedSettings"))
     int32 Seed = 1337;
@@ -42,12 +56,7 @@ public:
     UPROPERTY(EditAnywhere, Category = "Simple", meta = (EditCondition = "!bUseAdvancedSettings", ClampMin = "0", ClampMax = "1"))
     float Smoothness = 0.5f;
 
-    //Botón “Bake Advanced from Simple” -> generaria advanced con los datos del simple y cambia el modo
-
-        /* ================= ADVANCED MODE ================= */
-
-    UPROPERTY(EditAnywhere, Category = "Advanced", meta = (EditCondition = "bUseAdvancedSettings"))
-    int32 AdvancedSeed = 1337;
+        /* ADVANCED MODE */
 
     UPROPERTY(EditAnywhere, Category = "Advanced", meta = (EditCondition = "bUseAdvancedSettings"))
     TArray<FCosmicNoiseTypes> NoiseLayers;
@@ -61,4 +70,7 @@ public:
     UPROPERTY(EditAnywhere, Category = "Advanced", meta = (EditCondition = "bUseAdvancedSettings"))
     float DomainWarpFrequency = 0.001f;
 
+private:
+    /** Flag para prevenir recursion en el editor */
+    bool bIsUpdatingAdvanced = false;
 };

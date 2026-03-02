@@ -4,8 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "ProceduralMeshComponent.h"
-#include "../../CosmicArchitectNoise/Public/CosmicArchitectNoiseGenerator.h"
+#include "CosmicArchitectNoiseGenerator.h"
 #include "CosmicMeshComponent.generated.h"
+
+class UCosmicNoiseSettings;
 
 /**
  * 
@@ -24,12 +26,7 @@ public:
     bool bMeshCreated = false;
     bool bActiveMesh;
 
-    // Parámetros de ruido expuestos al editor
-    UPROPERTY(EditAnywhere, Category = "Cosmic Terrain")
-    float NoiseAmplitude = 50000.0f;
-
-    UPROPERTY(EditAnywhere, Category = "Cosmic Terrain")
-    float NoiseFrequency = 100.0f;
+    UCosmicNoiseSettings* NoiseSettings = nullptr;
 
     // Malla base (deformada a la esfera, sin alturas adicionales)
     TArray<FVector> BaseVertices;

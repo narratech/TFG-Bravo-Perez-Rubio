@@ -5,6 +5,7 @@
 #include "GameFramework/PlayerController.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/StaticMeshComponent.h"
+#include "CosmicNoiseSettings.h"
 #include "Kismet/GameplayStatics.h"
 #include "Terrain/CosmicMeshComponent.h"
 #include "CosmicCameraBridge.h"
@@ -173,6 +174,7 @@ void UCosmicClipmapComponent::CreateLevels()
         Mesh->bIsRing = (L > 0);
         Mesh->PlanetRadius = PlanetRadius;
         Mesh->bActiveMesh = true;
+        Mesh->NoiseSettings = NoiseSettings;
 
         // Construir malla
         Mesh->BuildBaseMesh();
@@ -231,6 +233,7 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
         Mesh->GridSpacing = BaseGridSpacing * FMath::Pow(2.0f, NumLevels - 1);
         Mesh->bIsRing = false;
         Mesh->PlanetRadius = PlanetRadius;
+        Mesh->NoiseSettings = NoiseSettings;
 
         Mesh->BuildSphereMesh();
         Mesh->SetMeshActive(bActive);
