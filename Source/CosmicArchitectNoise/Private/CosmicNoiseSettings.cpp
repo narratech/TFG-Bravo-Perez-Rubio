@@ -24,43 +24,42 @@ void UCosmicNoiseSettings::UpdateAdvancedFromSimple()
     // 2. Limpiar capas existentes
     NoiseLayers.Empty();
 
-    // 3. Capa base (terreno principal)
-    FCosmicNoiseTypes BaseLayer;
-    BaseLayer.NoiseType = ECosmicNoiseType::Perlin;
-    BaseLayer.FractalType = ECosmicFractalType::FBM;
-    BaseLayer.Frequency = FMath::Lerp(25.f, 100.f, 1.f - Smoothness);
-    BaseLayer.Octaves = 4;
-    BaseLayer.Lacunarity = 2.0f;
-    BaseLayer.Persistence = 0.5f;
-    BaseLayer.Amplitude = 100 * MaxMountainHeight * 0.4f;
-    NoiseLayers.Add(BaseLayer);
+    FCosmicNoiseTypes Layer;
 
-    // 4. Capa de montañas
-    FCosmicNoiseTypes MountainLayer;
-    MountainLayer.NoiseType = ECosmicNoiseType::Ridged;
-    MountainLayer.FractalType = ECosmicFractalType::Ridged;
-    MountainLayer.Frequency = FMath::Lerp(100.f, 150.f, Mountainous);
-    MountainLayer.Octaves = FMath::RoundToInt(FMath::Lerp(3.f, 6.f, Mountainous));
-    MountainLayer.Lacunarity = 2.0f;
-    MountainLayer.Persistence = 0.5f;
-    MountainLayer.Amplitude = 100 * Mountainous * MaxMountainHeight * 0.5f;
-    NoiseLayers.Add(MountainLayer);
+    // Tipo 
+    Layer.NoiseType = ECosmicNoiseType::Simplex;
+    Layer.FractalType = ECosmicFractalType::FBM;
 
-    // 5. Capa de detalle (influenciada por Roughness)
-    FCosmicNoiseTypes DetailLayer;
-    DetailLayer.NoiseType = ECosmicNoiseType::Simplex;
-    DetailLayer.FractalType = ECosmicFractalType::FBM;
-    DetailLayer.Frequency = FMath::Lerp(450.f, 2000.f, Roughness);
-    DetailLayer.Octaves = FMath::RoundToInt(FMath::Lerp(2.f, 5.f, Detail));
-    DetailLayer.Lacunarity = 2.0f;
-    DetailLayer.Persistence = 0.4f;
-    DetailLayer.Amplitude = MaxMountainHeight * Detail * (1 - Smoothness + 0.01) * 2;
-    NoiseLayers.Add(DetailLayer);
+    // Frecuencia
+    // Mas Smoothness = formas mas grandes (menor frecuencia)
+    Layer.Frequency = FMath::Lerp(0.01f, 10.f, 1.f - Smoothness);
 
-    // 6. Domain Warp (basado en Roughness)
-    bUseDomainWarp = Roughness > 0.25f;
-    DomainWarpStrength = FMath::Lerp(200.0f, 2000.0f, Roughness);
-    DomainWarpFrequency = FMath::Lerp(10.f, 40.f, Roughness);
+    // Octavas
+    // Mas Detail = mas octavas
+    Layer.Octaves = FMath::RoundToInt(FMath::Lerp(2.f, 12.f, Detail));
+
+    // Lacunarity 
+    // Mas Roughness = mas separacion entre octavas
+    Layer.Lacunarity = FMath::Lerp(1.8f, 2.3f, Roughness);
+
+    // Persistence (Gain en FastNoiseLite) 
+    // Mas Mountainous = mas energia en altas frecuencias
+    Layer.Persistence = FMath::Lerp(0.4f, 0.65f, Mountainous);
+
+    // Amplitud
+    // Control principal de altura
+    Layer.Amplitude = MaxMountainHeight;
+
+    NoiseLayers.Add(Layer);
+
+    // Domain Warp (basado en Roughness)
+    //bUseDomainWarp = Roughness > 0.25f;
+
+    // Warp proporcional a la altura máxima
+    DomainWarpStrength = MaxMountainHeight * FMath::Lerp(0.02f, 0.15f, Roughness);
+
+    // Frecuencia alineada con la base
+    DomainWarpFrequency = FMath::Lerp(0.001f, 0.004f, Roughness);
 
     bIsUpdatingAdvanced = false;
 }
