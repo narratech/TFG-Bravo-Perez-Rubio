@@ -1,4 +1,4 @@
-#include "CosmicSpaceShip.h"
+#include "System/CosmicSpaceShip.h"
 #include "Components/StaticMeshComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/FloatingPawnMovement.h"

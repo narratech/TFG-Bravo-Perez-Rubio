@@ -7,7 +7,7 @@
 
 // E: Clase base C++ que maneja la lógica de movimiento espacial, delegando assets e inputs a un Blueprint hijo.
 // I: Base C++ class handling space movement logic, delegating assets and inputs to a child Blueprint.
-UCLASS()
+UCLASS(Blueprintable, BlueprintType)
 class COSMICARCHITECTRUNTIME_API ACosmicSpaceShip : public APawn
 {
 	GENERATED_BODY()

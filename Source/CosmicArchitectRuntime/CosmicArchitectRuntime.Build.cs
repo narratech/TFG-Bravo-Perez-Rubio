@@ -30,7 +30,9 @@ public class CosmicArchitectRuntime : ModuleRules
 				"Engine",
                 "CosmicArchitectCommon",
                 "ProceduralMeshComponent",
-                "CosmicArchitectNoise"
+                "CosmicArchitectNoise",
+                "InputCore",
+                "EnhancedInput"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
