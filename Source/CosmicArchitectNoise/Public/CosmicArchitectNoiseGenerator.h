@@ -49,68 +49,118 @@ public:
 
     void DoWork()
     {
-        // Configurar ruido con seed
-        FastNoiseLite Noise;
-        Noise.SetSeed(Seed);
-        Noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+        // Crear ruidos configurados una vez por capa
+        TArray<FastNoiseLite> ConfiguredNoises;
+        ConfiguredNoises.Reserve(Layers.Num());
 
-        // Si hay capas, usar la primera como principal
-        if (Layers.Num() > 0)
+        for (const FCosmicNoiseTypes& Layer : Layers)
         {
-            const FCosmicNoiseTypes& MainLayer = Layers[0];
-            // Configurar Noise según MainLayer
-            // Nota: FastNoiseLite tiene API limitada, necesitarías múltiples instancias
-            // o un sistema más complejo. Por ahora usamos valores simples.
+            FastNoiseLite Noise;
+            Noise.SetSeed(Seed);
+
+            // Noise Type 
+            switch (Layer.NoiseType)
+            {
+            case ECosmicNoiseType::Perlin:
+                Noise.SetNoiseType(FastNoiseLite::NoiseType_Perlin);
+                break;
+
+            case ECosmicNoiseType::Simplex:
+                Noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+                break;
+
+            case ECosmicNoiseType::Cellular:
+                Noise.SetNoiseType(FastNoiseLite::NoiseType_Cellular);
+                break;
+
+            case ECosmicNoiseType::Value:
+                Noise.SetNoiseType(FastNoiseLite::NoiseType_Value);
+                break;
+
+            case ECosmicNoiseType::Ridged:
+                Noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+                break;
+            }
+
+            // Fractal Type 
+            switch (Layer.FractalType)
+            {
+            case ECosmicFractalType::None:
+                Noise.SetFractalType(FastNoiseLite::FractalType_None);
+                break;
+
+            case ECosmicFractalType::FBM:
+                Noise.SetFractalType(FastNoiseLite::FractalType_FBm);
+                break;
+
+            case ECosmicFractalType::Ridged:
+                Noise.SetFractalType(FastNoiseLite::FractalType_Ridged);
+                break;
+
+            case ECosmicFractalType::PingPong:
+                Noise.SetFractalType(FastNoiseLite::FractalType_PingPong);
+                break;
+            }
+
+            // Parámetros fractales
+            Noise.SetFrequency(Layer.Frequency);
+            Noise.SetFractalOctaves(Layer.Octaves);
+            Noise.SetFractalLacunarity(Layer.Lacunarity);
+            Noise.SetFractalGain(Layer.Persistence);
+
+            ConfiguredNoises.Add(Noise);
         }
 
+        // Domain Warp (configurado UNA VEZ) 
+        FastNoiseLite WarpNoise;
+        if (bUseDomainWarp)
+        {
+            WarpNoise.SetSeed(Seed + 1337);
+            WarpNoise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+            WarpNoise.SetFrequency(DomainWarpFrequency);
+        }
+
+        // Loop de vértices
         for (int32 i = 0; i < BaseVertices.Num(); i++)
         {
             FVector WorldPos = ComponentTransform.TransformPosition(BaseVertices[i]);
             FVector NoiseDir = (WorldPos - PlanetCenter).GetSafeNormal();
 
+            float X = NoiseDir.X;
+            float Y = NoiseDir.Y;
+            float Z = NoiseDir.Z;
+
+            // Aplicar Domain Warp
+            if (bUseDomainWarp)
+            {
+                float WarpX = WarpNoise.GetNoise(X, Y, Z) * DomainWarpStrength;
+                float WarpY = WarpNoise.GetNoise(X + 31.7f, Y + 17.3f, Z + 47.1f) * DomainWarpStrength;
+                float WarpZ = WarpNoise.GetNoise(X + 59.2f, Y + 11.8f, Z + 23.4f) * DomainWarpStrength;
+
+                X += WarpX;
+                Y += WarpY;
+                Z += WarpZ;
+            }
+
             float TotalNoise = 0.0f;
 
-            // Sumar todas las capas de ruido
-            for (const FCosmicNoiseTypes& Layer : Layers)
+            // Sumar capas 
+            for (int32 LayerIndex = 0; LayerIndex < Layers.Num(); LayerIndex++)
             {
-                float LayerNoise = 0.0f;
+                const FCosmicNoiseTypes& Layer = Layers[LayerIndex];
+                FastNoiseLite& Noise = ConfiguredNoises[LayerIndex];
 
-                // Configurar tipo de ruido según Layer
-                switch (Layer.NoiseType)
-                {
-                case ECosmicNoiseType::Perlin:
-                    Noise.SetNoiseType(FastNoiseLite::NoiseType_Perlin);
-                    break;
-                case ECosmicNoiseType::Simplex:
-                    Noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
-                    break;
-                case ECosmicNoiseType::Cellular:
-                    Noise.SetNoiseType(FastNoiseLite::NoiseType_Cellular);
-                    break;
-                case ECosmicNoiseType::Ridged:
-                    Noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
-                    Noise.SetFractalType(FastNoiseLite::FractalType_Ridged);
-                    break;
-                }
-
-                LayerNoise = Noise.GetNoise(
-                    NoiseDir.X * Layer.Frequency,
-                    NoiseDir.Y * Layer.Frequency,
-                    NoiseDir.Z * Layer.Frequency
-                );
-
-                // Aplicar amplitud de la capa
+                float LayerNoise = Noise.GetNoise(X, Y, Z);
                 TotalNoise += LayerNoise * Layer.Amplitude;
             }
 
-            // Si no hay capas, usar ruido simple
+            // Fallback si no hay capas
             if (Layers.Num() == 0)
             {
-                TotalNoise = Noise.GetNoise(
-                    NoiseDir.X * 50000,
-                    NoiseDir.Y * 50000,
-                    NoiseDir.Z * 50000
-                ) * 3000;
+                FastNoiseLite DefaultNoise;
+                DefaultNoise.SetSeed(Seed);
+                DefaultNoise.SetFrequency(0.001f);
+                TotalNoise = DefaultNoise.GetNoise(X, Y, Z) * 1000.0f;
             }
 
             CalculatedVertices[i] = BaseVertices[i] + (BaseNormals[i] * TotalNoise);
