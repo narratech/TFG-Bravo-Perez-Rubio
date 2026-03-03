@@ -38,7 +38,7 @@ public:
 
     /* SIMPLE MODE */
 
-    UPROPERTY(EditAnywhere, Category = "Simple", meta = (EditCondition = "!bUseAdvancedSettings"))
+    UPROPERTY(EditAnywhere, Category = "Simple")
     int32 Seed = 1337;
 
     UPROPERTY(EditAnywhere, Category = "Simple", meta = (EditCondition = "!bUseAdvancedSettings", ClampMin = "0"))

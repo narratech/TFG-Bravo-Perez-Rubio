@@ -84,7 +84,7 @@ protected:
     void GenerateStar();
 
 private:
-    UCosmicNoiseSettings* CreateRandomNoiseSettings(FRandomStream& Stream);
+    UCosmicNoiseSettings* CreateRandomNoiseSettings(FRandomStream& Stream, const float PlanetRadius);
 
 public:
     // E: Genera los cuerpos basándose en la configuración actual.

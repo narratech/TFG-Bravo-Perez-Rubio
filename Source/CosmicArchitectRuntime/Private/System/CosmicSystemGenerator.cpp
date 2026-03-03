@@ -57,7 +57,7 @@ void ACosmicSystemGenerator::GenerateStar()
     
 }
 
-UCosmicNoiseSettings* ACosmicSystemGenerator::CreateRandomNoiseSettings(FRandomStream& Stream)
+UCosmicNoiseSettings* ACosmicSystemGenerator::CreateRandomNoiseSettings(FRandomStream& Stream, const float PlanetRadius)
 {
     UCosmicNoiseSettings* NewSettings = NewObject<UCosmicNoiseSettings>(GetTransientPackage(),NAME_None, RF_Transient);
 
@@ -65,7 +65,7 @@ UCosmicNoiseSettings* ACosmicSystemGenerator::CreateRandomNoiseSettings(FRandomS
     NewSettings->Seed = Stream.RandRange(0, 999999);
 
     // Altura máxima según tamaño (planetas más grandes pueden tener montañas más altas)
-    NewSettings->MaxMountainHeight = Stream.FRandRange(1000.0f, 8000.0f);
+    NewSettings->MaxMountainHeight = Stream.FRandRange(1000.0f, 8000.0f) * PlanetRadius * 0.1f;
 
     // Distribución de tipos de planetas
     float PlanetType = Stream.FRandRange(0.0f, 1.0f);
@@ -129,7 +129,7 @@ void ACosmicSystemGenerator::GenerateBodies()
 
     float StarRadiusKm = SystemRadiusKm * 0.15f;
 
-    Star->InitPlanet(StarRadiusKm, CreateRandomNoiseSettings(Stream));
+    Star->InitPlanet(StarRadiusKm, CreateRandomNoiseSettings(Stream, StarRadiusKm));
     Star->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
 
     UGravityComponent* StarGravity = NewObject<UGravityComponent>(Star);
@@ -166,7 +166,7 @@ void ACosmicSystemGenerator::GenerateBodies()
         // Radio proporcional a distancia
         float PlanetRadiusKm = OrbitDistanceKm * Stream.FRandRange(0.01f, 0.05f);
 
-        Planet->InitPlanet(PlanetRadiusKm, CreateRandomNoiseSettings(Stream));
+        Planet->InitPlanet(PlanetRadiusKm, CreateRandomNoiseSettings(Stream, PlanetRadiusKm));
 
         /* Gravity */
 
@@ -232,7 +232,7 @@ void ACosmicSystemGenerator::GenerateBodies()
 
             float MoonRadiusKm = PlanetRadiusKm * Stream.FRandRange(0.1f, 0.3f);
 
-            Moon->InitPlanet(MoonRadiusKm, CreateRandomNoiseSettings(Stream));
+            Moon->InitPlanet(MoonRadiusKm, CreateRandomNoiseSettings(Stream, MoonRadiusKm));
 
             UGravityComponent* MoonGravity = NewObject<UGravityComponent>(Moon);
 
