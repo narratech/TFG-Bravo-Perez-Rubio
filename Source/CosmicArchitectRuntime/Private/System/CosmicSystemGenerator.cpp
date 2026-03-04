@@ -98,6 +98,8 @@ UCosmicNoiseSettings* ACosmicSystemGenerator::CreateRandomNoiseSettings(FRandomS
         NewSettings->Smoothness = Stream.FRandRange(0.2f, 1.f);
     }
 
+    NewSettings->UpdateAdvancedFromSimple();
+
     return NewSettings;
 }
 
