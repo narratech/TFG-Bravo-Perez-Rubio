@@ -416,11 +416,19 @@ float UCosmicClipmapComponent::GetDistanceToSurface(FVector& SurfacePos, FVector
 
     FVector PlanetCenter = Owner->GetActorLocation();
 
+    FVector CenterToViewer = ViewerPosWorld - PlanetCenter;
+    float DistanceToCenter = CenterToViewer.Length();
+
     // Normal esférica
     N = (ViewerPosWorld - PlanetCenter).GetSafeNormal();
 
     // Punto sobre la superficie
     SurfacePos = PlanetCenter + N * PlanetRadius;
+
+    if (DistanceToCenter <= PlanetRadius)
+    {
+        return 0.f;
+    }
 
     return FVector::Distance(ViewerPosWorld, SurfacePos);
 }

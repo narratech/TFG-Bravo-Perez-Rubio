@@ -65,7 +65,7 @@ UCosmicNoiseSettings* ACosmicSystemGenerator::CreateRandomNoiseSettings(FRandomS
     NewSettings->Seed = Stream.RandRange(0, 999999);
 
     // Altura máxima según tamaño (planetas más grandes pueden tener montañas más altas)
-    NewSettings->MaxMountainHeight = Stream.FRandRange(1000.0f, 8000.0f) * PlanetRadius * 0.1f;
+    NewSettings->MaxMountainHeight = Stream.FRandRange(1000.0f, 8000.0f) * PlanetRadius * 0.5f;
 
     // Distribución de tipos de planetas
     float PlanetType = Stream.FRandRange(0.0f, 1.0f);
