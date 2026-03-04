@@ -180,10 +180,10 @@ void UCosmicClipmapComponent::CreateLevels()
         Mesh->BuildBaseMesh();
 
         // Asignar material
-        //if (BaseMaterial)
-        //{
-        //    Mesh->SetMaterial(0, BaseMaterial);
-        //}
+        if (BaseMaterial)
+        {
+            Mesh->SetMaterial(0, BaseMaterial);
+        }
         //else
         //{
         //    // Material por defecto
