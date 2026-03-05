@@ -38,6 +38,7 @@ public:
 
     // Malla final (base + alturas)
     TArray<FVector> CurrentVertices;
+    TArray<FLinearColor> CurrentColors;
     TArray<int32> Triangles;
     TArray<FVector> CurrentNormals;
     TArray<FProcMeshTangent> CurrentTangents;

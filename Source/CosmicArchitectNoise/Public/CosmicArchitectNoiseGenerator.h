@@ -13,6 +13,7 @@ public:
 
 	// El array donde guardaremos el resultado
 	TArray<FVector> CalculatedVertices;
+    TArray<FLinearColor> CalculatedColors;
 
 	// Datos de transformación
 	FTransform ComponentTransform;
@@ -40,6 +41,7 @@ public:
 		bUseDomainWarp(InUseWarp), DomainWarpStrength(InWarpStrength), DomainWarpFrequency(InWarpFreq)
 	{
 		CalculatedVertices.SetNumUninitialized(BaseVertices.Num());
+        CalculatedColors.SetNumUninitialized(BaseVertices.Num());
 	}
 
 	FORCEINLINE TStatId GetStatId() const
@@ -52,6 +54,14 @@ public:
         // Crear ruidos configurados una vez por capa
         TArray<FastNoiseLite> ConfiguredNoises;
         ConfiguredNoises.Reserve(Layers.Num());
+
+        FastNoiseLite HumidityNoise;
+        FastNoiseLite TempNoise;
+
+        HumidityNoise.SetSeed(33233);
+        HumidityNoise.SetFrequency(0.002f);
+        TempNoise.SetSeed(33422);
+        TempNoise.SetFrequency(0.005f);
 
         for (const FCosmicNoiseTypes& Layer : Layers)
         {
@@ -120,6 +130,15 @@ public:
             WarpNoise.SetFrequency(DomainWarpFrequency);
         }
 
+        // Calcular la altura máxima posible sumando las amplitudes de las capas
+        float MaxPossibleHeight = 0.0f;
+        for (const FCosmicNoiseTypes& Layer : Layers)
+        {
+            MaxPossibleHeight += Layer.Amplitude;
+        }
+        if (MaxPossibleHeight == 0.0f) MaxPossibleHeight = 1000.0f; // Seguridad
+
+
         // Loop de vértices
         for (int32 i = 0; i < BaseVertices.Num(); i++)
         {
@@ -164,6 +183,28 @@ public:
             }
 
             CalculatedVertices[i] = BaseVertices[i] + (BaseNormals[i] * TotalNoise);
+
+            // 1. Latitud (0.0 en el ecuador, 1.0 en los polos Z)
+            float Latitude = FMath::Abs(NoiseDir.Z);
+            float BaseTemp = 1.0f - Latitude; // Calor base
+
+            // 2. Altitud (Penalización por montaña)
+            // Clamp para asegurar que no nos salimos de 0 a 1
+            float AltitudePenalty = FMath::Clamp(TotalNoise / MaxPossibleHeight, 0.0f, 1.0f);
+            BaseTemp -= (AltitudePenalty * 0.6f); // Las montañas restan hasta un 60% de temperatura
+
+            // 3. Ruido térmico (para que no sean franjas perfectas)
+            // Multiplicamos el NoiseDir por una frecuencia para el muestreo
+            float TempVariance = TempNoise.GetNoise(NoiseDir.X * 100.0f, NoiseDir.Y * 100.0f, NoiseDir.Z * 100.0f) * 0.2f;
+            float FinalTemp = FMath::Clamp(BaseTemp + TempVariance, 0.0f, 1.0f);
+
+            // 4. Humedad (Fractal de nubes)
+            float RawHum = HumidityNoise.GetNoise(NoiseDir.X * 100.0f, NoiseDir.Y * 100.0f, NoiseDir.Z * 100.0f);
+            float FinalHum = (RawHum + 1.0f) * 0.5f; // Convertir de [-1, 1] a [0, 1]
+
+            // 5. Guardar en el array de Vertex Colors
+            // R = Temperatura, G = Humedad, B = Altitud (Útil para mezclar nieve en el material)
+            CalculatedColors[i] = FLinearColor(FinalTemp, FinalHum, AltitudePenalty, 1.0f);
         }
     }
 };

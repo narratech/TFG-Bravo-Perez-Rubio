@@ -166,13 +166,16 @@ void UCosmicMeshComponent::BuildBaseMesh()
     
     double CreateStartTime = FPlatformTime::Seconds();
 
+    // Inicializamos el array de colores con el mismo tamaño que los vértices
+    CurrentColors.Init(FLinearColor(0.5f, 0.5f, 0.5f, 1.0f), CurrentVertices.Num());
+
     CreateMeshSection_LinearColor(
         0,                    // SectionIndex
         CurrentVertices,      // Vértices
         Triangles,           // Triángulos
         CurrentNormals,      // Normales
         UVs,                 // UVs
-        TArray<FLinearColor>(),    // Colores de vértice
+        CurrentColors,    // Colores de vértice
         CurrentTangents,     // Tangentes
         //LevelIndex == 0      // Crear colisión
         false
@@ -298,13 +301,16 @@ void UCosmicMeshComponent::BuildSphereMesh()
 
     double CreateStartTime = FPlatformTime::Seconds();
 
+    // Inicializamos el array de colores con el mismo tamaño que los vértices
+    CurrentColors.Init(FLinearColor(0.5f, 0.5f, 0.5f, 1.0f), CurrentVertices.Num());
+
     CreateMeshSection_LinearColor(
         0,                    // SectionIndex
         CurrentVertices,      // Vértices
         Triangles,           // Triángulos
         CurrentNormals,      // Normales
         UVs,                 // UVs
-        TArray<FLinearColor>(),    // Colores de vértice
+        CurrentColors,    // Colores de vértice
         CurrentTangents,     // Tangentes
         false      // Crear colisión
     );
@@ -489,6 +495,7 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
 
     // Copiamos los vértices calculados del hilo secundario a nuestro array principal
     CurrentVertices = NoiseTask->GetTask().CalculatedVertices;
+    CurrentColors = NoiseTask->GetTask().CalculatedColors;
 
     // Limpiamos la memoria de la tarea
     delete NoiseTask;
@@ -501,7 +508,7 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
         CurrentVertices,
         CurrentNormals,
         UVs,
-        TArray<FLinearColor>(),
+        CurrentColors,
         CurrentTangents
     );
 
