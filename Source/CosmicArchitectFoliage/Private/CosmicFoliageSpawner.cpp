@@ -3,7 +3,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Async/Async.h"
 
-// TAREA ASÍNCRONA 
+// TAREA ASINCRONA 
 void FFoliageGenerationTask::DoWork()
 {
     if (!Collection) return;

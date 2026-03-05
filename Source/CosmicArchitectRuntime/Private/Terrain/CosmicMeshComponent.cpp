@@ -424,56 +424,6 @@ void UCosmicMeshComponent::RegenerateLevel(float newGridSpacing)
     //SetCollisionEnabled(/*LevelIndex == 0 ? ECollisionEnabled::QueryAndPhysics :*/ ECollisionEnabled::NoCollision);
 }
 
-void UCosmicMeshComponent::UpdateMesh()
-{
-    //double UpdateMeshStartTime = FPlatformTime::Seconds();
-
-    if (!bMeshCreated)
-    {
-        UE_LOG(LogTemp, Error, TEXT("UpdateMesh() llamado pero bMeshCreated = false"));
-        UE_LOG(LogTemp, Error, TEXT("Llamando a BuildBaseMesh() primero..."));
-        //BuildBaseMesh();
-        return;
-    }
-
-    // VERIFICAR tamaños antes de actualizar
-    //UE_LOG(LogTemp, Warning, TEXT("UpdateMesh() verificando:"));
-    //UE_LOG(LogTemp, Warning, TEXT("  CurrentVertices: %d"), CurrentVertices.Num());
-    //UE_LOG(LogTemp, Warning, TEXT("  CurrentNormals: %d"), CurrentNormals.Num());
-    //UE_LOG(LogTemp, Warning, TEXT("  UVs: %d"), UVs.Num());
-    //UE_LOG(LogTemp, Warning, TEXT("  CurrentTangents: %d"), CurrentTangents.Num());
-
-    const FVector2D origin = FVector2D(LevelIndex, Resolution);
-
-    UpdateHeights(origin);
-
-    if (CurrentVertices.Num() == 0)
-    {
-        UE_LOG(LogTemp, Error, TEXT("CurrentVertices está vacío! Copiando de BaseVertices"));
-        CurrentVertices = BaseVertices;
-        CurrentNormals = BaseNormals;
-        CurrentTangents = BaseTangents;
-    }
-
-    // ACTUALIZAR la malla existente 
-    // Tiempo actualizar el nivel 0 que tiene colisión: 32*32 1.2ms, 64*64 5-6ms, 128*128 21ms
-    UpdateMeshSection_LinearColor(
-        0,
-        CurrentVertices,
-        CurrentNormals,
-        UVs,
-        TArray<FLinearColor>(),
-        CurrentTangents
-    );
-
-    SetCollisionEnabled(/*LevelIndex == 0 ? ECollisionEnabled::QueryAndPhysics :*/ ECollisionEnabled::NoCollision);
-
-    /*double UpdateMeshEndTime = FPlatformTime::Seconds();
-    double UpdateMeshTime = UpdateMeshEndTime - UpdateMeshStartTime;
-
-    UE_LOG(LogTemp, Warning, TEXT("Malla actualizada en %.4f ms"), UpdateMeshTime * 1000.0);*/
-}
-
 void UCosmicMeshComponent::SetMeshActive(bool active)
 {
     bActiveMesh = active;
@@ -481,15 +431,6 @@ void UCosmicMeshComponent::SetMeshActive(bool active)
 }
 
 
-void UCosmicMeshComponent::UpdateHeights(const FVector2D& Origin)
-{
-
-    //De prueba
-    for (size_t i = 0; i < BaseVertices.Num(); i++)
-    {
-        CurrentVertices[i] = BaseVertices[i] + BaseNormals[i] * Origin.X * Origin.Y * 0;
-    }
-}
 
 void UCosmicMeshComponent::RequestMeshUpdate()
 {

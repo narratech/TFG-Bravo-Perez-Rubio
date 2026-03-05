@@ -32,7 +32,8 @@ public class CosmicArchitectEditor : ModuleRules
 				"SlateCore",
 				"CosmicArchitectRuntime",
 				"CosmicArchitectNoise",
-				"CosmicArchitectFactory",
+                "CosmicArchitectFoliage",
+                "CosmicArchitectFactory",
                 "CosmicArchitectCommon"
 				// ... add other public dependencies that you statically link with here ...
 			}
