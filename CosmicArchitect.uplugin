@@ -26,6 +26,11 @@
 			"LoadingPhase": "Default"
 		},
 		{
+			"Name": "CosmicArchitectFoliage",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
 			"Name": "CosmicArchitectFactory",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
