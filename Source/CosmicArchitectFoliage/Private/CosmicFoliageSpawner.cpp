@@ -160,15 +160,12 @@ void UCosmicFoliageSpawner::GenerateCell(const FIntVector& Cell)
         FVector((Cell.X + 1) * CellSizeCm, (Cell.Y + 1) * CellSizeCm, (Cell.Z + 1) * CellSizeCm)
     );
 
-    // Crear y lanzar tarea
-    FFoliageGenerationTask* Task = new FFoliageGenerationTask(
+    FAsyncTask<FFoliageGenerationTask>* AsyncTask = new FAsyncTask<FFoliageGenerationTask>(
         CellBox,
         FoliageCollection,
         RandomStream.FRand(),  // Rand() para int32
-        1.0f
-    );
+        1.0f);
 
-    FAsyncTask<FFoliageGenerationTask>* AsyncTask = new FAsyncTask<FFoliageGenerationTask>(*Task);
     AsyncTask->StartBackgroundTask();
 
     ActiveTasks.Add(AsyncTask);
