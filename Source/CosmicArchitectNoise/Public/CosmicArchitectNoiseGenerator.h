@@ -55,11 +55,17 @@ public:
         TArray<FastNoiseLite> ConfiguredNoises;
         ConfiguredNoises.Reserve(Layers.Num());
 
+        //Temperatura y humedad
         FastNoiseLite HumidityNoise;
         FastNoiseLite TempNoise;
 
         HumidityNoise.SetSeed(33233);
         HumidityNoise.SetFrequency(0.002f);
+        HumidityNoise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+        HumidityNoise.SetFractalType(FastNoiseLite::FractalType_FBm); // Activar modo fractal
+        HumidityNoise.SetFractalOctaves(5); // Añadir 5 capas de detalle (como nubes pequeñas sobre nubes grandes)
+        HumidityNoise.SetFrequency(0.015f);
+
         TempNoise.SetSeed(33422);
         TempNoise.SetFrequency(0.005f);
 
@@ -201,6 +207,7 @@ public:
             // 4. Humedad (Fractal de nubes)
             float RawHum = HumidityNoise.GetNoise(NoiseDir.X * 100.0f, NoiseDir.Y * 100.0f, NoiseDir.Z * 100.0f);
             float FinalHum = (RawHum + 1.0f) * 0.5f; // Convertir de [-1, 1] a [0, 1]
+            FinalHum = FMath::Clamp((FinalHum - 0.5f) * 1.5f + 0.5f, 0.0f, 1.0f);//Aumento de contraste
 
             // 5. Guardar en el array de Vertex Colors
             // R = Temperatura, G = Humedad, B = Altitud (Útil para mezclar nieve en el material)
