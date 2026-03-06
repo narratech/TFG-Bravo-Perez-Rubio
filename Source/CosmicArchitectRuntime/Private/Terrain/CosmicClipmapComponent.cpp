@@ -242,10 +242,10 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
 
        
 
-        //if (BaseMaterial)
-        //{
-        //    Mesh->SetMaterial(0, BaseMaterial);
-        //}
+        if (BaseMaterial)
+        {
+            Mesh->SetMaterial(0, BaseMaterial);
+        }
         //else
         //{
         //    // Material por defecto

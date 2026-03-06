@@ -108,7 +108,12 @@ void UCosmicMeshComponent::BuildBaseMesh()
     {
         for (int32 x = 0; x < Resolution; ++x)
         {
-            // Lógica del anillo
+            // Índices de vértices
+            int32 i0 = y * VertRes + x;
+            int32 i1 = i0 + 1;
+            int32 i2 = i0 + VertRes;
+            int32 i3 = i2 + 1;
+
             if (bIsRing)
             {
                 bool bInsideInner =
@@ -123,36 +128,129 @@ void UCosmicMeshComponent::BuildBaseMesh()
                 }
             }
 
-            // Índices de vértices
-            int32 i0 = y * VertRes + x;
-            int32 i1 = i0 + 1;
-            int32 i2 = i0 + VertRes;
-            int32 i3 = i2 + 1;
-
-            // VERIFICAR que los índices sean válidos
-            if (i0 < TotalVertices && i1 < TotalVertices &&
-                i2 < TotalVertices && i3 < TotalVertices)
+            if (i0 >= TotalVertices || i1 >= TotalVertices ||
+                i2 >= TotalVertices || i3 >= TotalVertices)
             {
-                // Primer triángulo (i0, i2, i1)
+                UE_LOG(LogTemp, Error, TEXT("Índice de triángulo inválido en [%d,%d]"), x, y);
+                continue;
+            }
+
+            bool bBorder =
+                (x == 0) ||
+                (x == Resolution - 1) ||
+                (y == 0) ||
+                (y == Resolution - 1);
+
+            // BORDE DEL NIVEL 
+            if (bBorder)
+            {
+                // bordes horizontales
+                if ((y == 0 || y == Resolution - 1) && (x % 2 == 0) && x < Resolution - 1)
+                {
+                    int32 i4 = i1 + 1;
+                    int32 i5 = i3 + 1;
+
+                    if (i4 < TotalVertices)
+                    {
+                        if (y == Resolution - 1) // borde superior 
+                        {
+                            Triangles.Add(i1);
+                            Triangles.Add(i5);
+                            Triangles.Add(i4);
+                            TriangleCount++;
+
+                            Triangles.Add(i1);
+                            Triangles.Add(i0);
+                            Triangles.Add(i2);
+                            TriangleCount++;
+
+                            Triangles.Add(i2);
+                            Triangles.Add(i5);
+                            Triangles.Add(i1);
+                            TriangleCount++;
+                        }
+                        else // borde inferior 
+                        {
+                            Triangles.Add(i0);
+                            Triangles.Add(i2);
+                            Triangles.Add(i3);
+                            TriangleCount++;
+
+                            Triangles.Add(i3);
+                            Triangles.Add(i5);
+                            Triangles.Add(i4);
+                            TriangleCount++;
+
+                            Triangles.Add(i0);
+                            Triangles.Add(i3);
+                            Triangles.Add(i4);
+                            TriangleCount++;
+                        }
+                    }
+                }
+                // bordes verticales
+                else if ((x == 0 || x == Resolution - 1) && (y % 2 == 0) && y < Resolution - 1)
+                {
+                    int32 i4 = i2 + VertRes;
+                    int32 i5 = i3 + VertRes;
+
+                    if (i4 < TotalVertices)
+                    {
+                        if (x == Resolution - 1) // borde derecho
+                        {
+                            Triangles.Add(i1);
+                            Triangles.Add(i2);
+                            Triangles.Add(i5);
+                            TriangleCount++;
+
+                            Triangles.Add(i2);
+                            Triangles.Add(i1);
+                            Triangles.Add(i0);
+                            TriangleCount++;
+
+                            Triangles.Add(i2);
+                            Triangles.Add(i4);
+                            Triangles.Add(i5);
+                            TriangleCount++;
+                        }
+                        else // borde izquierdo 
+                        {                        
+                            Triangles.Add(i0);
+                            Triangles.Add(i3);
+                            Triangles.Add(i1);
+                            TriangleCount++;
+
+                            Triangles.Add(i3);
+                            Triangles.Add(i4);
+                            Triangles.Add(i5);
+                            TriangleCount++;
+
+                            Triangles.Add(i0);
+                            Triangles.Add(i4);
+                            Triangles.Add(i3);
+                            TriangleCount++;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // INTERIOR NORMAL 
+
                 Triangles.Add(i0);
                 Triangles.Add(i2);
                 Triangles.Add(i1);
                 TriangleCount++;
 
-                // Segundo triángulo (i1, i2, i3)
                 Triangles.Add(i1);
                 Triangles.Add(i2);
                 Triangles.Add(i3);
                 TriangleCount++;
             }
-            else
-            {
-                UE_LOG(LogTemp, Error, TEXT("Índice de triángulo inválido en [%d,%d]"), x, y);
-            }
         }
     }
 
-    //UE_LOG(LogTemp, Warning, TEXT("  Triángulos calculados: %d"), TriangleCount / 3);
+    UE_LOG(LogTemp, Warning, TEXT("  Triángulos calculados: %d"), TriangleCount);
     //UE_LOG(LogTemp, Warning, TEXT("  BaseVertices.Num(): %d"), BaseVertices.Num());
     //UE_LOG(LogTemp, Warning, TEXT("  UVs.Num(): %d"), UVs.Num());
     //UE_LOG(LogTemp, Warning, TEXT("  Triangles.Num(): %d"), Triangles.Num());
