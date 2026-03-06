@@ -8,8 +8,11 @@
 #include "CosmicPlanet.generated.h"
 
 class UCosmicClipmapComponent;
+class UCosmicFoliageSpawner;
 
-UCLASS()
+UCLASS(HideCategories = (
+	Replication, Input, Collision, Actor, LOD, Cooking, Networking,
+	Physics, Navigation, Tags, DataLayers, LevelInstance))
 class COSMICARCHITECTRUNTIME_API ACosmicPlanet : public AActor
 {
 	GENERATED_BODY()
@@ -27,6 +30,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Noise")
 	UCosmicNoiseSettings* NoiseSettings;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UCosmicFoliageSpawner* FoliageSpawnerComponent;
 
 	// Sets default values for this actor's properties
 	ACosmicPlanet();

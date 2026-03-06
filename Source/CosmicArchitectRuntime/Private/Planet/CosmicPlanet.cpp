@@ -3,6 +3,7 @@
 
 #include "Planet/CosmicPlanet.h"
 #include "Terrain/CosmicClipmapComponent.h"
+#include "CosmicFoliageSpawner.h"
 #include "Components/StaticMeshComponent.h"
 
 // Sets default values
@@ -14,6 +15,7 @@ ACosmicPlanet::ACosmicPlanet()
     RootComponent = Root;
 
     ClipmapComponent = CreateDefaultSubobject<UCosmicClipmapComponent>(TEXT("ClipmapComponent"));
+    FoliageSpawnerComponent = CreateDefaultSubobject<UCosmicFoliageSpawner>(TEXT("FoliageSpawnerComponent"));
 }
 
 

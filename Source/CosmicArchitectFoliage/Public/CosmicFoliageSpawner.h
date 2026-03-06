@@ -4,9 +4,22 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "CosmicFoliageTypes.h"
 #include "CosmicFoliageCollection.h"
 #include "CosmicFoliageSpawner.generated.h"
+
+USTRUCT()
+struct FCosmicFoliageInstance
+{
+    GENERATED_BODY()
+
+    UPROPERTY()
+    UStaticMesh* Mesh = nullptr;
+
+    UPROPERTY()
+    FTransform Transform;
+};
 
 /**
  * Tarea asincrona para calcular posiciones de foliage
@@ -14,15 +27,25 @@
 class FFoliageGenerationTask : public FNonAbandonableTask
 {
 public:
-    TArray<FTransform> ResultTransforms;
+    TArray<FCosmicFoliageInstance> ResultInstances;
     FBox SpawnArea;
+    FIntVector Cell;
     UCosmicFoliageCollection* Collection;
     int32 Seed;
     float WorldToKmScale;
 
-    FFoliageGenerationTask(const FBox& InArea, UCosmicFoliageCollection* InCollection, int32 InSeed, float InScale)
-        : SpawnArea(InArea), Collection(InCollection), Seed(InSeed), WorldToKmScale(InScale) {
-    }
+    FFoliageGenerationTask(
+        const FBox& InArea,
+        UCosmicFoliageCollection* InCollection,
+        int32 InSeed,
+        float InScale,
+        const FIntVector& InCell)
+        : SpawnArea(InArea),
+        Cell(InCell),
+        Collection(InCollection),
+        Seed(InSeed),
+        WorldToKmScale(InScale)   
+    {}
 
     FORCEINLINE TStatId GetStatId() const
     {
@@ -32,17 +55,28 @@ public:
     void DoWork();
 };
 
-USTRUCT(BlueprintType)
+USTRUCT()
+struct FCosmicMeshIndices
+{
+    GENERATED_BODY()
+
+    UPROPERTY()
+    TArray<int32> Indices;
+};
+
+USTRUCT()
 struct FCosmicFoliageCellData
 {
     GENERATED_BODY()
 
     UPROPERTY()
-    TArray<FTransform> Instances;
+    TMap<UStaticMesh*, UHierarchicalInstancedStaticMeshComponent*> MeshComponents;
 
     UPROPERTY()
     float LastUpdateTime = 0.0f;
 };
+
+
 
 /**
  * Componente que gestiona el spawning de foliage cerca del jugador
@@ -67,6 +101,9 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
     int32 MaxInstancesPerFrame = 1000;
+
+    UPROPERTY()
+    TMap<UStaticMesh*, UHierarchicalInstancedStaticMeshComponent*> MeshComponents;
 
     // Mapa de instancias activas por celda
     UPROPERTY()
@@ -96,7 +133,11 @@ private:
     void GenerateCell(const FIntVector& Cell);
 
     /** Aplica las instancias generadas al mundo */
-    void ApplyGeneratedInstances(const FIntVector& Cell, const TArray<FTransform>& Transforms);
+    void ApplyGeneratedInstances(const FIntVector& Cell, const TArray<FCosmicFoliageInstance>& Instances);
 
-		
+    UHierarchicalInstancedStaticMeshComponent* GetOrCreateComponent(UStaticMesh* Mesh); 
+
+    UHierarchicalInstancedStaticMeshComponent* GetOrCreateCellComponent(FCosmicFoliageCellData& CellData,
+        UStaticMesh* Mesh);
+	
 };

@@ -9,50 +9,55 @@ void FFoliageGenerationTask::DoWork()
     if (!Collection) return;
 
     FRandomStream LocalRandom(Seed);
+
     float CellSizeKm = 1.0f;
     float CellSizeCm = CellSizeKm * 100000.0f;
 
-    float AreaKm2 = (CellSizeKm) * (CellSizeKm);
-    int32 NumSeeds = FMath::RoundToInt(AreaKm2 * Collection->SeedsPerSquareKm * Collection->GlobalDensity);
+    float AreaKm2 = 1.0f;
 
-    ResultTransforms.Empty();
-    ResultTransforms.Reserve(NumSeeds);
+    int32 NumSeeds = FMath::RoundToInt(
+        AreaKm2 *
+        Collection->SeedsPerSquareKm *
+        Collection->GlobalDensity
+    );
+
+    ResultInstances.Empty();
+    ResultInstances.Reserve(NumSeeds);
 
     for (int32 i = 0; i < NumSeeds; i++)
     {
-        FVector LocalPos(
-            SpawnArea.Min.X + LocalRandom.FRandRange(0.0f, CellSizeCm),
-            SpawnArea.Min.Y + LocalRandom.FRandRange(0.0f, CellSizeCm),
-            SpawnArea.Min.Z + LocalRandom.FRandRange(0.0f, CellSizeCm)
+        const FCosmicFoliageCollectionEntry* Entry =
+            Collection->GetRandomEntry(LocalRandom);
+
+        if (!Entry || !Entry->Foliage.Mesh)
+            continue;
+
+        FVector Pos(
+            SpawnArea.Min.X + LocalRandom.FRandRange(0, CellSizeCm),
+            SpawnArea.Min.Y + LocalRandom.FRandRange(0, CellSizeCm),
+            SpawnArea.Min.Z
         );
 
-        const FCosmicFoliageCollectionEntry* Entry = Collection->GetRandomEntry(LocalRandom);
-        if (!Entry) continue;
-
-        FTransform Transform;
-        Transform.SetLocation(LocalPos);
-
-        // FRandomStream::FRandRange() para floats
-        float RandomYaw = LocalRandom.FRandRange(
+        float Yaw = LocalRandom.FRandRange(
             Entry->Foliage.RandomRotationMin,
             Entry->Foliage.RandomRotationMax
         );
 
-        if (Entry->Foliage.bAlignToGround)
-        {
-            FRotator Rotation(0.0f, RandomYaw, 0.0f);
-            Transform.SetRotation(Rotation.Quaternion());
-        }
-        else
-        {
-            Transform.SetRotation(FRotator(0.0f, RandomYaw, 0.0f).Quaternion());
-        }
+        float Scale = LocalRandom.FRandRange(
+            Entry->Foliage.ScaleMin,
+            Entry->Foliage.ScaleMax
+        );
 
-        // FRandomStream::FRandRange() para floats
-        float Scale = LocalRandom.FRandRange(Entry->Foliage.ScaleMin, Entry->Foliage.ScaleMax);
-        Transform.SetScale3D(FVector(Scale));
+        FTransform T;
+        T.SetLocation(Pos);
+        T.SetRotation(FRotator(0, Yaw, 0).Quaternion());
+        T.SetScale3D(FVector(Scale));
 
-        ResultTransforms.Add(Transform);
+        FCosmicFoliageInstance Instance;
+        Instance.Mesh = Entry->Foliage.Mesh;
+        Instance.Transform = T;
+
+        ResultInstances.Add(Instance);
     }
 }
 
@@ -86,6 +91,8 @@ void UCosmicFoliageSpawner::TickComponent(float DeltaTime, ELevelTick TickType, 
     CleanupFarInstances(ViewerLocation, ViewDistanceKm * 1.5f);
     RequestAreaGeneration(ViewerLocation, ViewDistanceKm);
 
+    UE_LOG(LogTemp, Warning, TEXT("Numero de tareas activas: %d"), ActiveTasks.Num());
+
     // Procesar tareas completadas
     for (int32 i = ActiveTasks.Num() - 1; i >= 0; i--)
     {
@@ -93,13 +100,11 @@ void UCosmicFoliageSpawner::TickComponent(float DeltaTime, ELevelTick TickType, 
 
         if (Task->IsDone())
         {
+            //UE_LOG(LogTemp, Warning, TEXT("Tarea %d terminada: "), i);
             // GetTask() es del contenedor FAsyncTask
             FFoliageGenerationTask& CompletedTask = Task->GetTask();
 
-            // Necesitas guardar la celda asociada - mejora: pasar Cell como parámetro
-            FIntVector Cell = WorldToCell(ViewerLocation, 1.0f);
-
-            ApplyGeneratedInstances(Cell, CompletedTask.ResultTransforms);
+            ApplyGeneratedInstances(CompletedTask.Cell, CompletedTask.ResultInstances);
 
             delete Task;
             ActiveTasks.RemoveAt(i);
@@ -160,11 +165,14 @@ void UCosmicFoliageSpawner::GenerateCell(const FIntVector& Cell)
         FVector((Cell.X + 1) * CellSizeCm, (Cell.Y + 1) * CellSizeCm, (Cell.Z + 1) * CellSizeCm)
     );
 
-    FAsyncTask<FFoliageGenerationTask>* AsyncTask = new FAsyncTask<FFoliageGenerationTask>(
-        CellBox,
-        FoliageCollection,
-        RandomStream.FRand(),  // Rand() para int32
-        1.0f);
+    FAsyncTask<FFoliageGenerationTask>* AsyncTask =
+        new FAsyncTask<FFoliageGenerationTask>(
+            CellBox,
+            FoliageCollection,
+            RandomStream.FRand(),
+            1.0f,
+            Cell
+        );
 
     AsyncTask->StartBackgroundTask();
 
@@ -174,33 +182,108 @@ void UCosmicFoliageSpawner::GenerateCell(const FIntVector& Cell)
     // Crear un struct que guarde (FAsyncTask*, FIntVector)
 }
 
-void UCosmicFoliageSpawner::ApplyGeneratedInstances(const FIntVector& Cell, const TArray<FTransform>& Transforms)
+void UCosmicFoliageSpawner::ApplyGeneratedInstances(
+    const FIntVector& Cell,
+    const TArray<FCosmicFoliageInstance>& Instances)
 {
     FCosmicFoliageCellData& CellData = CellDataMap.FindOrAdd(Cell);
 
-    CellData.Instances = Transforms;
-    CellData.LastUpdateTime = GetWorld()->GetTimeSeconds();
+    TMap<UStaticMesh*, TArray<FTransform>> Batch;
 
-    UE_LOG(LogTemp, Verbose, TEXT("Cell %s generated %d instances"),
-        *Cell.ToString(), Transforms.Num());
+    for (const FCosmicFoliageInstance& Inst : Instances)
+    {
+        if (!Inst.Mesh)
+            continue;
+
+        Batch.FindOrAdd(Inst.Mesh).Add(Inst.Transform);
+    }
+
+    for (auto& Pair : Batch)
+    {
+        UStaticMesh* Mesh = Pair.Key;
+        TArray<FTransform>& Transforms = Pair.Value;
+
+        UHierarchicalInstancedStaticMeshComponent* Comp =
+            GetOrCreateCellComponent(CellData, Mesh);
+
+        if (!Comp)
+            continue;
+
+        Comp->AddInstances(Transforms, false);
+    }
+
+    CellData.LastUpdateTime = GetWorld()->GetTimeSeconds();
 }
 
-void UCosmicFoliageSpawner::CleanupFarInstances(const FVector& ViewerLocation, float MaxDistanceKm)
+UHierarchicalInstancedStaticMeshComponent* UCosmicFoliageSpawner::GetOrCreateComponent(UStaticMesh* Mesh)
+{
+    if (!Mesh) return nullptr;
+
+    if (MeshComponents.Contains(Mesh))
+        return MeshComponents[Mesh];
+
+    UHierarchicalInstancedStaticMeshComponent* Comp =
+        NewObject<UHierarchicalInstancedStaticMeshComponent>(GetOwner());
+
+    Comp->SetStaticMesh(Mesh);
+    Comp->SetupAttachment(GetOwner()->GetRootComponent());
+    Comp->RegisterComponent();
+
+    MeshComponents.Add(Mesh, Comp);
+
+    return Comp;
+}
+
+UHierarchicalInstancedStaticMeshComponent* UCosmicFoliageSpawner::GetOrCreateCellComponent(FCosmicFoliageCellData& CellData, UStaticMesh* Mesh)
+{
+    if (!Mesh)
+        return nullptr;
+
+    if (CellData.MeshComponents.Contains(Mesh))
+        return CellData.MeshComponents[Mesh];
+
+    UHierarchicalInstancedStaticMeshComponent* Comp =
+        NewObject<UHierarchicalInstancedStaticMeshComponent>(GetOwner());
+
+    Comp->SetStaticMesh(Mesh);
+    Comp->SetupAttachment(GetOwner()->GetRootComponent());
+    Comp->RegisterComponent();
+
+    CellData.MeshComponents.Add(Mesh, Comp);
+
+    return Comp;
+}
+
+void UCosmicFoliageSpawner::CleanupFarInstances(
+    const FVector& ViewerLocation,
+    float MaxDistanceKm)
 {
     float MaxDistanceSq = FMath::Square(MaxDistanceKm * 100000.0f);
+
     TArray<FIntVector> CellsToRemove;
 
-    for (const auto& Pair : CellDataMap)
+    for (auto& Pair : CellDataMap)
     {
+        const FIntVector& Cell = Pair.Key;
+        FCosmicFoliageCellData& Data = Pair.Value;
+
         FVector CellCenter(
-            Pair.Key.X * 100000.0f + 50000.0f,
-            Pair.Key.Y * 100000.0f + 50000.0f,
-            Pair.Key.Z * 100000.0f + 50000.0f
+            Cell.X * 100000.0f + 50000.0f,
+            Cell.Y * 100000.0f + 50000.0f,
+            Cell.Z * 100000.0f + 50000.0f
         );
 
         if (FVector::DistSquared(CellCenter, ViewerLocation) > MaxDistanceSq)
         {
-            CellsToRemove.Add(Pair.Key);
+            for (auto& MeshPair : Data.MeshComponents)
+            {
+                if (MeshPair.Value)
+                {
+                    MeshPair.Value->DestroyComponent();
+                }
+            }
+
+            CellsToRemove.Add(Cell);
         }
     }
 
