@@ -440,49 +440,31 @@ void UCosmicMeshComponent::SetMeshActive(bool active)
 
 void UCosmicMeshComponent::RequestMeshUpdate()
 {
-    if (!bMeshCreated || bIsGeneratingNoise) return;
+    if (!bMeshCreated || bIsGeneratingNoise || !NoiseSettings) return;
 
     bIsGeneratingNoise = true;
 
-    // Centro del planeta (asumiendo que el dueño es el actor central)
+    // Centro del planeta 
     FVector PlanetCenter = GetOwner()->GetActorLocation();
 
-    int32 Seed;
-    TArray<FCosmicNoiseTypes> ResolvedLayers;
-    bool bResolvedWarp;
-    float ResolvedWarpStrength, ResolvedWarpFrequency;
-
-    if (NoiseSettings)
-    {
-        Seed = NoiseSettings->Seed;
-        ResolvedLayers = NoiseSettings->NoiseLayers;
-        bResolvedWarp = NoiseSettings->bUseDomainWarp;
-        ResolvedWarpStrength = NoiseSettings->DomainWarpStrength;
-        ResolvedWarpFrequency = NoiseSettings->DomainWarpFrequency;
-    }
-    else
-    {
-        // Valores por defecto
-        Seed = 1337;
-        ResolvedLayers.Empty();
-        bResolvedWarp = false;
-        ResolvedWarpStrength = 0.0f;
-        ResolvedWarpFrequency = 0.0f;
-    }
-
-    
-
-    // Lanzar la tarea asíncrona
+    // Lanzar la tarea asincrona
     NoiseTask = new FAsyncTask<FCosmicArchitectNoiseGenerator>(
         BaseVertices,
         BaseNormals,
         GetComponentTransform(),
         PlanetCenter,
-        Seed,
-        ResolvedLayers,
-        bResolvedWarp,
-        ResolvedWarpStrength,
-        ResolvedWarpFrequency
+        NoiseSettings->Seed,
+        NoiseSettings->NoiseLayers,
+        NoiseSettings->bUseDomainWarp,
+        NoiseSettings->DomainWarpStrength,
+        NoiseSettings->DomainWarpFrequency,
+        NoiseSettings->TemperatureFrequency,
+        NoiseSettings->HumidityFrequency,
+        NoiseSettings->HumidityOctaves,
+        NoiseSettings->LatitudeEffect,
+        NoiseSettings->AltitudeTemperaturePenalty,
+        NoiseSettings->HumidityContrast,
+        NoiseSettings->HumidityOffset
     );
 
     NoiseTask->StartBackgroundTask();

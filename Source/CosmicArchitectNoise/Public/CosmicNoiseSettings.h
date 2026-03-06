@@ -70,6 +70,34 @@ public:
     UPROPERTY(EditAnywhere, Category = "Advanced", meta = (EditCondition = "bUseAdvancedSettings"))
     float DomainWarpFrequency = 0.001f;
 
+    /** Frecuencia para el ruido de temperatura (0.001-0.02) */
+    UPROPERTY(EditAnywhere, Category = "Biome", meta = (ClampMin = "0.0001", ClampMax = "0.1"), meta = (EditCondition = "bUseAdvancedSettings"))
+    float TemperatureFrequency = 0.005f;
+
+    /** Frecuencia para el ruido de humedad (0.001-0.1) */
+    UPROPERTY(EditAnywhere, Category = "Biome", meta = (ClampMin = "0.0001", ClampMax = "0.1"), meta = (EditCondition = "bUseAdvancedSettings"))
+    float HumidityFrequency = 0.015f;
+
+    /** Octavas para humedad (más = nubes más detalladas) */
+    UPROPERTY(EditAnywhere, Category = "Biome", meta = (ClampMin = "1", ClampMax = "8"), meta = (EditCondition = "bUseAdvancedSettings"))
+    int32 HumidityOctaves = 5;
+
+    /** Intensidad del efecto de latitud (0 = solo ruido, 1 = fuerte gradiente polar) */
+    UPROPERTY(EditAnywhere, Category = "Biome", meta = (ClampMin = "0", ClampMax = "2"), meta = (EditCondition = "bUseAdvancedSettings"))
+    float LatitudeEffect = 1.0f;
+
+    /** Penalización de temperatura por altitud (0-1) */
+    UPROPERTY(EditAnywhere, Category = "Biome", meta = (ClampMin = "0", ClampMax = "1"), meta = (EditCondition = "bUseAdvancedSettings"))
+    float AltitudeTemperaturePenalty = 0.6f;
+
+    /** Contraste de humedad (1 = normal, >1 = más extremo) */
+    UPROPERTY(EditAnywhere, Category = "Biome", meta = (ClampMin = "0.5", ClampMax = "3"), meta = (EditCondition = "bUseAdvancedSettings"))
+    float HumidityContrast = 1.5f;
+
+    /** Offset de humedad (para desplazar el rango) */
+    UPROPERTY(EditAnywhere, Category = "Biome", meta = (ClampMin = "-1", ClampMax = "1"), meta = (EditCondition = "bUseAdvancedSettings"))
+    float HumidityOffset = -0.5f;
+
 private:
     /** Flag para prevenir recursion en el editor */
     bool bIsUpdatingAdvanced = false;

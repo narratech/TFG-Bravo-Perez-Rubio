@@ -24,25 +24,51 @@ public:
 	bool bUseDomainWarp;
 	float DomainWarpStrength;
 	float DomainWarpFrequency;
+    float TemperatureFrequency;
+    float HumidityFrequency;
+    int32 HumidityOctaves;
+    float LatitudeEffect;
+    float AltitudeTemperaturePenalty;
+    float HumidityContrast;
+    float HumidityOffset;
 
-	FCosmicArchitectNoiseGenerator(
-		const TArray<FVector>& InBaseVerts,
-		const TArray<FVector>& InBaseNormals,
-		FTransform InTransform,
-		FVector InPlanetCenter,
-		int32 InSeed,
-		const TArray<FCosmicNoiseTypes>& InLayers,
-		bool InUseWarp,
-		float InWarpStrength,
-		float InWarpFreq)
-		: BaseVertices(InBaseVerts), BaseNormals(InBaseNormals),
-		ComponentTransform(InTransform), PlanetCenter(InPlanetCenter),
-		Seed(InSeed), Layers(InLayers),
-		bUseDomainWarp(InUseWarp), DomainWarpStrength(InWarpStrength), DomainWarpFrequency(InWarpFreq)
-	{
-		CalculatedVertices.SetNumUninitialized(BaseVertices.Num());
+    FCosmicArchitectNoiseGenerator(
+        const TArray<FVector>& InBaseVerts,
+        const TArray<FVector>& InBaseNormals,
+        FTransform InTransform,
+        FVector InPlanetCenter,
+        int32 InSeed,
+        const TArray<FCosmicNoiseTypes>& InLayers,
+        bool InUseWarp,
+        float InWarpStrength,
+        float InWarpFreq,
+        float InTemperatureFrequency,
+        float InHumidityFrequency,
+        int32 InHumidityOctaves,
+        float InLatitudeEffect,
+        float InAltitudeTemperaturePenalty,
+        float InHumidityContrast,
+        float InHumidityOffset)
+        : BaseVertices(InBaseVerts)
+        , BaseNormals(InBaseNormals)
+        , ComponentTransform(InTransform)
+        , PlanetCenter(InPlanetCenter)
+        , Seed(InSeed)
+        , Layers(InLayers)
+        , bUseDomainWarp(InUseWarp)
+        , DomainWarpStrength(InWarpStrength)
+        , DomainWarpFrequency(InWarpFreq)
+        , TemperatureFrequency(InTemperatureFrequency)
+        , HumidityFrequency(InHumidityFrequency)
+        , HumidityOctaves(InHumidityOctaves)
+        , LatitudeEffect(InLatitudeEffect)
+        , AltitudeTemperaturePenalty(InAltitudeTemperaturePenalty)
+        , HumidityContrast(InHumidityContrast)
+        , HumidityOffset(InHumidityOffset)
+    {
+        CalculatedVertices.SetNumUninitialized(BaseVertices.Num());
         CalculatedColors.SetNumUninitialized(BaseVertices.Num());
-	}
+    }
 
 	FORCEINLINE TStatId GetStatId() const
 	{
@@ -59,15 +85,16 @@ public:
         FastNoiseLite HumidityNoise;
         FastNoiseLite TempNoise;
 
-        HumidityNoise.SetSeed(33233);
-        HumidityNoise.SetFrequency(0.002f);
+        HumidityNoise.SetSeed(Seed);
         HumidityNoise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
-        HumidityNoise.SetFractalType(FastNoiseLite::FractalType_FBm); // Activar modo fractal
-        HumidityNoise.SetFractalOctaves(5); // Añadir 5 capas de detalle (como nubes pequeñas sobre nubes grandes)
-        HumidityNoise.SetFrequency(0.015f);
+        HumidityNoise.SetFractalType(FastNoiseLite::FractalType_FBm);
 
-        TempNoise.SetSeed(33422);
-        TempNoise.SetFrequency(0.005f);
+        // Usar los valores de los settings
+        HumidityNoise.SetFrequency(HumidityFrequency); 
+        HumidityNoise.SetFractalOctaves(HumidityOctaves); 
+
+        TempNoise.SetSeed(Seed);
+        TempNoise.SetFrequency(TemperatureFrequency);  
 
         for (const FCosmicNoiseTypes& Layer : Layers)
         {
@@ -190,27 +217,35 @@ public:
 
             CalculatedVertices[i] = BaseVertices[i] + (BaseNormals[i] * TotalNoise);
 
-            // 1. Latitud (0.0 en el ecuador, 1.0 en los polos Z)
+            // Latitud con intensidad 
             float Latitude = FMath::Abs(NoiseDir.Z);
-            float BaseTemp = 1.0f - Latitude; // Calor base
+            float BaseTemp = 1.0f - (Latitude * LatitudeEffect); 
 
-            // 2. Altitud (Penalización por montaña)
-            // Clamp para asegurar que no nos salimos de 0 a 1
+            // Penalización por altitud 
             float AltitudePenalty = FMath::Clamp(TotalNoise / MaxPossibleHeight, 0.0f, 1.0f);
-            BaseTemp -= (AltitudePenalty * 0.6f); // Las montañas restan hasta un 60% de temperatura
+            BaseTemp -= (AltitudePenalty * AltitudeTemperaturePenalty);  
 
-            // 3. Ruido térmico (para que no sean franjas perfectas)
-            // Multiplicamos el NoiseDir por una frecuencia para el muestreo
-            float TempVariance = TempNoise.GetNoise(NoiseDir.X * 100.0f, NoiseDir.Y * 100.0f, NoiseDir.Z * 100.0f) * 0.2f;
+            // Ruido térmico
+            float TempVariance = TempNoise.GetNoise(
+                NoiseDir.X * 100.0f,
+                NoiseDir.Y * 100.0f,
+                NoiseDir.Z * 100.0f
+            ) * 0.2f;
+
             float FinalTemp = FMath::Clamp(BaseTemp + TempVariance, 0.0f, 1.0f);
 
-            // 4. Humedad (Fractal de nubes)
-            float RawHum = HumidityNoise.GetNoise(NoiseDir.X * 100.0f, NoiseDir.Y * 100.0f, NoiseDir.Z * 100.0f);
-            float FinalHum = (RawHum + 1.0f) * 0.5f; // Convertir de [-1, 1] a [0, 1]
-            FinalHum = FMath::Clamp((FinalHum - 0.5f) * 1.5f + 0.5f, 0.0f, 1.0f);//Aumento de contraste
+            // Humedad 
+            float RawHum = HumidityNoise.GetNoise(
+                NoiseDir.X * 100.0f,
+                NoiseDir.Y * 100.0f,
+                NoiseDir.Z * 100.0f
+            );
 
-            // 5. Guardar en el array de Vertex Colors
-            // R = Temperatura, G = Humedad, B = Altitud (Útil para mezclar nieve en el material)
+            // Convertir de [-1, 1] a [0, 1] y aplicar offset
+            float FinalHum = (RawHum + 1.0f) * 0.5f + HumidityOffset;  
+            FinalHum = FMath::Clamp((FinalHum - 0.5f) * HumidityContrast + 0.5f, 0.0f, 1.0f); 
+
+            // Guardar colores
             CalculatedColors[i] = FLinearColor(FinalTemp, FinalHum, AltitudePenalty, 1.0f);
         }
     }
