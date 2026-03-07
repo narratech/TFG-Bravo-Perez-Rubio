@@ -97,6 +97,41 @@ public:
     UPROPERTY(EditAnywhere, Category = "Advanced", meta = (EditCondition = "bUseAdvancedSettings"))
     float DomainWarpFrequency = 0.001f;
 
+    //BIOMAS
+
+    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0.0001", ClampMax = "10", EditCondition = "bIsCraterPlanet"))
+    float CraterFrequency = 2.0f;
+
+    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0", EditCondition = "bIsCraterPlanet"))
+    float CraterDepth = 300.0f;
+
+    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "1", ClampMax = "12", EditCondition = "bIsCraterPlanet"))
+    int32 CraterOctaves = 3;
+
+    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0", ClampMax = "2", EditCondition = "bIsCraterPlanet"))
+    float CraterRadiusMultiplier = 1.0f;
+
+    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0", ClampMax = "2", EditCondition = "bIsCraterPlanet"))
+    float CraterRimHeight = 0.4f;
+
+    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0.1", ClampMax = "5", EditCondition = "bIsCraterPlanet"))
+    float CraterRimSharpness = 2.5f;
+
+    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0", ClampMax = "1", EditCondition = "bIsCraterPlanet"))
+    float CraterFloorHeight = 0.f;
+
+    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0", ClampMax = "1", EditCondition = "bIsCraterPlanet"))
+    float CraterDistortion = 0.15f;
+
+    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0", ClampMax = "10", EditCondition = "bIsCraterPlanet"))
+    float CraterLacunarity = 2.5f;
+
+    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0", ClampMax = "1", EditCondition = "bIsCraterPlanet"))
+    float CraterPersistence = 0.5f;
+
+    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0", ClampMax = "1", EditCondition = "bIsCraterPlanet"))
+    float CraterNoiseBreakup = 0.2f;
+
     /** Frecuencia para el ruido de temperatura (0.001-0.02) */
     UPROPERTY(EditAnywhere, Category = "Biome", meta = (ClampMin = "0.0001", ClampMax = "0.1", EditCondition = "bUseAdvancedSettings"))
     float TemperatureFrequency = 0.005f;

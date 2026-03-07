@@ -550,26 +550,60 @@ void UCosmicMeshComponent::RequestMeshUpdate()
     // Centro del planeta 
     FVector PlanetCenter = GetOwner()->GetActorLocation();
 
-    // Lanzar la tarea asincrona
-    NoiseTask = new FAsyncTask<FCosmicArchitectNoiseGenerator>(
-        BaseVertices,
-        BaseNormals,
-        GetComponentTransform(),
-        PlanetCenter,
-        NoiseSettings->Seed,
-        NoiseSettings->NoiseLayers,
-        NoiseSettings->bUseDomainWarp,
-        NoiseSettings->DomainWarpStrength,
-        NoiseSettings->DomainWarpFrequency,
-        NoiseSettings->TemperatureFrequency,
-        NoiseSettings->HumidityFrequency,
-        NoiseSettings->HumidityOctaves,
-        NoiseSettings->LatitudeEffect,
-        NoiseSettings->AltitudeTemperaturePenalty,
-        NoiseSettings->HumidityContrast,
-        NoiseSettings->HumidityOffset
-    );
+    if (NoiseSettings->bIsCraterPlanet) {
+        NoiseTask = new FAsyncTask<FCosmicArchitectNoiseGenerator>(
+            BaseVertices,
+            BaseNormals,
+            GetComponentTransform(),
+            PlanetCenter,
+            NoiseSettings->Seed,
+            NoiseSettings->NoiseLayers,
+            NoiseSettings->bUseDomainWarp,
+            NoiseSettings->DomainWarpStrength,
+            NoiseSettings->DomainWarpFrequency,
+            NoiseSettings->TemperatureFrequency,
+            NoiseSettings->HumidityFrequency,
+            NoiseSettings->HumidityOctaves,
+            NoiseSettings->LatitudeEffect,
+            NoiseSettings->AltitudeTemperaturePenalty,
+            NoiseSettings->HumidityContrast,
+            NoiseSettings->HumidityOffset,
+            NoiseSettings->bIsCraterPlanet,
+            NoiseSettings->CraterFrequency,
+            NoiseSettings->CraterDepth,
+            NoiseSettings->CraterRadiusMultiplier,
+            NoiseSettings->CraterRimHeight,
+            NoiseSettings->CraterRimSharpness,
+            NoiseSettings->CraterFloorHeight,
+            NoiseSettings->CraterDistortion,
+            NoiseSettings->CraterOctaves,
+            NoiseSettings->CraterLacunarity,
+            NoiseSettings->CraterPersistence,
+            NoiseSettings->CraterNoiseBreakup
+        );
+    }
+    else {
+        NoiseTask = new FAsyncTask<FCosmicArchitectNoiseGenerator>(
+            BaseVertices,
+            BaseNormals,
+            GetComponentTransform(),
+            PlanetCenter,
+            NoiseSettings->Seed,
+            NoiseSettings->NoiseLayers,
+            NoiseSettings->bUseDomainWarp,
+            NoiseSettings->DomainWarpStrength,
+            NoiseSettings->DomainWarpFrequency,
+            NoiseSettings->TemperatureFrequency,
+            NoiseSettings->HumidityFrequency,
+            NoiseSettings->HumidityOctaves,
+            NoiseSettings->LatitudeEffect,
+            NoiseSettings->AltitudeTemperaturePenalty,
+            NoiseSettings->HumidityContrast,
+            NoiseSettings->HumidityOffset
+        );
+    }
 
+    // Lanzar la tarea asincrona
     NoiseTask->StartBackgroundTask();
 }
 
