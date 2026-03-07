@@ -29,6 +29,11 @@ void UCosmicMeshComponent::BuildBaseMesh()
     CurrentNormals.Empty();
     CurrentTangents.Empty();
 
+    BaseVertices.Reserve(TotalVertices);
+    BaseNormals.Reserve(TotalVertices);
+    BaseTangents.Reserve(TotalVertices);
+    UVs.Reserve(TotalVertices);
+
     // 2. INICIALIZAR con tamaño correcto
     //HeightOffsets.Init(0.0f, TotalVertices);
 
@@ -262,7 +267,7 @@ void UCosmicMeshComponent::BuildBaseMesh()
 
     // 6. CREAR LA MALLA por primera vez
     
-    double CreateStartTime = FPlatformTime::Seconds();
+    //double CreateStartTime = FPlatformTime::Seconds();
 
     // Inicializamos el array de colores con el mismo tamaño que los vértices
     CurrentColors.Init(FLinearColor(0.5f, 0.5f, 0.5f, 1.0f), CurrentVertices.Num());
@@ -279,7 +284,7 @@ void UCosmicMeshComponent::BuildBaseMesh()
         false
     );
 
-    double CreateEndTime = FPlatformTime::Seconds();
+    //double CreateEndTime = FPlatformTime::Seconds();
 
     //UE_LOG(LogTemp, Warning, TEXT("CreateMeshSection tomo: %.4f ms"), (CreateEndTime - CreateStartTime) * 1000.0);
 

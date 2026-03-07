@@ -90,11 +90,11 @@ public:
         HumidityNoise.SetFractalType(FastNoiseLite::FractalType_FBm);
 
         // Usar los valores de los settings
-        HumidityNoise.SetFrequency(HumidityFrequency); 
+        HumidityNoise.SetFrequency(HumidityFrequency * 100.0f);
         HumidityNoise.SetFractalOctaves(HumidityOctaves); 
 
         TempNoise.SetSeed(Seed);
-        TempNoise.SetFrequency(TemperatureFrequency);  
+        TempNoise.SetFrequency(TemperatureFrequency * 100.0f);
 
         for (const FCosmicNoiseTypes& Layer : Layers)
         {
@@ -171,9 +171,11 @@ public:
         }
         if (MaxPossibleHeight == 0.0f) MaxPossibleHeight = 1000.0f; // Seguridad
 
+        const int32 VertexCount = BaseVertices.Num();
+        const bool bHasLayers = Layers.Num() > 0;
 
         // Loop de vértices
-        for (int32 i = 0; i < BaseVertices.Num(); i++)
+        for (int32 i = 0; i < VertexCount; i++)
         {
             FVector WorldPos = ComponentTransform.TransformPosition(BaseVertices[i]);
             FVector NoiseDir = (WorldPos - PlanetCenter).GetSafeNormal();
@@ -207,7 +209,7 @@ public:
             }
 
             // Fallback si no hay capas
-            if (Layers.Num() == 0)
+            if (!bHasLayers)
             {
                 FastNoiseLite DefaultNoise;
                 DefaultNoise.SetSeed(Seed);
@@ -227,18 +229,18 @@ public:
 
             // Ruido térmico
             float TempVariance = TempNoise.GetNoise(
-                NoiseDir.X * 100.0f,
-                NoiseDir.Y * 100.0f,
-                NoiseDir.Z * 100.0f
+                NoiseDir.X,
+                NoiseDir.Y,
+                NoiseDir.Z
             ) * 0.2f;
 
             float FinalTemp = FMath::Clamp(BaseTemp + TempVariance, 0.0f, 1.0f);
 
             // Humedad 
             float RawHum = HumidityNoise.GetNoise(
-                NoiseDir.X * 100.0f,
-                NoiseDir.Y * 100.0f,
-                NoiseDir.Z * 100.0f
+                NoiseDir.X,
+                NoiseDir.Y,
+                NoiseDir.Z
             );
 
             // Convertir de [-1, 1] a [0, 1] y aplicar offset
