@@ -99,13 +99,13 @@ public:
 
     //BIOMAS
 
-    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0.0001", ClampMax = "10", EditCondition = "bIsCraterPlanet"))
+    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0.0001", ClampMax = "1000", EditCondition = "bIsCraterPlanet"))
     float CraterFrequency = 2.0f;
 
-    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0", EditCondition = "bIsCraterPlanet"))
+    UPROPERTY(EditAnywhere, Category = "Craters", meta = (EditCondition = "bIsCraterPlanet"))
     float CraterDepth = 300.0f;
 
-    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "1", ClampMax = "12", EditCondition = "bIsCraterPlanet"))
+    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "1", ClampMax = "8", EditCondition = "bIsCraterPlanet"))
     int32 CraterOctaves = 3;
 
     UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0", ClampMax = "2", EditCondition = "bIsCraterPlanet"))
@@ -114,10 +114,10 @@ public:
     UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0", ClampMax = "2", EditCondition = "bIsCraterPlanet"))
     float CraterRimHeight = 0.4f;
 
-    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0.1", ClampMax = "5", EditCondition = "bIsCraterPlanet"))
+    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0.1", ClampMax = "20", EditCondition = "bIsCraterPlanet"))
     float CraterRimSharpness = 2.5f;
 
-    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0", ClampMax = "1", EditCondition = "bIsCraterPlanet"))
+    UPROPERTY(EditAnywhere, Category = "Craters", meta = (EditCondition = "bIsCraterPlanet"))
     float CraterFloorHeight = 0.f;
 
     UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0", ClampMax = "1", EditCondition = "bIsCraterPlanet"))

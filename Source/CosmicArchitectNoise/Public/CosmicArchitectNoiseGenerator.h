@@ -34,7 +34,7 @@ public:
 
     bool bUseCraters = false;
     float CraterFrequency;
-    float CraterDepth;
+    float CraterDepth = 0;
     float CraterRadiusMultiplier;
     float CraterRimHeight;
     float CraterRimSharpness;
@@ -166,14 +166,13 @@ public:
         FastNoiseLite HumidityNoise;
         FastNoiseLite TempNoise;
         FastNoiseLite CraterNoise;
+        FastNoiseLite CraterSizeNoise;
 
         HumidityNoise.SetSeed(Seed);
         HumidityNoise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
         HumidityNoise.SetFractalType(FastNoiseLite::FractalType_FBm);
-
-        // Usar los valores de los settings
         HumidityNoise.SetFrequency(HumidityFrequency * 100.0f);
-        HumidityNoise.SetFractalOctaves(HumidityOctaves); 
+        HumidityNoise.SetFractalOctaves(HumidityOctaves);
 
         TempNoise.SetSeed(Seed);
         TempNoise.SetFrequency(TemperatureFrequency * 100.0f);
@@ -183,12 +182,13 @@ public:
             CraterNoise.SetSeed(Seed + 4242);
             CraterNoise.SetNoiseType(FastNoiseLite::NoiseType_Cellular);
             CraterNoise.SetFrequency(CraterFrequency);
-            CraterNoise.SetFractalType(FastNoiseLite::FractalType_FBm);
-            CraterNoise.SetFractalOctaves(CraterOctaves);
-            CraterNoise.SetFractalLacunarity(CraterLacunarity);
-            CraterNoise.SetFractalGain(CraterPersistence);
+            CraterNoise.SetFractalType(FastNoiseLite::FractalType_None);
+            //CraterNoise.SetFractalOctaves(CraterOctaves);
+            //CraterNoise.SetFractalLacunarity(CraterLacunarity);
+            //CraterNoise.SetFractalGain(CraterPersistence);
             CraterNoise.SetCellularDistanceFunction(FastNoiseLite::CellularDistanceFunction_Euclidean);
             CraterNoise.SetCellularReturnType(FastNoiseLite::CellularReturnType_Distance);
+
         }
 
         for (const FCosmicNoiseTypes& Layer : Layers)
@@ -202,21 +202,15 @@ public:
             case ECosmicNoiseType::Perlin:
                 Noise.SetNoiseType(FastNoiseLite::NoiseType_Perlin);
                 break;
-
             case ECosmicNoiseType::Simplex:
+            case ECosmicNoiseType::Ridged: // Ridged usa Simplex como base
                 Noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
                 break;
-
             case ECosmicNoiseType::Cellular:
                 Noise.SetNoiseType(FastNoiseLite::NoiseType_Cellular);
                 break;
-
             case ECosmicNoiseType::Value:
                 Noise.SetNoiseType(FastNoiseLite::NoiseType_Value);
-                break;
-
-            case ECosmicNoiseType::Ridged:
-                Noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
                 break;
             }
 
@@ -226,15 +220,12 @@ public:
             case ECosmicFractalType::None:
                 Noise.SetFractalType(FastNoiseLite::FractalType_None);
                 break;
-
             case ECosmicFractalType::FBM:
                 Noise.SetFractalType(FastNoiseLite::FractalType_FBm);
                 break;
-
             case ECosmicFractalType::Ridged:
                 Noise.SetFractalType(FastNoiseLite::FractalType_Ridged);
                 break;
-
             case ECosmicFractalType::PingPong:
                 Noise.SetFractalType(FastNoiseLite::FractalType_PingPong);
                 break;
@@ -266,27 +257,6 @@ public:
         }
         if (MaxPossibleHeight == 0.0f) MaxPossibleHeight = 1000.0f; // Seguridad
 
-        //Funcion de perfil de crateres
-        auto CraterProfile = [&](float d)
-            {
-                if (d >= 1.5f)
-                    return 0.0f;
-
-                // cavidad
-                float cavity = -(1.0f - d * d);
-
-                // rim
-                float rim = FMath::Exp(
-                    -FMath::Pow((d - 1.0f) * CraterRimSharpness, 2.0f)
-                ) * CraterRimHeight;
-
-                float crater = cavity + rim;
-
-                crater = FMath::Max(crater, CraterFloorHeight);
-
-                return crater;
-            };
-
         const int32 VertexCount = BaseVertices.Num();
         const bool bHasLayers = Layers.Num() > 0;
 
@@ -312,16 +282,16 @@ public:
                 Z += WarpZ;
             }
 
-            float TotalNoise = 0.0f;
+            float BaseHeight = 0.0f;
 
-            // Sumar capas 
+            // Altura base del terreno (capas de ruido)
             for (int32 LayerIndex = 0; LayerIndex < Layers.Num(); LayerIndex++)
             {
                 const FCosmicNoiseTypes& Layer = Layers[LayerIndex];
                 FastNoiseLite& Noise = ConfiguredNoises[LayerIndex];
 
                 float LayerNoise = Noise.GetNoise(X, Y, Z);
-                TotalNoise += LayerNoise * Layer.Amplitude;
+                BaseHeight += LayerNoise * Layer.Amplitude;
             }
 
             // Fallback si no hay capas
@@ -330,79 +300,84 @@ public:
                 FastNoiseLite DefaultNoise;
                 DefaultNoise.SetSeed(Seed);
                 DefaultNoise.SetFrequency(0.001f);
-                TotalNoise = DefaultNoise.GetNoise(X, Y, Z) * 1000.0f;
+                BaseHeight = DefaultNoise.GetNoise(X, Y, Z) * 1000.0f;
             }
 
+            float FinalHeight = BaseHeight;
+
+           
             if (bUseCraters)
             {
-                float craterHeight = 0.0f;
+                // Distancia al centro de la celda Voronoi
+                float CellDistance = CraterNoise.GetNoise(X, Y, Z);
+                float CraterRadius = CraterRadiusMultiplier;
 
-                // distancia al centro de celda
-                float d = FMath::Abs(CraterNoise.GetNoise(X, Y, Z)) * CraterRadiusMultiplier;
+                CellDistance = (CellDistance + 1.0f) * 0.5f;
 
-                // distorsión controlada
-                if (CraterDistortion > 0.0f)
+                if (CellDistance < CraterRadius * 1.3f)
                 {
-                    float distort = ConfiguredNoises.Num() > 0
-                        ? ConfiguredNoises[0].GetNoise(X, Y, Z)
-                        : TempNoise.GetNoise(X, Y, Z);
+                    float t = CellDistance / CraterRadius;// 0 centro, 1 borde
 
-                    d += distort * CraterDistortion;
+                    float craterHeight = 0.0f;
+
+                    // CAVIDAD 
+                    if (t < 1.0f)
+                    {
+                        float floorStart = CraterFloorHeight; // 0.0 - 1.0
+
+                        float bowl = 0.0f;
+
+                        if (t < floorStart)
+                        {
+                            // zona plana del cráter
+                            bowl = 1.0f;
+                        }
+                        else
+                        {
+                            // pared del cráter
+                            float wallT = (t - floorStart) / (1.0f - floorStart);
+                            wallT = FMath::SmoothStep(0.0f, 1.0f, wallT);
+                            bowl = 1.0f - wallT;
+                            bowl *= bowl;
+                        }
+
+                        craterHeight -= bowl * CraterDepth;
+                    }
+
+                    // RIM 
+                    float rimWidth = 0.15f;
+
+                    float rim = FMath::Exp(-FMath::Pow((t - 1.0f) / rimWidth, 2.0f) * CraterRimSharpness);
+
+                    craterHeight += rim * CraterDepth * CraterRimHeight;
+
+                    FinalHeight += craterHeight;
                 }
-
-                float crater = CraterProfile(d);
-
-                // floorHeight solo dentro del cráter
-                if (d < 1.0f)
-                {
-                    crater = FMath::Max(crater, CraterFloorHeight);
-                }
-
-                if (CraterNoiseBreakup > 0.0f)
-                {
-                    float breakup = TempNoise.GetNoise(X * 4, Y * 4, Z * 4);
-                    crater *= 1.0f + breakup * CraterNoiseBreakup;
-                }
-
-                // aplicar profundidad y hacia adentro
-                craterHeight = -crater * CraterDepth;
-
-                // superposición realista: los impactos nuevos cortan los antiguos
-                TotalNoise += craterHeight;
             }
 
-            CalculatedVertices[i] = BaseVertices[i] + (BaseNormals[i] * TotalNoise);
+            // Calcular posición final del vértice
+            CalculatedVertices[i] = BaseVertices[i] + (BaseNormals[i] * FinalHeight);
 
-            // Latitud con intensidad 
+            // --- CÁLCULO DE COLOR (Temperatura y Humedad) ---
             float Latitude = FMath::Abs(NoiseDir.Z);
-            float BaseTemp = 1.0f - (Latitude * LatitudeEffect); 
+            float BaseTemp = 1.0f - (Latitude * LatitudeEffect);
 
-            // Penalización por altitud 
-            float AltitudePenalty = FMath::Clamp(TotalNoise / MaxPossibleHeight, 0.0f, 1.0f);
-            BaseTemp -= (AltitudePenalty * AltitudeTemperaturePenalty);  
+            // Penalización por altitud (usando FinalHeight)
+            float AltitudePenalty = FMath::Clamp(FinalHeight / MaxPossibleHeight, 0.0f, 1.0f);
+            BaseTemp -= (AltitudePenalty * AltitudeTemperaturePenalty);
 
             // Ruido térmico
-            float TempVariance = TempNoise.GetNoise(
-                NoiseDir.X,
-                NoiseDir.Y,
-                NoiseDir.Z
-            ) * 0.2f;
-
+            float TempVariance = TempNoise.GetNoise(NoiseDir.X, NoiseDir.Y, NoiseDir.Z) * 0.2f;
             float FinalTemp = FMath::Clamp(BaseTemp + TempVariance, 0.0f, 1.0f);
 
             // Humedad 
-            float RawHum = HumidityNoise.GetNoise(
-                NoiseDir.X,
-                NoiseDir.Y,
-                NoiseDir.Z
-            );
-
-            // Convertir de [-1, 1] a [0, 1] y aplicar offset
-            float FinalHum = (RawHum + 1.0f) * 0.5f + HumidityOffset;  
-            FinalHum = FMath::Clamp((FinalHum - 0.5f) * HumidityContrast + 0.5f, 0.0f, 1.0f); 
+            float RawHum = HumidityNoise.GetNoise(NoiseDir.X, NoiseDir.Y, NoiseDir.Z);
+            float FinalHum = (RawHum + 1.0f) * 0.5f + HumidityOffset;
+            FinalHum = FMath::Clamp((FinalHum - 0.5f) * HumidityContrast + 0.5f, 0.0f, 1.0f);
 
             // Guardar colores
             CalculatedColors[i] = FLinearColor(FinalTemp, FinalHum, AltitudePenalty, 1.0f);
+            
         }
     }
 };
