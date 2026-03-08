@@ -8,6 +8,7 @@
 
 class UCosmicMeshComponent;
 class UCosmicNoiseSettings;
+class UCosmicCollisionComponent;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class UCosmicClipmapComponent : public UActorComponent
@@ -54,11 +55,14 @@ public:
     UPROPERTY(EditAnywhere, Category = "Clipmap")
     bool FreezeGeneration = false;
 
+    /** Componente de colision que sigue al jugador */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Collision")
+    UCosmicCollisionComponent* CollisionComponent;
+
 protected:
     TArray<UCosmicMeshComponent*> Levels;
     UCosmicMeshComponent* FarLevel;
     
-
     float ElapsedTime = 0;
     float TimeToRefreshActive;
     bool bPerformaceMode = false;
@@ -68,12 +72,14 @@ protected:
     virtual void BeginPlay() override;
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+    /** Actualizar colisión cerca del jugador */
+    void UpdateCollisionNearPlayer(const FVector& PlayerLocation, const FVector& SurfaceNormal);
     void UpdatePatchTransform(const FVector& SurfacePos, const FVector& N);
     float GetDistanceToSurface(FVector& SurfacePos, FVector& N);
+    FVector GetPlayerLocation();
     bool IsClipmapRingVisible(const int32 LevelIndex, const float DistanceToSurface);
     bool IsClipmapRingVisible(const float GridSpacing, const int32 Resolution, const float DistanceToSurface);
     void ReduceClimapLevel();
     void IncreaseClipmapLevel();
-    void UpdateOrigins();
 };
 

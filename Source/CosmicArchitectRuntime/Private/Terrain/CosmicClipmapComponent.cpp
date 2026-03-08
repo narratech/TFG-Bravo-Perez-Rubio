@@ -8,6 +8,7 @@
 #include "CosmicNoiseSettings.h"
 #include "Kismet/GameplayStatics.h"
 #include "Terrain/CosmicMeshComponent.h"
+#include "Terrain/CosmicCollisionComponent.h"
 #include "CosmicCameraBridge.h"
 
 
@@ -19,10 +20,47 @@ UCosmicClipmapComponent::UCosmicClipmapComponent()
     bTickInEditor = true;
 
 	PrimaryComponentTick.bCanEverTick = true;
+
+    CollisionComponent = CreateDefaultSubobject<UCosmicCollisionComponent>(TEXT("CollisionComponent"));
+    CollisionComponent->SetupAttachment(ParentRoot);
     
 	// ...
 }
 
+
+void UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& PlayerLocation, const FVector& SurfaceNormal)
+{
+    if (!CollisionComponent) return;
+
+    // Calcular punto en la superficie más cercano al jugador
+    FVector PlanetCenter = GetOwner()->GetActorLocation();
+    FVector DirToPlayer = (PlayerLocation - PlanetCenter).GetSafeNormal();
+    FVector SurfacePoint = PlanetCenter + DirToPlayer * PlanetRadius;
+
+    float DistanceToSurface = FVector::Dist(PlayerLocation, SurfacePoint);
+
+    // Solo generar colisión si el jugador está cerca de la superficie
+    if (DistanceToSurface < CollisionComponent->MaxCollisionDistance)
+    {
+        // La normal es la dirección desde el centro al punto
+        FVector Normal = (SurfacePoint - PlanetCenter).GetSafeNormal();
+
+        // Generar colisión centrada en el jugador proyectada a la superficie
+        FVector ProjectedPlayerPos = PlanetCenter + DirToPlayer * PlanetRadius;
+
+        CollisionComponent->GenerateCollisionMesh(
+            ProjectedPlayerPos,
+            Normal,
+            CollisionComponent->CollisionAreaSize,
+            CollisionComponent->CollisionResolution
+        );
+    }
+    else
+    {
+        // Limpiar colisión si está lejos
+        CollisionComponent->ClearCollisionMesh();
+    }
+}
 
 // Called when the game starts
 void UCosmicClipmapComponent::BeginPlay()
@@ -48,6 +86,9 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         FVector N = FVector();
 
         float DistanceToSurface = GetDistanceToSurface(SurfacePos, N);
+
+        FVector PlayerLocation = GetPlayerLocation();
+        UpdateCollisionNearPlayer(PlayerLocation, N);
 
         if (!FarLevel)
             return;
@@ -122,6 +163,11 @@ void UCosmicClipmapComponent::CreateLevels()
     if (bInit)
     {
         ClearLevels();
+    }
+
+    if (CollisionComponent && ParentRoot && !CollisionComponent->IsAttachedTo(ParentRoot))
+    {
+        CollisionComponent->AttachToComponent(ParentRoot, FAttachmentTransformRules::KeepRelativeTransform);
     }
 
     // 2. Validar parámetros
@@ -392,27 +438,36 @@ void UCosmicClipmapComponent::UpdatePatchTransform(const FVector& SurfacePos, co
    
 }
 
+FVector UCosmicClipmapComponent::GetPlayerLocation()
+{
+    FVector PlayerLocation = FVector::ZeroVector;
+
+    if (GetWorld()->IsGameWorld())
+    {
+        APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+        if (PC && PC->PlayerCameraManager)
+        {
+            PlayerLocation = PC->PlayerCameraManager->GetCameraLocation();
+        }
+    }
+
+#if WITH_EDITOR
+    // En editor, si no tenemos cámara de juego, usar la cámara del editor
+    if (PlayerLocation.IsZero())
+    {
+        PlayerLocation = FCosmicCameraBridge::CameraLocation;
+    }
+#endif
+
+    return PlayerLocation;
+}
+
 float UCosmicClipmapComponent::GetDistanceToSurface(FVector& SurfacePos, FVector& N)
 {
     AActor* Owner = GetOwner();
     if (!Owner) return 0.f;
 
-    FVector ViewerPosWorld = FVector();
-
-#if WITH_EDITOR
-
-    ViewerPosWorld = FCosmicCameraBridge::CameraLocation;
-
-    /*UE_LOG(LogTemp, Warning, TEXT("Camara X: %.4f, Y: %.4f, Z: %.4f"),
-        FCosmicCameraBridge::CameraLocation.X, FCosmicCameraBridge::CameraLocation.Y, FCosmicCameraBridge::CameraLocation.Z);*/
-#endif
-
-    if (GetWorld()->IsGameWorld()) {
-        APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-        if (!PC) return 0.f;
-
-        ViewerPosWorld = PC->PlayerCameraManager->GetCameraLocation();
-    }
+    FVector ViewerPosWorld = GetPlayerLocation();
 
     FVector PlanetCenter = Owner->GetActorLocation();
 
@@ -432,6 +487,8 @@ float UCosmicClipmapComponent::GetDistanceToSurface(FVector& SurfacePos, FVector
 
     return FVector::Distance(ViewerPosWorld, SurfacePos);
 }
+
+
 
 bool UCosmicClipmapComponent::IsClipmapRingVisible(const int32 LevelIndex, const float DistanceToSurface)
 {  
@@ -514,9 +571,5 @@ void UCosmicClipmapComponent::IncreaseClipmapLevel()
     }
 }
 
-void UCosmicClipmapComponent::UpdateOrigins()
-{
-
-}
 
 
