@@ -63,12 +63,25 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Collision Settings")
     bool bGenerateSimpleCollision = true;
 
+    /** Mostrar malla de colisión en el editor (para depuración) */
+    UPROPERTY(EditAnywhere, Category = "Collision Debug")
+    bool bShowCollisionMesh = true;
+
+    /** Color de la malla de colisión en el editor */
+    UPROPERTY(EditAnywhere, Category = "Collision Debug", meta = (EditCondition = "bShowCollisionMesh"))
+    FColor DebugColor = FColor::Green;
+
+    /** Transparencia de la malla de colisión (0-1) */
+    UPROPERTY(EditAnywhere, Category = "Collision Debug", meta = (EditCondition = "bShowCollisionMesh", ClampMin = "0"))
+    float DebugLineWidth = 100.f;
+
     /** Forzar reconstruccion de colision */
     UFUNCTION(CallInEditor, Category = "Collision Area")
     void RebuildCollision();
 
 protected:
     virtual void OnRegister() override;
+    virtual void OnUnregister() override;
     virtual UBodySetup* GetBodySetup() override;  
 
 private:
@@ -79,5 +92,6 @@ private:
     bool bNeedsRebuild = false;
 
     void UpdateCollisionSettings();
+    void DrawDebugCollisionMesh(const TArray<FVector>& Verts, const TArray<int32>& Tris);
     void GenerateCollisionMeshData(const FVector& Center, const FVector& SurfaceNormal, float Radius, int32 Resolution, TArray<FVector>& OutVerts, TArray<int32>& OutTris);
 };

@@ -4,6 +4,7 @@
 #include "Terrain/CosmicCollisionComponent.h"
 #include "PhysicsEngine/BodySetup.h"
 #include "PhysicsEngine/BodyInstance.h"
+#include "DrawDebugHelpers.h"
 
 UCosmicCollisionComponent::UCosmicCollisionComponent()
 {
@@ -31,6 +32,15 @@ void UCosmicCollisionComponent::OnRegister()
     UpdateCollisionSettings();
 }
 
+void UCosmicCollisionComponent::OnUnregister()
+{
+    if (BodySetup)
+    {
+        BodySetup->AggGeom.EmptyElements();
+    }
+    Super::OnUnregister();
+}
+
 UBodySetup* UCosmicCollisionComponent::GetBodySetup()
 {
     return BodySetup;
@@ -56,6 +66,26 @@ void UCosmicCollisionComponent::UpdateCollisionSettings()
     }
 
     BodyInstance.bUseCCD = false;
+}
+
+void UCosmicCollisionComponent::DrawDebugCollisionMesh(const TArray<FVector>& Verts, const TArray<int32>& Tris)
+{
+    UWorld* World = GetWorld();
+    if (!World) return;
+
+    const FColor OrbitColor = DebugColor;
+    const float OrbitThickness = DebugLineWidth;
+
+    for (int32 i = 0; i < Tris.Num(); i += 3)
+    {
+        const FVector& A = Verts[Tris[i]];
+        const FVector& B = Verts[Tris[i + 1]];
+        const FVector& C = Verts[Tris[i + 2]];
+
+        DrawDebugLine(World, A, B, OrbitColor, false, -1.0f, 0, OrbitThickness);
+        DrawDebugLine(World, B, C, OrbitColor, false, -1.0f, 0, OrbitThickness);
+        DrawDebugLine(World, C, A, OrbitColor, false, -1.0f, 0, OrbitThickness);
+    }
 }
 
 void UCosmicCollisionComponent::RebuildCollision()
@@ -94,6 +124,10 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(
 
     GenerateCollisionMeshData(Center, SurfaceNormal, Radius, Resolution, Verts, Tris);
 
+    if (bShowCollisionMesh) {
+        DrawDebugCollisionMesh(Verts, Tris);
+    }
+    
     if (Verts.Num() > 0 && Tris.Num() > 0)
     {
         // Crear elementos convexos para colisión
