@@ -10,25 +10,24 @@ UCosmicCollisionComponent::UCosmicCollisionComponent()
 {
     PrimaryComponentTick.bCanEverTick = false;
 
-    // Crear BodySetup
-    BodySetup = NewObject<UBodySetup>(GetTransientPackage(), TEXT("CollisionBodySetup"), RF_Transient);
-    BodySetup->CollisionTraceFlag = CTF_UseDefault;
+    BodySetup = nullptr;
 
-    // Invisible
     SetVisibility(false);
     bHiddenInGame = true;
-    SetCastShadow(false);
-    SetGenerateOverlapEvents(false);
-
-    // Marcar para reconstrucción
-    bNeedsRebuild = true;
-
-    CanBeCharacterBase = ECB_Yes;
 }
 
 void UCosmicCollisionComponent::OnRegister()
 {
     Super::OnRegister();
+
+    if (!BodySetup)
+    {
+        BodySetup = NewObject<UBodySetup>(this, UBodySetup::StaticClass());
+        BodySetup->CollisionTraceFlag = CTF_UseDefault;
+        BodySetup->bGenerateMirroredCollision = false;
+        BodySetup->bDoubleSidedGeometry = true;
+    }
+
     UpdateCollisionSettings();
 }
 

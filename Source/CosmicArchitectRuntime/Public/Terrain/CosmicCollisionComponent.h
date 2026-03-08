@@ -85,6 +85,7 @@ protected:
     virtual UBodySetup* GetBodySetup() override;  
 
 private:
+    UPROPERTY(Transient)
     UBodySetup* BodySetup;  
 
     FVector CurrentCollisionCenter;
