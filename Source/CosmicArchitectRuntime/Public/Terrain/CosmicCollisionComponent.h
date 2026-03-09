@@ -19,6 +19,8 @@ class COSMICARCHITECTRUNTIME_API UCosmicCollisionComponent : public UPrimitiveCo
 public:
     UCosmicCollisionComponent();
 
+    virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
     // Genera la malla de colisión en una posicion
     void GenerateCollisionMesh(const FVector& Center, const FVector& SurfaceNormal, float Radius, int32 Resolution);
 
@@ -92,7 +94,11 @@ private:
     float CurrentCollisionRadius;
     bool bNeedsRebuild = false;
 
+    TArray<FVector> Verts;
+    TArray<int32> Tris;
+
+
     void UpdateCollisionSettings();
-    void DrawDebugCollisionMesh(const TArray<FVector>& Verts, const TArray<int32>& Tris);
+    void DrawDebugCollisionMesh();
     void GenerateCollisionMeshData(const FVector& Center, const FVector& SurfaceNormal, float Radius, int32 Resolution, TArray<FVector>& OutVerts, TArray<int32>& OutTris);
 };

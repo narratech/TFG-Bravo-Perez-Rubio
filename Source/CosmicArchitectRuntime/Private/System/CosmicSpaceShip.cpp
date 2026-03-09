@@ -71,7 +71,7 @@ void ACosmicSpaceShip::AplicarTraslacion(const FInputActionValue& Value)
 		// E: Aplicamos la fuerza propulsora en la dirección local de la nave. 'true' ignora la masa para estandarizar el control.
 		// I: We apply the thruster force in the ship's local direction. 'true' ignores mass to standardize control.
 		FVector ForceToApply = MovementVector * ThrusterForce * GetWorld()->GetDeltaSeconds();
-		ShipMesh->AddRelativeForce(ForceToApply, NAME_None, true);
+		//ShipMesh->AddRelativeForce(ForceToApply, NAME_None, true);
 	}
 }
 
@@ -86,7 +86,7 @@ void ACosmicSpaceShip::AplicarOrientacion(const FInputActionValue& Value)
 		// E: Unreal usa Pitch (Y) y Yaw (Z). El ratón X suele ser Yaw, el ratón Y suele ser Pitch.
 		// I: Unreal uses Pitch (Y) and Yaw (Z). Mouse X is usually Yaw, Mouse Y is usually Pitch.
 		FVector TorqueToApply = FVector(0.0f, LookAxisVector.Y * -1.0f, LookAxisVector.X) * RotationTorque * GetWorld()->GetDeltaSeconds();
-		ShipMesh->AddRelativeTorque(TorqueToApply, NAME_None, true);
+		//ShipMesh->AddRelativeTorque(TorqueToApply, NAME_None, true);
 	}
 }
 
@@ -101,6 +101,6 @@ void ACosmicSpaceShip::AplicarAlabeo(const FInputActionValue& Value)
 		// E: Aplicamos torsión sobre el eje X local.
 		// I: We apply torque on the local X axis.
 		FVector TorqueToApply = FVector(RollValue, 0.0f, 0.0f) * RotationTorque * GetWorld()->GetDeltaSeconds();
-		ShipMesh->AddRelativeTorque(TorqueToApply, NAME_None, true);
+		//ShipMesh->AddRelativeTorque(TorqueToApply, NAME_None, true);
 	}
 }

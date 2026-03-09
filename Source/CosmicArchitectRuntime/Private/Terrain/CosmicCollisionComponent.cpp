@@ -8,12 +8,23 @@
 
 UCosmicCollisionComponent::UCosmicCollisionComponent()
 {
-    PrimaryComponentTick.bCanEverTick = false;
+    bTickInEditor = true;
+
+    PrimaryComponentTick.bCanEverTick = true;
 
     BodySetup = nullptr;
 
     SetVisibility(false);
     bHiddenInGame = true;
+}
+
+void UCosmicCollisionComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+    if (bShowCollisionMesh) {
+        DrawDebugCollisionMesh();
+    }
 }
 
 void UCosmicCollisionComponent::OnRegister()
@@ -67,7 +78,7 @@ void UCosmicCollisionComponent::UpdateCollisionSettings()
     BodyInstance.bUseCCD = false;
 }
 
-void UCosmicCollisionComponent::DrawDebugCollisionMesh(const TArray<FVector>& Verts, const TArray<int32>& Tris)
+void UCosmicCollisionComponent::DrawDebugCollisionMesh()
 {
     UWorld* World = GetWorld();
     if (!World) return;
@@ -118,14 +129,11 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(
     BodySetup->AggGeom.EmptyElements();
 
     // Generar datos de malla
-    TArray<FVector> Verts;
-    TArray<int32> Tris;
+    
 
     GenerateCollisionMeshData(Center, SurfaceNormal, Radius, Resolution, Verts, Tris);
 
-    if (bShowCollisionMesh) {
-        DrawDebugCollisionMesh(Verts, Tris);
-    }
+    
     
     if (Verts.Num() > 0 && Tris.Num() > 0)
     {
