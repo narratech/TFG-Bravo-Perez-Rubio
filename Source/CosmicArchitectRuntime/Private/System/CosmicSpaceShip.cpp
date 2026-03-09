@@ -1,123 +1,106 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
 #include "System/CosmicSpaceShip.h"
 #include "Components/StaticMeshComponent.h"
+#include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
-#include "GameFramework/FloatingPawnMovement.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 
-// E: Configura los componentes base y establece límites extremos de velocidad para la navegación espacial.
-// I: Configures base components and sets extreme speed limits for space navigation.
 ACosmicSpaceShip::ACosmicSpaceShip()
 {
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false; // No necesitamos Tick, todo va por físicas
 
+	// E: Configuramos la malla como componente raíz y activamos las físicas.
+	// I: We set the mesh as the root component and enable physics.
 	ShipMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ShipMesh"));
 	RootComponent = ShipMesh;
 
-	// E: Apagamos las físicas puras porque el movimiento se delega al FloatingPawnMovement.
-	// I: We disable pure physics because movement is delegated to the FloatingPawnMovement.
-	ShipMesh->SetSimulatePhysics(false);
+	ShipMesh->SetSimulatePhysics(true);
+	ShipMesh->SetEnableGravity(false); // Estamos en el espacio
+	ShipMesh->SetLinearDamping(0.0f);  // Sin fricción (inercia infinita al avanzar)
+	ShipMesh->SetAngularDamping(0.0f); // Sin fricción al rotar
 
+	// E: Configuramos el brazo de la cámara.
+	// I: We configure the camera boom.
+	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp"));
+	SpringArmComp->SetupAttachment(ShipMesh);
+	SpringArmComp->TargetArmLength = 800.0f;
+	SpringArmComp->bEnableCameraRotationLag = true;
+	SpringArmComp->CameraRotationLagSpeed = 3.0f;
+	SpringArmComp->bEnableCameraLag = true;
+	SpringArmComp->CameraLagSpeed = 3.0f;
+	SpringArmComp->bDoCollisionTest = false; // Evitamos que la cámara choque con la nave
+	SpringArmComp->CameraLagMaxDistance = 0.0f;
+
+	// E: Anclamos la cámara al brazo.
+	// I: We attach the camera to the boom.
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
-	CameraComp->SetupAttachment(ShipMesh);
-	CameraComp->SetRelativeLocation(FVector(-500.0f, 0.0f, 100.0f));
-
-	MovementComp = CreateDefaultSubobject<UFloatingPawnMovement>(TEXT("MovementComp"));
-	MovementComp->MaxSpeed = 1000000.0f;
-	MovementComp->Acceleration = 500000.0f;
-	MovementComp->Deceleration = 300000.0f;
+	CameraComp->SetupAttachment(SpringArmComp);
 }
 
-// E: Inicializa el Enhanced Input System en el Player Controller para registrar las teclas del plugin.
-// I: Initializes the Enhanced Input System in the Player Controller to register plugin keys.
-void ACosmicSpaceShip::BeginPlay()
-{
-	Super::BeginPlay();
-
-	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
-	{
-		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
-		{
-			if (IMC_SpaceShip)
-			{
-				Subsystem->AddMappingContext(IMC_SpaceShip, 0);
-			}
-		}
-	}
-}
-
-// E: Interpola gradualmente el FOV actual hacia el FOV objetivo para simular el efecto visual de aceleración.
-// I: Gradually interpolates current FOV towards target FOV to simulate the acceleration visual effect.
-void ACosmicSpaceShip::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-	CurrentFOV = FMath::FInterpTo(CurrentFOV, TargetFOV, DeltaTime, 10.0f);
-	CameraComp->SetFieldOfView(CurrentFOV);
-}
-
-// E: Vincula los Input Actions del plugin a sus respectivas funciones nativas en C++.
-// I: Binds the plugin's Input Actions to their respective native C++ functions.
 void ACosmicSpaceShip::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	if (UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(PlayerInputComponent))
+	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
-		if (IA_Impulso) EnhancedInputComponent->BindAction(IA_Impulso, ETriggerEvent::Triggered, this, &ACosmicSpaceShip::Mover);
-		if (IA_GiroRaton) EnhancedInputComponent->BindAction(IA_GiroRaton, ETriggerEvent::Triggered, this, &ACosmicSpaceShip::Mirar);
-		if (IA_Roll) EnhancedInputComponent->BindAction(IA_Roll, ETriggerEvent::Triggered, this, &ACosmicSpaceShip::RotarRoll);
-
-		if (IA_Boost)
+		if (IA_Traslacion)
 		{
-			EnhancedInputComponent->BindAction(IA_Boost, ETriggerEvent::Started, this, &ACosmicSpaceShip::IniciarBoost);
-			EnhancedInputComponent->BindAction(IA_Boost, ETriggerEvent::Completed, this, &ACosmicSpaceShip::DetenerBoost);
+			EnhancedInputComponent->BindAction(IA_Traslacion, ETriggerEvent::Triggered, this, &ACosmicSpaceShip::AplicarTraslacion);
+		}
+		if (IA_Orientacion)
+		{
+			EnhancedInputComponent->BindAction(IA_Orientacion, ETriggerEvent::Triggered, this, &ACosmicSpaceShip::AplicarOrientacion);
+		}
+		if (IA_Alabeo)
+		{
+			EnhancedInputComponent->BindAction(IA_Alabeo, ETriggerEvent::Triggered, this, &ACosmicSpaceShip::AplicarAlabeo);
 		}
 	}
 }
 
-// E: Aplica movimiento ignorando la masa usando el vector frontal y el factor de velocidad actual.
-// I: Applies mass-ignoring movement using the forward vector and the current velocity factor.
-void ACosmicSpaceShip::Mover(const FInputActionValue& Value)
+void ACosmicSpaceShip::AplicarTraslacion(const FInputActionValue& Value)
 {
-	float EjeV = Value.Get<float>();
-	if (EjeV != 0.0f)
+	// E: Recibimos un Vector 3D (X=Adelante, Y=Derecha, Z=Arriba).
+	// I: We receive a 3D Vector (X=Forward, Y=Right, Z=Up).
+	FVector MovementVector = Value.Get<FVector>();
+
+	if (!MovementVector.IsNearlyZero())
 	{
-		AddMovementInput(GetActorForwardVector(), EjeV * VelocityFactor);
+		// E: Aplicamos la fuerza propulsora en la dirección local de la nave. 'true' ignora la masa para estandarizar el control.
+		// I: We apply the thruster force in the ship's local direction. 'true' ignores mass to standardize control.
+		FVector ForceToApply = MovementVector * ThrusterForce * GetWorld()->GetDeltaSeconds();
+		ShipMesh->AddRelativeForce(ForceToApply, NAME_None, true);
 	}
 }
 
-// E: Rota la nave localmente en los ejes Yaw (X del ratón) y Pitch (Y del ratón).
-// I: Rotates the spaceship locally on the Yaw (mouse X) and Pitch (mouse Y) axes.
-void ACosmicSpaceShip::Mirar(const FInputActionValue& Value)
+void ACosmicSpaceShip::AplicarOrientacion(const FInputActionValue& Value)
 {
-	FVector2D EjeRaton = Value.Get<FVector2D>();
-	AddActorLocalRotation(FRotator(EjeRaton.Y * Sensibilidad, EjeRaton.X * Sensibilidad, 0.0f));
-}
+	// E: Recibimos un Vector 2D del ratón o joystick.
+	// I: We receive a 2D Vector from the mouse or joystick.
+	FVector2D LookAxisVector = Value.Get<FVector2D>();
 
-// E: Aplica una rotación exclusiva sobre el eje X local (Roll) de la nave espacial.
-// I: Applies an exclusive rotation on the spaceship's local X axis (Roll).
-void ACosmicSpaceShip::RotarRoll(const FInputActionValue& Value)
-{
-	float EjeRoll = Value.Get<float>();
-	if (EjeRoll != 0.0f)
+	if (!LookAxisVector.IsNearlyZero())
 	{
-		AddActorLocalRotation(FRotator(0.0f, 0.0f, EjeRoll * Sensibilidad));
+		// E: Unreal usa Pitch (Y) y Yaw (Z). El ratón X suele ser Yaw, el ratón Y suele ser Pitch.
+		// I: Unreal uses Pitch (Y) and Yaw (Z). Mouse X is usually Yaw, Mouse Y is usually Pitch.
+		FVector TorqueToApply = FVector(0.0f, LookAxisVector.Y * -1.0f, LookAxisVector.X) * RotationTorque * GetWorld()->GetDeltaSeconds();
+		ShipMesh->AddRelativeTorque(TorqueToApply, NAME_None, true);
 	}
 }
 
-// E: Triplica la velocidad base y define un nuevo FOV objetivo para el zoom de la cámara.
-// I: Triples the base speed and sets a new target FOV for the camera zoom.
-void ACosmicSpaceShip::IniciarBoost()
+void ACosmicSpaceShip::AplicarAlabeo(const FInputActionValue& Value)
 {
-	VelocityFactor = 15000.0f;
-	TargetFOV = 115.0f;
-}
+	// E: Recibimos un valor de 1D (Roll).
+	// I: We receive a 1D value (Roll).
+	float RollValue = Value.Get<float>();
 
-// E: Restaura la velocidad estándar y devuelve el objetivo del FOV a su valor por defecto.
-// I: Restores standard speed and returns the target FOV to its default value.
-void ACosmicSpaceShip::DetenerBoost()
-{
-	VelocityFactor = 5000.0f;
-	TargetFOV = 90.0f;
+	if (RollValue != 0.0f)
+	{
+		// E: Aplicamos torsión sobre el eje X local.
+		// I: We apply torque on the local X axis.
+		FVector TorqueToApply = FVector(RollValue, 0.0f, 0.0f) * RotationTorque * GetWorld()->GetDeltaSeconds();
+		ShipMesh->AddRelativeTorque(TorqueToApply, NAME_None, true);
+	}
 }

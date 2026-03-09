@@ -1,12 +1,14 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
 #pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
-#include "InputActionValue.h" 
+#include "InputActionValue.h"
 #include "CosmicSpaceShip.generated.h"
 
-// E: Clase base C++ que maneja la lógica de movimiento espacial, delegando assets e inputs a un Blueprint hijo.
-// I: Base C++ class handling space movement logic, delegating assets and inputs to a child Blueprint.
+// E: Exponemos explícitamente la clase al motor para permitir la creación de Blueprints hijos.
+// I: Explicitly expose the class to the engine to allow the creation of child Blueprints.
 UCLASS(Blueprintable, BlueprintType)
 class COSMICARCHITECTRUNTIME_API ACosmicSpaceShip : public APawn
 {
@@ -14,63 +16,59 @@ class COSMICARCHITECTRUNTIME_API ACosmicSpaceShip : public APawn
 
 public:
 	ACosmicSpaceShip();
-	virtual void Tick(float DeltaTime) override;
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 protected:
-	virtual void BeginPlay() override;
+	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	// E: Malla visual de la nave sin físicas de colisión activas.
-	// I: Visual mesh of the spaceship with collision physics disabled.
+	// E: Componente visual de la nave. Será la raíz y el que reciba las físicas newtonianas.
+	// I: Visual component of the ship. It will be the root and receive the Newtonian physics.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Componentes")
 	class UStaticMeshComponent* ShipMesh;
 
-	// E: Cámara del jugador asociada a la estructura de la nave.
-	// I: Player camera attached to the spaceship structure.
+	// E: Brazo articulado para la cámara que permite añadir retraso visual al rotar y mover la nave.
+	// I: Articulated camera boom that allows adding visual lag when rotating and moving the spaceship.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Componentes")
+	class USpringArmComponent* SpringArmComp;
+
+	// E: Cámara principal que seguirá a la nave.
+	// I: Main camera that will follow the ship.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Componentes")
 	class UCameraComponent* CameraComp;
 
-	// E: Sustituye las físicas puras para alcanzar velocidades extremas sin los límites del motor Chaos.
-	// I: Replaces pure physics to reach extreme speeds bypassing Chaos engine limits.
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Componentes")
-	class UFloatingPawnMovement* MovementComp;
+	// E: Fuerza base de los propulsores para desplazarse (Traslación).
+	// I: Base strength of the thrusters for moving (Translation).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Fisicas")
+	float ThrusterForce = 500000.0f;
 
-	// E: Archivos del Enhanced Input expuestos para asignarse visualmente sin depender del DefaultInput.ini.
-	// I: Enhanced Input files exposed for visual assignment without relying on DefaultInput.ini.
-	UPROPERTY(EditDefaultsOnly, Category = "CosmicArchitect|Input")
-	class UInputMappingContext* IMC_SpaceShip;
+	// E: Fuerza base de los motores de giro para orientar la nave (Rotación).
+	// I: Base strength of the turning motors to orient the ship (Rotation).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Fisicas")
+	float RotationTorque = 300000.0f;
 
-	UPROPERTY(EditDefaultsOnly, Category = "CosmicArchitect|Input")
-	class UInputAction* IA_Impulso;
+	// E: Contexto de mapeo de controles por defecto.
+	// I: Default control mapping context.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
+	class UInputMappingContext* DefaultMappingContext;
 
-	UPROPERTY(EditDefaultsOnly, Category = "CosmicArchitect|Input")
-	class UInputAction* IA_GiroRaton;
+	// E: Input para moverse (Adelante/Atrás, Izquierda/Derecha, Arriba/Abajo) -> Requiere Value Type: Axis3D
+	// I: Input for moving (Forward/Backward, Left/Right, Up/Down) -> Requires Value Type: Axis3D
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
+	class UInputAction* IA_Traslacion;
 
-	UPROPERTY(EditDefaultsOnly, Category = "CosmicArchitect|Input")
-	class UInputAction* IA_Roll;
+	// E: Input para apuntar el morro de la nave (Cabeceo/Pitch, Guiñada/Yaw) -> Requiere Value Type: Axis2D
+	// I: Input to point the nose of the ship (Pitch, Yaw) -> Requires Value Type: Axis2D
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
+	class UInputAction* IA_Orientacion;
 
-	UPROPERTY(EditDefaultsOnly, Category = "CosmicArchitect|Input")
-	class UInputAction* IA_Boost;
-
-	// E: Multiplicadores de velocidad y sensibilidad de giro modificables desde el editor.
-	// I: Speed and rotation sensitivity multipliers adjustable from the editor.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Navegacion")
-	float VelocityFactor = 5000.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Navegacion")
-	float Sensibilidad = 2.0f;
+	// E: Input para girar sobre sí misma (Roll) -> Requiere Value Type: Axis1D
+	// I: Input to spin on itself (Roll) -> Requires Value Type: Axis1D
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
+	class UInputAction* IA_Alabeo;
 
 private:
-	// E: Funciones de respuesta vinculadas a los eventos del Enhanced Input System.
-	// I: Response functions bound to the Enhanced Input System events.
-	void Mover(const FInputActionValue& Value);
-	void Mirar(const FInputActionValue& Value);
-	void RotarRoll(const FInputActionValue& Value);
-	void IniciarBoost();
-	void DetenerBoost();
-
-	// E: Variables para interpolar suavemente el FOV en la función Tick, sustituyendo al Timeline de Blueprint.
-	// I: Variables to smoothly interpolate FOV in the Tick function, replacing the Blueprint Timeline.
-	float TargetFOV = 90.0f;
-	float CurrentFOV = 90.0f;
+	// E: Funciones internas para procesar las entradas del jugador.
+	// I: Internal functions to process player inputs.
+	void AplicarTraslacion(const FInputActionValue& Value);
+	void AplicarOrientacion(const FInputActionValue& Value);
+	void AplicarAlabeo(const FInputActionValue& Value);
 };
