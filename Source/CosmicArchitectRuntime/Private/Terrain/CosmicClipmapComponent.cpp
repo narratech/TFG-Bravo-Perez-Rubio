@@ -28,29 +28,16 @@ UCosmicClipmapComponent::UCosmicClipmapComponent()
 }
 
 
-void UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& PlayerLocation, const FVector& SurfaceNormal)
+void UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePos, const FVector& SurfaceNormal, const float DistanceToSurface)
 {
     if (!CollisionComponent) return;
-
-    // Calcular punto en la superficie más cercano al jugador
-    FVector PlanetCenter = GetOwner()->GetActorLocation();
-    FVector DirToPlayer = (PlayerLocation - PlanetCenter).GetSafeNormal();
-    FVector SurfacePoint = PlanetCenter + DirToPlayer * PlanetRadius;
-
-    float DistanceToSurface = FVector::Dist(PlayerLocation, SurfacePoint);
 
     // Solo generar colisión si el jugador está cerca de la superficie
     if (DistanceToSurface < CollisionComponent->MaxCollisionDistance)
     {
-        // La normal es la dirección desde el centro al punto
-        FVector Normal = (SurfacePoint - PlanetCenter).GetSafeNormal();
-
-        // Generar colisión centrada en el jugador proyectada a la superficie
-        FVector ProjectedPlayerPos = PlanetCenter + DirToPlayer * PlanetRadius;
-
         CollisionComponent->GenerateCollisionMesh(
-            ProjectedPlayerPos,
-            Normal,
+            SurfacePos,
+            SurfaceNormal,
             CollisionComponent->CollisionAreaSize,
             CollisionComponent->CollisionResolution
         );
@@ -87,8 +74,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         float DistanceToSurface = GetDistanceToSurface(SurfacePos, N);
 
-        FVector PlayerLocation = GetPlayerLocation();
-        UpdateCollisionNearPlayer(PlayerLocation, N);
+        UpdateCollisionNearPlayer(SurfacePos, N, DistanceToSurface);
 
         if (!FarLevel)
             return;
