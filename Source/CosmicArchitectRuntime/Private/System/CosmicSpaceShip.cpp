@@ -37,6 +37,10 @@ ACosmicSpaceShip::ACosmicSpaceShip()
 	// I: We attach the camera to the boom.
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->SetupAttachment(SpringArmComp);
+
+	// E: Si se arrastra la nave al nivel, el jugador 0 la controlará automáticamente.
+	// I: If the ship is dragged into the level, player 0 will possess it automatically.
+	AutoPossessPlayer = EAutoReceiveInput::Player0;
 }
 
 void ACosmicSpaceShip::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -102,5 +106,38 @@ void ACosmicSpaceShip::AplicarAlabeo(const FInputActionValue& Value)
 		// I: We apply torque on the local X axis.
 		FVector TorqueToApply = FVector(RollValue, 0.0f, 0.0f) * RotationTorque * GetWorld()->GetDeltaSeconds();
 		//ShipMesh->AddRelativeTorque(TorqueToApply, NAME_None, true);
+	}
+}
+
+void ACosmicSpaceShip::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (APlayerController* PlayerController = GetWorld()->GetFirstPlayerController())
+	{
+		PlayerController->Possess(this);
+	}
+
+	// E: Modificamos los World Settings automáticamente para los limites del mundo.
+	// I: We modify the World Settings automatically to change world´s limits.
+	if (UWorld* World = GetWorld())
+	{
+		if (AWorldSettings* WorldSettings = World->GetWorldSettings())
+		{
+			WorldSettings->bEnableWorldBoundsChecks = false; 
+		}
+	}
+
+	// E: Añadimos el Mapping Context al jugador local para que escuche nuestras teclas.
+	// I: We add the Mapping Context to the local player so it listens to our keys.
+	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
+		{
+			if (DefaultMappingContext)
+			{
+				Subsystem->AddMappingContext(DefaultMappingContext, 0);
+			}
+		}
 	}
 }

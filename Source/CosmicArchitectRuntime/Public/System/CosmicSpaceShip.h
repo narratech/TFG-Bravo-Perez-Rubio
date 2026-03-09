@@ -18,6 +18,7 @@ public:
 	ACosmicSpaceShip();
 
 protected:
+	virtual void BeginPlay() override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	// E: Componente visual de la nave. Será la raíz y el que reciba las físicas newtonianas.
