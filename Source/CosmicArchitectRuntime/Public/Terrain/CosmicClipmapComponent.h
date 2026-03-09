@@ -81,5 +81,9 @@ protected:
     bool IsClipmapRingVisible(const float GridSpacing, const int32 Resolution, const float DistanceToSurface);
     void ReduceClimapLevel();
     void IncreaseClipmapLevel();
+
+private:
+    UPROPERTY()
+    UMaterialInstanceDynamic* DynamicPlanetMat;
 };
 
