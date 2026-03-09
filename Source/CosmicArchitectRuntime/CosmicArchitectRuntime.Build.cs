@@ -33,6 +33,7 @@ public class CosmicArchitectRuntime : ModuleRules
                 "CosmicArchitectNoise",
 				"CosmicArchitectFoliage",
                 "InputCore",
+                "PhysicsCore",
                 "EnhancedInput"
 				// ... add other public dependencies that you statically link with here ...
 			}

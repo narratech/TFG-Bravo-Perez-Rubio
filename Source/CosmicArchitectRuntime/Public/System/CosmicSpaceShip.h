@@ -7,69 +7,82 @@
 #include "InputActionValue.h"
 #include "CosmicSpaceShip.generated.h"
 
-// E: Exponemos explícitamente la clase al motor para permitir la creación de Blueprints hijos.
-// I: Explicitly expose the class to the engine to allow the creation of child Blueprints.
+// E: Clase principal de la nave espacial para el plugin CosmicArchitect.
+// I: Main spaceship class for the CosmicArchitect plugin.
 UCLASS(Blueprintable, BlueprintType)
 class COSMICARCHITECTRUNTIME_API ACosmicSpaceShip : public APawn
 {
 	GENERATED_BODY()
 
 public:
+	// E: Constructor para inicializar componentes.
+	// I: Constructor to initialize components.
 	ACosmicSpaceShip();
 
 protected:
+	// E: Llamado al iniciar el juego.
+	// I: Called when the game starts.
 	virtual void BeginPlay() override;
+
+	// E: Configuración de los vínculos de entrada (teclado/ratón).
+	// I: Setup for input bindings (keyboard/mouse).
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	// E: Componente visual de la nave. Será la raíz y el que reciba las físicas newtonianas.
-	// I: Visual component of the ship. It will be the root and receive the Newtonian physics.
+	// E: Componente de malla que servirá como raíz física.
+	// I: Mesh component that will serve as the physical root.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Componentes")
 	class UStaticMeshComponent* ShipMesh;
 
-	// E: Brazo articulado para la cámara que permite añadir retraso visual al rotar y mover la nave.
-	// I: Articulated camera boom that allows adding visual lag when rotating and moving the spaceship.
+	// E: Brazo elástico para la cámara que suaviza el movimiento.
+	// I: Spring arm for the camera that smoothes movement.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Componentes")
 	class USpringArmComponent* SpringArmComp;
 
-	// E: Cámara principal que seguirá a la nave.
-	// I: Main camera that will follow the ship.
+	// E: Cámara principal del jugador.
+	// I: Main player camera.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Componentes")
 	class UCameraComponent* CameraComp;
 
-	// E: Fuerza base de los propulsores para desplazarse (Traslación).
-	// I: Base strength of the thrusters for moving (Translation).
+	// E: Multiplicador de fuerza para el movimiento lineal.
+	// I: Force multiplier for linear movement.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Fisicas")
 	float ThrusterForce = 500000.0f;
 
-	// E: Fuerza base de los motores de giro para orientar la nave (Rotación).
-	// I: Base strength of the turning motors to orient the ship (Rotation).
+	// E: Multiplicador de fuerza para el giro de la nave.
+	// I: Force multiplier for ship rotation.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Fisicas")
 	float RotationTorque = 300000.0f;
 
-	// E: Contexto de mapeo de controles por defecto.
-	// I: Default control mapping context.
+	// E: Contexto que define qué teclas activan qué acciones.
+	// I: Context defining which keys trigger which actions.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
 	class UInputMappingContext* DefaultMappingContext;
 
-	// E: Input para moverse (Adelante/Atrás, Izquierda/Derecha, Arriba/Abajo) -> Requiere Value Type: Axis3D
-	// I: Input for moving (Forward/Backward, Left/Right, Up/Down) -> Requires Value Type: Axis3D
+	// E: Acción de entrada para traslación (W,A,S,D,Q,E).
+	// I: Input action for translation (W,A,S,D,Q,E).
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
 	class UInputAction* IA_Traslacion;
 
-	// E: Input para apuntar el morro de la nave (Cabeceo/Pitch, Guiñada/Yaw) -> Requiere Value Type: Axis2D
-	// I: Input to point the nose of the ship (Pitch, Yaw) -> Requires Value Type: Axis2D
+	// E: Acción de entrada para mirar (Ratón X/Y).
+	// I: Input action for looking (Mouse X/Y).
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
 	class UInputAction* IA_Orientacion;
 
-	// E: Input para girar sobre sí misma (Roll) -> Requiere Value Type: Axis1D
-	// I: Input to spin on itself (Roll) -> Requires Value Type: Axis1D
+	// E: Acción de entrada para giro lateral (Roll).
+	// I: Input action for lateral roll.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
 	class UInputAction* IA_Alabeo;
 
 private:
-	// E: Funciones internas para procesar las entradas del jugador.
-	// I: Internal functions to process player inputs.
+	// E: Lógica para mover la nave en el espacio.
+	// I: Logic to move the ship in space.
 	void AplicarTraslacion(const FInputActionValue& Value);
+
+	// E: Lógica para rotar el morro de la nave.
+	// I: Logic to rotate the ship's nose.
 	void AplicarOrientacion(const FInputActionValue& Value);
+
+	// E: Lógica para inclinar la nave lateralmente.
+	// I: Logic to tilt the ship laterally.
 	void AplicarAlabeo(const FInputActionValue& Value);
 };
