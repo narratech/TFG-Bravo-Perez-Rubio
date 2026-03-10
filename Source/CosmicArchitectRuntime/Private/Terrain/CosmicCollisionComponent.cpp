@@ -136,9 +136,9 @@ void UCosmicCollisionComponent::DrawDebugCollisionMesh()
 
     for (int32 i = 0; i < Tris.Num(); i += 3) {
 
-        const FVector& A = Verts[Tris[i]];
-        const FVector& B = Verts[Tris[i + 1]];
-        const FVector& C = Verts[Tris[i + 2]];
+        FVector A = GetComponentTransform().TransformPosition(Verts[Tris[i]]);
+        FVector B = GetComponentTransform().TransformPosition(Verts[Tris[i + 1]]);
+        FVector C = GetComponentTransform().TransformPosition(Verts[Tris[i + 2]]);
 
         DrawDebugLine(World, A, B, OrbitColor, false, -1.0f, 0, OrbitThickness);
         DrawDebugLine(World, B, C, OrbitColor, false, -1.0f, 0, OrbitThickness);

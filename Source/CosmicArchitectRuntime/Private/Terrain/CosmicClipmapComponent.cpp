@@ -427,9 +427,9 @@ void UCosmicClipmapComponent::UpdatePatchTransform(const FVector& SurfacePos, co
         Mesh->SetWorldLocationAndRotation(SurfacePos, PatchRotation);
     }
 
-    /*if (CollisionComponent) {
+    if (CollisionComponent) {
         CollisionComponent->SetWorldLocationAndRotation(SurfacePos, PatchRotation);
-    }*/
+    }
    
 }
 
