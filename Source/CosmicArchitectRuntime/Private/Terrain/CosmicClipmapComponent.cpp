@@ -22,7 +22,6 @@ UCosmicClipmapComponent::UCosmicClipmapComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 
     CollisionComponent = CreateDefaultSubobject<UCosmicCollisionComponent>(TEXT("CollisionComponent"));
-    CollisionComponent->SetupAttachment(ParentRoot);
     
 	// ...
 }
@@ -35,17 +34,12 @@ void UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePo
     // Solo generar colisión si el jugador está cerca de la superficie
     if (DistanceToSurface < CollisionComponent->MaxCollisionDistance)
     {
-        CollisionComponent->GenerateCollisionMesh(
-            SurfacePos,
-            SurfaceNormal,
-            CollisionComponent->CollisionAreaSize,
-            CollisionComponent->CollisionResolution
-        );
+        
     }
     else
     {
         // Limpiar colisión si está lejos
-        CollisionComponent->ClearCollisionMesh();
+        //CollisionComponent->ClearCollisionMesh();
     }
 }
 
@@ -159,10 +153,13 @@ void UCosmicClipmapComponent::CreateLevels()
         DynamicPlanetMat->SetScalarParameterValue(FName("MaxHeight"), NoiseSettings->MaxMountainHeight);
     }
 
-    if (CollisionComponent && ParentRoot && !CollisionComponent->IsAttachedTo(ParentRoot))
+    if (CollisionComponent && ParentRoot)
     {
         CollisionComponent->AttachToComponent(ParentRoot, FAttachmentTransformRules::KeepRelativeTransform);
+        CollisionComponent->GenerateCollisionMesh(PlanetRadius);
     }
+
+    //UE_LOG(LogTemp, Warning, TEXT("No entra"));
 
     // 2. Validar parámetros
     if (NumLevels <= 0 || BaseResolution <= 0 || PlanetRadius <= 0)
@@ -429,6 +426,10 @@ void UCosmicClipmapComponent::UpdatePatchTransform(const FVector& SurfacePos, co
         // Mover la malla procedimental
         Mesh->SetWorldLocationAndRotation(SurfacePos, PatchRotation);
     }
+
+    /*if (CollisionComponent) {
+        CollisionComponent->SetWorldLocationAndRotation(SurfacePos, PatchRotation);
+    }*/
    
 }
 

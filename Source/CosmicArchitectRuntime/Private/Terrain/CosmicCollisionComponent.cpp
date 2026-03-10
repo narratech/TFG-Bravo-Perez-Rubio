@@ -1,21 +1,15 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "Terrain/CosmicCollisionComponent.h"
+
 #include "PhysicsEngine/BodySetup.h"
+#include "PhysicsEngine/PhysicsSettings.h"
 #include "PhysicsEngine/BodyInstance.h"
-#include "DrawDebugHelpers.h"
+#include "Engine/World.h"
 
 UCosmicCollisionComponent::UCosmicCollisionComponent()
 {
     bTickInEditor = true;
 
     PrimaryComponentTick.bCanEverTick = true;
-
-    BodySetup = nullptr;
-
-    SetVisibility(false);
-    bHiddenInGame = true;
 }
 
 void UCosmicCollisionComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -24,58 +18,112 @@ void UCosmicCollisionComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 
     if (bShowCollisionMesh) {
         DrawDebugCollisionMesh();
+        //UE_LOG(LogTemp, Warning, TEXT("Pintando malla"));
     }
 }
 
-void UCosmicCollisionComponent::OnRegister()
-{
-    Super::OnRegister();
 
-    if (!BodySetup)
+void UCosmicCollisionComponent::RebuildCollision()
+{
+    bNeedsRebuild = true;
+}
+
+void UCosmicCollisionComponent::GenerateCollisionMesh(float Radius)
+{
+    const int32 VertRes = CollisionResolution + 1;
+    const int32 TotalVertices = VertRes * VertRes;
+    const int32 HalfRes = CollisionResolution / 2;
+
+    BaseVertices.Empty();
+    BaseNormals.Empty();
+
+    BaseVertices.Reserve(TotalVertices);
+    BaseNormals.Reserve(TotalVertices);
+
+    // 3. CALCULAR VÉRTICES
+    int32 ActualVerticesCalculated = 0;
+
+    for (int32 y = 0; y < VertRes; ++y)
     {
-        BodySetup = NewObject<UBodySetup>(this, UBodySetup::StaticClass());
-        BodySetup->CollisionTraceFlag = CTF_UseDefault;
-        BodySetup->bGenerateMirroredCollision = false;
-        BodySetup->bDoubleSidedGeometry = true;
+        for (int32 x = 0; x < VertRes; ++x)
+        {
+            float WorldX = (x - HalfRes) * CollisionTriangleSize;
+            float WorldY = (y - HalfRes) * CollisionTriangleSize;
+
+            // Calcular posición en esfera
+            FVector SphereCenter = FVector(0, 0, -Radius);
+            float Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
+            FVector BasePosition;
+
+            if (Distance2D <= Radius && Distance2D > 0.001f) // Evitar división por 0
+            {
+                float ZOffset = FMath::Sqrt(Radius * Radius - Distance2D * Distance2D);
+                BasePosition = FVector(WorldX, WorldY, -Radius + ZOffset);
+            }
+            else if (Distance2D <= 0.001f)
+            {
+                // Centro - evitar NaN
+                BasePosition = FVector(0, 0, 0);
+            }
+            else
+            {
+                float Scale = Radius / Distance2D;
+                BasePosition = FVector(WorldX * Scale, WorldY * Scale, -Radius);
+            }
+
+            BaseVertices.Add(BasePosition);
+            ActualVerticesCalculated++;
+
+            // Normal
+            FVector Normal = (BasePosition - SphereCenter);
+            if (Normal.SizeSquared() > 0.001f)
+            {
+                Normal.Normalize();
+            }
+            else
+            {
+                Normal = FVector::UpVector;
+            }
+            BaseNormals.Add(Normal);
+        }
     }
 
-    UpdateCollisionSettings();
-}
+    //UE_LOG(LogTemp, Warning, TEXT("  Vértices calculados: %d"), ActualVerticesCalculated);
 
-void UCosmicCollisionComponent::OnUnregister()
-{
-    if (BodySetup)
+    // 4. CALCULAR TRIÁNGULOS (CORREGIDO)
+    Tris.Empty();
+    int32 TriangleCount = 0;
+
+    for (int32 y = 0; y < CollisionResolution; ++y)
     {
-        BodySetup->AggGeom.EmptyElements();
-    }
-    Super::OnUnregister();
-}
+        for (int32 x = 0; x < CollisionResolution; ++x)
+        {
+            // Índices de vértices
+            int32 i0 = y * VertRes + x;
+            int32 i1 = i0 + 1;
+            int32 i2 = i0 + VertRes;
+            int32 i3 = i2 + 1;
 
-UBodySetup* UCosmicCollisionComponent::GetBodySetup()
-{
-    return BodySetup;
-}
+            if (i0 >= TotalVertices || i1 >= TotalVertices ||
+                i2 >= TotalVertices || i3 >= TotalVertices)
+            {
+                UE_LOG(LogTemp, Error, TEXT("Índice de triángulo inválido en [%d,%d]"), x, y);
+                continue;
+            }
 
-void UCosmicCollisionComponent::UpdateCollisionSettings()
-{
-    // Configurar BodyInstance
-    BodyInstance.SetCollisionEnabled(CollisionEnabled);
-    BodyInstance.SetObjectType(ObjectType);
+            Tris.Add(i0);
+            Tris.Add(i2);
+            Tris.Add(i1);
 
-    // Establecer respuestas por defecto
-    BodyInstance.SetResponseToChannel(ECC_WorldStatic, ECR_Block);
-    BodyInstance.SetResponseToChannel(ECC_WorldDynamic, ECR_Block);
-    BodyInstance.SetResponseToChannel(ECC_Pawn, ECR_Block);
-    BodyInstance.SetResponseToChannel(ECC_Vehicle, ECR_Block);
-    BodyInstance.SetResponseToChannel(ECC_Destructible, ECR_Block);
-
-    // Aplicar respuestas personalizadas
-    for (auto& Pair : CustomResponses)
-    {
-        BodyInstance.SetResponseToChannel(Pair.Key, Pair.Value);
+            Tris.Add(i1);
+            Tris.Add(i2);
+            Tris.Add(i3);
+        }
     }
 
-    BodyInstance.bUseCCD = false;
+    Verts = BaseVertices;
+
+    UpdateCollision();
 }
 
 void UCosmicCollisionComponent::DrawDebugCollisionMesh()
@@ -86,8 +134,8 @@ void UCosmicCollisionComponent::DrawDebugCollisionMesh()
     const FColor OrbitColor = DebugColor;
     const float OrbitThickness = DebugLineWidth;
 
-    for (int32 i = 0; i < Tris.Num(); i += 3)
-    {
+    for (int32 i = 0; i < Tris.Num(); i += 3) {
+
         const FVector& A = Verts[Tris[i]];
         const FVector& B = Verts[Tris[i + 1]];
         const FVector& C = Verts[Tris[i + 2]];
@@ -98,192 +146,151 @@ void UCosmicCollisionComponent::DrawDebugCollisionMesh()
     }
 }
 
-void UCosmicCollisionComponent::RebuildCollision()
+UBodySetup* UCosmicCollisionComponent::CreateBodySetupHelper()
 {
-    if (CurrentCollisionCenter != FVector::ZeroVector)
+    UBodySetup* NewBodySetup = NewObject<UBodySetup>(this);
+
+    NewBodySetup->BodySetupGuid = FGuid::NewGuid();
+    NewBodySetup->bGenerateMirroredCollision = false;
+    NewBodySetup->bDoubleSidedGeometry = true;
+
+    NewBodySetup->CollisionTraceFlag =
+        bUseComplexAsSimpleCollision ?
+        CTF_UseComplexAsSimple :
+        CTF_UseDefault;
+
+    return NewBodySetup;
+}
+
+void UCosmicCollisionComponent::CreateProcMeshBodySetup()
+{
+    if (!BodySetup)
     {
-        bNeedsRebuild = true;
+        BodySetup = CreateBodySetupHelper();
     }
 }
 
-void UCosmicCollisionComponent::GenerateCollisionMesh(
-    const FVector& Center,
-    const FVector& SurfaceNormal,
-    float Radius,
-    int32 Resolution)
+UBodySetup* UCosmicCollisionComponent::GetBodySetup()
 {
-    if (!BodySetup) return;
-
-    // Si no ha cambiado significativamente y no requiere rebuild, saltar
-    if (!bNeedsRebuild &&
-        FVector::Dist(Center, CurrentCollisionCenter) < 100.0f &&
-        FMath::Abs(Radius - CurrentCollisionRadius) < 100.0f)
+    if (!BodySetup)
     {
+        CreateProcMeshBodySetup();
+    }
+
+    return BodySetup;
+}
+
+void UCosmicCollisionComponent::UpdateCollision()
+{
+
+    if (Verts.Num() == 0 || Tris.Num() == 0)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Collision mesh empty"));
         return;
     }
 
-    CurrentCollisionCenter = Center;
-    CurrentCollisionRadius = Radius;
-    bNeedsRebuild = false;
+    UWorld* World = GetWorld();
 
-    BodySetup->AggGeom.EmptyElements();
+    bool bAsync = World && World->IsGameWorld() && bUseAsyncCooking;
 
-    // Generar datos de malla
-    
-
-    GenerateCollisionMeshData(Center, SurfaceNormal, Radius, Resolution, Verts, Tris);
-
-    
-    
-    if (Verts.Num() > 0 && Tris.Num() > 0)
+    if (bAsync)
     {
-        // Crear elementos convexos para colisión
-        if (!bGenerateComplexCollision)
+        for (UBodySetup* OldBody : AsyncBodySetupQueue)
         {
-            FKConvexElem ConvexElem;
-
-            // Crear una caja que aproxime el área
-            float HalfSize = Radius * 0.5f;
-            FVector BoxExtent(HalfSize, HalfSize, HalfSize * 0.1f);
-
-            // Convertir a espacio local
-            FVector LocalCenter = GetComponentTransform().InverseTransformPosition(Center);
-
-            ConvexElem.VertexData.Add(FVector(-BoxExtent.X, -BoxExtent.Y, -BoxExtent.Z) + LocalCenter);
-            ConvexElem.VertexData.Add(FVector(BoxExtent.X, -BoxExtent.Y, -BoxExtent.Z) + LocalCenter);
-            ConvexElem.VertexData.Add(FVector(BoxExtent.X, BoxExtent.Y, -BoxExtent.Z) + LocalCenter);
-            ConvexElem.VertexData.Add(FVector(-BoxExtent.X, BoxExtent.Y, -BoxExtent.Z) + LocalCenter);
-            ConvexElem.VertexData.Add(FVector(-BoxExtent.X, -BoxExtent.Y, BoxExtent.Z) + LocalCenter);
-            ConvexElem.VertexData.Add(FVector(BoxExtent.X, -BoxExtent.Y, BoxExtent.Z) + LocalCenter);
-            ConvexElem.VertexData.Add(FVector(BoxExtent.X, BoxExtent.Y, BoxExtent.Z) + LocalCenter);
-            ConvexElem.VertexData.Add(FVector(-BoxExtent.X, BoxExtent.Y, BoxExtent.Z) + LocalCenter);
-
-            ConvexElem.UpdateElemBox();
-            BodySetup->AggGeom.ConvexElems.Add(ConvexElem);
+            if (OldBody)
+                OldBody->AbortPhysicsMeshAsyncCreation();
         }
-        else
-        {
-            // Colisión compleja - varios convexos pequeños
-            const int32 NumConvexHulls = 4;
-            int32 VertsPerHull = FMath::Max(1, Verts.Num() / NumConvexHulls);
 
-            for (int32 HullIdx = 0; HullIdx < NumConvexHulls; HullIdx++)
-            {
-                FKConvexElem ConvexElem;
-
-                int32 StartIdx = HullIdx * VertsPerHull;
-                int32 EndIdx = (HullIdx == NumConvexHulls - 1) ? Verts.Num() : StartIdx + VertsPerHull;
-
-                for (int32 i = StartIdx; i < EndIdx; i++)
-                {
-                    // Transformar a espacio local del componente
-                    FVector LocalVert = GetComponentTransform().InverseTransformPosition(Verts[i]);
-                    ConvexElem.VertexData.Add(LocalVert);
-                }
-
-                if (ConvexElem.VertexData.Num() > 3)
-                {
-                    ConvexElem.UpdateElemBox();
-                    BodySetup->AggGeom.ConvexElems.Add(ConvexElem);
-                }
-            }
-        }
+        AsyncBodySetupQueue.Add(CreateBodySetupHelper());
+    }
+    else
+    {
+        AsyncBodySetupQueue.Empty();
+        CreateProcMeshBodySetup();
     }
 
-    // Actualizar posición
-    SetWorldLocation(Center);
+    UBodySetup* UseBodySetup =
+        bAsync ? AsyncBodySetupQueue.Last() : BodySetup;
 
-    BodySetup->InvalidatePhysicsData();
-    BodySetup->CreatePhysicsMeshes();
+    UseBodySetup->CollisionTraceFlag =
+        bUseComplexAsSimpleCollision ?
+        CTF_UseComplexAsSimple :
+        CTF_UseDefault;
 
-    // Recrear cuerpo físico
-    BodyInstance.TermBody();
-    RecreatePhysicsState();
-
-    // Configurar colisiones
-    UpdateCollisionSettings();
-}
-
-void UCosmicCollisionComponent::GenerateCollisionMeshData(
-    const FVector& Center,
-    const FVector& SurfaceNormal,
-    float Radius,
-    int32 Resolution,
-    TArray<FVector>& OutVerts,
-    TArray<int32>& OutTris)
-{
-    OutVerts.Empty();
-    OutTris.Empty();
-
-    // Crear sistema de coordenadas locales en la superficie
-    FVector Up = SurfaceNormal;
-    FVector Right = FVector::CrossProduct(FVector(0, 0, 1), Up);
-    if (Right.SizeSquared() < 0.1f)
+    if (bAsync)
     {
-        Right = FVector::CrossProduct(FVector(1, 0, 0), Up);
+        UseBodySetup->CreatePhysicsMeshesAsync(
+            FOnAsyncPhysicsCookFinished::CreateUObject(
+                this,
+                &UCosmicCollisionComponent::FinishPhysicsAsyncCook,
+                UseBodySetup));
     }
-    Right.Normalize();
-    FVector Forward = FVector::CrossProduct(Up, Right);
-
-    int32 VertRes = Resolution + 1;
-    float GridSpacing = Radius / Resolution;
-
-    // Ajustar espaciado según tamaño mínimo de triángulo
-    if (GridSpacing < CollisionMinTriangleSize)
+    else
     {
-        GridSpacing = CollisionMinTriangleSize;
-        Resolution = FMath::FloorToInt(Radius / GridSpacing);
-        VertRes = Resolution + 1;
-    }
-
-    float HalfSize = (Resolution * GridSpacing) * 0.5f;
-
-    // Generar vértices
-    for (int32 y = 0; y < VertRes; y++)
-    {
-        for (int32 x = 0; x < VertRes; x++)
-        {
-            float WorldX = (x - Resolution * 0.5f) * GridSpacing;
-            float WorldY = (y - Resolution * 0.5f) * GridSpacing;
-
-            // Posición en el plano local
-            FVector LocalPos = Forward * WorldX + Right * WorldY;
-
-            // Posición mundial
-            FVector WorldPos = Center + LocalPos;
-
-            OutVerts.Add(WorldPos);
-        }
-    }
-
-    // Generar triángulos
-    for (int32 y = 0; y < Resolution; y++)
-    {
-        for (int32 x = 0; x < Resolution; x++)
-        {
-            int32 i0 = y * VertRes + x;
-            int32 i1 = i0 + 1;
-            int32 i2 = i0 + VertRes;
-            int32 i3 = i2 + 1;
-
-            OutTris.Add(i0);
-            OutTris.Add(i2);
-            OutTris.Add(i1);
-
-            OutTris.Add(i1);
-            OutTris.Add(i2);
-            OutTris.Add(i3);
-        }
+        UseBodySetup->InvalidatePhysicsData();
+        UseBodySetup->CreatePhysicsMeshes();
+        RecreatePhysicsState();
     }
 }
 
-void UCosmicCollisionComponent::ClearCollisionMesh()
+void UCosmicCollisionComponent::FinishPhysicsAsyncCook(bool bSuccess, UBodySetup* FinishedBodySetup)
 {
-    if (BodySetup)
+    if (bSuccess)
     {
-        BodySetup->AggGeom.EmptyElements();
-        BodySetup->InvalidatePhysicsData();
+        BodySetup = FinishedBodySetup;
+        RecreatePhysicsState();
     }
-    BodyInstance.TermBody();
-    CurrentCollisionCenter = FVector::ZeroVector;
+
+    AsyncBodySetupQueue.Remove(FinishedBodySetup);
+}
+
+bool UCosmicCollisionComponent::GetPhysicsTriMeshData(
+    FTriMeshCollisionData* CollisionData,
+    bool InUseAllTriData)
+{
+    if (!CollisionData) return false;
+
+    bool bCopyUVs = UPhysicsSettings::Get()->bSupportUVFromHitResults;
+
+    if (bCopyUVs)
+        CollisionData->UVs.AddZeroed(1);
+
+    for (const FVector& V : Verts)
+    {
+        CollisionData->Vertices.Add((FVector3f)V);
+
+        if (bCopyUVs)
+            CollisionData->UVs[0].Add(FVector2D::ZeroVector);
+    }
+
+    int32 NumTris = Tris.Num() / 3;
+
+    for (int32 i = 0; i < NumTris; i++)
+    {
+        FTriIndices Tri;
+        Tri.v0 = Tris[i * 3 + 0];
+        Tri.v1 = Tris[i * 3 + 1];
+        Tri.v2 = Tris[i * 3 + 2];
+
+        CollisionData->Indices.Add(Tri);
+        CollisionData->MaterialIndices.Add(0);
+    }
+
+    CollisionData->bFlipNormals = true;
+    CollisionData->bFastCook = true;
+
+    return true;
+}
+
+bool UCosmicCollisionComponent::ContainsPhysicsTriMeshData(bool InUseAllTriData) const
+{
+    return Tris.Num() >= 3;
+}
+
+bool UCosmicCollisionComponent::GetTriMeshSizeEstimates(
+    FTriMeshCollisionDataEstimates& OutTriMeshEstimates,
+    bool bInUseAllTriData) const
+{
+    OutTriMeshEstimates.VerticeCount = Verts.Num();
+    return true;
 }
