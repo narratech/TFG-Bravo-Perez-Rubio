@@ -156,7 +156,6 @@ void UCosmicClipmapComponent::CreateLevels()
     if (DynamicPlanetMat)
     {
         DynamicPlanetMat->SetScalarParameterValue(FName("PlanetRadius"), PlanetRadius*1000);
-
         DynamicPlanetMat->SetScalarParameterValue(FName("MaxHeight"), NoiseSettings->MaxMountainHeight);
     }
 
