@@ -14,6 +14,10 @@ ACosmicSpaceShip::ACosmicSpaceShip()
 	// I: Disable Tick to improve performance; we use constant physics.
 	PrimaryActorTick.bCanEverTick = false;
 
+	// E: Posesión automática por el jugador local.
+	// I: Automatic possession by the local player.
+	AutoPossessPlayer = EAutoReceiveInput::Player0;
+
 	// E: Configuración de la malla raíz y sus propiedades físicas iniciales.
 	// I: Root mesh setup and its initial physical properties.
 	ShipMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ShipMesh"));
@@ -34,9 +38,7 @@ ACosmicSpaceShip::ACosmicSpaceShip()
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->SetupAttachment(SpringArmComp);
 
-	// E: Posesión automática por el jugador local.
-	// I: Automatic possession by the local player.
-	AutoPossessPlayer = EAutoReceiveInput::Player0;
+
 }
 
 void ACosmicSpaceShip::BeginPlay()
@@ -119,7 +121,7 @@ void ACosmicSpaceShip::AplicarAlabeo(const FInputActionValue& Value)
 	{
 		// E: El alabeo (Roll) se aplica sobre el eje X frontal de la nave.
 		// I: Roll is applied on the front X axis of the ship.
-		FVector LocalTorque = FVector(RollValue, 0.0f, 0.0f) * RotationTorque * GetWorld()->GetDeltaSeconds();
+		FVector LocalTorque = FVector(RollValue, 0.0f, 0.0f) * AlabeoTorque * GetWorld()->GetDeltaSeconds();
 		FVector WorldTorque = ShipMesh->GetComponentRotation().RotateVector(LocalTorque);
 
 		ShipMesh->AddTorqueInDegrees(WorldTorque, NAME_None, true);

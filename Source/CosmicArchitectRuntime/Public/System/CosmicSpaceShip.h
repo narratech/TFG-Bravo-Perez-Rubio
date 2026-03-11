@@ -53,6 +53,11 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Fisicas")
 	float RotationTorque = 300000.0f;
 
+	// E: Multiplicador de fuerza para el alabeo de la nave.
+	// I: Force multiplier for ship rotation.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Fisicas")
+	float AlabeoTorque = 300000.0f;
+
 	// E: Contexto que define qué teclas activan qué acciones.
 	// I: Context defining which keys trigger which actions.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
