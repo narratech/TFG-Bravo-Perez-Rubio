@@ -29,12 +29,12 @@ UCosmicClipmapComponent::UCosmicClipmapComponent()
 
 void UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePos, const FVector& SurfaceNormal, const float DistanceToSurface)
 {
-    if (!CollisionComponent) return;
+    if (!CollisionComponent || !NoiseSettings) return;
 
     // Solo generar colisión si el jugador está cerca de la superficie
     if (DistanceToSurface < CollisionComponent->MaxCollisionDistance)
     {
-        
+        CollisionComponent->UpdateCollisionMesh(NoiseSettings);
     }
     else
     {

@@ -6,6 +6,8 @@
 #include "PhysicsEngine/BodySetup.h"
 #include "CosmicCollisionComponent.generated.h"
 
+class UCosmicNoiseSettings;
+
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class COSMICARCHITECTRUNTIME_API UCosmicCollisionComponent :
     public UPrimitiveComponent,
@@ -50,6 +52,8 @@ public:
     void RebuildCollision();
 
     void GenerateCollisionMesh(float Radius);
+
+    void UpdateCollisionMesh(const UCosmicNoiseSettings* NoiseSettings);
 
     void UpdateCollision();
 

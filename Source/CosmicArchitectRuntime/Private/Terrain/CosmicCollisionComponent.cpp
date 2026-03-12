@@ -3,6 +3,8 @@
 #include "PhysicsEngine/BodySetup.h"
 #include "PhysicsEngine/PhysicsSettings.h"
 #include "PhysicsEngine/BodyInstance.h"
+#include "CosmicNoiseSettings.h"
+#include "CosmicNoise.h"
 #include "Engine/World.h"
 
 UCosmicCollisionComponent::UCosmicCollisionComponent()
@@ -124,6 +126,25 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(float Radius)
     Verts = BaseVertices;
 
     UpdateCollision();
+}
+
+void UCosmicCollisionComponent::UpdateCollisionMesh(const UCosmicNoiseSettings* NoiseSettings)
+{
+
+    //double CreateStartTime = FPlatformTime::Seconds();
+
+    TArray<float> Heights = CosmicNoise::CalculateHeights(BaseVertices, GetOwner()->GetActorLocation(), GetComponentTransform(), NoiseSettings);
+
+    for (size_t i = 0; i < Heights.Num(); i++)
+    {
+        Verts[i] = BaseVertices[i] + BaseNormals[i] * Heights[i];
+    }
+
+    UpdateCollision();
+
+    //double CreateEndTime = FPlatformTime::Seconds();
+
+    //UE_LOG(LogTemp, Warning, TEXT("Actualizar malla de colision tomo: %.4f ms"), (CreateEndTime - CreateStartTime) * 1000.0);
 }
 
 void UCosmicCollisionComponent::DrawDebugCollisionMesh()
