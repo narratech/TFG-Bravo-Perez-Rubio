@@ -22,7 +22,7 @@ public:
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
     UPROPERTY(EditAnywhere, Category = "Collision")
-    float CollisionTriangleSize = 100.f;
+    float CollisionTriangleSize = 300.f;
 
     UPROPERTY(EditAnywhere, Category = "Collision")
     int32 CollisionResolution = 16;
