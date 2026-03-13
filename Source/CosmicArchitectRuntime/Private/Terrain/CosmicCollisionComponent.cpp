@@ -125,7 +125,7 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(float Radius)
 
     Verts = BaseVertices;
 
-    UpdateCollision();
+    BuildCollision();
 }
 
 void UCosmicCollisionComponent::UpdateCollisionMesh(const UCosmicNoiseSettings* NoiseSettings)
@@ -140,7 +140,7 @@ void UCosmicCollisionComponent::UpdateCollisionMesh(const UCosmicNoiseSettings* 
         Verts[i] = BaseVertices[i] + BaseNormals[i] * Heights[i];
     }
 
-    UpdateCollision();
+    UpdateCollisionVertices();
 
     //double CreateEndTime = FPlatformTime::Seconds();
 
@@ -201,7 +201,7 @@ UBodySetup* UCosmicCollisionComponent::GetBodySetup()
     return BodySetup;
 }
 
-void UCosmicCollisionComponent::UpdateCollision()
+void UCosmicCollisionComponent::BuildCollision()
 {
 
     if (Verts.Num() == 0 || Tris.Num() == 0)
@@ -251,6 +251,17 @@ void UCosmicCollisionComponent::UpdateCollision()
         UseBodySetup->InvalidatePhysicsData();
         UseBodySetup->CreatePhysicsMeshes();
         RecreatePhysicsState();
+    }
+}
+
+void UCosmicCollisionComponent::UpdateCollisionVertices()
+{
+    if (Verts.Num() == 0)
+        return;
+
+    if (BodyInstance.IsValidBodyInstance())
+    {
+        BodyInstance.UpdateTriMeshVertices(Verts);
     }
 }
 

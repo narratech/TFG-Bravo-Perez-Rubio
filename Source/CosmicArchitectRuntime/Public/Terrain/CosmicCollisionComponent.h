@@ -55,7 +55,7 @@ public:
 
     void UpdateCollisionMesh(const UCosmicNoiseSettings* NoiseSettings);
 
-    void UpdateCollision();
+    
 
     /** Collision provider interface */
     virtual bool GetPhysicsTriMeshData(FTriMeshCollisionData* CollisionData, bool InUseAllTriData) override;
@@ -66,6 +66,10 @@ public:
     virtual UBodySetup* GetBodySetup() override;
 
 private:
+
+    void BuildCollision();
+
+    void UpdateCollisionVertices();
 
     UPROPERTY(Transient)
     UBodySetup* BodySetup = nullptr;
