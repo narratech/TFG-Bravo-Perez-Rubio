@@ -28,7 +28,9 @@ void UOrbitComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 	bool bNeedsUpdate = (PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, ParentBody) ||
 		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, SemiMajorAxisKm) ||
 		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, Eccentricity) ||
-		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, Inclination) ||
+		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, InclinationX) ||
+		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, InclinationY) ||
+		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, InclinationZ) ||
 		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, OrbitColor) ||
 		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, OrbitSegments) ||
 		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, OrbitThickness) ||
@@ -102,7 +104,7 @@ void UOrbitComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 	FVector OrbitalPos(X, Y, 0.0f);
 
 	//Aplicar inclinacion (Rotar plano de la orbita)
-	FRotator OrbitTilt(Inclination, 0.0f, 0.0f);
+	FRotator OrbitTilt(InclinationX, InclinationY, InclinationZ);
 	FVector RotatedPos = OrbitTilt.RotateVector(OrbitalPos);
 
 	FVector FinalLocation = ParentBody->GetActorLocation() + RotatedPos;
@@ -154,7 +156,7 @@ void UOrbitComponent::UpdateInitialOrbitPosition()
 	FVector OrbitalPos(X, Y, 0.0f);
 
 	// Aplicar inclinación
-	FRotator OrbitTilt(Inclination, 0.0f, 0.0f);
+	FRotator OrbitTilt(InclinationX, InclinationY, InclinationZ);
 	FVector RotatedPos = OrbitTilt.RotateVector(OrbitalPos);
 
 	// Posición final relativa al cuerpo padre
@@ -195,7 +197,7 @@ void UOrbitComponent::UpdateOrbitVisualization()
 			0.0f
 		);
 
-		FRotator OrbitTilt(Inclination, 0.0f, 0.0f);
+		FRotator OrbitTilt(InclinationX, InclinationY, InclinationZ);
 		FVector RotatedPos = OrbitTilt.RotateVector(LocalPos);
 		Points.Add(BodyLocation + RotatedPos);
 	}

@@ -189,7 +189,7 @@ void ACosmicSystemGenerator::GenerateBodies()
         Orbit->ParentBody = Star;
         Orbit->SemiMajorAxisKm = OrbitDistanceKm;
         Orbit->Eccentricity = Stream.FRandRange(0.0f, 0.15f);
-        Orbit->Inclination = Stream.FRandRange(0.0f, 10.0f);
+        Orbit->InclinationX = Stream.FRandRange(0.0f, 10.0f);
         Orbit->InitialPosition = Stream.FRandRange(0.0f, 1.0f);
 
         // Aproximación simplificada Kepler
