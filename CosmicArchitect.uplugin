@@ -47,9 +47,13 @@
 		}
 	],
 	"Plugins": [
-    		{
-        		"Name": "ProceduralMeshComponent",
-        		"Enabled": true
-    		}
+		{
+			"Name": "ProceduralMeshComponent",
+			"Enabled": true
+		},
+		{
+			"Name": "EnhancedInput",
+			"Enabled": true
+		}
 	]
 }
