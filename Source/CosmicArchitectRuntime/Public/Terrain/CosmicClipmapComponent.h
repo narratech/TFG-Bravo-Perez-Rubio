@@ -55,8 +55,6 @@ public:
     UPROPERTY(EditAnywhere, Category = "Clipmap")
     bool FreezeGeneration = false;
 
-    /** Componente de colision que sigue al jugador */
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Collision")
     UCosmicCollisionComponent* CollisionComponent;
 
 protected:

@@ -9,9 +9,10 @@
 
 class UCosmicClipmapComponent;
 class UCosmicFoliageSpawner;
+class UCosmicCollisionComponent;
 
 UCLASS(HideCategories = (
-	Replication, Input, Collision, Actor, LOD, Cooking, Networking,
+	Replication, Input, Actor, LOD, Activation, Cooking, Networking,
 	Physics, Navigation, Tags, DataLayers, LevelInstance))
 class COSMICARCHITECTRUNTIME_API ACosmicPlanet : public AActor
 {
@@ -20,13 +21,16 @@ class COSMICARCHITECTRUNTIME_API ACosmicPlanet : public AActor
 public:	
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Planet")
-	float Radius;
+	float Radius = 1.f;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	USceneComponent* Root;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UCosmicClipmapComponent* ClipmapComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (ShowOnlyInnerProperties))
+	UCosmicCollisionComponent* CollisionComponent;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Noise")
 	UCosmicNoiseSettings* NoiseSettings;

@@ -2,6 +2,7 @@
 
 
 #include "Planet/CosmicPlanet.h"
+#include "Terrain/CosmicCollisionComponent.h"
 #include "Terrain/CosmicClipmapComponent.h"
 #include "CosmicFoliageSpawner.h"
 #include "Components/StaticMeshComponent.h"
@@ -14,6 +15,7 @@ ACosmicPlanet::ACosmicPlanet()
     Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
     RootComponent = Root;
 
+    CollisionComponent = CreateDefaultSubobject<UCosmicCollisionComponent>(TEXT("CollisionComponent"));
     ClipmapComponent = CreateDefaultSubobject<UCosmicClipmapComponent>(TEXT("ClipmapComponent"));
     FoliageSpawnerComponent = CreateDefaultSubobject<UCosmicFoliageSpawner>(TEXT("FoliageSpawnerComponent"));
 }
@@ -34,6 +36,7 @@ void ACosmicPlanet::BeginPlay()
             ClipmapComponent->ParentRoot = Root;
             ClipmapComponent->PlanetRadius = Radius * 100000;
             ClipmapComponent->NoiseSettings = NoiseSettings;
+            ClipmapComponent->CollisionComponent = CollisionComponent;
             ClipmapComponent->CreatePerformanceLevel(true);   
         }
     }
@@ -47,6 +50,7 @@ void ACosmicPlanet::InitClipmap()
         ClipmapComponent->PlanetRadius = Radius * 100000;
         ClipmapComponent->ClearLevels();
         ClipmapComponent->NoiseSettings = NoiseSettings;
+        ClipmapComponent->CollisionComponent = CollisionComponent;
         ClipmapComponent->CreatePerformanceLevel(true);
         ClipmapComponent->bInitializedInEditor = true;
         

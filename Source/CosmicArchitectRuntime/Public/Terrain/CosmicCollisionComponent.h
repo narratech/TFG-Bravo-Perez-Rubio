@@ -31,16 +31,16 @@ public:
     float MaxCollisionDistance = 20000.f;
 
     /** Mostrar malla de colision en el editor (para depuracion) */
-    UPROPERTY(EditAnywhere, Category = "Collision Debug")
-    bool bShowCollisionMesh = true;
+    UPROPERTY(EditAnywhere, Category = "Collision")
+    bool bShowCollisionMesh = false;
 
     /** Color de la malla de colision en el editor */
-    UPROPERTY(EditAnywhere, Category = "Collision Debug", meta = (EditCondition = "bShowCollisionMesh"))
+    UPROPERTY(EditAnywhere, Category = "Collision", meta = (EditCondition = "bShowCollisionMesh"))
     FColor DebugColor = FColor::Green;
 
     /** Transparencia de la malla de colision (0-1) */
-    UPROPERTY(EditAnywhere, Category = "Collision Debug", meta = (EditCondition = "bShowCollisionMesh", ClampMin = "0"))
-    float DebugLineWidth = 100.f;
+    UPROPERTY(EditAnywhere, Category = "Collision", meta = (EditCondition = "bShowCollisionMesh", ClampMin = "0"))
+    float DebugLineWidth = 20.f;
 
     UPROPERTY(EditAnywhere)
     bool bUseComplexAsSimpleCollision = true;
