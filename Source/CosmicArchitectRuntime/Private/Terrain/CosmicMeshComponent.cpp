@@ -157,34 +157,43 @@ void UCosmicMeshComponent::BuildBaseMesh()
 
                     if (i4 < TotalVertices)
                     {
-                        if (y == Resolution - 1) // borde superior 
+                        if (y == Resolution - 1) // borde inferior 
                         {
-                            Triangles.Add(i1);
-                            Triangles.Add(i5);
-                            Triangles.Add(i4);
-                            TriangleCount++;
 
-                            Triangles.Add(i1);
-                            Triangles.Add(i0);
-                            Triangles.Add(i2);
-                            TriangleCount++;
-
+                            if (x != Resolution - 2) {
+                                Triangles.Add(i1);
+                                Triangles.Add(i5);
+                                Triangles.Add(i4);
+                                TriangleCount++;
+                            }
+                            
+                            if (x != 0) {
+                                Triangles.Add(i1);
+                                Triangles.Add(i0);
+                                Triangles.Add(i2);
+                                TriangleCount++;
+                            }
+                            
                             Triangles.Add(i2);
                             Triangles.Add(i5);
                             Triangles.Add(i1);
                             TriangleCount++;
                         }
-                        else // borde inferior 
+                        else // borde superior 
                         {
-                            Triangles.Add(i0);
-                            Triangles.Add(i2);
-                            Triangles.Add(i3);
-                            TriangleCount++;
+                            if (x != 0) {
+                                Triangles.Add(i0);
+                                Triangles.Add(i2);
+                                Triangles.Add(i3);
+                                TriangleCount++;
+                            }
 
-                            Triangles.Add(i3);
-                            Triangles.Add(i5);
-                            Triangles.Add(i4);
-                            TriangleCount++;
+                            if (x != Resolution - 2) {
+                                Triangles.Add(i3);
+                                Triangles.Add(i5);
+                                Triangles.Add(i4);
+                                TriangleCount++;
+                            }
 
                             Triangles.Add(i0);
                             Triangles.Add(i3);
@@ -208,27 +217,35 @@ void UCosmicMeshComponent::BuildBaseMesh()
                             Triangles.Add(i5);
                             TriangleCount++;
 
-                            Triangles.Add(i2);
-                            Triangles.Add(i1);
-                            Triangles.Add(i0);
-                            TriangleCount++;
+                            if (y != 0) {
+                                Triangles.Add(i2);
+                                Triangles.Add(i1);
+                                Triangles.Add(i0);
+                                TriangleCount++;
+                            }
 
-                            Triangles.Add(i2);
-                            Triangles.Add(i4);
-                            Triangles.Add(i5);
-                            TriangleCount++;
+                            if (y != Resolution - 2) {
+                                Triangles.Add(i2);
+                                Triangles.Add(i4);
+                                Triangles.Add(i5);
+                                TriangleCount++;
+                            }
                         }
                         else // borde izquierdo 
-                        {                        
-                            Triangles.Add(i0);
-                            Triangles.Add(i3);
-                            Triangles.Add(i1);
-                            TriangleCount++;
+                        {         
+                            if (y != 0) {
+                                Triangles.Add(i0);
+                                Triangles.Add(i3);
+                                Triangles.Add(i1);
+                                TriangleCount++;
+                            }
 
-                            Triangles.Add(i3);
-                            Triangles.Add(i4);
-                            Triangles.Add(i5);
-                            TriangleCount++;
+                            if (y != Resolution - 2) {
+                                Triangles.Add(i3);
+                                Triangles.Add(i4);
+                                Triangles.Add(i5);
+                                TriangleCount++;
+                            }
 
                             Triangles.Add(i0);
                             Triangles.Add(i4);
