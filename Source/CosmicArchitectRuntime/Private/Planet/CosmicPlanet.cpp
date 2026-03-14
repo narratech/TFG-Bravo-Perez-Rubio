@@ -80,7 +80,7 @@ void ACosmicPlanet::OnConstruction(const FTransform& Transform)
 //#endif
 }
 
-void ACosmicPlanet::InitPlanet(float InRadiusKm, UCosmicNoiseSettings* NewNoiseSettings)
+void ACosmicPlanet::InitPlanet(float InRadiusKm, UCosmicNoiseSettings* NewNoiseSettings, FColor color1, FColor color2, FColor colorHeight, float scale, UMaterialInterface* BaseMaterial)
 {
     Radius = InRadiusKm;
 
@@ -106,7 +106,19 @@ void ACosmicPlanet::InitPlanet(float InRadiusKm, UCosmicNoiseSettings* NewNoiseS
         UE_LOG(LogTemp, Log, TEXT("Created default NoiseSettings for planet"));
     }
 
-    InitClipmap();
+    if (ClipmapComponent) {
+
+        ClipmapComponent->ParentRoot = Root;
+        ClipmapComponent->PlanetRadius = Radius * 100000;
+        ClipmapComponent->ClearLevels();
+        ClipmapComponent->BaseMaterial = BaseMaterial;
+        ClipmapComponent->NoiseSettings = NoiseSettings;
+        ClipmapComponent->SetMaterialData(color1, color2, colorHeight, scale);
+        ClipmapComponent->CollisionComponent = CollisionComponent;
+        ClipmapComponent->CreatePerformanceLevel(true);
+        ClipmapComponent->bInitializedInEditor = true;
+
+    }
 }
 
 void ACosmicPlanet::CleanupNoiseSettings()

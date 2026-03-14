@@ -32,6 +32,9 @@ protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visualization")
     UBoxComponent* GenerationVolume;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+    UMaterialInterface* BaseMaterial;
+
     // --- CONFIGURATION ---
 
     // E: Semilla para la generación de números aleatorios (Determinismo).
@@ -81,10 +84,14 @@ protected:
     UPROPERTY()
     TArray<AActor*> GeneratedBodies;
 
+
+
     void GenerateStar();
 
 private:
     UCosmicNoiseSettings* CreateRandomNoiseSettings(FRandomStream& Stream, const float PlanetRadius);
+
+    FColor GetRandomColor(FRandomStream& Stream, int min, int max);
 
 public:
     // E: Genera los cuerpos basándose en la configuración actual.

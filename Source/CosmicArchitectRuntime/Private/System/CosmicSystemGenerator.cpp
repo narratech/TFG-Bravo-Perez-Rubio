@@ -103,6 +103,19 @@ UCosmicNoiseSettings* ACosmicSystemGenerator::CreateRandomNoiseSettings(FRandomS
     return NewSettings;
 }
 
+FColor ACosmicSystemGenerator::GetRandomColor(FRandomStream& Stream, int min, int max)
+{
+    int minRange = FMath::Clamp(min, 0, 255);
+    int maxRange = FMath::Clamp(max, 0, 255);
+
+    return FColor(
+        Stream.RandRange(minRange, maxRange),  // R
+        Stream.RandRange(minRange, maxRange),  // G
+        Stream.RandRange(minRange, maxRange),  // B
+        255
+    );
+}
+
 void ACosmicSystemGenerator::GenerateBodies()
 {
     ClearBodies();
@@ -131,7 +144,13 @@ void ACosmicSystemGenerator::GenerateBodies()
 
     float StarRadiusKm = SystemRadiusKm * 0.15f;
 
-    Star->InitPlanet(StarRadiusKm, CreateRandomNoiseSettings(Stream, StarRadiusKm));
+    Star->InitPlanet(StarRadiusKm, CreateRandomNoiseSettings(Stream, StarRadiusKm),
+        GetRandomColor(Stream, 200, 255),
+        GetRandomColor(Stream, 200, 255),
+        GetRandomColor(Stream, 0, 30),
+        Stream.FRandRange(0.5f, 2.f),
+        BaseMaterial);
+
     Star->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
 
     UGravityComponent* StarGravity = NewObject<UGravityComponent>(Star);
@@ -168,7 +187,13 @@ void ACosmicSystemGenerator::GenerateBodies()
         // Radio proporcional a distancia
         float PlanetRadiusKm = OrbitDistanceKm * Stream.FRandRange(0.01f, 0.05f);
 
-        Planet->InitPlanet(PlanetRadiusKm, CreateRandomNoiseSettings(Stream, PlanetRadiusKm));
+        Planet->InitPlanet(PlanetRadiusKm, CreateRandomNoiseSettings(Stream, PlanetRadiusKm),
+            GetRandomColor(Stream, 50, 255),
+            GetRandomColor(Stream, 50, 255),
+            GetRandomColor(Stream, 50, 255),
+            Stream.FRandRange(0.5f, 2.f),
+            BaseMaterial
+        );
 
         /* Gravity */
 
@@ -234,7 +259,13 @@ void ACosmicSystemGenerator::GenerateBodies()
 
             float MoonRadiusKm = PlanetRadiusKm * Stream.FRandRange(0.1f, 0.3f);
 
-            Moon->InitPlanet(MoonRadiusKm, CreateRandomNoiseSettings(Stream, MoonRadiusKm));
+            Moon->InitPlanet(MoonRadiusKm, CreateRandomNoiseSettings(Stream, MoonRadiusKm),
+                GetRandomColor(Stream, 50, 255),
+                GetRandomColor(Stream, 50, 255),
+                GetRandomColor(Stream, 50, 255),
+                Stream.FRandRange(0.5f, 2.f),
+                BaseMaterial
+            );
 
             UGravityComponent* MoonGravity = NewObject<UGravityComponent>(Moon);
 
