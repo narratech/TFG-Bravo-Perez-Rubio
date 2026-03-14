@@ -87,7 +87,7 @@ protected:
     void IncreaseClipmapLevel();
 
 private:
-    UPROPERTY()
+    UPROPERTY(EditAnywhere, Category = "Materials")
     UMaterialInstanceDynamic* DynamicPlanetMat;
 };
 

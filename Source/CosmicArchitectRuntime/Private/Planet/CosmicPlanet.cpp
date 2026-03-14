@@ -36,6 +36,7 @@ void ACosmicPlanet::BeginPlay()
             ClipmapComponent->ParentRoot = Root;
             ClipmapComponent->PlanetRadius = Radius * 100000;
             ClipmapComponent->NoiseSettings = NoiseSettings;
+            ClipmapComponent->SetMaterialData(PlanetMainColor1, PlanetMainColor2, PlanetAltitudeColor, MaterialNoiseScale);
             ClipmapComponent->CollisionComponent = CollisionComponent;
             ClipmapComponent->CreatePerformanceLevel(true);   
         }
@@ -107,18 +108,15 @@ void ACosmicPlanet::InitPlanet(float InRadiusKm, UCosmicNoiseSettings* NewNoiseS
     }
 
     if (ClipmapComponent) {
-
-        ClipmapComponent->ParentRoot = Root;
-        ClipmapComponent->PlanetRadius = Radius * 100000;
-        ClipmapComponent->ClearLevels();
         ClipmapComponent->BaseMaterial = BaseMaterial;
-        ClipmapComponent->NoiseSettings = NoiseSettings;
-        ClipmapComponent->SetMaterialData(color1, color2, colorHeight, scale);
-        ClipmapComponent->CollisionComponent = CollisionComponent;
-        ClipmapComponent->CreatePerformanceLevel(true);
-        ClipmapComponent->bInitializedInEditor = true;
-
     }
+
+    PlanetMainColor1 = color1;
+    PlanetMainColor2 = color2;
+    PlanetAltitudeColor = colorHeight;
+    MaterialNoiseScale = scale;
+
+    InitClipmap();
 }
 
 void ACosmicPlanet::CleanupNoiseSettings()

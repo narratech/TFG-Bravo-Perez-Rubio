@@ -105,8 +105,8 @@ UCosmicNoiseSettings* ACosmicSystemGenerator::CreateRandomNoiseSettings(FRandomS
 
 FColor ACosmicSystemGenerator::GetRandomColor(FRandomStream& Stream, int min, int max)
 {
-    int minRange = FMath::Clamp(min, 0, 255);
-    int maxRange = FMath::Clamp(max, 0, 255);
+    int minRange = FMath::Max(min, 0);
+    int maxRange = FMath::Min(max, 255);
 
     return FColor(
         Stream.RandRange(minRange, maxRange),  // R
@@ -145,9 +145,9 @@ void ACosmicSystemGenerator::GenerateBodies()
     float StarRadiusKm = SystemRadiusKm * 0.15f;
 
     Star->InitPlanet(StarRadiusKm, CreateRandomNoiseSettings(Stream, StarRadiusKm),
-        GetRandomColor(Stream, 200, 255),
-        GetRandomColor(Stream, 200, 255),
-        GetRandomColor(Stream, 0, 30),
+        GetRandomColor(Stream, 50, 255),
+        GetRandomColor(Stream, 50, 255),
+        GetRandomColor(Stream, 50, 255),
         Stream.FRandRange(0.5f, 2.f),
         BaseMaterial);
 
