@@ -376,7 +376,7 @@ public:
             FinalHum = FMath::Clamp((FinalHum - 0.5f) * HumidityContrast + 0.5f, 0.0f, 1.0f);
 
             // Guardar colores
-            CalculatedColors[i] = FLinearColor(FinalTemp, FinalHum, AltitudePenalty, 1.0f);
+            CalculatedColors[i] = FLinearColor(AltitudePenalty, FinalTemp, FinalHum, 1.0f);
             
         }
     }

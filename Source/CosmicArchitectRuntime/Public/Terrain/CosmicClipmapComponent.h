@@ -23,6 +23,7 @@ public:
 
     void ClearLevels();
     void ReasignLevels();
+    void SetMaterialData(FColor color1, FColor color2, FColor colorHeight, float scale);
 
     USceneComponent* ParentRoot = nullptr;
     UCosmicNoiseSettings* NoiseSettings;
@@ -66,6 +67,11 @@ protected:
     bool bPerformaceMode = false;
     bool bInit = false;
     bool bPerformanceBuild = false;
+
+    FColor PlanetMainColor1 = FColor::Green;
+    FColor PlanetMainColor2 = FColor::Red;
+    FColor PlanetAltitudeColor = FColor::Yellow;
+    float MaterialNoiseScale = 1.f;
 
     virtual void BeginPlay() override;
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;

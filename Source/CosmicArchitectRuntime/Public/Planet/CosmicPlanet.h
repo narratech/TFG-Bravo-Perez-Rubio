@@ -38,6 +38,19 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UCosmicFoliageSpawner* FoliageSpawnerComponent;
 
+	UPROPERTY(EditAnywhere, Category = "Materials")
+	FColor PlanetMainColor1 = FColor::Green;
+
+	UPROPERTY(EditAnywhere, Category = "Materials")
+	FColor PlanetMainColor2 = FColor::Red;
+
+	UPROPERTY(EditAnywhere, Category = "Materials")
+	FColor PlanetAltitudeColor = FColor::Yellow;
+
+	UPROPERTY(EditAnywhere, Category = "Materials", meta = (ClampMin = "0.1", ClampMax = "20"))
+	float MaterialNoiseScale = 1.f;
+
+	
 	// Sets default values for this actor's properties
 	ACosmicPlanet();
 

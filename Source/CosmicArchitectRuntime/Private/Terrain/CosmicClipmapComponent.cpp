@@ -253,6 +253,10 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
                 DynamicPlanetMat->SetScalarParameterValue(FName("MaxHeight"), NoiseSettings->MaxMountainHeight);
             }
 
+            DynamicPlanetMat->SetVectorParameterValue(FName("BaseColor"), PlanetMainColor1);
+            DynamicPlanetMat->SetVectorParameterValue(FName("MidColor"), PlanetMainColor2);
+            DynamicPlanetMat->SetVectorParameterValue(FName("ColdColor"), PlanetAltitudeColor);
+            DynamicPlanetMat->SetScalarParameterValue(FName("NoiseScale"), MaterialNoiseScale);
         }
     }
 
@@ -403,6 +407,14 @@ void UCosmicClipmapComponent::ReasignLevels()
     UE_LOG(LogTemp, Warning, TEXT("Mallas reasignada en %.4f ms"), UpdateMeshTime * 1000.0);*/
 
     //UE_LOG(LogTemp, Warning, TEXT("UCosmicClipmapComponent::ReasignLevels() - Reasignando %d niveles"), LevelsReasigned);
+}
+
+void UCosmicClipmapComponent::SetMaterialData(FColor color1, FColor color2, FColor colorHeight, float scale)
+{
+    PlanetMainColor1 = color1;
+    PlanetMainColor2 = color2;
+    PlanetAltitudeColor = colorHeight;
+    MaterialNoiseScale = scale;
 }
 
 
