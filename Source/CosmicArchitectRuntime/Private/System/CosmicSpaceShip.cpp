@@ -80,6 +80,7 @@ void ACosmicSpaceShip::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		if (IA_Traslacion) { EnhancedInputComponent->BindAction(IA_Traslacion, ETriggerEvent::Triggered, this, &ACosmicSpaceShip::AplicarTraslacion); }
 		if (IA_Orientacion) { EnhancedInputComponent->BindAction(IA_Orientacion, ETriggerEvent::Triggered, this, &ACosmicSpaceShip::AplicarOrientacion); }
 		if (IA_Alabeo) { EnhancedInputComponent->BindAction(IA_Alabeo, ETriggerEvent::Triggered, this, &ACosmicSpaceShip::AplicarAlabeo); }
+		if (IA_Boost) { EnhancedInputComponent->BindAction(IA_Boost, ETriggerEvent::Triggered, this, &ACosmicSpaceShip::SetBoost); }
 	}
 }
 
@@ -92,6 +93,10 @@ void ACosmicSpaceShip::AplicarTraslacion(const FInputActionValue& Value)
 		// E: Transformamos el vector local a mundial para aplicar la fuerza correctamente.
 		// I: Transform the local vector to world to apply the force correctly.
 		FVector LocalForce = MovementVector * ThrusterForce * GetWorld()->GetDeltaSeconds();
+		if (bBoostMode && MovementVector.X > 0.5f && MovementVector.Y < 0.5f && MovementVector.Y > -0.5f) {
+			bBoostMode = false;
+			LocalForce *= BoostIncreasePower;
+		}
 		FVector WorldForce = ShipMesh->GetComponentRotation().RotateVector(LocalForce);
 
 		ShipMesh->AddForce(WorldForce, NAME_None, true);
@@ -126,4 +131,9 @@ void ACosmicSpaceShip::AplicarAlabeo(const FInputActionValue& Value)
 
 		ShipMesh->AddTorqueInDegrees(WorldTorque, NAME_None, true);
 	}
+}
+
+void ACosmicSpaceShip::SetBoost(const FInputActionValue& Value)
+{
+	bBoostMode = Value.Get<bool>();
 }

@@ -58,6 +58,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Fisicas")
 	float AlabeoTorque = 300000.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Fisicas")
+	float BoostIncreasePower = 50.0f;
+
 	// E: Contexto que define qué teclas activan qué acciones.
 	// I: Context defining which keys trigger which actions.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
@@ -78,6 +81,12 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
 	class UInputAction* IA_Alabeo;
 
+	// E: Acción de entrada para modo velocidad interestelar.
+	// I: Input action for interstelar speed.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
+	class UInputAction* IA_Boost;
+	
+
 private:
 	// E: Lógica para mover la nave en el espacio.
 	// I: Logic to move the ship in space.
@@ -90,4 +99,8 @@ private:
 	// E: Lógica para inclinar la nave lateralmente.
 	// I: Logic to tilt the ship laterally.
 	void AplicarAlabeo(const FInputActionValue& Value);
+
+	void SetBoost(const FInputActionValue& Value);
+
+	bool bBoostMode = false;
 };
