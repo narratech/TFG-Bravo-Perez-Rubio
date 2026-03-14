@@ -145,17 +145,6 @@ void UCosmicClipmapComponent::CreateLevels()
         ClearLevels();
     }
 
-    if (BaseMaterial) {
-
-        DynamicPlanetMat = UMaterialInstanceDynamic::Create(BaseMaterial, this);
-
-        if (DynamicPlanetMat)
-        {
-            DynamicPlanetMat->SetScalarParameterValue(FName("PlanetRadius"), PlanetRadius);
-            DynamicPlanetMat->SetScalarParameterValue(FName("MaxHeight"), NoiseSettings->MaxMountainHeight);
-        }
-    }
-    
     if (CollisionComponent && ParentRoot)
     {
         CollisionComponent->AttachToComponent(ParentRoot, FAttachmentTransformRules::KeepRelativeTransform);
@@ -252,6 +241,21 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
 {
     if (FarLevel) return;
 
+    if (BaseMaterial) {
+
+        DynamicPlanetMat = UMaterialInstanceDynamic::Create(BaseMaterial, this);
+
+        if (DynamicPlanetMat)
+        {
+            DynamicPlanetMat->SetScalarParameterValue(FName("PlanetRadius"), PlanetRadius);
+
+            if (NoiseSettings) {
+                DynamicPlanetMat->SetScalarParameterValue(FName("MaxHeight"), NoiseSettings->MaxMountainHeight);
+            }
+
+        }
+    }
+
     FName ComponentName = *FString::Printf(TEXT("ClipmapMesh_Performance_%d"), 0);
 
     UCosmicMeshComponent* Mesh = NewObject<UCosmicMeshComponent>(
@@ -282,9 +286,9 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
 
        
 
-        if (BaseMaterial)
+        if (DynamicPlanetMat)
         {
-            Mesh->SetMaterial(0, BaseMaterial);
+            Mesh->SetMaterial(0, DynamicPlanetMat);
         }
         //else
         //{
@@ -354,6 +358,11 @@ void UCosmicClipmapComponent::ClearLevels()
             }
         }
 
+    }
+
+    if (DynamicPlanetMat)
+    {
+        DynamicPlanetMat = nullptr;
     }
 
     bPerformanceBuild = false;
