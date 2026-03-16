@@ -101,10 +101,10 @@ void ACosmicPlanet::InitPlanet(float InRadiusKm, UCosmicNoiseSettings* NewNoiseS
     else if (!NoiseSettings)
     {
         // Crear uno por defecto si no tenemos ninguno
-        NoiseSettings = NewObject<UCosmicNoiseSettings>(this, TEXT("CustomNoiseSettings"));
+        //NoiseSettings = NewObject<UCosmicNoiseSettings>(this, TEXT("CustomNoiseSettings"));
 
-        // Configurar valores por defecto
-        UE_LOG(LogTemp, Log, TEXT("Created default NoiseSettings for planet"));
+        //// Configurar valores por defecto
+        //UE_LOG(LogTemp, Log, TEXT("Created default NoiseSettings for planet"));
     }
 
     if (ClipmapComponent) {

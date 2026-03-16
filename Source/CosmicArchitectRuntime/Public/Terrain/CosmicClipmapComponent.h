@@ -39,10 +39,10 @@ public:
 
 
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "32", ClampMax = "256"))
-    int32 BaseResolution = 64;
+    int32 BaseResolution = 128;
 
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "1", ClampMax = "20"))
-    int32 NumLevels = 5;
+    int32 NumLevels = 4;
 
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "50"))
     float MinTriangleSize = 200.f;
@@ -51,7 +51,7 @@ public:
     float BaseGridSpacing = 200.f;
 
     UPROPERTY(EditAnywhere, Category = "Clipmap")
-    float HeightVisibility = 8.f;
+    float HeightVisibility = 6.f;
 
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "0", ClampMax = "60"))
     float TimeToRefresh = 0.033f;

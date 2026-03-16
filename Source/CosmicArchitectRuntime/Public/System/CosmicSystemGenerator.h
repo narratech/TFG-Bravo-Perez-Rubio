@@ -33,6 +33,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UMaterialInterface* BaseMaterial;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+    UMaterialInterface* StarMaterial;
+
 protected:
     // E: Componente visual para definir el área de generación.
     // I: Visual component to define the generation area.

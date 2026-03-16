@@ -144,12 +144,12 @@ void ACosmicSystemGenerator::GenerateBodies()
 
     float StarRadiusKm = SystemRadiusKm * 0.15f;
 
-    Star->InitPlanet(StarRadiusKm, CreateRandomNoiseSettings(Stream, StarRadiusKm),
+    Star->InitPlanet(StarRadiusKm, nullptr,
         GetRandomColor(Stream, 50, 255),
         GetRandomColor(Stream, 50, 255),
         GetRandomColor(Stream, 50, 255),
         Stream.FRandRange(0.5f, 2.f),
-        BaseMaterial,
+        StarMaterial,
         nullptr);
 
     Star->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
