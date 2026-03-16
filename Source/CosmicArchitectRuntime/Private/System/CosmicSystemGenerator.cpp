@@ -149,7 +149,8 @@ void ACosmicSystemGenerator::GenerateBodies()
         GetRandomColor(Stream, 50, 255),
         GetRandomColor(Stream, 50, 255),
         Stream.FRandRange(0.5f, 2.f),
-        BaseMaterial);
+        BaseMaterial,
+        nullptr);
 
     Star->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
 
@@ -187,12 +188,22 @@ void ACosmicSystemGenerator::GenerateBodies()
         // Radio proporcional a distancia
         float PlanetRadiusKm = OrbitDistanceKm * Stream.FRandRange(0.01f, 0.05f);
 
+        UTexture2D* TexturaElegida = nullptr;
+
+        if (PosiblesTexturas.Num() > 0) {
+            int32 RandomIndex = FMath::RandRange(0, PosiblesTexturas.Num() - 1);
+
+            TexturaElegida = PosiblesTexturas[RandomIndex];
+        }
+        
+
         Planet->InitPlanet(PlanetRadiusKm, CreateRandomNoiseSettings(Stream, PlanetRadiusKm),
             GetRandomColor(Stream, 50, 255),
             GetRandomColor(Stream, 50, 255),
             GetRandomColor(Stream, 50, 255),
             Stream.FRandRange(0.5f, 2.f),
-            BaseMaterial
+            BaseMaterial,
+            TexturaElegida
         );
 
         /* Gravity */
@@ -264,7 +275,8 @@ void ACosmicSystemGenerator::GenerateBodies()
                 GetRandomColor(Stream, 50, 255),
                 GetRandomColor(Stream, 50, 255),
                 Stream.FRandRange(0.5f, 2.f),
-                BaseMaterial
+                BaseMaterial,
+                nullptr
             );
 
             UGravityComponent* MoonGravity = NewObject<UGravityComponent>(Moon);

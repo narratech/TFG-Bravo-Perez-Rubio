@@ -34,6 +34,9 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UMaterialInterface* BaseMaterial;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+    UTexture2D* DefaultTexture;
+
 
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "32", ClampMax = "256"))
     int32 BaseResolution = 64;

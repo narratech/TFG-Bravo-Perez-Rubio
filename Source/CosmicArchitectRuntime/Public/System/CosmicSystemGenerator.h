@@ -26,14 +26,19 @@ public:
     // I: Called when a property is changed in the editor. Allows real-time updates.
     virtual void OnConstruction(const FTransform& Transform) override;
 
+
+    UPROPERTY(EditAnywhere, Category = "Materials")
+    TArray<UTexture2D*> PosiblesTexturas;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+    UMaterialInterface* BaseMaterial;
+
 protected:
     // E: Componente visual para definir el área de generación.
     // I: Visual component to define the generation area.
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visualization")
     UBoxComponent* GenerationVolume;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
-    UMaterialInterface* BaseMaterial;
 
     // --- CONFIGURATION ---
 

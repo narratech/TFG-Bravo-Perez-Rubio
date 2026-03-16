@@ -81,7 +81,7 @@ void ACosmicPlanet::OnConstruction(const FTransform& Transform)
 //#endif
 }
 
-void ACosmicPlanet::InitPlanet(float InRadiusKm, UCosmicNoiseSettings* NewNoiseSettings, FColor color1, FColor color2, FColor colorHeight, float scale, UMaterialInterface* BaseMaterial)
+void ACosmicPlanet::InitPlanet(float InRadiusKm, UCosmicNoiseSettings* NewNoiseSettings, FColor color1, FColor color2, FColor colorHeight, float scale, UMaterialInterface* BaseMaterial, UTexture2D* DefaultTexture)
 {
     Radius = InRadiusKm;
 
@@ -109,6 +109,7 @@ void ACosmicPlanet::InitPlanet(float InRadiusKm, UCosmicNoiseSettings* NewNoiseS
 
     if (ClipmapComponent) {
         ClipmapComponent->BaseMaterial = BaseMaterial;
+        ClipmapComponent->DefaultTexture = DefaultTexture;
     }
 
     PlanetMainColor1 = color1;

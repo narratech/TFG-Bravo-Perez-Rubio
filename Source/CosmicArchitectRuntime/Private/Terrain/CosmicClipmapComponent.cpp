@@ -257,6 +257,7 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
             DynamicPlanetMat->SetVectorParameterValue(FName("MidColor"), PlanetMainColor2);
             DynamicPlanetMat->SetVectorParameterValue(FName("ColdColor"), PlanetAltitudeColor);
             DynamicPlanetMat->SetScalarParameterValue(FName("NoiseScale"), MaterialNoiseScale);
+            DynamicPlanetMat->SetTextureParameterValue(FName("PlanetTexture"), DefaultTexture);
         }
     }
 
