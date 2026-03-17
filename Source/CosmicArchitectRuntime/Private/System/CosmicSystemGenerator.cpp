@@ -270,7 +270,7 @@ void ACosmicSystemGenerator::GenerateBodies()
 
             Moon->AttachToActor(Planet, FAttachmentTransformRules::KeepWorldTransform);
 
-            float MoonOrbitKm = PlanetRadiusKm * Stream.FRandRange(5.0f, 15.0f);
+            float MoonOrbitKm = PlanetRadiusKm * Stream.FRandRange(10.0f, 15.0f);
 
             float MoonRadiusKm = PlanetRadiusKm * Stream.FRandRange(0.1f, 0.3f);
 
@@ -301,7 +301,7 @@ void ACosmicSystemGenerator::GenerateBodies()
             MoonOrbit->Eccentricity = Stream.FRandRange(0.0f, 0.1f);
             MoonOrbit->InitialPosition = Stream.FRandRange(0.0f, 1.0f);
 
-            MoonOrbit->OrbitalPeriod = FMath::Pow(MoonOrbitKm, 5);
+            MoonOrbit->OrbitalPeriod = FMath::Pow(MoonOrbitKm, 8);
 
             color = FColor(
                 Stream.RandRange(50, 255),  // R
