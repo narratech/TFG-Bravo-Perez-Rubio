@@ -24,7 +24,7 @@ ACosmicSpaceShip::ACosmicSpaceShip()
 	RootComponent = ShipMesh;
 	ShipMesh->SetSimulatePhysics(true);
 	ShipMesh->SetEnableGravity(false); // E: Sin gravedad espacial. I: No space gravity.
-	ShipMesh->SetLinearDamping(0.5f);  // E: Amortiguación lineal. I: Linear damping.
+	ShipMesh->SetLinearDamping(0.0f);  // E: Amortiguación lineal. I: Linear damping.
 	ShipMesh->SetAngularDamping(0.5f); // E: Amortiguación de giro. I: Angular damping.
 
 	// E: Inicialización del brazo y la cámara siguiendo a la nave.
