@@ -51,7 +51,7 @@ public:
     float BaseGridSpacing = 200.f;
 
     UPROPERTY(EditAnywhere, Category = "Clipmap")
-    float HeightVisibility = 6.f;
+    float HeightVisibility = 1.5f;
 
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "0", ClampMax = "60"))
     float TimeToRefresh = 0.033f;

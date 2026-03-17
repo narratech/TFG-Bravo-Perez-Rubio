@@ -21,7 +21,7 @@ class COSMICARCHITECTRUNTIME_API ACosmicPlanet : public AActor
 public:	
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Planet")
-	float Radius = 1.f;
+	float RadiusKm = 1.f;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	USceneComponent* Root;
@@ -53,8 +53,6 @@ public:
 	
 	// Sets default values for this actor's properties
 	ACosmicPlanet();
-
-	virtual void Tick(float DeltaTime) override;
 
 	virtual void OnConstruction(const FTransform& Transform) override;
 

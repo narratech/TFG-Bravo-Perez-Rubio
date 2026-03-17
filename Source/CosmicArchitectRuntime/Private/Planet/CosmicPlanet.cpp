@@ -34,7 +34,7 @@ void ACosmicPlanet::BeginPlay()
         }
         else {
             ClipmapComponent->ParentRoot = Root;
-            ClipmapComponent->PlanetRadius = Radius * 100000;
+            ClipmapComponent->PlanetRadius = RadiusKm * 100000;
             ClipmapComponent->NoiseSettings = NoiseSettings;
             ClipmapComponent->SetMaterialData(PlanetMainColor1, PlanetMainColor2, PlanetAltitudeColor, MaterialNoiseScale);
             ClipmapComponent->CollisionComponent = CollisionComponent;
@@ -48,7 +48,7 @@ void ACosmicPlanet::InitClipmap()
     if (ClipmapComponent) {
 
         ClipmapComponent->ParentRoot = Root;
-        ClipmapComponent->PlanetRadius = Radius * 100000;
+        ClipmapComponent->PlanetRadius = RadiusKm * 100000;
         ClipmapComponent->ClearLevels();
         ClipmapComponent->NoiseSettings = NoiseSettings;
         ClipmapComponent->SetMaterialData(PlanetMainColor1, PlanetMainColor2, PlanetAltitudeColor, MaterialNoiseScale);
@@ -62,12 +62,6 @@ void ACosmicPlanet::InitClipmap()
     }
 }
 
-// Called every frame
-void ACosmicPlanet::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-}
 
 void ACosmicPlanet::OnConstruction(const FTransform& Transform)
 {
@@ -83,7 +77,7 @@ void ACosmicPlanet::OnConstruction(const FTransform& Transform)
 
 void ACosmicPlanet::InitPlanet(float InRadiusKm, UCosmicNoiseSettings* NewNoiseSettings, FColor color1, FColor color2, FColor colorHeight, float scale, UMaterialInterface* BaseMaterial, UTexture2D* DefaultTexture)
 {
-    Radius = InRadiusKm;
+    RadiusKm = InRadiusKm;
 
     // Limpiar NoiseSettings anterior si existe y es transitorio
     if (NoiseSettings && (!NoiseSettings->IsAsset() || NoiseSettings->GetOutermost()->HasAnyPackageFlags(PKG_DisallowExport)))
