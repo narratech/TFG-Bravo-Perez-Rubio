@@ -12,7 +12,7 @@ ACosmicSpaceShip::ACosmicSpaceShip()
 {
 	// E: Desactivamos el Tick para mejorar rendimiento; usamos físicas constantes.
 	// I: Disable Tick to improve performance; we use constant physics.
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true; // Cambiado a true para el frenado suave
 
 	// E: Posesión automática por el jugador local.
 	// I: Automatic possession by the local player.
@@ -38,7 +38,8 @@ ACosmicSpaceShip::ACosmicSpaceShip()
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->SetupAttachment(SpringArmComp);
 
-
+	// Valores por defecto para el frenado
+	BrakingSpeed = 5.0f;
 }
 
 void ACosmicSpaceShip::BeginPlay()
@@ -80,7 +81,11 @@ void ACosmicSpaceShip::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		if (IA_Traslacion) { EnhancedInputComponent->BindAction(IA_Traslacion, ETriggerEvent::Triggered, this, &ACosmicSpaceShip::AplicarTraslacion); }
 		if (IA_Orientacion) { EnhancedInputComponent->BindAction(IA_Orientacion, ETriggerEvent::Triggered, this, &ACosmicSpaceShip::AplicarOrientacion); }
 		if (IA_Alabeo) { EnhancedInputComponent->BindAction(IA_Alabeo, ETriggerEvent::Triggered, this, &ACosmicSpaceShip::AplicarAlabeo); }
-		if (IA_Boost) { EnhancedInputComponent->BindAction(IA_Boost, ETriggerEvent::Triggered, this, &ACosmicSpaceShip::SetBoost); }
+		if (IA_Boost)
+		{
+			EnhancedInputComponent->BindAction(IA_Boost, ETriggerEvent::Started, this, &ACosmicSpaceShip::StartBoost);
+			EnhancedInputComponent->BindAction(IA_Boost, ETriggerEvent::Completed, this, &ACosmicSpaceShip::EndBoost);
+		}
 	}
 }
 
@@ -90,13 +95,29 @@ void ACosmicSpaceShip::AplicarTraslacion(const FInputActionValue& Value)
 
 	if (!MovementVector.IsNearlyZero() && ShipMesh)
 	{
+		// E: En modo boost, solo permitir movimiento hacia adelante
+		// I: In boost mode, only allow forward movement
+		if (bBoostMode)
+		{
+			// E: Si no es movimiento hacia adelante (eje X positivo), ignorar
+			// I: If it's not forward movement (positive X axis), ignore
+			if (MovementVector.X <= 0.5f || FMath::Abs(MovementVector.Y) > 0.5f)
+			{
+				return;
+			}
+		}
+
 		// E: Transformamos el vector local a mundial para aplicar la fuerza correctamente.
 		// I: Transform the local vector to world to apply the force correctly.
 		FVector LocalForce = MovementVector * ThrusterForce * GetWorld()->GetDeltaSeconds();
-		if (bBoostMode && MovementVector.X > 0.5f && MovementVector.Y < 0.5f && MovementVector.Y > -0.5f) {
-			bBoostMode = false;
-			LocalForce *= BoostIncreasePower;
+
+		// E: APLICAR BOOST - Si estamos en modo boost, multiplicamos la fuerza
+		// I: APPLY BOOST - If in boost mode, multiply the force
+		if (bBoostMode)
+		{
+			LocalForce *= BoostIncreasePower; // Necesitas añadir esta variable
 		}
+
 		FVector WorldForce = ShipMesh->GetComponentRotation().RotateVector(LocalForce);
 
 		ShipMesh->AddForce(WorldForce, NAME_None, true);
@@ -133,7 +154,32 @@ void ACosmicSpaceShip::AplicarAlabeo(const FInputActionValue& Value)
 	}
 }
 
-void ACosmicSpaceShip::SetBoost(const FInputActionValue& Value)
+void ACosmicSpaceShip::StartBoost(const FInputActionValue& Value)
 {
-	bBoostMode = Value.Get<bool>();
+	bBoostMode = true;
+
+	// E: Opcional: Aumentar el damping lineal para que se sienta más "pegado" al frente
+	// I: Optional: Increase linear damping to feel more "stuck" to forward direction
+	if (ShipMesh)
+	{
+		// E: Guardar damping original para restaurar después
+		// I: Save original damping to restore later
+		OriginalLinearDamping = ShipMesh->GetLinearDamping();
+		ShipMesh->SetLinearDamping(0.1f); // Pequeño damping para estabilidad
+	}
+}
+
+void ACosmicSpaceShip::EndBoost(const FInputActionValue& Value)
+{
+	bBoostMode = false;
+
+	// E: Restaurar damping original
+	// I: Restore original damping
+	if (ShipMesh)
+	{
+		ShipMesh->SetLinearDamping(OriginalLinearDamping);
+	}
+
+	// E: El frenado se manejará en Tick
+	// I: Braking will be handled in Tick
 }

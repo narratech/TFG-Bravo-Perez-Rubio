@@ -100,6 +100,19 @@ private:
 	// I: Logic to tilt the ship laterally.
 	void AplicarAlabeo(const FInputActionValue& Value);
 
+	void StartBoost(const FInputActionValue& Value);
+
+	void EndBoost(const FInputActionValue& Value);
+
+	// E: Velocidad de frenado cuando se suelta el boost
+    // I: Braking speed when boost is released
+	UPROPERTY(EditAnywhere, Category = "Movement")
+	float BrakingSpeed;
+
+	// E: Damping lineal original para restaurar después del boost
+	// I: Original linear damping to restore after boost
+	float OriginalLinearDamping;
+
 	void SetBoost(const FInputActionValue& Value);
 
 	bool bBoostMode = false;
