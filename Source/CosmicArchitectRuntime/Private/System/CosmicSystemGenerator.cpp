@@ -228,8 +228,12 @@ void ACosmicSystemGenerator::GenerateBodies()
         Orbit->InclinationX = Stream.FRandRange(0.0f, 10.0f);
         Orbit->InitialPosition = Stream.FRandRange(0.0f, 1.0f);
 
+        UE_LOG(LogTemp, Warning,
+            TEXT("OrbitDistance: %f"),
+            OrbitDistanceKm);
+
         // Aproximación simplificada Kepler
-        Orbit->OrbitalPeriod = FMath::Sqrt(FMath::Pow(OrbitDistanceKm, 3) / 1000.0f);
+        Orbit->OrbitalPeriod = FMath::Pow(OrbitDistanceKm, 3);
 
         float Hue = Stream.FRandRange(0.f, 360.f);
         float Saturation = 0.8f;
@@ -297,7 +301,7 @@ void ACosmicSystemGenerator::GenerateBodies()
             MoonOrbit->Eccentricity = Stream.FRandRange(0.0f, 0.1f);
             MoonOrbit->InitialPosition = Stream.FRandRange(0.0f, 1.0f);
 
-            MoonOrbit->OrbitalPeriod = FMath::Sqrt(FMath::Pow(MoonOrbitKm, 3) / 100.0f);
+            MoonOrbit->OrbitalPeriod = FMath::Pow(MoonOrbitKm, 5);
 
             color = FColor(
                 Stream.RandRange(50, 255),  // R
