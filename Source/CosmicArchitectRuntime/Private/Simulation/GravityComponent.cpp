@@ -23,7 +23,7 @@ void UGravityComponent::BeginPlay()
         if (RootPrimitive)
         {
             // Asegurar que sea movible
-            if (GravityMode != EGravityMode::None && RootPrimitive->Mobility != EComponentMobility::Movable)
+            if (GravityMode != ECosmicGravityMode::None && RootPrimitive->Mobility != EComponentMobility::Movable)
             {
                 RootPrimitive->SetMobility(EComponentMobility::Movable);
             }

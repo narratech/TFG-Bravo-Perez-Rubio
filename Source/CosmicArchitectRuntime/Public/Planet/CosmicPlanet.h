@@ -23,19 +23,19 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Planet")
 	float RadiusKm = 1.f;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, Category = "Planet", BlueprintReadOnly)
 	USceneComponent* Root;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, Category = "Planet", BlueprintReadOnly)
 	UCosmicClipmapComponent* ClipmapComponent;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (ShowOnlyInnerProperties))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Planet", meta = (ShowOnlyInnerProperties))
 	UCosmicCollisionComponent* CollisionComponent;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Noise")
 	UCosmicNoiseSettings* NoiseSettings;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, Category = "Planet", BlueprintReadOnly)
 	UCosmicFoliageSpawner* FoliageSpawnerComponent;
 
 	UPROPERTY(EditAnywhere, Category = "Materials")

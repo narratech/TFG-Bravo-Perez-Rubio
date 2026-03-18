@@ -42,13 +42,13 @@ public:
     UPROPERTY(EditAnywhere, Category = "Collision", meta = (EditCondition = "bShowCollisionMesh", ClampMin = "0"))
     float DebugLineWidth = 20.f;
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Collision")
     bool bUseComplexAsSimpleCollision = true;
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "Collision")
     bool bUseAsyncCooking = true;
 
-    UFUNCTION(CallInEditor)
+    UFUNCTION(CallInEditor, Category = "Collision")
     void RebuildCollision();
 
     void GenerateCollisionMesh(float Radius);

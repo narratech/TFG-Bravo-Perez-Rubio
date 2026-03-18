@@ -159,7 +159,7 @@ void ACosmicSystemGenerator::GenerateBodies()
     StarGravity->SetIsPlanet(true);
     StarGravity->RadiusKm = StarRadiusKm;
     StarGravity->SurfaceGravity = 274.0f;
-    StarGravity->GravityMode = EGravityMode::None;
+    StarGravity->GravityMode = ECosmicGravityMode::None;
     Star->AddInstanceComponent(StarGravity);
     
     GeneratedBodies.Add(Star);
@@ -213,7 +213,7 @@ void ACosmicSystemGenerator::GenerateBodies()
         Gravity->SetIsPlanet(true);
         Gravity->RadiusKm = PlanetRadiusKm;
         Gravity->SurfaceGravity = Stream.FRandRange(3.0f, 25.0f);
-        Gravity->GravityMode = EGravityMode::None;
+        Gravity->GravityMode = ECosmicGravityMode::None;
 
         Planet->AddInstanceComponent(Gravity);
 

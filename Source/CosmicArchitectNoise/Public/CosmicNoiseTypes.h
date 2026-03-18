@@ -34,25 +34,25 @@ struct COSMICARCHITECTNOISE_API FCosmicNoiseTypes
 	GENERATED_BODY()
 	
 public:
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(EditAnywhere, Category = "NoiseLayer", BlueprintReadWrite)
     ECosmicNoiseType NoiseType = ECosmicNoiseType::Simplex;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UPROPERTY(EditAnywhere, Category = "NoiseLayer", BlueprintReadWrite)
     ECosmicFractalType FractalType = ECosmicFractalType::FBM;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0"))
+    UPROPERTY(EditAnywhere, Category = "NoiseLayer", BlueprintReadWrite, meta = (ClampMin = "0"))
     float Frequency = 0.001f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "1", ClampMax = "12"))
+    UPROPERTY(EditAnywhere, Category = "NoiseLayer", BlueprintReadWrite, meta = (ClampMin = "1", ClampMax = "12"))
     int32 Octaves = 5;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0"))
+    UPROPERTY(EditAnywhere, Category = "NoiseLayer", BlueprintReadWrite, meta = (ClampMin = "0"))
     float Lacunarity = 2.0f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0"))
+    UPROPERTY(EditAnywhere, Category = "NoiseLayer", BlueprintReadWrite, meta = (ClampMin = "0"))
     float Persistence = 0.5f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = "0"))
+    UPROPERTY(EditAnywhere, Category = "NoiseLayer", BlueprintReadWrite, meta = (ClampMin = "0"))
     float Amplitude = 1.0f;
 
 };

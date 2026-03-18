@@ -30,7 +30,7 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit State")
 	AActor* ParentBody;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Orbit State")

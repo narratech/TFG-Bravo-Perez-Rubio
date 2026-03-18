@@ -7,7 +7,7 @@
 #include "GravityComponent.generated.h"
 
 UENUM(BlueprintType)
-enum class EGravityMode : uint8
+enum class ECosmicGravityMode : uint8
 {
 	None           UMETA(DisplayName = "None"),
 	NearestPlanet  UMETA(DisplayName = "Nearest Planet"),
@@ -30,7 +30,7 @@ public:
 
     // Modo de gravedad - siempre visible
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config")
-    EGravityMode GravityMode = EGravityMode::NearestPlanet;
+    ECosmicGravityMode GravityMode = ECosmicGravityMode::NearestPlanet;
 
     // Masa - visible SOLO cuando NO es planeta
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config",

@@ -38,11 +38,11 @@ void UGravitySubsystem::Tick(float DeltaTime)
         // Switch para manejar los diferentes modos de gravedad
         switch (BodyA->GravityMode)
         {
-        case EGravityMode::None:
+        case ECosmicGravityMode::None:
             // No hace nada, sin gravedad
             break;
 
-        case EGravityMode::NearestPlanet:
+        case ECosmicGravityMode::NearestPlanet:
         {
             // Usar la lista de planetas para mejor rendimiento
             if (!BodyA->IsAffectedByOthers) break;
@@ -64,7 +64,7 @@ void UGravitySubsystem::Tick(float DeltaTime)
             break;
         }
 
-        case EGravityMode::SpecificPlanet:
+        case ECosmicGravityMode::SpecificPlanet:
         {
             if (!BodyA->IsAffectedByOthers || !BodyA->SpecificGravitySource) break;
 
@@ -82,7 +82,7 @@ void UGravitySubsystem::Tick(float DeltaTime)
             break;
         }
 
-        case EGravityMode::AllPlanets:
+        case ECosmicGravityMode::AllPlanets:
         {
             if (!BodyA->IsAffectedByOthers) break;
 
@@ -93,7 +93,7 @@ void UGravitySubsystem::Tick(float DeltaTime)
             break;
         }
 
-        case EGravityMode::NBody:
+        case ECosmicGravityMode::NBody:
         {
             // Modo N-Body: todos los cuerpos se afectan entre sí
 
