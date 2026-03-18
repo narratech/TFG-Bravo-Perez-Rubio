@@ -9,6 +9,8 @@
 #include "CosmicFoliageCollection.h"
 #include "CosmicFoliageSpawner.generated.h"
 
+class UCosmicNoiseSettings;
+
 USTRUCT()
 struct FCosmicFoliageInstance
 {
@@ -109,7 +111,7 @@ public:
     UPROPERTY()
     TMap<FIntVector, FCosmicFoliageCellData> CellDataMap;
 
-    virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+    void UpdateFoliageGeneration(float DeltaTime, const FVector& PlanetCenter, const float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
 
     /** Solicita generación para un área */
     void RequestAreaGeneration(const FVector& Center, float RadiusKm);

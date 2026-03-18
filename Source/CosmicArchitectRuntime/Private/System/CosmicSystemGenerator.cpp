@@ -21,8 +21,8 @@ ACosmicSystemGenerator::ACosmicSystemGenerator()
 
     // E: Inicialización de variables por defecto.
     // I: Default variable initialization.
-    VolumeSizeKm = FVector(20.0f, 20.0f, 5.0f); // 20 Km
-    NumberOfBodies = 10;
+    VolumeSizeKm = FVector(2000.0f, 2000.0f, 5.0f); // 20 Km
+    NumberOfBodies = 5;
     Seed = 12345;
 
     // E: Rango de diámetro por defecto: entre 100 metros (0.1 km) y 500 metros (0.5 km).

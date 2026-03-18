@@ -12,7 +12,8 @@ public class CosmicArchitectFoliage : ModuleRules
             "Core",
             "CoreUObject",
             "Engine",
-            "CosmicArchitectCommon"  
+            "CosmicArchitectCommon",
+            "CosmicArchitectNoise"
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] {

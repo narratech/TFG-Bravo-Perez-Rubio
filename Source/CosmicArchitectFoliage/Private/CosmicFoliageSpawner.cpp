@@ -1,5 +1,6 @@
 #include "CosmicFoliageSpawner.h"
 #include "Engine/World.h"
+#include "CosmicNoiseSettings.h"
 #include "Kismet/GameplayStatics.h"
 #include "Async/Async.h"
 
@@ -76,8 +77,7 @@ void FFoliageGenerationTask::DoWork()
 
 UCosmicFoliageSpawner::UCosmicFoliageSpawner()
 {
-    PrimaryComponentTick.bCanEverTick = true;
-    PrimaryComponentTick.TickGroup = TG_PrePhysics;
+    PrimaryComponentTick.bCanEverTick = false;
 }
 
 void UCosmicFoliageSpawner::BeginPlay()
@@ -86,10 +86,8 @@ void UCosmicFoliageSpawner::BeginPlay()
     RandomStream.Initialize(FMath::Rand());
 }
 
-void UCosmicFoliageSpawner::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void UCosmicFoliageSpawner::UpdateFoliageGeneration(float DeltaTime, const FVector& PlanetCenter, const float PlanetRadius, UCosmicNoiseSettings* NoiseSettings)
 {
-    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
     ElapsedTime += DeltaTime;
     if (ElapsedTime < UpdateInterval) return;
     ElapsedTime = 0.0f;
