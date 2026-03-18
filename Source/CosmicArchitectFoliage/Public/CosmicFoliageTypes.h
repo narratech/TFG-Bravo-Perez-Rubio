@@ -53,7 +53,7 @@ struct COSMICARCHITECTFOLIAGE_API FCosmicFoliageCollectionEntry
     GENERATED_BODY()
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlacementRules")
-    FCosmicFoliageMesh Foliage;
+    TArray<FCosmicFoliageMesh> Foliage;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlacementRules", meta = (ClampMin = "0", ClampMax = "1"))
     float Weight = 1.0f;

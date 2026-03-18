@@ -26,26 +26,37 @@ void FFoliageGenerationTask::DoWork()
 
     for (int32 i = 0; i < NumSeeds; i++)
     {
+        // Primero: seleccionar una entrada aleatoria basada en peso
         const FCosmicFoliageCollectionEntry* Entry =
             Collection->GetRandomEntry(LocalRandom);
 
-        if (!Entry || !Entry->Foliage.Mesh)
+        if (!Entry || Entry->Foliage.Num() == 0)  // Verificar que el array no esté vacío
             continue;
 
+        // Segundo: seleccionar un mesh aleatorio del array de la entrada
+        int32 MeshIndex = LocalRandom.RandRange(0, Entry->Foliage.Num() - 1);
+        const FCosmicFoliageMesh& SelectedMesh = Entry->Foliage[MeshIndex];
+
+        if (!SelectedMesh.Mesh)  // Verificar que el mesh sea válido
+            continue;
+
+        // Generar posición aleatoria
         FVector Pos(
             SpawnArea.Min.X + LocalRandom.FRandRange(0, CellSizeCm),
             SpawnArea.Min.Y + LocalRandom.FRandRange(0, CellSizeCm),
             SpawnArea.Min.Z
         );
 
+        // Usar las rotaciones del mesh seleccionado
         float Yaw = LocalRandom.FRandRange(
-            Entry->Foliage.RandomRotationMin,
-            Entry->Foliage.RandomRotationMax
+            SelectedMesh.RandomRotationMin,
+            SelectedMesh.RandomRotationMax
         );
 
+        // Usar la escala del mesh seleccionado
         float Scale = LocalRandom.FRandRange(
-            Entry->Foliage.ScaleMin,
-            Entry->Foliage.ScaleMax
+            SelectedMesh.ScaleMin,
+            SelectedMesh.ScaleMax
         );
 
         FTransform T;
@@ -54,7 +65,7 @@ void FFoliageGenerationTask::DoWork()
         T.SetScale3D(FVector(Scale));
 
         FCosmicFoliageInstance Instance;
-        Instance.Mesh = Entry->Foliage.Mesh;
+        Instance.Mesh = SelectedMesh.Mesh;  // Usar el mesh seleccionado
         Instance.Transform = T;
 
         ResultInstances.Add(Instance);

@@ -4,6 +4,7 @@
 #include "Async/AsyncWork.h"
 #include "ThirdParty/FastNoiseLite.h"
 #include "CosmicNoiseTypes.h"
+#include "CosmicNoiseSettings.h"
 
 class FCosmicArchitectNoiseGenerator: public FNonAbandonableTask {
 public:
@@ -19,137 +20,25 @@ public:
 	FTransform ComponentTransform;
 	FVector PlanetCenter;
 
-	int32 Seed;
-	TArray<FCosmicNoiseTypes> Layers;
-	bool bUseDomainWarp;
-	float DomainWarpStrength;
-	float DomainWarpFrequency;
-    float TemperatureFrequency;
-    float HumidityFrequency;
-    int32 HumidityOctaves;
-    float LatitudeEffect;
-    float AltitudeTemperaturePenalty;
-    float HumidityContrast;
-    float HumidityOffset;
-
-    bool bUseCraters = false;
-    float CraterFrequency;
-    float CraterDepth = 0;
-    float CraterRadiusMultiplier;
-    float CraterRimHeight;
-    float CraterRimSharpness;
-    float CraterFloorHeight;
-    float CraterDistortion;
-    int32 CraterOctaves;
-    float CraterLacunarity;
-    float CraterPersistence;
-    float CraterNoiseBreakup;
+    FCosmicNoiseGenerationParameters NoiseSettings;
 
     FCosmicArchitectNoiseGenerator(
         const TArray<FVector>& InBaseVerts,
         const TArray<FVector>& InBaseNormals,
         FTransform InTransform,
         FVector InPlanetCenter,
-        int32 InSeed,
-        const TArray<FCosmicNoiseTypes>& InLayers,
-        bool InUseWarp,
-        float InWarpStrength,
-        float InWarpFreq,
-        float InTemperatureFrequency,
-        float InHumidityFrequency,
-        int32 InHumidityOctaves,
-        float InLatitudeEffect,
-        float InAltitudeTemperaturePenalty,
-        float InHumidityContrast,
-        float InHumidityOffset)
+        FCosmicNoiseGenerationParameters NoiseSettings)
         : BaseVertices(InBaseVerts)
         , BaseNormals(InBaseNormals)
         , ComponentTransform(InTransform)
-        , PlanetCenter(InPlanetCenter)
-        , Seed(InSeed)
-        , Layers(InLayers)
-        , bUseDomainWarp(InUseWarp)
-        , DomainWarpStrength(InWarpStrength)
-        , DomainWarpFrequency(InWarpFreq)
-        , TemperatureFrequency(InTemperatureFrequency)
-        , HumidityFrequency(InHumidityFrequency)
-        , HumidityOctaves(InHumidityOctaves)
-        , LatitudeEffect(InLatitudeEffect)
-        , AltitudeTemperaturePenalty(InAltitudeTemperaturePenalty)
-        , HumidityContrast(InHumidityContrast)
-        , HumidityOffset(InHumidityOffset)
+        , PlanetCenter(InPlanetCenter),
+        NoiseSettings(NoiseSettings)
     {
         CalculatedVertices.SetNumUninitialized(BaseVertices.Num());
         CalculatedColors.SetNumUninitialized(BaseVertices.Num());
     }
 
-    FCosmicArchitectNoiseGenerator(
-        const TArray<FVector>& InBaseVerts,
-        const TArray<FVector>& InBaseNormals,
-        FTransform InTransform,
-        FVector InPlanetCenter,
-        int32 InSeed,
-        const TArray<FCosmicNoiseTypes>& InLayers,
-        bool InUseWarp,
-        float InWarpStrength,
-        float InWarpFreq,
-
-        float InTemperatureFrequency,
-        float InHumidityFrequency,
-        int32 InHumidityOctaves,
-        float InLatitudeEffect,
-        float InAltitudeTemperaturePenalty,
-        float InHumidityContrast,
-        float InHumidityOffset,
-
-        /* CRATERS */
-        bool InUseCraters,
-        float InCraterFrequency,
-        float InCraterDepth,
-        float InCraterRadiusMultiplier,
-        float InCraterRimHeight,
-        float InCraterRimSharpness,
-        float InCraterFloorHeight,
-        float InCraterDistortion,
-        int32 InCraterOctaves,
-        float InCraterLacunarity,
-        float InCraterPersistence,
-        float InCraterNoiseBreakup
-    )
-        : BaseVertices(InBaseVerts)
-        , BaseNormals(InBaseNormals)
-        , ComponentTransform(InTransform)
-        , PlanetCenter(InPlanetCenter)
-        , Seed(InSeed)
-        , Layers(InLayers)
-        , bUseDomainWarp(InUseWarp)
-        , DomainWarpStrength(InWarpStrength)
-        , DomainWarpFrequency(InWarpFreq)
-        , TemperatureFrequency(InTemperatureFrequency)
-        , HumidityFrequency(InHumidityFrequency)
-        , HumidityOctaves(InHumidityOctaves)
-        , LatitudeEffect(InLatitudeEffect)
-        , AltitudeTemperaturePenalty(InAltitudeTemperaturePenalty)
-        , HumidityContrast(InHumidityContrast)
-        , HumidityOffset(InHumidityOffset)
-
-        /* CRATER INIT */
-        , bUseCraters(InUseCraters)
-        , CraterFrequency(InCraterFrequency)
-        , CraterDepth(InCraterDepth)
-        , CraterRadiusMultiplier(InCraterRadiusMultiplier)
-        , CraterRimHeight(InCraterRimHeight)
-        , CraterRimSharpness(InCraterRimSharpness)
-        , CraterFloorHeight(InCraterFloorHeight)
-        , CraterDistortion(InCraterDistortion)
-        , CraterOctaves(InCraterOctaves)
-        , CraterLacunarity(InCraterLacunarity)
-        , CraterPersistence(InCraterPersistence)
-        , CraterNoiseBreakup(InCraterNoiseBreakup)
-    {
-        CalculatedVertices.SetNumUninitialized(BaseVertices.Num());
-        CalculatedColors.SetNumUninitialized(BaseVertices.Num());
-    }
+    
 
 	FORCEINLINE TStatId GetStatId() const
 	{
@@ -160,7 +49,7 @@ public:
     {
         // Crear ruidos configurados una vez por capa
         TArray<FastNoiseLite> ConfiguredNoises;
-        ConfiguredNoises.Reserve(Layers.Num());
+        ConfiguredNoises.Reserve(NoiseSettings.NoiseLayers.Num());
 
         //Temperatura y humedad
         FastNoiseLite HumidityNoise;
@@ -168,20 +57,20 @@ public:
         FastNoiseLite CraterNoise;
         FastNoiseLite CraterSizeNoise;
 
-        HumidityNoise.SetSeed(Seed);
+        HumidityNoise.SetSeed(NoiseSettings.Seed);
         HumidityNoise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
         HumidityNoise.SetFractalType(FastNoiseLite::FractalType_FBm);
-        HumidityNoise.SetFrequency(HumidityFrequency * 100.0f);
-        HumidityNoise.SetFractalOctaves(HumidityOctaves);
+        HumidityNoise.SetFrequency(NoiseSettings.HumidityFrequency * 100.0f);
+        HumidityNoise.SetFractalOctaves(NoiseSettings.HumidityOctaves);
 
-        TempNoise.SetSeed(Seed);
-        TempNoise.SetFrequency(TemperatureFrequency * 100.0f);
+        TempNoise.SetSeed(NoiseSettings.Seed);
+        TempNoise.SetFrequency(NoiseSettings.TemperatureFrequency * 100.0f);
 
-        if (bUseCraters)
+        if (NoiseSettings.bIsCraterPlanet)
         {
-            CraterNoise.SetSeed(Seed + 4242);
+            CraterNoise.SetSeed(NoiseSettings.Seed + 4242);
             CraterNoise.SetNoiseType(FastNoiseLite::NoiseType_Cellular);
-            CraterNoise.SetFrequency(CraterFrequency);
+            CraterNoise.SetFrequency(NoiseSettings.CraterFrequency);
             CraterNoise.SetFractalType(FastNoiseLite::FractalType_None);
             //CraterNoise.SetFractalOctaves(CraterOctaves);
             //CraterNoise.SetFractalLacunarity(CraterLacunarity);
@@ -191,10 +80,10 @@ public:
 
         }
 
-        for (const FCosmicNoiseTypes& Layer : Layers)
+        for (const FCosmicNoiseTypes& Layer : NoiseSettings.NoiseLayers)
         {
             FastNoiseLite Noise;
-            Noise.SetSeed(Seed);
+            Noise.SetSeed(NoiseSettings.Seed);
 
             // Noise Type 
             switch (Layer.NoiseType)
@@ -242,23 +131,23 @@ public:
 
         // Domain Warp (configurado UNA VEZ) 
         FastNoiseLite WarpNoise;
-        if (bUseDomainWarp)
+        if (NoiseSettings.bUseDomainWarp)
         {
-            WarpNoise.SetSeed(Seed + 1337);
+            WarpNoise.SetSeed(NoiseSettings.Seed + 1337);
             WarpNoise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
-            WarpNoise.SetFrequency(DomainWarpFrequency);
+            WarpNoise.SetFrequency(NoiseSettings.DomainWarpFrequency);
         }
 
         // Calcular la altura máxima posible sumando las amplitudes de las capas
         float MaxPossibleHeight = 0.0f;
-        for (const FCosmicNoiseTypes& Layer : Layers)
+        for (const FCosmicNoiseTypes& Layer : NoiseSettings.NoiseLayers)
         {
             MaxPossibleHeight += Layer.Amplitude;
         }
         if (MaxPossibleHeight == 0.0f) MaxPossibleHeight = 1000.0f; // Seguridad
 
         const int32 VertexCount = BaseVertices.Num();
-        const bool bHasLayers = Layers.Num() > 0;
+        const bool bHasLayers = NoiseSettings.NoiseLayers.Num() > 0;
 
         // Loop de vértices
         for (int32 i = 0; i < VertexCount; i++)
@@ -271,11 +160,11 @@ public:
             float Z = NoiseDir.Z;
 
             // Aplicar Domain Warp
-            if (bUseDomainWarp)
+            if (NoiseSettings.bUseDomainWarp)
             {
-                float WarpX = WarpNoise.GetNoise(X, Y, Z) * DomainWarpStrength;
-                float WarpY = WarpNoise.GetNoise(X + 31.7f, Y + 17.3f, Z + 47.1f) * DomainWarpStrength;
-                float WarpZ = WarpNoise.GetNoise(X + 59.2f, Y + 11.8f, Z + 23.4f) * DomainWarpStrength;
+                float WarpX = WarpNoise.GetNoise(X, Y, Z) * NoiseSettings.DomainWarpStrength;
+                float WarpY = WarpNoise.GetNoise(X + 31.7f, Y + 17.3f, Z + 47.1f) * NoiseSettings.DomainWarpStrength;
+                float WarpZ = WarpNoise.GetNoise(X + 59.2f, Y + 11.8f, Z + 23.4f) * NoiseSettings.DomainWarpStrength;
 
                 X += WarpX;
                 Y += WarpY;
@@ -285,9 +174,9 @@ public:
             float BaseHeight = 0.0f;
 
             // Altura base del terreno (capas de ruido)
-            for (int32 LayerIndex = 0; LayerIndex < Layers.Num(); LayerIndex++)
+            for (int32 LayerIndex = 0; LayerIndex < NoiseSettings.NoiseLayers.Num(); LayerIndex++)
             {
-                const FCosmicNoiseTypes& Layer = Layers[LayerIndex];
+                const FCosmicNoiseTypes& Layer = NoiseSettings.NoiseLayers[LayerIndex];
                 FastNoiseLite& Noise = ConfiguredNoises[LayerIndex];
 
                 float LayerNoise = Noise.GetNoise(X, Y, Z);
@@ -298,7 +187,7 @@ public:
             if (!bHasLayers)
             {
                 FastNoiseLite DefaultNoise;
-                DefaultNoise.SetSeed(Seed);
+                DefaultNoise.SetSeed(NoiseSettings.Seed);
                 DefaultNoise.SetFrequency(0.001f);
                 BaseHeight = DefaultNoise.GetNoise(X, Y, Z) * 1000.0f;
             }
@@ -306,11 +195,11 @@ public:
             float FinalHeight = BaseHeight;
 
            
-            if (bUseCraters)
+            if (NoiseSettings.bIsCraterPlanet)
             {
                 // Distancia al centro de la celda Voronoi
                 float CellDistance = CraterNoise.GetNoise(X, Y, Z);
-                float CraterRadius = CraterRadiusMultiplier;
+                float CraterRadius = NoiseSettings.CraterRadiusMultiplier;
 
                 CellDistance = (CellDistance + 1.0f) * 0.5f;
 
@@ -323,7 +212,7 @@ public:
                     // CAVIDAD 
                     if (t < 1.0f)
                     {
-                        float floorStart = CraterFloorHeight; // 0.0 - 1.0
+                        float floorStart = NoiseSettings.CraterFloorHeight; // 0.0 - 1.0
 
                         float bowl = 0.0f;
 
@@ -341,15 +230,15 @@ public:
                             bowl *= bowl;
                         }
 
-                        craterHeight -= bowl * CraterDepth;
+                        craterHeight -= bowl * NoiseSettings.CraterDepth;
                     }
 
                     // RIM 
                     float rimWidth = 0.15f;
 
-                    float rim = FMath::Exp(-FMath::Pow((t - 1.0f) / rimWidth, 2.0f) * CraterRimSharpness);
+                    float rim = FMath::Exp(-FMath::Pow((t - 1.0f) / rimWidth, 2.0f) * NoiseSettings.CraterRimSharpness);
 
-                    craterHeight += rim * CraterDepth * CraterRimHeight;
+                    craterHeight += rim * NoiseSettings.CraterDepth * NoiseSettings.CraterRimHeight;
 
                     FinalHeight += craterHeight;
                 }
@@ -360,11 +249,11 @@ public:
 
             // --- CÁLCULO DE COLOR (Temperatura y Humedad) ---
             float Latitude = FMath::Abs(NoiseDir.Z);
-            float BaseTemp = 1.0f - (Latitude * LatitudeEffect);
+            float BaseTemp = 1.0f - (Latitude * NoiseSettings.LatitudeEffect);
 
             // Penalización por altitud (usando FinalHeight)
             float AltitudePenalty = FMath::Clamp(FinalHeight / MaxPossibleHeight, 0.0f, 1.0f);
-            BaseTemp -= (AltitudePenalty * AltitudeTemperaturePenalty);
+            BaseTemp -= (AltitudePenalty * NoiseSettings.AltitudeTemperaturePenalty);
 
             // Ruido térmico
             float TempVariance = TempNoise.GetNoise(NoiseDir.X, NoiseDir.Y, NoiseDir.Z) * 0.2f;
@@ -372,8 +261,8 @@ public:
 
             // Humedad 
             float RawHum = HumidityNoise.GetNoise(NoiseDir.X, NoiseDir.Y, NoiseDir.Z);
-            float FinalHum = (RawHum + 1.0f) * 0.5f + HumidityOffset;
-            FinalHum = FMath::Clamp((FinalHum - 0.5f) * HumidityContrast + 0.5f, 0.0f, 1.0f);
+            float FinalHum = (RawHum + 1.0f) * 0.5f + NoiseSettings.HumidityOffset;
+            FinalHum = FMath::Clamp((FinalHum - 0.5f) * NoiseSettings.HumidityContrast + 0.5f, 0.0f, 1.0f);
 
             // Guardar colores
             CalculatedColors[i] = FLinearColor(AltitudePenalty, FinalTemp, FinalHum, 1.0f);

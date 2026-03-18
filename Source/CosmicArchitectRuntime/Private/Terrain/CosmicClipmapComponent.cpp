@@ -253,7 +253,7 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
             DynamicPlanetMat->SetScalarParameterValue(FName("PlanetRadius"), PlanetRadius);
 
             if (NoiseSettings) {
-                DynamicPlanetMat->SetScalarParameterValue(FName("MaxHeight"), NoiseSettings->MaxMountainHeight);
+                DynamicPlanetMat->SetScalarParameterValue(FName("MaxHeight"), NoiseSettings->Params.MaxMountainHeight);
             }
 
             DynamicPlanetMat->SetVectorParameterValue(FName("BaseColor"), PlanetMainColor1);

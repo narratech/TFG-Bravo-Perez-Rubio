@@ -2,17 +2,16 @@
 
 
 #include "CosmicNoise.h"
-#include "CosmicNoiseSettings.h"
 #include "ThirdParty/FastNoiseLite.h"
 #include "CosmicNoiseTypes.h"
 
 
-TArray<float> CosmicNoise::CalculateHeights(const TArray<FVector>& Points, const FVector& PlanetCenter, const FTransform& ComponentTransform, const UCosmicNoiseSettings* Settings)
+TArray<float> CosmicNoise::CalculateHeights(const TArray<FVector>& Points, const FVector& PlanetCenter, const FTransform& ComponentTransform, FCosmicNoiseGenerationParameters Settings)
 {
     TArray<float> OutHeights;
 
     // Comprobación de seguridad
-    if (!Settings || Points.IsEmpty())
+    if (Points.IsEmpty())
     {
         return OutHeights;
     }
@@ -22,24 +21,24 @@ TArray<float> CosmicNoise::CalculateHeights(const TArray<FVector>& Points, const
 
     // Crear ruidos configurados una vez por capa
     TArray<FastNoiseLite> ConfiguredNoises;
-    ConfiguredNoises.Reserve(Settings->NoiseLayers.Num());
+    ConfiguredNoises.Reserve(Settings.NoiseLayers.Num());
 
     FastNoiseLite CraterNoise;
 
-    if (Settings->bIsCraterPlanet)
+    if (Settings.bIsCraterPlanet)
     {
-        CraterNoise.SetSeed(Settings->Seed + 4242);
+        CraterNoise.SetSeed(Settings.Seed + 4242);
         CraterNoise.SetNoiseType(FastNoiseLite::NoiseType_Cellular);
-        CraterNoise.SetFrequency(Settings->CraterFrequency);
+        CraterNoise.SetFrequency(Settings.CraterFrequency);
         CraterNoise.SetFractalType(FastNoiseLite::FractalType_None);
         CraterNoise.SetCellularDistanceFunction(FastNoiseLite::CellularDistanceFunction_Euclidean);
         CraterNoise.SetCellularReturnType(FastNoiseLite::CellularReturnType_Distance);
     }
 
-    for (const FCosmicNoiseTypes& Layer : Settings->NoiseLayers)
+    for (const FCosmicNoiseTypes& Layer : Settings.NoiseLayers)
     {
         FastNoiseLite Noise;
-        Noise.SetSeed(Settings->Seed);
+        Noise.SetSeed(Settings.Seed);
 
         // Noise Type 
         switch (Layer.NoiseType)
@@ -87,14 +86,14 @@ TArray<float> CosmicNoise::CalculateHeights(const TArray<FVector>& Points, const
 
     // Domain Warp (configurado UNA VEZ) 
     FastNoiseLite WarpNoise;
-    if (Settings->bUseDomainWarp)
+    if (Settings.bUseDomainWarp)
     {
-        WarpNoise.SetSeed(Settings->Seed + 1337);
+        WarpNoise.SetSeed(Settings.Seed + 1337);
         WarpNoise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
-        WarpNoise.SetFrequency(Settings->DomainWarpFrequency);
+        WarpNoise.SetFrequency(Settings.DomainWarpFrequency);
     }
 
-    const bool bHasLayers = Settings->NoiseLayers.Num() > 0;
+    const bool bHasLayers = Settings.NoiseLayers.Num() > 0;
 
     // Loop de puntos
     for (int32 i = 0; i < PointCount; i++)
@@ -109,11 +108,11 @@ TArray<float> CosmicNoise::CalculateHeights(const TArray<FVector>& Points, const
         float Z = NoiseDir.Z;
 
         // Aplicar Domain Warp
-        if (Settings->bUseDomainWarp)
+        if (Settings.bUseDomainWarp)
         {
-            float WarpX = WarpNoise.GetNoise(X, Y, Z) * Settings->DomainWarpStrength;
-            float WarpY = WarpNoise.GetNoise(X + 31.7f, Y + 17.3f, Z + 47.1f) * Settings->DomainWarpStrength;
-            float WarpZ = WarpNoise.GetNoise(X + 59.2f, Y + 11.8f, Z + 23.4f) * Settings->DomainWarpStrength;
+            float WarpX = WarpNoise.GetNoise(X, Y, Z) * Settings.DomainWarpStrength;
+            float WarpY = WarpNoise.GetNoise(X + 31.7f, Y + 17.3f, Z + 47.1f) * Settings.DomainWarpStrength;
+            float WarpZ = WarpNoise.GetNoise(X + 59.2f, Y + 11.8f, Z + 23.4f) * Settings.DomainWarpStrength;
 
             X += WarpX;
             Y += WarpY;
@@ -123,9 +122,9 @@ TArray<float> CosmicNoise::CalculateHeights(const TArray<FVector>& Points, const
         float BaseHeight = 0.0f;
 
         // Altura base del terreno (capas de ruido)
-        for (int32 LayerIndex = 0; LayerIndex < Settings->NoiseLayers.Num(); LayerIndex++)
+        for (int32 LayerIndex = 0; LayerIndex < Settings.NoiseLayers.Num(); LayerIndex++)
         {
-            const FCosmicNoiseTypes& Layer = Settings->NoiseLayers[LayerIndex];
+            const FCosmicNoiseTypes& Layer = Settings.NoiseLayers[LayerIndex];
             FastNoiseLite& Noise = ConfiguredNoises[LayerIndex];
 
             float LayerNoise = Noise.GetNoise(X, Y, Z);
@@ -136,7 +135,7 @@ TArray<float> CosmicNoise::CalculateHeights(const TArray<FVector>& Points, const
         if (!bHasLayers)
         {
             FastNoiseLite DefaultNoise;
-            DefaultNoise.SetSeed(Settings->Seed);
+            DefaultNoise.SetSeed(Settings.Seed);
             DefaultNoise.SetFrequency(0.001f);
             BaseHeight = DefaultNoise.GetNoise(X, Y, Z) * 1000.0f;
         }
@@ -144,11 +143,11 @@ TArray<float> CosmicNoise::CalculateHeights(const TArray<FVector>& Points, const
         float FinalHeight = BaseHeight;
 
         // Cráteres
-        if (Settings->bIsCraterPlanet)
+        if (Settings.bIsCraterPlanet)
         {
             // Distancia al centro de la celda Voronoi
             float CellDistance = CraterNoise.GetNoise(X, Y, Z);
-            float CraterRadius = Settings->CraterRadiusMultiplier;
+            float CraterRadius = Settings.CraterRadiusMultiplier;
 
             CellDistance = (CellDistance + 1.0f) * 0.5f;
 
@@ -160,7 +159,7 @@ TArray<float> CosmicNoise::CalculateHeights(const TArray<FVector>& Points, const
                 // CAVIDAD 
                 if (t < 1.0f)
                 {
-                    float floorStart = Settings->CraterFloorHeight; // 0.0 - 1.0
+                    float floorStart = Settings.CraterFloorHeight; // 0.0 - 1.0
                     float bowl = 0.0f;
 
                     if (t < floorStart)
@@ -177,14 +176,14 @@ TArray<float> CosmicNoise::CalculateHeights(const TArray<FVector>& Points, const
                         bowl *= bowl;
                     }
 
-                    craterHeight -= bowl * Settings->CraterDepth;
+                    craterHeight -= bowl * Settings.CraterDepth;
                 }
 
                 // RIM 
                 float rimWidth = 0.15f;
-                float rim = FMath::Exp(-FMath::Pow((t - 1.0f) / rimWidth, 2.0f) * Settings->CraterRimSharpness);
+                float rim = FMath::Exp(-FMath::Pow((t - 1.0f) / rimWidth, 2.0f) * Settings.CraterRimSharpness);
 
-                craterHeight += rim * Settings->CraterDepth * Settings->CraterRimHeight;
+                craterHeight += rim * Settings.CraterDepth * Settings.CraterRimHeight;
 
                 FinalHeight += craterHeight;
             }

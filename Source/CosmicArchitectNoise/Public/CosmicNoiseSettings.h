@@ -25,32 +25,10 @@ enum class ECosmicBiomeType : uint8
     Cratered           UMETA(DisplayName = "Cratered Moon")
 };
 
-/**
- * 
- */
-UCLASS(BlueprintType)
-class COSMICARCHITECTNOISE_API UCosmicNoiseSettings : public UDataAsset
+USTRUCT(BlueprintType)
+struct FCosmicNoiseGenerationParameters
 {
-	GENERATED_BODY()
-	
-public:
-
-    UCosmicNoiseSettings();
-
-    /* PUBLIC METHODS */
-    /** Convierte los parámetros simples a capas avanzadas */
-    UFUNCTION(BlueprintCallable, Category = "Noise")
-    void UpdateAdvancedFromSimple();
-
-    UFUNCTION(BlueprintCallable, Category = "Noise")
-    void UpdateBiomesFromSimple();
-
-    UFUNCTION(BlueprintCallable, Category = "Noise")
-    void UpdateNoiseFromSimple();
-
-#if WITH_EDITOR
-    virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-#endif
+    GENERATED_BODY()
 
     /* MODE SWITCH */
 
@@ -83,7 +61,7 @@ public:
     UPROPERTY(EditAnywhere, Category = "Simple", meta = (EditCondition = "!bUseAdvancedSettings"))
     ECosmicBiomeType BiomeType = ECosmicBiomeType::Desert;
 
-        /* ADVANCED MODE */
+    /* ADVANCED MODE */
 
     UPROPERTY(EditAnywhere, Category = "Advanced", meta = (EditCondition = "bUseAdvancedSettings"))
     TArray<FCosmicNoiseTypes> NoiseLayers;
@@ -159,4 +137,35 @@ public:
     /** Offset de humedad (para desplazar el rango) */
     UPROPERTY(EditAnywhere, Category = "Biome", meta = (ClampMin = "-1", ClampMax = "1", EditCondition = "bUseAdvancedSettings"))
     float HumidityOffset = -0.5f;
+};
+
+/**
+ * 
+ */
+UCLASS(BlueprintType)
+class COSMICARCHITECTNOISE_API UCosmicNoiseSettings : public UDataAsset
+{
+	GENERATED_BODY()
+	
+public:
+
+    UCosmicNoiseSettings();
+
+    UPROPERTY(EditAnywhere, Category = "Noise Configuration")
+    FCosmicNoiseGenerationParameters Params;
+
+    /* PUBLIC METHODS */
+    /** Convierte los parámetros simples a capas avanzadas */
+    UFUNCTION(BlueprintCallable, Category = "Noise")
+    void UpdateAdvancedFromSimple();
+
+    UFUNCTION(BlueprintCallable, Category = "Noise")
+    void UpdateBiomesFromSimple();
+
+    UFUNCTION(BlueprintCallable, Category = "Noise")
+    void UpdateNoiseFromSimple();
+
+#if WITH_EDITOR
+    virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
 };

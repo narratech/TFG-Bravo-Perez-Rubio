@@ -24,159 +24,158 @@ void UCosmicNoiseSettings::UpdateAdvancedFromSimple()
 
 void UCosmicNoiseSettings::UpdateBiomesFromSimple()
 {
-    switch (BiomeType)
+    switch (Params.BiomeType)
     {
     case ECosmicBiomeType::TemperateForest:
         // Bosque templado - húmedo moderado, temperatura moderada
-        TemperatureFrequency = 0.004f;
-        HumidityFrequency = 0.02f;
-        HumidityOctaves = 5;
-        LatitudeEffect = 1.0f;
-        AltitudeTemperaturePenalty = 0.5f;
-        HumidityContrast = 1.3f;
-        HumidityOffset = 0.1f;
+        Params.TemperatureFrequency = 0.004f;
+        Params.HumidityFrequency = 0.02f;
+        Params.HumidityOctaves = 5;
+        Params.LatitudeEffect = 1.0f;
+        Params.AltitudeTemperaturePenalty = 0.5f;
+        Params.HumidityContrast = 1.3f;
+        Params.HumidityOffset = 0.1f;
         break;
 
     case ECosmicBiomeType::Rainforest:
         // Selva - muy húmedo, cálido
-        TemperatureFrequency = 0.003f;
-        HumidityFrequency = 0.025f;
-        HumidityOctaves = 6;
-        LatitudeEffect = 0.8f;
-        AltitudeTemperaturePenalty = 0.3f;
-        HumidityContrast = 1.2f;
-        HumidityOffset = 0.2f;
+        Params.TemperatureFrequency = 0.003f;
+        Params.HumidityFrequency = 0.025f;
+        Params.HumidityOctaves = 6;
+        Params.LatitudeEffect = 0.8f;
+        Params.AltitudeTemperaturePenalty = 0.3f;
+        Params.HumidityContrast = 1.2f;
+        Params.HumidityOffset = 0.2f;
         break;
 
     case ECosmicBiomeType::Desert:
         // Desierto - seco, cálido
-        TemperatureFrequency = 0.008f;
-        HumidityFrequency = 0.01f;
-        HumidityOctaves = 3;
-        LatitudeEffect = 1.2f;
-        AltitudeTemperaturePenalty = 0.7f;
-        HumidityContrast = 2.0f;
-        HumidityOffset = -0.3f;
+        Params.TemperatureFrequency = 0.008f;
+        Params.HumidityFrequency = 0.01f;
+        Params.HumidityOctaves = 3;
+        Params.LatitudeEffect = 1.2f;
+        Params.AltitudeTemperaturePenalty = 0.7f;
+        Params.HumidityContrast = 2.0f;
+        Params.HumidityOffset = -0.3f;
         break;
 
     case ECosmicBiomeType::Tundra:
         // Tundra - frío extremo, seco
-        TemperatureFrequency = 0.001f;
-        HumidityFrequency = 0.015f;
-        HumidityOctaves = 4;
-        LatitudeEffect = 1.5f;
-        AltitudeTemperaturePenalty = 0.9f;
-        HumidityContrast = 1.5f;
-        HumidityOffset = -0.2f;
+        Params.TemperatureFrequency = 0.001f;
+        Params.HumidityFrequency = 0.015f;
+        Params.HumidityOctaves = 4;
+        Params.LatitudeEffect = 1.5f;
+        Params.AltitudeTemperaturePenalty = 0.9f;
+        Params.HumidityContrast = 1.5f;
+        Params.HumidityOffset = -0.2f;
         break;
 
     case ECosmicBiomeType::Taiga:
         // Taiga - frío moderado, húmedo moderado
-        TemperatureFrequency = 0.002f;
-        HumidityFrequency = 0.018f;
-        HumidityOctaves = 5;
-        LatitudeEffect = 1.3f;
-        AltitudeTemperaturePenalty = 0.8f;
-        HumidityContrast = 1.4f;
-        HumidityOffset = 0.0f;
+        Params.TemperatureFrequency = 0.002f;
+        Params.HumidityFrequency = 0.018f;
+        Params.HumidityOctaves = 5;
+        Params.LatitudeEffect = 1.3f;
+        Params.AltitudeTemperaturePenalty = 0.8f;
+        Params.HumidityContrast = 1.4f;
+        Params.HumidityOffset = 0.0f;
         break;
 
     case ECosmicBiomeType::Savannah:
         // Sabana - cálido, seco moderado
-        TemperatureFrequency = 0.006f;
-        HumidityFrequency = 0.012f;
-        HumidityOctaves = 4;
-        LatitudeEffect = 1.1f;
-        AltitudeTemperaturePenalty = 0.6f;
-        HumidityContrast = 1.8f;
-        HumidityOffset = -0.1f;
+        Params.TemperatureFrequency = 0.006f;
+        Params.HumidityFrequency = 0.012f;
+        Params.HumidityOctaves = 4;
+        Params.LatitudeEffect = 1.1f;
+        Params.AltitudeTemperaturePenalty = 0.6f;
+        Params.HumidityContrast = 1.8f;
+        Params.HumidityOffset = -0.1f;
         break;
 
     case ECosmicBiomeType::Grassland:
         // Pradera - templado, moderado
-        TemperatureFrequency = 0.004f;
-        HumidityFrequency = 0.015f;
-        HumidityOctaves = 4;
-        LatitudeEffect = 1.0f;
-        AltitudeTemperaturePenalty = 0.5f;
-        HumidityContrast = 1.2f;
-        HumidityOffset = 0.0f;
+        Params.TemperatureFrequency = 0.004f;
+        Params.HumidityFrequency = 0.015f;
+        Params.HumidityOctaves = 4;
+        Params.LatitudeEffect = 1.0f;
+        Params.AltitudeTemperaturePenalty = 0.5f;
+        Params.HumidityContrast = 1.2f;
+        Params.HumidityOffset = 0.0f;
         break;
 
     case ECosmicBiomeType::Swamp:
         // Pantano - húmedo, cálido
-        TemperatureFrequency = 0.005f;
-        HumidityFrequency = 0.03f;
-        HumidityOctaves = 6;
-        LatitudeEffect = 0.9f;
-        AltitudeTemperaturePenalty = 0.4f;
-        HumidityContrast = 1.1f;
-        HumidityOffset = 0.3f;
+        Params.TemperatureFrequency = 0.005f;
+        Params.HumidityFrequency = 0.03f;
+        Params.HumidityOctaves = 6;
+        Params.LatitudeEffect = 0.9f;
+        Params.AltitudeTemperaturePenalty = 0.4f;
+        Params.HumidityContrast = 1.1f;
+        Params.HumidityOffset = 0.3f;
         break;
 
     case ECosmicBiomeType::Volcanic:
         // Volcánico - caliente extremo
-        TemperatureFrequency = 0.02f;
-        HumidityFrequency = 0.008f;
-        HumidityOctaves = 3;
-        LatitudeEffect = 0.5f;
-        AltitudeTemperaturePenalty = 0.1f;
-        HumidityContrast = 2.5f;
-        HumidityOffset = -0.4f;
+        Params.TemperatureFrequency = 0.02f;
+        Params.HumidityFrequency = 0.008f;
+        Params.HumidityOctaves = 3;
+        Params.LatitudeEffect = 0.5f;
+        Params.AltitudeTemperaturePenalty = 0.1f;
+        Params.HumidityContrast = 2.5f;
+        Params.HumidityOffset = -0.4f;
         break;
 
     case ECosmicBiomeType::Alien:
         // Alienígena - caótico
-        TemperatureFrequency = 0.015f;
-        HumidityFrequency = 0.04f;
-        HumidityOctaves = 7;
-        LatitudeEffect = 0.3f;
-        AltitudeTemperaturePenalty = 0.2f;
-        HumidityContrast = 3.0f;
-        HumidityOffset = 0.0f;
+        Params.TemperatureFrequency = 0.015f;
+        Params.HumidityFrequency = 0.04f;
+        Params.HumidityOctaves = 7;
+        Params.LatitudeEffect = 0.3f;
+        Params.AltitudeTemperaturePenalty = 0.2f;
+        Params.HumidityContrast = 3.0f;
+        Params.HumidityOffset = 0.0f;
         break;
 
     case ECosmicBiomeType::Ocean:
         // Océano - húmedo siempre
-        TemperatureFrequency = 0.004f;
-        HumidityFrequency = 0.025f;
-        HumidityOctaves = 5;
-        LatitudeEffect = 1.0f;
-        AltitudeTemperaturePenalty = 0.0f;
-        HumidityContrast = 1.0f;
-        HumidityOffset = 0.5f;
+        Params.TemperatureFrequency = 0.004f;
+        Params.HumidityFrequency = 0.025f;
+        Params.HumidityOctaves = 5;
+        Params.LatitudeEffect = 1.0f;
+        Params.AltitudeTemperaturePenalty = 0.0f;
+        Params.HumidityContrast = 1.0f;
+        Params.HumidityOffset = 0.5f;
         break;
 
     case ECosmicBiomeType::Ice:
         // Hielo - frío extremo
-        TemperatureFrequency = 0.0005f;
-        HumidityFrequency = 0.01f;
-        HumidityOctaves = 4;
-        LatitudeEffect = 1.8f;
-        AltitudeTemperaturePenalty = 0.95f;
-        HumidityContrast = 1.2f;
-        HumidityOffset = 0.1f;
+        Params.TemperatureFrequency = 0.0005f;
+        Params.HumidityFrequency = 0.01f;
+        Params.HumidityOctaves = 4;
+        Params.LatitudeEffect = 1.8f;
+        Params.AltitudeTemperaturePenalty = 0.95f;
+        Params.HumidityContrast = 1.2f;
+        Params.HumidityOffset = 0.1f;
         break;
 
     case ECosmicBiomeType::Cratered:
     default:
         // Lunar - temperaturas extremas
-        TemperatureFrequency = 0.03f;
-        HumidityFrequency = 0.001f;
-        HumidityOctaves = 1;
-        LatitudeEffect = 2.0f;
-        AltitudeTemperaturePenalty = 0.5f;
-        HumidityContrast = 1.0f;
-        HumidityOffset = -0.5f;
+        Params.TemperatureFrequency = 0.03f;
+        Params.HumidityFrequency = 0.001f;
+        Params.HumidityOctaves = 1;
+        Params.LatitudeEffect = 2.0f;
+        Params.AltitudeTemperaturePenalty = 0.5f;
+        Params.HumidityContrast = 1.0f;
+        Params.HumidityOffset = -0.5f;
         break;
     }
-    UE_LOG(LogTemp, Error, TEXT("FALLÓ la creación de la malla!"));
 }
 
 void UCosmicNoiseSettings::UpdateNoiseFromSimple()
 {
     // 2. Limpiar capas existentes
-    NoiseLayers.Empty();
+    Params.NoiseLayers.Empty();
 
     FCosmicNoiseTypes Layer;
 
@@ -186,61 +185,68 @@ void UCosmicNoiseSettings::UpdateNoiseFromSimple()
 
     // Frecuencia
     // Mas Smoothness = formas mas grandes (menor frecuencia)
-    Layer.Frequency = FMath::Lerp(0.01f, 10.f, 1.f - Smoothness);
+    Layer.Frequency = FMath::Lerp(0.01f, 10.f, 1.f - Params.Smoothness);
 
     // Octavas
     // Mas Detail = mas octavas
-    Layer.Octaves = FMath::RoundToInt(FMath::Lerp(2.f, 12.f, Detail));
+    Layer.Octaves = FMath::RoundToInt(FMath::Lerp(2.f, 12.f, Params.Detail));
 
     // Lacunarity 
     // Mas Roughness = mas separacion entre octavas
-    Layer.Lacunarity = FMath::Lerp(1.8f, 2.3f, Roughness);
+    Layer.Lacunarity = FMath::Lerp(1.8f, 2.3f, Params.Roughness);
 
     // Persistence (Gain en FastNoiseLite) 
     // Mas Mountainous = mas energia en altas frecuencias
-    Layer.Persistence = FMath::Lerp(0.4f, 0.65f, Mountainous);
+    Layer.Persistence = FMath::Lerp(0.4f, 0.65f, Params.Mountainous);
 
     // Amplitud
     // Control principal de altura
-    Layer.Amplitude = MaxMountainHeight;
+    Layer.Amplitude = Params.MaxMountainHeight;
 
-    NoiseLayers.Add(Layer);
+    Params.NoiseLayers.Add(Layer);
 
     // Warp proporcional a la altura máxima
-    DomainWarpStrength = MaxMountainHeight * FMath::Lerp(0.02f, 0.15f, Roughness);
+    Params.DomainWarpStrength = Params.MaxMountainHeight * FMath::Lerp(0.02f, 0.15f, Params.Roughness);
 
     // Frecuencia alineada con la base
-    DomainWarpFrequency = FMath::Lerp(0.001f, 0.004f, Roughness);
+    Params.DomainWarpFrequency = FMath::Lerp(0.001f, 0.004f, Params.Roughness);
 }
 
 #if WITH_EDITOR
 void UCosmicNoiseSettings::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
-    // Obtener nombre de la propiedad
-    FName PropertyName = (PropertyChangedEvent.Property != nullptr)
-        ? PropertyChangedEvent.Property->GetFName()
-        : NAME_None;
+    Super::PostEditChangeProperty(PropertyChangedEvent); // Siempre llama al Super primero o al inicio
 
-    // Solo actualizar si estamos en modo simple
-    if (!bUseAdvancedSettings)
+    // Obtenemos la propiedad que cambió y, si es parte de un struct, su propiedad "padre"
+    FProperty* Property = PropertyChangedEvent.Property;
+    FProperty* MemberProperty = PropertyChangedEvent.MemberProperty;
+
+    if (!Property || !MemberProperty) return;
+
+    FName PropertyName = Property->GetFName();
+    FName MemberPropertyName = MemberProperty->GetFName();
+
+    // Si no estamos en modo avanzado, sincronizamos
+    if (!Params.bUseAdvancedSettings)
     {
-        if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicNoiseSettings, BiomeType))
+        // Si el cambio ocurrió DENTRO de "Params"
+        if (MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicNoiseSettings, Params))
         {
-            UpdateBiomesFromSimple();
-        }
-        else if (
-            PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicNoiseSettings, Seed) ||
-            PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicNoiseSettings, MaxMountainHeight) ||
-            PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicNoiseSettings, Mountainous) ||
-            PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicNoiseSettings, Roughness) ||
-            PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicNoiseSettings, Detail) ||
-            PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicNoiseSettings, Smoothness)
-            )
-        {
-            UpdateNoiseFromSimple();
+            // Comprobamos qué campo específico del struct cambió
+            if (PropertyName == "BiomeType")
+            {
+                UpdateBiomesFromSimple();
+            }
+            else if (PropertyName == "Seed" ||
+                PropertyName == "MaxMountainHeight" ||
+                PropertyName == "Mountainous" ||
+                PropertyName == "Roughness" ||
+                PropertyName == "Detail" ||
+                PropertyName == "Smoothness")
+            {
+                UpdateNoiseFromSimple();
+            }
         }
     }
-
-    Super::PostEditChangeProperty(PropertyChangedEvent);
 }
 #endif

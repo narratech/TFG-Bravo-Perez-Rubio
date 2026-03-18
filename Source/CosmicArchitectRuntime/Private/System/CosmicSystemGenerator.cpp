@@ -59,40 +59,40 @@ UCosmicNoiseSettings* ACosmicSystemGenerator::CreateRandomNoiseSettings(FRandomS
     UCosmicNoiseSettings* NewSettings = NewObject<UCosmicNoiseSettings>(GetTransientPackage(),NAME_None, RF_Transient);
 
     // Planetas y lunas: variedad de tipos
-    NewSettings->Seed = Stream.RandRange(0, 999999);
+    NewSettings->Params.Seed = Stream.RandRange(0, 999999);
 
     // Altura máxima según tamaño (planetas más grandes pueden tener montañas más altas)
-    NewSettings->MaxMountainHeight = Stream.FRandRange(1000.0f, 8000.0f) * PlanetRadius * 0.5f;
+    NewSettings->Params.MaxMountainHeight = Stream.FRandRange(1000.0f, 8000.0f) * PlanetRadius * 0.5f;
 
     // Distribución de tipos de planetas
     float PlanetType = Stream.FRandRange(0.0f, 1.0f);
 
     if (PlanetType < 0.2f) // 20% - Planetas desérticos/planos
     {
-        NewSettings->Mountainous = Stream.FRandRange(0.1f, 0.3f);
-        NewSettings->Roughness = Stream.FRandRange(0.2f, 0.4f);
-        NewSettings->Detail = Stream.FRandRange(0.3f, 0.5f);
-        NewSettings->Smoothness = Stream.FRandRange(0.6f, 0.9f);
+        NewSettings->Params.Mountainous = Stream.FRandRange(0.1f, 0.3f);
+        NewSettings->Params.Roughness = Stream.FRandRange(0.2f, 0.4f);
+        NewSettings->Params.Detail = Stream.FRandRange(0.3f, 0.5f);
+        NewSettings->Params.Smoothness = Stream.FRandRange(0.6f, 0.9f);
     }
     else if (PlanetType < 0.5f) // 30% - Planetas montañosos
     {
-        NewSettings->Mountainous = Stream.FRandRange(0.6f, 0.9f);
-        NewSettings->Roughness = Stream.FRandRange(0.5f, 0.8f);
-        NewSettings->Detail = Stream.FRandRange(0.6f, 0.9f);
-        NewSettings->Smoothness = Stream.FRandRange(0.1f, 0.3f);
+        NewSettings->Params.Mountainous = Stream.FRandRange(0.6f, 0.9f);
+        NewSettings->Params.Roughness = Stream.FRandRange(0.5f, 0.8f);
+        NewSettings->Params.Detail = Stream.FRandRange(0.6f, 0.9f);
+        NewSettings->Params.Smoothness = Stream.FRandRange(0.1f, 0.3f);
     }
     else if (PlanetType < 0.8f) // 30% - Planetas mixtos
     {
-        NewSettings->Mountainous = Stream.FRandRange(0.3f, 0.6f);
-        NewSettings->Roughness = Stream.FRandRange(0.4f, 0.6f);
-        NewSettings->Detail = Stream.FRandRange(0.4f, 0.7f);
-        NewSettings->Smoothness = Stream.FRandRange(0.3f, 0.6f);
+        NewSettings->Params.Mountainous = Stream.FRandRange(0.3f, 0.6f);
+        NewSettings->Params.Roughness = Stream.FRandRange(0.4f, 0.6f);
+        NewSettings->Params.Detail = Stream.FRandRange(0.4f, 0.7f);
+        NewSettings->Params.Smoothness = Stream.FRandRange(0.3f, 0.6f);
     }
     else {
-        NewSettings->Mountainous = Stream.FRandRange(0.0f, 1.f);
-        NewSettings->Roughness = Stream.FRandRange(0.0f, 1.f);
-        NewSettings->Detail = Stream.FRandRange(0.3f, 1.f);
-        NewSettings->Smoothness = Stream.FRandRange(0.2f, 1.f);
+        NewSettings->Params.Mountainous = Stream.FRandRange(0.0f, 1.f);
+        NewSettings->Params.Roughness = Stream.FRandRange(0.0f, 1.f);
+        NewSettings->Params.Detail = Stream.FRandRange(0.3f, 1.f);
+        NewSettings->Params.Smoothness = Stream.FRandRange(0.2f, 1.f);
     }
 
     NewSettings->UpdateAdvancedFromSimple();
