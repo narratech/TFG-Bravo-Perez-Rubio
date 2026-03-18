@@ -27,14 +27,10 @@ public:
     bool bActiveMesh;
 
     UCosmicNoiseSettings* NoiseSettings = nullptr;
-
     // Malla base (deformada a la esfera, sin alturas adicionales)
     TArray<FVector> BaseVertices;
     TArray<FVector> BaseNormals;
     TArray<FProcMeshTangent> BaseTangents;
-
-    // Alturas adicionales (para modificar en tiempo de ejecución)
-    //TArray<float> HeightOffsets;
 
     // Malla final (base + alturas)
     TArray<FVector> CurrentVertices;
@@ -50,7 +46,7 @@ public:
     void SetMeshActive(bool active);
     // Lanza la tarea de ruido
     void RequestMeshUpdate();
-    // Comprueba si la tarea terminó y aplica la malla
+    // Comprueba si la tarea termino y aplica la malla
     bool CheckAndApplyMeshUpdate();
 
     FAsyncTask<FCosmicArchitectNoiseGenerator>* NoiseTask = nullptr;

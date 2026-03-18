@@ -1,9 +1,10 @@
-#include "Terrain/CosmicCollisionComponent.h"
 
+#include "Terrain/CosmicCollisionComponent.h"
 #include "PhysicsEngine/BodySetup.h"
 #include "PhysicsEngine/PhysicsSettings.h"
 #include "PhysicsEngine/BodyInstance.h"
 #include "CosmicNoiseSettings.h"
+#include "DrawDebugHelpers.h"
 #include "CosmicNoise.h"
 #include "Engine/World.h"
 

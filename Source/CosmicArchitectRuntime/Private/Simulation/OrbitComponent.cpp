@@ -2,6 +2,11 @@
 
 
 #include "Simulation/OrbitComponent.h"
+#include "Components/PrimitiveComponent.h"
+#include "Components/SceneComponent.h"
+#include "GameFramework/Actor.h"
+#include "DrawDebugHelpers.h"
+#include "Engine/World.h"
 #include "Math/UnrealMathUtility.h"
 
 // Sets default values for this component's properties

@@ -6,6 +6,10 @@
 #include "Camera/CameraComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "GameFramework/WorldSettings.h"
+#include "Engine/World.h"
+#include "InputMappingContext.h"
+#include "GameFramework/PlayerController.h" 
 #include "Components/PrimitiveComponent.h" 
 
 ACosmicSpaceShip::ACosmicSpaceShip()

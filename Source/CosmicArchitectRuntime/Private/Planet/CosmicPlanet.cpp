@@ -6,6 +6,8 @@
 #include "Terrain/CosmicClipmapComponent.h"
 #include "CosmicFoliageSpawner.h"
 #include "Components/StaticMeshComponent.h"
+#include "Engine/World.h"
+#include "UObject/Package.h"
 
 // Sets default values
 ACosmicPlanet::ACosmicPlanet()

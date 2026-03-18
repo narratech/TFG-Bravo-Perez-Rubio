@@ -3,6 +3,7 @@
 
 #include "Simulation/GravityComponent.h"
 #include "Simulation/GravitySubsystem.h"
+#include "Engine/World.h"
 #include "Components/PrimitiveComponent.h"
 
 // Sets default values for this component's properties

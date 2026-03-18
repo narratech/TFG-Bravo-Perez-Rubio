@@ -9,6 +9,9 @@
 #include "Kismet/GameplayStatics.h"
 #include "Terrain/CosmicMeshComponent.h"
 #include "Terrain/CosmicCollisionComponent.h"
+#include "Engine/World.h"
+#include "Engine/Texture2D.h"
+#include "Engine/Texture.h"
 #include "CosmicCameraBridge.h"
 
 

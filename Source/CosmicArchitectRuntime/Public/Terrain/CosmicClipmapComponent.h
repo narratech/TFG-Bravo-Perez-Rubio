@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "CosmicClipmapComponent.generated.h"
 
 class UCosmicMeshComponent;
