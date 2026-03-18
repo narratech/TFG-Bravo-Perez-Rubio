@@ -9,6 +9,7 @@
 #include "GameFramework/WorldSettings.h"
 #include "Engine/World.h"
 #include "InputMappingContext.h"
+#include "Engine/LocalPlayer.h"
 #include "GameFramework/PlayerController.h" 
 #include "Components/PrimitiveComponent.h" 
 

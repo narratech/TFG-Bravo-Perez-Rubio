@@ -5,6 +5,7 @@
 #include "PhysicsEngine/BodyInstance.h"
 #include "CosmicNoiseSettings.h"
 #include "DrawDebugHelpers.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "CosmicNoise.h"
 #include "Engine/World.h"
 

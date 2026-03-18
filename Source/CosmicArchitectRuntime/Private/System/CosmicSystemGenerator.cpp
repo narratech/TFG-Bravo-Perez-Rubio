@@ -33,13 +33,6 @@ ACosmicSystemGenerator::ACosmicSystemGenerator()
     MaxDistanceToNearest = 0.0f;     // 0 = Sin agrupación forzada / No forced clustering       
     MaxGenerationAttempts = 100;
 
-    // E: Buscamos la esfera básica del motor para tener algo asignado por defecto.
-    // I: Find the engine's basic sphere to have something assigned by default.
-    static ConstructorHelpers::FObjectFinder<UStaticMesh> DefaultSphereAsset(TEXT("/Engine/BasicShapes/Sphere.Sphere"));
-    if (DefaultSphereAsset.Succeeded())
-    {
-        SphereMesh = DefaultSphereAsset.Object;
-    }
 }
 
 void ACosmicSystemGenerator::OnConstruction(const FTransform& Transform)

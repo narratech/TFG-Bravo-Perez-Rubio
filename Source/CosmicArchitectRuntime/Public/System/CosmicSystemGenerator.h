@@ -60,11 +60,6 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration", meta = (ClampMin = "0.1"))
     FVector VolumeSizeKm;
 
-    // E: Malla estática usada para las esferas.
-    // I: Static mesh used for the spheres.
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration")
-    UStaticMesh* SphereMesh;
-
     // E: Rango de diámetro aleatorio en Kilómetros (Mín, Máx) para cada cuerpo.
         // I: Random diameter range in Kilometers (Min, Max) for each body.
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration", meta = (ClampMin = "0.001"))
