@@ -234,6 +234,8 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
         if (Random.FRand() > SelectedMesh.DensityMultiplier)
             continue;
 
+        
+
         // Calcular transformación final
         float Yaw = Random.FRandRange(
             SelectedMesh.RandomRotationMin,
@@ -269,6 +271,8 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
         Transform.SetRotation(Rotation);
         Transform.SetScale3D(FVector(Scale));
 
+        //UE_LOG(LogTemp, Warning, TEXT("Generando en X:%.4f, Y:%.4f, Z:%.4f"), Point.WorldPosition.X, Point.WorldPosition.Y, Point.WorldPosition.Z);
+
         FCosmicFoliageInstance Instance;
         Instance.Mesh = SelectedMesh.Mesh;
         Instance.Transform = Transform;
@@ -291,6 +295,7 @@ const FCosmicFoliageCollectionEntry* FFoliageGenerationTask::FindBestMatchingEnt
 
         if (bValid)
         {
+            
             return &Entry;
         }
     }

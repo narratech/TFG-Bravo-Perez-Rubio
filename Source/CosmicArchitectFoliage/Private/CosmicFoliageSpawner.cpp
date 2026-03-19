@@ -78,8 +78,10 @@ void UCosmicFoliageSpawner::RequestAreaGeneration(const FVector& Center, float R
         {
             FIntVector Cell = CenterCell + FIntVector(x, y, 0);
 
-            if (!CellDataMap.Contains(Cell))
+            // Verificar si la celda NO está en el mapa Y NO está pendiente de generación
+            if (!CellDataMap.Contains(Cell) && !PendingGenerationCells.Contains(Cell))
             {
+                PendingGenerationCells.Add(Cell);  // Marcar como pendiente
                 PendingCells.Enqueue(Cell);
             }
         }
@@ -144,6 +146,9 @@ void UCosmicFoliageSpawner::ApplyGeneratedInstances(
     }
 
     CellData.LastUpdateTime = GetWorld()->GetTimeSeconds();
+
+    // ¡IMPORTANTE! La celda ya no está pendiente, está generada
+    PendingGenerationCells.Remove(Cell);
 }
 
 UHierarchicalInstancedStaticMeshComponent* UCosmicFoliageSpawner::GetOrCreateComponent(UStaticMesh* Mesh)
@@ -177,7 +182,9 @@ UHierarchicalInstancedStaticMeshComponent* UCosmicFoliageSpawner::GetOrCreateCel
         NewObject<UHierarchicalInstancedStaticMeshComponent>(GetOwner());
 
     Comp->SetStaticMesh(Mesh);
-    Comp->SetupAttachment(GetOwner()->GetRootComponent());
+    //Comp->SetupAttachment(GetOwner()->GetRootComponent());
+    Comp->SetWorldLocation(FVector::ZeroVector);
+    Comp->SetWorldRotation(FQuat::Identity);
     Comp->RegisterComponent();
 
     CellData.MeshComponents.Add(Mesh, Comp);
@@ -221,5 +228,7 @@ void UCosmicFoliageSpawner::CleanupFarInstances(
     for (const FIntVector& Cell : CellsToRemove)
     {
         CellDataMap.Remove(Cell);
+        // También limpiar de pendientes por si acaso
+        PendingGenerationCells.Remove(Cell);
     }
 }

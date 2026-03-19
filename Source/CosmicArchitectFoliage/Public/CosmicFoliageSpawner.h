@@ -83,6 +83,7 @@ protected:
 private:
     float ElapsedTime = 0.0f;
     FRandomStream RandomStream;
+    TSet<FIntVector> PendingGenerationCells;
     TQueue<FIntVector> PendingCells;
     TArray<FAsyncTask<FFoliageGenerationTask>*> ActiveTasks;
 

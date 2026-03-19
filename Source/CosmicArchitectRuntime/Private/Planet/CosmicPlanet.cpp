@@ -12,7 +12,7 @@
 // Sets default values
 ACosmicPlanet::ACosmicPlanet()
 {
-    PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bCanEverTick = true;
 
     Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
     RootComponent = Root;
@@ -44,6 +44,14 @@ void ACosmicPlanet::BeginPlay()
         }
     }
 }
+
+void ACosmicPlanet::Tick(float DeltaTime)
+{
+    if (FoliageSpawnerComponent) {
+        FoliageSpawnerComponent->UpdateFoliageGeneration(DeltaTime, GetActorLocation(), RadiusKm * 100000, NoiseSettings);
+    }
+}
+
 
 void ACosmicPlanet::InitClipmap()
 {
