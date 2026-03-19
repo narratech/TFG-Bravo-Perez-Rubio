@@ -4,74 +4,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Async/Async.h"
 
-// TAREA ASINCRONA 
-void FFoliageGenerationTask::DoWork()
-{
-    if (!Collection) return;
 
-    FRandomStream LocalRandom(Seed);
-
-    float CellSizeKm = 1.0f;
-    float CellSizeCm = CellSizeKm * 100000.0f;
-
-    float AreaKm2 = 1.0f;
-
-    int32 NumSeeds = FMath::RoundToInt(
-        AreaKm2 *
-        Collection->SeedsPerSquareKm *
-        Collection->GlobalDensity
-    );
-
-    ResultInstances.Empty();
-    ResultInstances.Reserve(NumSeeds);
-
-    for (int32 i = 0; i < NumSeeds; i++)
-    {
-        // Primero: seleccionar una entrada aleatoria basada en peso
-        const FCosmicFoliageCollectionEntry* Entry =
-            Collection->GetRandomEntry(LocalRandom);
-
-        if (!Entry || Entry->Foliage.Num() == 0)  // Verificar que el array no esté vacío
-            continue;
-
-        // Segundo: seleccionar un mesh aleatorio del array de la entrada
-        int32 MeshIndex = LocalRandom.RandRange(0, Entry->Foliage.Num() - 1);
-        const FCosmicFoliageMesh& SelectedMesh = Entry->Foliage[MeshIndex];
-
-        if (!SelectedMesh.Mesh)  // Verificar que el mesh sea válido
-            continue;
-
-        // Generar posición aleatoria
-        FVector Pos(
-            SpawnArea.Min.X + LocalRandom.FRandRange(0, CellSizeCm),
-            SpawnArea.Min.Y + LocalRandom.FRandRange(0, CellSizeCm),
-            SpawnArea.Min.Z
-        );
-
-        // Usar las rotaciones del mesh seleccionado
-        float Yaw = LocalRandom.FRandRange(
-            SelectedMesh.RandomRotationMin,
-            SelectedMesh.RandomRotationMax
-        );
-
-        // Usar la escala del mesh seleccionado
-        float Scale = LocalRandom.FRandRange(
-            SelectedMesh.ScaleMin,
-            SelectedMesh.ScaleMax
-        );
-
-        FTransform T;
-        T.SetLocation(Pos);
-        T.SetRotation(FRotator(0, Yaw, 0).Quaternion());
-        T.SetScale3D(FVector(Scale));
-
-        FCosmicFoliageInstance Instance;
-        Instance.Mesh = SelectedMesh.Mesh;  // Usar el mesh seleccionado
-        Instance.Transform = T;
-
-        ResultInstances.Add(Instance);
-    }
-}
 
 // COMPONENTE
 
@@ -174,7 +107,7 @@ void UCosmicFoliageSpawner::GenerateCell(const FIntVector& Cell)
         FVector((Cell.X + 1) * CellSizeCm, (Cell.Y + 1) * CellSizeCm, (Cell.Z + 1) * CellSizeCm)
     );
 
-    FAsyncTask<FFoliageGenerationTask>* AsyncTask =
+    /*FAsyncTask<FFoliageGenerationTask>* AsyncTask =
         new FAsyncTask<FFoliageGenerationTask>(
             CellBox,
             FoliageCollection,
@@ -185,7 +118,7 @@ void UCosmicFoliageSpawner::GenerateCell(const FIntVector& Cell)
 
     AsyncTask->StartBackgroundTask();
 
-    ActiveTasks.Add(AsyncTask);
+    ActiveTasks.Add(AsyncTask);*/
 
     // TODO: Asociar la celda con la tarea
     // Crear un struct que guarde (FAsyncTask*, FIntVector)

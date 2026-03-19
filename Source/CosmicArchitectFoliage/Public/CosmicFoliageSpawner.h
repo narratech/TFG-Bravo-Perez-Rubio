@@ -6,56 +6,10 @@
 #include "Components/ActorComponent.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "CosmicFoliageTypes.h"
+#include "CosmicFoliageGenerationTask.h"
 #include "CosmicFoliageCollection.h"
 #include "CosmicFoliageSpawner.generated.h"
 
-class UCosmicNoiseSettings;
-
-USTRUCT()
-struct FCosmicFoliageInstance
-{
-    GENERATED_BODY()
-
-    UPROPERTY()
-    UStaticMesh* Mesh = nullptr;
-
-    UPROPERTY()
-    FTransform Transform;
-};
-
-/**
- * Tarea asincrona para calcular posiciones de foliage
- */
-class FFoliageGenerationTask : public FNonAbandonableTask
-{
-public:
-    TArray<FCosmicFoliageInstance> ResultInstances;
-    FBox SpawnArea;
-    FIntVector Cell;
-    UCosmicFoliageCollection* Collection;
-    int32 Seed;
-    float WorldToKmScale;
-
-    FFoliageGenerationTask(
-        const FBox& InArea,
-        UCosmicFoliageCollection* InCollection,
-        int32 InSeed,
-        float InScale,
-        const FIntVector& InCell)
-        : SpawnArea(InArea),
-        Cell(InCell),
-        Collection(InCollection),
-        Seed(InSeed),
-        WorldToKmScale(InScale)   
-    {}
-
-    FORCEINLINE TStatId GetStatId() const
-    {
-        RETURN_QUICK_DECLARE_CYCLE_STAT(FFoliageGenerationTask, STATGROUP_ThreadPoolAsyncTasks);
-    }
-
-    void DoWork();
-};
 
 USTRUCT()
 struct FCosmicMeshIndices
