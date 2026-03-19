@@ -19,7 +19,7 @@ void UCosmicFoliageSpawner::BeginPlay()
     RandomStream.Initialize(FMath::Rand());
 }
 
-void UCosmicFoliageSpawner::UpdateFoliageGeneration(float DeltaTime, const FVector& PlanetCenter, const float PlanetRadius, UCosmicNoiseSettings* NoiseSettings)
+void UCosmicFoliageSpawner::UpdateFoliageGeneration(float DeltaTime, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings)
 {
     ElapsedTime += DeltaTime;
     if (ElapsedTime < UpdateInterval) return;
@@ -31,7 +31,7 @@ void UCosmicFoliageSpawner::UpdateFoliageGeneration(float DeltaTime, const FVect
     FVector ViewerLocation = PC->PlayerCameraManager->GetCameraLocation();
 
     CleanupFarInstances(ViewerLocation, ViewDistanceKm * 1.5f);
-    RequestAreaGeneration(ViewerLocation, ViewDistanceKm);
+    RequestAreaGeneration(ViewerLocation, ViewDistanceKm, PlanetCenter, PlanetRadius, NoiseSettings);
 
     UE_LOG(LogTemp, Warning, TEXT("Numero de tareas activas: %d"), ActiveTasks.Num());
 
@@ -54,7 +54,7 @@ void UCosmicFoliageSpawner::UpdateFoliageGeneration(float DeltaTime, const FVect
     }
 }
 
-FIntVector UCosmicFoliageSpawner::WorldToCell(const FVector& WorldPos, float CellSizeKm) const
+FIntVector UCosmicFoliageSpawner::WorldToCell(const FVector& WorldPos) const
 {
     float CellSizeCm = CellSizeKm * 100000.0f;
     return FIntVector(
@@ -64,14 +64,13 @@ FIntVector UCosmicFoliageSpawner::WorldToCell(const FVector& WorldPos, float Cel
     );
 }
 
-void UCosmicFoliageSpawner::RequestAreaGeneration(const FVector& Center, float RadiusKm)
+void UCosmicFoliageSpawner::RequestAreaGeneration(const FVector& Center, float RadiusKm, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings)
 {
     float RadiusCm = RadiusKm * 100000.0f;
-    float CellSizeKm = 1.0f;
     float CellSizeCm = CellSizeKm * 100000.0f;
 
     int32 CellsPerSide = FMath::CeilToInt((RadiusCm * 2) / CellSizeCm);
-    FIntVector CenterCell = WorldToCell(Center, CellSizeKm);
+    FIntVector CenterCell = WorldToCell(Center);
 
     for (int32 x = -CellsPerSide / 2; x <= CellsPerSide / 2; x++)
     {
@@ -90,38 +89,28 @@ void UCosmicFoliageSpawner::RequestAreaGeneration(const FVector& Center, float R
     FIntVector NextCell;
     while (ProcessedThisFrame < MaxInstancesPerFrame && PendingCells.Dequeue(NextCell))
     {
-        GenerateCell(NextCell);
+        GenerateCell(NextCell, PlanetCenter, PlanetRadius, NoiseSettings);
         ProcessedThisFrame++;
     }
 }
 
-void UCosmicFoliageSpawner::GenerateCell(const FIntVector& Cell)
+void UCosmicFoliageSpawner::GenerateCell(const FIntVector& Cell, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings)
 {
-    if (!FoliageCollection) return;
+    if (!FoliageCollection || !NoiseSettings) return;
 
-    float CellSizeKm = 1.0f;
-    float CellSizeCm = CellSizeKm * 100000.0f;
-
-    FBox CellBox(
-        FVector(Cell.X * CellSizeCm, Cell.Y * CellSizeCm, Cell.Z * CellSizeCm),
-        FVector((Cell.X + 1) * CellSizeCm, (Cell.Y + 1) * CellSizeCm, (Cell.Z + 1) * CellSizeCm)
-    );
-
-    /*FAsyncTask<FFoliageGenerationTask>* AsyncTask =
+    FAsyncTask<FFoliageGenerationTask>* AsyncTask =
         new FAsyncTask<FFoliageGenerationTask>(
-            CellBox,
+            Cell,
             FoliageCollection,
-            RandomStream.FRand(),
-            1.0f,
-            Cell
+            RandomStream.RandRange(0, 999999),
+            PlanetCenter,
+            PlanetRadius,
+            NoiseSettings->Params,
+            CellSizeKm 
         );
 
     AsyncTask->StartBackgroundTask();
-
-    ActiveTasks.Add(AsyncTask);*/
-
-    // TODO: Asociar la celda con la tarea
-    // Crear un struct que guarde (FAsyncTask*, FIntVector)
+    ActiveTasks.Add(AsyncTask);
 }
 
 void UCosmicFoliageSpawner::ApplyGeneratedInstances(

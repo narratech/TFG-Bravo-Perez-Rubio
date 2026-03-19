@@ -79,8 +79,7 @@ public:
 private:
     void GenerateSeedPoints(FRandomStream& Random);
     void EvaluateEnvironmentalConditions(FRandomStream& Random);
-    float CalculateTerrainHeight(const FVector& Direction, FRandomStream& Random);
-    float CalculateSlope(const FVector& Direction, FRandomStream& Random);
+    float CalculateSlope(const FVector& Direction, int32 PointIndex, const TArray<float>& AllHeights, FRandomStream& Random);
     void CreateFoliageInstances(FRandomStream& Random);
     const FCosmicFoliageCollectionEntry* FindBestMatchingEntry(float Temperature, float Humidity, float Slope, float Height);
     const FCosmicFoliageCollectionEntry* FindClosestMatchingEntry( float Temperature, float Humidity, float Slope, float Height);

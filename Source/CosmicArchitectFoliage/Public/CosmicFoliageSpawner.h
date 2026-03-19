@@ -10,6 +10,7 @@
 #include "CosmicFoliageCollection.h"
 #include "CosmicFoliageSpawner.generated.h"
 
+class UCosmicNoiseSettings;
 
 USTRUCT()
 struct FCosmicMeshIndices
@@ -55,6 +56,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
     float UpdateInterval = 0.5f;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage", meta = (ClampMin = "0.05"))
+    float CellSizeKm = 0.5f;
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
     int32 MaxInstancesPerFrame = 1000;
 
@@ -65,10 +69,10 @@ public:
     UPROPERTY()
     TMap<FIntVector, FCosmicFoliageCellData> CellDataMap;
 
-    void UpdateFoliageGeneration(float DeltaTime, const FVector& PlanetCenter, const float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
+    void UpdateFoliageGeneration(float DeltaTime, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
 
     /** Solicita generación para un área */
-    void RequestAreaGeneration(const FVector& Center, float RadiusKm);
+    void RequestAreaGeneration(const FVector& Center, float RadiusKm, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
 
     /** Limpia instancias fuera de rango */
     void CleanupFarInstances(const FVector& ViewerLocation, float MaxDistanceKm);
@@ -83,10 +87,10 @@ private:
     TArray<FAsyncTask<FFoliageGenerationTask>*> ActiveTasks;
 
     /** Convierte coordenadas mundo a celda de grid */
-    FIntVector WorldToCell(const FVector& WorldPos, float CellSizeKm) const;
+    FIntVector WorldToCell(const FVector& WorldPos) const;
 
     /** Genera instancias para una celda específica (puede ser llamado desde hilo) */
-    void GenerateCell(const FIntVector& Cell);
+    void GenerateCell(const FIntVector& Cell, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
 
     /** Aplica las instancias generadas al mundo */
     void ApplyGeneratedInstances(const FIntVector& Cell, const TArray<FCosmicFoliageInstance>& Instances);
