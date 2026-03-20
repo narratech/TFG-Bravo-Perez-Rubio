@@ -30,6 +30,8 @@ void UCosmicFoliageSpawner::UpdateFoliageGeneration(float DeltaTime, const FVect
 
     FVector ViewerLocation = PC->PlayerCameraManager->GetCameraLocation();
 
+    DrawDebugCells(PlanetCenter, PlanetRadius);
+
     CleanupFarInstances(ViewerLocation, ViewDistanceKm * 1.5f);
     RequestAreaGeneration(ViewerLocation, ViewDistanceKm, PlanetCenter, PlanetRadius, NoiseSettings);
 
@@ -192,6 +194,72 @@ UHierarchicalInstancedStaticMeshComponent* UCosmicFoliageSpawner::GetOrCreateCel
     return Comp;
 }
 
+void UCosmicFoliageSpawner::DrawDebugCells(const FVector& PlanetCenter, float PlanetRadius) const
+{
+    if (!bDrawDebugCells)
+        return;
+
+    UWorld* World = GetWorld();
+    if (!World)
+        return;
+
+    for (const auto& Pair : CellDataMap)
+    {
+        const FIntVector& Cell = Pair.Key;
+        DrawDebugCell(Cell, PlanetCenter, PlanetRadius, DebugPendingCellColor, DebugCellThickness);
+    }
+}
+
+void UCosmicFoliageSpawner::DrawDebugCell(const FIntVector& Cell, const FVector& PlanetCenter, float PlanetRadius, FColor Color, float Thickness) const
+{
+     UWorld* World = GetWorld();
+    if (!World)
+        return;
+
+    // Tamaño de celda en cm
+    float CellSizeCm = CellSizeKm * 100000.0f;
+
+    // Calcular los 8 vértices de la celda (caja)
+    FVector Corners[8];
+    Corners[0] = FVector(Cell.X * CellSizeCm, Cell.Y * CellSizeCm, Cell.Z * CellSizeCm);
+    Corners[1] = FVector(Cell.X * CellSizeCm + CellSizeCm, Cell.Y * CellSizeCm, Cell.Z * CellSizeCm);
+    Corners[2] = FVector(Cell.X * CellSizeCm + CellSizeCm, Cell.Y * CellSizeCm + CellSizeCm, Cell.Z * CellSizeCm);
+    Corners[3] = FVector(Cell.X * CellSizeCm, Cell.Y * CellSizeCm + CellSizeCm, Cell.Z * CellSizeCm);
+    Corners[4] = FVector(Cell.X * CellSizeCm, Cell.Y * CellSizeCm, Cell.Z * CellSizeCm + CellSizeCm);
+    Corners[5] = FVector(Cell.X * CellSizeCm + CellSizeCm, Cell.Y * CellSizeCm, Cell.Z * CellSizeCm + CellSizeCm);
+    Corners[6] = FVector(Cell.X * CellSizeCm + CellSizeCm, Cell.Y * CellSizeCm + CellSizeCm, Cell.Z * CellSizeCm + CellSizeCm);
+    Corners[7] = FVector(Cell.X * CellSizeCm, Cell.Y * CellSizeCm + CellSizeCm, Cell.Z * CellSizeCm + CellSizeCm);
+
+    //// Para planetas esféricos, proyectamos los puntos a la superficie
+    //if (PlanetRadius > 0.0f)
+    //{
+    //    for (int32 i = 0; i < 8; i++)
+    //    {
+    //        FVector Dir = (Corners[i] - PlanetCenter).GetSafeNormal();
+    //        Corners[i] = PlanetCenter + Dir * PlanetRadius;
+    //    }
+    //}
+
+    // Dibujar las 12 aristas del cubo
+    // Aristas inferiores
+    DrawDebugLine(World, Corners[0], Corners[1], Color, false, UpdateInterval, 0, Thickness);
+    DrawDebugLine(World, Corners[1], Corners[2], Color, false, UpdateInterval, 0, Thickness);
+    DrawDebugLine(World, Corners[2], Corners[3], Color, false, UpdateInterval, 0, Thickness);
+    DrawDebugLine(World, Corners[3], Corners[0], Color, false, UpdateInterval, 0, Thickness);
+    
+    // Aristas superiores
+    DrawDebugLine(World, Corners[4], Corners[5], Color, false, UpdateInterval, 0, Thickness);
+    DrawDebugLine(World, Corners[5], Corners[6], Color, false, UpdateInterval, 0, Thickness);
+    DrawDebugLine(World, Corners[6], Corners[7], Color, false, UpdateInterval, 0, Thickness);
+    DrawDebugLine(World, Corners[7], Corners[4], Color, false, UpdateInterval, 0, Thickness);
+    
+    // Aristas verticales
+    DrawDebugLine(World, Corners[0], Corners[4], Color, false, UpdateInterval, 0, Thickness);
+    DrawDebugLine(World, Corners[1], Corners[5], Color, false, UpdateInterval, 0, Thickness);
+    DrawDebugLine(World, Corners[2], Corners[6], Color, false, UpdateInterval, 0, Thickness);
+    DrawDebugLine(World, Corners[3], Corners[7], Color, false, UpdateInterval, 0, Thickness);
+}
+
 void UCosmicFoliageSpawner::CleanupFarInstances(
     const FVector& ViewerLocation,
     float MaxDistanceKm)
@@ -224,6 +292,8 @@ void UCosmicFoliageSpawner::CleanupFarInstances(
             CellsToRemove.Add(Cell);
         }
     }
+
+    UE_LOG(LogTemp, Warning, TEXT("Celdas removidas: %d"), CellsToRemove.Num());
 
     for (const FIntVector& Cell : CellsToRemove)
     {

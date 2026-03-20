@@ -62,6 +62,18 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
     int32 MaxInstancesPerFrame = 1000;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FoliageDebug")
+    bool bDrawDebugCells = false;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FoliageDebug")
+    FColor DebugPendingCellColor = FColor::Green;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FoliageDebug")
+    FColor DebugPendingGenenerationCellColor = FColor::Yellow;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FoliageDebug")
+    float DebugCellThickness = 2.0f;
+
     UPROPERTY()
     TMap<UStaticMesh*, UHierarchicalInstancedStaticMeshComponent*> MeshComponents;
 
@@ -100,5 +112,10 @@ private:
 
     UHierarchicalInstancedStaticMeshComponent* GetOrCreateCellComponent(FCosmicFoliageCellData& CellData,
         UStaticMesh* Mesh);
+
+    void DrawDebugCells(const FVector& PlanetCenter, float PlanetRadius) const;
+
+    /** Dibuja una celda específica */
+    void DrawDebugCell(const FIntVector& Cell, const FVector& PlanetCenter, float PlanetRadius, FColor Color, float Thickness) const;
 	
 };
