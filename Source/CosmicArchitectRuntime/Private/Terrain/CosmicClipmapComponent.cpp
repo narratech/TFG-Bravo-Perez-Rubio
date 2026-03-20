@@ -215,6 +215,7 @@ void UCosmicClipmapComponent::CreateLevels()
         if (DynamicPlanetMat)
         {
             Mesh->SetMaterial(0, DynamicPlanetMat);
+            DynamicPlanetMat->SetVectorParameterValue("CentroPlaneta", GetOwner()->GetActorLocation());
         }
         //else
         //{
