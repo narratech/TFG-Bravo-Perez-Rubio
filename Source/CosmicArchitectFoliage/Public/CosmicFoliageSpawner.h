@@ -13,14 +13,6 @@
 
 class UCosmicNoiseSettings;
 
-USTRUCT()
-struct FCosmicMeshIndices
-{
-    GENERATED_BODY()
-
-    UPROPERTY()
-    TArray<int32> Indices;
-};
 
 USTRUCT()
 struct FCosmicFoliageCellData
@@ -74,20 +66,8 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Debug")
     float DebugCellThickness = 20.0f;
 
-    UPROPERTY()
-    TMap<UStaticMesh*, UHierarchicalInstancedStaticMeshComponent*> MeshComponents;
-
-    // Mapa de instancias activas por celda
-    UPROPERTY()
-    TMap<FIntVector, FCosmicFoliageCellData> CellDataMap;
-
     void UpdateFoliageGeneration(float DeltaTime, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
 
-    /** Solicita generación para un área */
-    void RequestAreaGeneration(const FVector& Center, float RadiusKm, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
-
-    /** Limpia instancias fuera de rango */
-    void CleanupFarInstances(const FVector& ViewerLocation, float MaxDistanceKm);
 
 protected:
     virtual void BeginPlay() override;
@@ -105,28 +85,20 @@ protected:
     void DrawDebugCells(const FVector& PlanetCenter, float PlanetRadius);
 
     // Actualizar octree y generar celdas
-    void UpdateOctreeAndGenerate(const FVector& ViewerLocation, const FVector& PlanetCenter, float PlanetRadius);
+    void UpdateOctreeAndGenerate(const FVector& ViewerLocation, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
 
-    void GenerateCellFoliage(const FCubeMapCell& Cell, const FVector& PlanetCenter, float PlanetRadius);
+    void GenerateCellFoliage(const FCubeMapCell& Cell, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
 
 private:
     float PlanetRadiusCm = 100000.f;
     float ElapsedTime = 0.0f;
     FRandomStream RandomStream;
-    TSet<FIntVector> PendingGenerationCells;
-    TQueue<FIntVector> PendingCells;
+    TSet<FCubeMapCell> PendingCells;
     TArray<FAsyncTask<FFoliageGenerationTask>*> ActiveTasks;
 
-    /** Convierte coordenadas mundo a celda de grid */
-    FIntVector WorldToCell(const FVector& WorldPos) const;
-
-    /** Genera instancias para una celda específica (puede ser llamado desde hilo) */
-    void GenerateCell(const FIntVector& Cell, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
 
     /** Aplica las instancias generadas al mundo */
-    void ApplyGeneratedInstances(const FIntVector& Cell, const TArray<FCosmicFoliageInstance>& Instances);
-
-    UHierarchicalInstancedStaticMeshComponent* GetOrCreateComponent(UStaticMesh* Mesh); 
+    void ApplyGeneratedInstances(const FCubeMapCell& Cell, const TArray<FCosmicFoliageInstance>& Instances);
 
     UHierarchicalInstancedStaticMeshComponent* GetOrCreateCellComponent(FCosmicFoliageCellData& CellData,
         UStaticMesh* Mesh);

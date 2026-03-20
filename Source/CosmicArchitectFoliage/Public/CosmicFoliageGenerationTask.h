@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "CosmicFoliageCollection.h"
 #include "CosmicArchitectNoise/Public/CosmicNoiseSettings.h"
+#include "CosmicArchitectCommon/Public/CubeMapCell.h"
 #include "CosmicFoliageGenerationTask.generated.h"
 
 /**
@@ -29,13 +30,13 @@ class FFoliageGenerationTask : public FNonAbandonableTask
 {
 public:
     TArray<FCosmicFoliageInstance> ResultInstances;
-    FIntVector Cell;
+    FCubeMapCell Cell;
     UCosmicFoliageCollection* Collection;
     int32 Seed;
     FVector PlanetCenter;
     float PlanetRadius;
     FCosmicNoiseGenerationParameters NoiseSettings;
-    float CellSizeKm;
+    float CellAreaKm2;
 
     // Almacenamos los puntos de generación con su información ambiental
     struct FSeedPoint
@@ -51,20 +52,20 @@ public:
     TArray<FSeedPoint> SeedPoints;
 
     FFoliageGenerationTask(
-        const FIntVector& InCell,
+        const FCubeMapCell& InCell,
         UCosmicFoliageCollection* InCollection,
         int32 InSeed,
         const FVector& InPlanetCenter,
         float InPlanetRadius,
         FCosmicNoiseGenerationParameters InNoiseSettings,
-        float InCellSizeKm = 1.0f)
+        float InCellAreaKm2)
         : Cell(InCell)
         , Collection(InCollection)
         , Seed(InSeed)
         , PlanetCenter(InPlanetCenter)
         , PlanetRadius(InPlanetRadius)
         , NoiseSettings(InNoiseSettings)
-        , CellSizeKm(InCellSizeKm)
+        , CellAreaKm2(InCellAreaKm2)
     {
     }
 

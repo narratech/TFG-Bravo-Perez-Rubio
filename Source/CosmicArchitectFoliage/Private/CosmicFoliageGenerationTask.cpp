@@ -24,47 +24,52 @@ void FFoliageGenerationTask::DoWork()
 
 void FFoliageGenerationTask::GenerateSeedPoints(FRandomStream& Random)
 {
-    // Calcular área de la celda en km²
-    float CellAreaKm2 = CellSizeKm * CellSizeKm;
-
-    // Número de semillas basado en densidad global
-    int32 NumSeeds = FMath::RoundToInt(
-        CellAreaKm2 *
-        Collection->SeedsPerSquareKm *
-        Collection->GlobalDensity
-    );
-
     SeedPoints.Empty();
+
+    float Density = Collection->SeedsPerSquareKm * Collection->GlobalDensity;
+
+    int32 NumSeeds = FMath::Max(1, FMath::RoundToInt(CellAreaKm2 * Density));
+
     SeedPoints.Reserve(NumSeeds);
 
-    // Convertir celda a coordenadas esféricas aproximadas
-    float CellSizeCm = CellSizeKm * 100000.0f;
-    FVector CellCenter(
-        (Cell.X + 0.5f) * CellSizeCm,
-        (Cell.Y + 0.5f) * CellSizeCm,
-        (Cell.Z + 0.5f) * CellSizeCm
-    );
+    // Datos de la celda
+    int32 CellsPerSide = 1 << Cell.Depth;
+    float CellSizeUV = 1.0f / CellsPerSide;
 
-    // La celda puede estar en cualquier lugar, necesitamos proyectar a la esfera
-    FVector CellCenterDir = (CellCenter - PlanetCenter).GetSafeNormal();
+    float MinU = Cell.X * CellSizeUV;
+    float MaxU = (Cell.X + 1) * CellSizeUV;
+    float MinV = Cell.Y * CellSizeUV;
+    float MaxV = (Cell.Y + 1) * CellSizeUV;
 
     for (int32 i = 0; i < NumSeeds; i++)
     {
+        // Sample uniforme dentro de la celda
+        float U = Random.FRandRange(MinU, MaxU);
+        float V = Random.FRandRange(MinV, MaxV);
+
+        // Convertir a espacio [-1,1]
+        float X = U * 2.0f - 1.0f;
+        float Y = V * 2.0f - 1.0f;
+
+        FVector CubePoint;
+
+        // Mapear segun la cara
+        switch (Cell.Face)
+        {
+        case 0: CubePoint = FVector(1.0f, X, Y); break;   // +X
+        case 1: CubePoint = FVector(-1.0f, X, Y); break;  // -X
+        case 2: CubePoint = FVector(X, 1.0f, Y); break;   // +Y
+        case 3: CubePoint = FVector(X, -1.0f, Y); break;  // -Y
+        case 4: CubePoint = FVector(X, Y, 1.0f); break;   // +Z
+        case 5: CubePoint = FVector(X, Y, -1.0f); break;  // -Z
+        default: CubePoint = FVector::ZeroVector; break;
+        }
+
+        // Proyectar a esfera 
+        FVector Direction = CubePoint.GetSafeNormal();
+
         FSeedPoint Point;
-
-        // Generar dirección aleatoria dentro de un cono que cubre la celda
-        // Esto es una aproximación - en realidad deberíamos mapear la celda a la esfera
-        float ConeAngle = FMath::Atan(CellSizeCm / PlanetRadius);
-
-        // Generar dirección aleatoria dentro del cono
-        FVector RandomDir = Random.GetUnitVector();
-
-        // Mezclar con la dirección de la celda para mantenernos dentro del área
-        float Blend = Random.FRandRange(0.3f, 1.0f);
-        Point.Direction = (CellCenterDir + RandomDir * Blend).GetSafeNormal();
-
-        // Posición base en la esfera
-        Point.WorldPosition = PlanetCenter + Point.Direction * PlanetRadius;
+        Point.Direction = Direction;
 
         SeedPoints.Add(Point);
     }
