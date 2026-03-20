@@ -34,18 +34,18 @@ struct COSMICARCHITECTCOMMON_API FCubeMapCell
         return Hash;
     }
 
-    // Método para obtener el ID como string (útil para debugging)
+    // Método para obtener el ID como string 
     FString ToString() const
     {
         return FString::Printf(TEXT("F%d_X%d_Y%d_D%d"), Face, X, Y, Depth);
     }
 };
 
-// Estructura para los límites del nodo
+// Estructura para los limites del nodo
 struct FNodeBounds
 {
-    FVector MinCorner;      // Esquina mínima en el cubo
-    FVector MaxCorner;      // Esquina máxima en el cubo
+    FVector MinCorner;      // Esquina minima en el cubo
+    FVector MaxCorner;      // Esquina maxima en el cubo
     FVector Center;         // Centro en el cubo
 
     // Para debugging

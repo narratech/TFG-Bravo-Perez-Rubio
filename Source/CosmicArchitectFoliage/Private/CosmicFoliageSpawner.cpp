@@ -10,13 +10,152 @@
 
 UCosmicFoliageSpawner::UCosmicFoliageSpawner()
 {
-    PrimaryComponentTick.bCanEverTick = false;
+    PrimaryComponentTick.bCanEverTick = true;
+}
+
+void UCosmicFoliageSpawner::InitFoliageSpawner(float RadiusKm)
+{
+    PlanetRadiusCm = RadiusKm * 100000;
 }
 
 void UCosmicFoliageSpawner::BeginPlay()
 {
     Super::BeginPlay();
-    RandomStream.Initialize(FMath::Rand());
+    RandomStream.Initialize(0);
+
+    Octree.Initialize(PlanetRadiusCm, 8); // 8 niveles de profundidad
+}
+
+void UCosmicFoliageSpawner::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+    // Obtener posición del jugador
+    APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+    if (!PC || !PC->PlayerCameraManager)
+        return;
+
+    AActor* PlanetActor = GetOwner();
+    if (!PlanetActor)
+        return;
+
+    FVector ViewerLocation = PC->PlayerCameraManager->GetCameraLocation();
+    FVector PlanetCenter = PlanetActor->GetActorLocation();
+
+    // Actualizar octree y generar foliage
+    UpdateOctreeAndGenerate(ViewerLocation, PlanetCenter, PlanetRadiusCm);
+
+    // Debug: Dibujar celdas
+    DrawDebugCells(PlanetCenter, PlanetRadiusCm);
+}
+
+void UCosmicFoliageSpawner::DrawDebugCells(const FVector& PlanetCenter, float PlanetRadius)
+{
+    if (!bDrawDebugCells)
+        return;
+
+    // Dibujar todas las celdas activas
+    for (const auto& Pair : ActiveCells)
+    {
+        const FCubeMapCell& Cell = Pair.Key;
+
+        // Obtener vértices de la celda
+        TArray<FVector> Vertices = Octree.GetDebugVertices(Cell);
+
+        // Dibujar líneas
+        for (int32 i = 0; i < Vertices.Num(); i += 2)
+        {
+            DrawDebugLine(
+                GetWorld(),
+                PlanetCenter + Vertices[i],
+                PlanetCenter + Vertices[i + 1],
+                DebugCellColor,
+                false,
+                -1,
+                0,
+                DebugCellThickness
+            );
+        }
+
+        // Dibujar un punto en el centro de la celda
+        FVector Center = PlanetCenter + Octree.GetNodeCenter(Cell) * PlanetRadius;
+        DrawDebugPoint(
+            GetWorld(),
+            Center,
+            10.0f,
+            FColor::Red,
+            false,
+            -1
+        );
+
+        // Dibujar texto con información de la celda
+        DrawDebugString(
+            GetWorld(),
+            Center,
+            Cell.ToString(),
+            nullptr,
+            FColor::White,
+            -1
+        );
+    }
+}
+
+void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocation, const FVector& PlanetCenter, float PlanetRadius)
+{
+    if (!FoliageCollection)
+        return;
+
+    // Obtener nodos dentro del radio de visión
+    TArray<FCubeMapCell> VisibleNodes;
+    Octree.GetNodesInRadius(ViewerLocation - PlanetCenter, PlanetCenter, ViewDistanceKm, VisibleNodes);
+
+    // Activar nuevos nodos
+    for (const FCubeMapCell& Node : VisibleNodes)
+    {
+        if (!ActiveCells.Contains(Node))
+        {
+            // Generar foliage para este nodo
+            GenerateCellFoliage(Node, PlanetCenter, PlanetRadius);
+
+            // Crear entrada en ActiveCells
+            FCosmicFoliageCellData& CellData = ActiveCells.FindOrAdd(Node);
+            CellData.LastUpdateTime = GetWorld()->GetTimeSeconds();
+
+            UE_LOG(LogTemp, Log, TEXT("Activando celda: %s"), *Node.ToString());
+        }
+    }
+
+    // Desactivar nodos lejanos
+    TArray<FCubeMapCell> ToRemove;
+    for (const auto& Pair : ActiveCells)
+    {
+        if (!VisibleNodes.Contains(Pair.Key))
+        {
+            // Destruir instancias
+            for (auto& MeshPair : Pair.Value.MeshComponents)
+            {
+                if (MeshPair.Value)
+                {
+                    MeshPair.Value->DestroyComponent();
+                }
+            }
+            ToRemove.Add(Pair.Key);
+
+            UE_LOG(LogTemp, Log, TEXT("Desactivando celda: %s"), *Pair.Key.ToString());
+        }
+    }
+
+    for (const FCubeMapCell& Node : ToRemove)
+    {
+        ActiveCells.Remove(Node);
+    }
+}
+
+void UCosmicFoliageSpawner::GenerateCellFoliage(const FCubeMapCell& Cell, const FVector& PlanetCenter, float PlanetRadius)
+{
+    // TODO: Implementar generación real de foliage
+    // Por ahora, solo logueamos
+    UE_LOG(LogTemp, Verbose, TEXT("Generando foliage para celda: %s"), *Cell.ToString());
 }
 
 void UCosmicFoliageSpawner::UpdateFoliageGeneration(float DeltaTime, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings)
@@ -194,71 +333,6 @@ UHierarchicalInstancedStaticMeshComponent* UCosmicFoliageSpawner::GetOrCreateCel
     return Comp;
 }
 
-void UCosmicFoliageSpawner::DrawDebugCells(const FVector& PlanetCenter, float PlanetRadius) const
-{
-    if (!bDrawDebugCells)
-        return;
-
-    UWorld* World = GetWorld();
-    if (!World)
-        return;
-
-    for (const auto& Pair : CellDataMap)
-    {
-        const FIntVector& Cell = Pair.Key;
-        DrawDebugCell(Cell, PlanetCenter, PlanetRadius, DebugPendingCellColor, DebugCellThickness);
-    }
-}
-
-void UCosmicFoliageSpawner::DrawDebugCell(const FIntVector& Cell, const FVector& PlanetCenter, float PlanetRadius, FColor Color, float Thickness) const
-{
-     UWorld* World = GetWorld();
-    if (!World)
-        return;
-
-    // Tamaño de celda en cm
-    float CellSizeCm = CellSizeKm * 100000.0f;
-
-    // Calcular los 8 vértices de la celda (caja)
-    FVector Corners[8];
-    Corners[0] = FVector(Cell.X * CellSizeCm, Cell.Y * CellSizeCm, Cell.Z * CellSizeCm);
-    Corners[1] = FVector(Cell.X * CellSizeCm + CellSizeCm, Cell.Y * CellSizeCm, Cell.Z * CellSizeCm);
-    Corners[2] = FVector(Cell.X * CellSizeCm + CellSizeCm, Cell.Y * CellSizeCm + CellSizeCm, Cell.Z * CellSizeCm);
-    Corners[3] = FVector(Cell.X * CellSizeCm, Cell.Y * CellSizeCm + CellSizeCm, Cell.Z * CellSizeCm);
-    Corners[4] = FVector(Cell.X * CellSizeCm, Cell.Y * CellSizeCm, Cell.Z * CellSizeCm + CellSizeCm);
-    Corners[5] = FVector(Cell.X * CellSizeCm + CellSizeCm, Cell.Y * CellSizeCm, Cell.Z * CellSizeCm + CellSizeCm);
-    Corners[6] = FVector(Cell.X * CellSizeCm + CellSizeCm, Cell.Y * CellSizeCm + CellSizeCm, Cell.Z * CellSizeCm + CellSizeCm);
-    Corners[7] = FVector(Cell.X * CellSizeCm, Cell.Y * CellSizeCm + CellSizeCm, Cell.Z * CellSizeCm + CellSizeCm);
-
-    //// Para planetas esféricos, proyectamos los puntos a la superficie
-    //if (PlanetRadius > 0.0f)
-    //{
-    //    for (int32 i = 0; i < 8; i++)
-    //    {
-    //        FVector Dir = (Corners[i] - PlanetCenter).GetSafeNormal();
-    //        Corners[i] = PlanetCenter + Dir * PlanetRadius;
-    //    }
-    //}
-
-    // Dibujar las 12 aristas del cubo
-    // Aristas inferiores
-    DrawDebugLine(World, Corners[0], Corners[1], Color, false, UpdateInterval, 0, Thickness);
-    DrawDebugLine(World, Corners[1], Corners[2], Color, false, UpdateInterval, 0, Thickness);
-    DrawDebugLine(World, Corners[2], Corners[3], Color, false, UpdateInterval, 0, Thickness);
-    DrawDebugLine(World, Corners[3], Corners[0], Color, false, UpdateInterval, 0, Thickness);
-    
-    // Aristas superiores
-    DrawDebugLine(World, Corners[4], Corners[5], Color, false, UpdateInterval, 0, Thickness);
-    DrawDebugLine(World, Corners[5], Corners[6], Color, false, UpdateInterval, 0, Thickness);
-    DrawDebugLine(World, Corners[6], Corners[7], Color, false, UpdateInterval, 0, Thickness);
-    DrawDebugLine(World, Corners[7], Corners[4], Color, false, UpdateInterval, 0, Thickness);
-    
-    // Aristas verticales
-    DrawDebugLine(World, Corners[0], Corners[4], Color, false, UpdateInterval, 0, Thickness);
-    DrawDebugLine(World, Corners[1], Corners[5], Color, false, UpdateInterval, 0, Thickness);
-    DrawDebugLine(World, Corners[2], Corners[6], Color, false, UpdateInterval, 0, Thickness);
-    DrawDebugLine(World, Corners[3], Corners[7], Color, false, UpdateInterval, 0, Thickness);
-}
 
 void UCosmicFoliageSpawner::CleanupFarInstances(
     const FVector& ViewerLocation,

@@ -54,6 +54,8 @@ public:
 	// Sets default values for this actor's properties
 	ACosmicPlanet();
 
+	virtual void PostInitializeComponents() override;
+
 	virtual void OnConstruction(const FTransform& Transform) override;
 
 	void InitPlanet(float InRadiusKm, UCosmicNoiseSettings* NewNoiseSettings, FColor color1, FColor color2, FColor colorHeight, float scale, UMaterialInterface* BaseMaterial, UTexture2D* DefaultTexture);

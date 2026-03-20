@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
+#include "CosmicOctree.h"
 #include "CosmicFoliageTypes.h"
 #include "CosmicFoliageGenerationTask.h"
 #include "CosmicFoliageCollection.h"
@@ -46,6 +47,8 @@ class COSMICARCHITECTFOLIAGE_API UCosmicFoliageSpawner : public UActorComponent
 public:
     UCosmicFoliageSpawner();
 
+    void InitFoliageSpawner(float PlanetRadius);
+
     // Configuración principal
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
     UCosmicFoliageCollection* FoliageCollection;
@@ -62,17 +65,14 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
     int32 MaxInstancesPerFrame = 1000;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FoliageDebug")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Debug")
     bool bDrawDebugCells = false;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FoliageDebug")
-    FColor DebugPendingCellColor = FColor::Green;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Debug")
+    FColor DebugCellColor = FColor::Green;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FoliageDebug")
-    FColor DebugPendingGenenerationCellColor = FColor::Yellow;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "FoliageDebug")
-    float DebugCellThickness = 2.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Debug")
+    float DebugCellThickness = 20.0f;
 
     UPROPERTY()
     TMap<UStaticMesh*, UHierarchicalInstancedStaticMeshComponent*> MeshComponents;
@@ -92,7 +92,25 @@ public:
 protected:
     virtual void BeginPlay() override;
 
+    virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction);
+
+    // Octree manager
+    FCosmicOctree Octree;
+
+    // Celdas activas con sus instancias
+    UPROPERTY()
+    TMap<FCubeMapCell, FCosmicFoliageCellData> ActiveCells;
+
+    // Debug: Dibujar celdas activas
+    void DrawDebugCells(const FVector& PlanetCenter, float PlanetRadius);
+
+    // Actualizar octree y generar celdas
+    void UpdateOctreeAndGenerate(const FVector& ViewerLocation, const FVector& PlanetCenter, float PlanetRadius);
+
+    void GenerateCellFoliage(const FCubeMapCell& Cell, const FVector& PlanetCenter, float PlanetRadius);
+
 private:
+    float PlanetRadiusCm = 100000.f;
     float ElapsedTime = 0.0f;
     FRandomStream RandomStream;
     TSet<FIntVector> PendingGenerationCells;
@@ -113,9 +131,4 @@ private:
     UHierarchicalInstancedStaticMeshComponent* GetOrCreateCellComponent(FCosmicFoliageCellData& CellData,
         UStaticMesh* Mesh);
 
-    void DrawDebugCells(const FVector& PlanetCenter, float PlanetRadius) const;
-
-    /** Dibuja una celda específica */
-    void DrawDebugCell(const FIntVector& Cell, const FVector& PlanetCenter, float PlanetRadius, FColor Color, float Thickness) const;
-	
 };

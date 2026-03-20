@@ -22,6 +22,15 @@ ACosmicPlanet::ACosmicPlanet()
     FoliageSpawnerComponent = CreateDefaultSubobject<UCosmicFoliageSpawner>(TEXT("FoliageSpawnerComponent"));
 }
 
+void ACosmicPlanet::PostInitializeComponents()
+{
+    Super::PostInitializeComponents();
+
+    if (FoliageSpawnerComponent) {
+        FoliageSpawnerComponent->InitFoliageSpawner(RadiusKm);
+    }
+}
+
 
 
 // Called when the game starts or when spawned
@@ -47,9 +56,11 @@ void ACosmicPlanet::BeginPlay()
 
 void ACosmicPlanet::Tick(float DeltaTime)
 {
-    if (FoliageSpawnerComponent) {
+    Super::Tick(DeltaTime);
+
+   /* if (FoliageSpawnerComponent) {
         FoliageSpawnerComponent->UpdateFoliageGeneration(DeltaTime, GetActorLocation(), RadiusKm * 100000, NoiseSettings);
-    }
+    }*/
 }
 
 
