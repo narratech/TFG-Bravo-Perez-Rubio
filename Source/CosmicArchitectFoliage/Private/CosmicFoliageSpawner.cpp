@@ -107,7 +107,7 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
 
     // Obtener nodos dentro del radio de visión
     TArray<FCubeMapCell> VisibleNodes;
-    Octree.GetNodesInRadius(ViewerLocation - PlanetCenter, PlanetCenter, ViewDistanceKm, VisibleNodes);
+    Octree.GetNodesInRadius(ViewerLocation, PlanetCenter, ViewDistanceKm, FVector::Dist(ViewerLocation, PlanetCenter) - PlanetRadiusCm, VisibleNodes);
 
     // Activar nuevos nodos
     for (const FCubeMapCell& Node : VisibleNodes)

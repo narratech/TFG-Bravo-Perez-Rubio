@@ -40,12 +40,11 @@ FVector FCosmicOctree::UVToCubePoint(int32 Face, float U, float V) const
 
 FVector FCosmicOctree::CellToCubePoint(const FCubeMapCell& Cell) const
 {
-    int32 CellsPerSide = 1 << Cell.Depth; // 2^Depth
-    float CellSize = 2.0f / CellsPerSide; // Tamaño en el cubo [-1,1]
+    int32 CellsPerSide = 1 << Cell.Depth;
+    float CellUVSize = 1.0f / CellsPerSide;
 
-    // Calcular UV dentro de la cara
-    float U = (Cell.X + 0.5f) * CellSize;
-    float V = (Cell.Y + 0.5f) * CellSize;
+    float U = (Cell.X + 0.5f) * CellUVSize;
+    float V = (Cell.Y + 0.5f) * CellUVSize;
 
     return UVToCubePoint(Cell.Face, U, V);
 }
@@ -61,45 +60,29 @@ FNodeBounds FCosmicOctree::GetNodeBounds(const FCubeMapCell& Cell) const
     FNodeBounds Bounds;
 
     int32 CellsPerSide = 1 << Cell.Depth;
-    float CellSize = 2.0f / CellsPerSide;
+    float CellUVSize = 1.0f / CellsPerSide;
 
-    // Calcular limites en el cubo
-    float MinX = (Cell.X * CellSize) - 1.0f;
-    float MaxX = ((Cell.X + 1) * CellSize) - 1.0f;
-    float MinY = (Cell.Y * CellSize) - 1.0f;
-    float MaxY = ((Cell.Y + 1) * CellSize) - 1.0f;
+    float MinU = Cell.X * CellUVSize;
+    float MaxU = (Cell.X + 1) * CellUVSize;
+    float MinV = Cell.Y * CellUVSize;
+    float MaxV = (Cell.Y + 1) * CellUVSize;
 
-    // Dependiendo de la cara, los ejes se mapean diferente
+    float MinX = MinU * 2.0f - 1.0f;
+    float MaxX = MaxU * 2.0f - 1.0f;
+    float MinY = MinV * 2.0f - 1.0f;
+    float MaxY = MaxV * 2.0f - 1.0f;
+
     switch (Cell.Face)
     {
-    case 0: // +X
-        Bounds.MinCorner = FVector(1.0f, MinX, MinY);
-        Bounds.MaxCorner = FVector(1.0f, MaxX, MaxY);
-        break;
-    case 1: // -X
-        Bounds.MinCorner = FVector(-1.0f, MinX, MinY);
-        Bounds.MaxCorner = FVector(-1.0f, MaxX, MaxY);
-        break;
-    case 2: // +Y
-        Bounds.MinCorner = FVector(MinX, 1.0f, MinY);
-        Bounds.MaxCorner = FVector(MaxX, 1.0f, MaxY);
-        break;
-    case 3: // -Y
-        Bounds.MinCorner = FVector(MinX, -1.0f, MinY);
-        Bounds.MaxCorner = FVector(MaxX, -1.0f, MaxY);
-        break;
-    case 4: // +Z
-        Bounds.MinCorner = FVector(MinX, MinY, 1.0f);
-        Bounds.MaxCorner = FVector(MaxX, MaxY, 1.0f);
-        break;
-    case 5: // -Z
-        Bounds.MinCorner = FVector(MinX, MinY, -1.0f);
-        Bounds.MaxCorner = FVector(MaxX, MaxY, -1.0f);
-        break;
+    case 0: Bounds.MinCorner = FVector(1.0f, MinX, MinY); Bounds.MaxCorner = FVector(1.0f, MaxX, MaxY); break;
+    case 1: Bounds.MinCorner = FVector(-1.0f, MinX, MinY); Bounds.MaxCorner = FVector(-1.0f, MaxX, MaxY); break;
+    case 2: Bounds.MinCorner = FVector(MinX, 1.0f, MinY); Bounds.MaxCorner = FVector(MaxX, 1.0f, MaxY); break;
+    case 3: Bounds.MinCorner = FVector(MinX, -1.0f, MinY); Bounds.MaxCorner = FVector(MaxX, -1.0f, MaxY); break;
+    case 4: Bounds.MinCorner = FVector(MinX, MinY, 1.0f); Bounds.MaxCorner = FVector(MaxX, MaxY, 1.0f); break;
+    case 5: Bounds.MinCorner = FVector(MinX, MinY, -1.0f); Bounds.MaxCorner = FVector(MaxX, MaxY, -1.0f); break;
     }
 
     Bounds.Center = (Bounds.MinCorner + Bounds.MaxCorner) * 0.5f;
-
     return Bounds;
 }
 
@@ -169,12 +152,24 @@ FCubeMapCell FCosmicOctree::GetParent(const FCubeMapCell& Child) const
     return Parent;
 }
 
+
+
 float FCosmicOctree::GetCellAngularSize(const FCubeMapCell& Cell) const
 {
     // Tamano angular aproximado de la celda
     int32 CellsPerSide = 1 << Cell.Depth;
     float AnglePerSide = (PI / 2.0f) / CellsPerSide; // 90 grados en radianes / numero de celdas
     return AnglePerSide;
+}
+
+float FCosmicOctree::GetCellRadius(const FCubeMapCell& Cell) const
+{
+    // Calcular el tamaño angular de la celda
+    float AngularSize = GetCellAngularSize(Cell);
+
+    // El radio es la mitad del tamaño angular (distancia del centro al borde)
+    // Multiplicado por el radio del planeta para obtener distancia real en centímetros
+    return (AngularSize * 0.5f) * SphereRadius;
 }
 
 int32 FCosmicOctree::GetDesiredDepth(float DistanceKm) const
@@ -205,52 +200,86 @@ int32 FCosmicOctree::GetDesiredDepth(float DistanceKm) const
     return MaxDepth;
 }
 
-void FCosmicOctree::GetNodesInRadius(const FVector& ViewerLocation, const FVector& PlanetCenter, float RadiusKm, TArray<FCubeMapCell>& OutNodes) const
+//int32 FCosmicOctree::GetMaxDepthFromDistance(float DistanceToSurfaceCm) const
+//{
+//    // A mayor distancia a la superficie, menor profundidad
+//    if (DistanceToSurfaceCm > 1000000.0f) return 0;      // > 10km -> solo raíz
+//    if (DistanceToSurfaceCm > 100000.0f) return 1;       // > 1km
+//    if (DistanceToSurfaceCm > 10000.0f) return 2;        // > 100m
+//    if (DistanceToSurfaceCm > 1000.0f) return 3;         // > 10m
+//    if (DistanceToSurfaceCm > 100.0f) return 4;          // > 1m
+//    return 5;                                             // muy cerca
+//}
+
+void FCosmicOctree::TraverseCell(
+    const FCubeMapCell& Cell,
+    const FVector& PlayerDir,
+    float ViewAngleRad,
+    TArray<FCubeMapCell>& OutNodes) const
 {
-    float RadiusCm = RadiusKm * 100000.0f;
-    int32 DesiredDepth = GetDesiredDepth(RadiusKm);
+    FVector CellDir = GetNodeCenterDirection(Cell);
+
+    float Dot = FVector::DotProduct(CellDir, PlayerDir);
+    Dot = FMath::Clamp(Dot, -1.0f, 1.0f);
+
+    float AngularDistance = FMath::Acos(Dot);
+
+    // Radio angular aproximado de la celda (media diagonal)
+    float CellAngularSize = GetCellAngularSize(Cell);
+    float CellAngularRadius = CellAngularSize * 0.70710678f; // sqrt(2)/2
+
+    // Si la celda está demasiado lejos de la dirección del jugador, la descartamos
+    if (AngularDistance > ViewAngleRad + CellAngularRadius)
+        return;
+
+    // Si ya es suficientemente pequeña, la añadimos
+    if (Cell.Depth >= MaxDepth || CellAngularSize <= ViewAngleRad * 0.5f)
+    {
+        OutNodes.Add(Cell);
+        return;
+    }
+
+    // Si no, subdividimos los 4 hijos
+    TArray<FCubeMapCell> Children;
+    GetChildren(Cell, Children);
+
+    for (const FCubeMapCell& Child : Children)
+    {
+        TraverseCell(Child, PlayerDir, ViewAngleRad, OutNodes);
+    }
+}
+
+void FCosmicOctree::GetNodesInRadius(
+    const FVector& ViewerLocation,
+    const FVector& PlanetCenter,
+    float ViewDistanceKm,      // Distancia de visión en km
+    float DistanceToSurfaceCm,   // Distancia del jugador a la superficie en cm
+    TArray<FCubeMapCell>& OutNodes) const
+{
+    OutNodes.Reset();
+
+    float ViewDistanceCm = ViewDistanceKm * 100000.0f;
+
+    // Dirección del jugador respecto al centro del planeta
+    const FVector PlayerDir = (ViewerLocation - PlanetCenter).GetSafeNormal();
+
+    // Ángulo equivalente a la distancia de visión sobre la esfera
+    float ViewAngleRad = ViewDistanceCm / SphereRadius;
 
     for (int32 Face = 0; Face < 6; Face++)
     {
-        FCubeMapCell RootCell;
-        RootCell.Face = Face;
-        RootCell.X = 0;
-        RootCell.Y = 0;
-        RootCell.Depth = 0;
+        FCubeMapCell Root;
+        Root.Face = Face;
+        Root.X = 0;
+        Root.Y = 0;
+        Root.Depth = 0;
 
-        TArray<FCubeMapCell> Stack;
-        Stack.Add(RootCell);
-
-        while (Stack.Num() > 0)
-        {
-            FCubeMapCell Current = Stack.Pop();
-
-            // Obtener posición mundial del centro de la celda
-            FVector CellCenter = GetNodeCenterWorld(Current, PlanetCenter, SphereRadius);
-
-            // Calcular distancia euclidiana simple
-            float Distance = FVector::Dist(CellCenter, ViewerLocation);
-
-            // Si está fuera del radio, ignorar
-            if (Distance > RadiusCm)
-                continue;
-
-            if (Current.Depth >= DesiredDepth || Current.Depth >= MaxDepth)
-            {
-                OutNodes.Add(Current);
-            }
-            else
-            {
-                TArray<FCubeMapCell> Children;
-                GetChildren(Current, Children);
-                for (const FCubeMapCell& Child : Children)
-                {
-                    Stack.Add(Child);
-                }
-            }
-        }
+        TraverseCell(Root, PlayerDir, ViewAngleRad, OutNodes);
     }
 }
+
+
+
 
 FCubeMapCell FCosmicOctree::FindCellAtLocation(const FVector& WorldPosition, const FVector& PlanetCenter, int32 TargetDepth) const
 {
@@ -306,46 +335,7 @@ FCubeMapCell FCosmicOctree::FindCellAtLocation(const FVector& WorldPosition, con
 
 FVector FCosmicOctree::GetNodeCenterDirection(const FCubeMapCell& Cell) const
 {
-    // 1. Calcular cuántas celdas hay por lado en este nivel
-    int32 CellsPerSide = 1 << Cell.Depth;  // 2^Depth
-
-    // 2. Tamaño de cada celda en el cubo (espacio -1 a 1)
-    float CellSize = 2.0f / CellsPerSide;
-
-    // 3. Calcular coordenadas UV dentro de la cara (0 a 1)
-    float U = (Cell.X + 0.5f) * CellSize;
-    float V = (Cell.Y + 0.5f) * CellSize;
-
-    // 4. Convertir UV a punto en el cubo según la cara
-    FVector CubePoint;
-
-    switch (Cell.Face)
-    {
-    case 0: // +X
-        CubePoint = FVector(1.0f, U * 2.0f - 1.0f, V * 2.0f - 1.0f);
-        break;
-    case 1: // -X
-        CubePoint = FVector(-1.0f, U * 2.0f - 1.0f, V * 2.0f - 1.0f);
-        break;
-    case 2: // +Y
-        CubePoint = FVector(U * 2.0f - 1.0f, 1.0f, V * 2.0f - 1.0f);
-        break;
-    case 3: // -Y
-        CubePoint = FVector(U * 2.0f - 1.0f, -1.0f, V * 2.0f - 1.0f);
-        break;
-    case 4: // +Z
-        CubePoint = FVector(U * 2.0f - 1.0f, V * 2.0f - 1.0f, 1.0f);
-        break;
-    case 5: // -Z
-        CubePoint = FVector(U * 2.0f - 1.0f, V * 2.0f - 1.0f, -1.0f);
-        break;
-    default:
-        CubePoint = FVector::ZeroVector;
-        break;
-    }
-
-    // 5. Proyectar a la esfera (normalizar para obtener dirección)
-    return CubePoint.GetSafeNormal();
+    return CellToCubePoint(Cell).GetSafeNormal();
 }
 
 TArray<FVector> FCosmicOctree::GetDebugVertices(const FCubeMapCell& Cell) const
