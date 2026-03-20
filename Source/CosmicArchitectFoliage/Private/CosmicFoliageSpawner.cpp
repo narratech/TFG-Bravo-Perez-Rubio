@@ -170,7 +170,6 @@ void UCosmicFoliageSpawner::GenerateCellFoliage(const FCubeMapCell& Cell, const 
         new FAsyncTask<FFoliageGenerationTask>(
             Cell,
             FoliageCollection,
-            RandomStream.RandRange(0, 999999),
             PlanetCenter,
             PlanetRadius,
             Params,

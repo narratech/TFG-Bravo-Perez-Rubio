@@ -10,7 +10,15 @@ void FFoliageGenerationTask::DoWork()
 {
     if (!Collection) return;
 
-    FRandomStream LocalRandom(Seed);
+    //Crear siempre la misma semilla para la misma celsa
+    uint32 Hash = 2166136261u;
+
+    Hash = (Hash ^ Cell.Face) * 16777619u;
+    Hash = (Hash ^ Cell.X) * 16777619u;
+    Hash = (Hash ^ Cell.Y) * 16777619u;
+    Hash = (Hash ^ Cell.Depth) * 16777619u;
+
+    FRandomStream LocalRandom(Hash);
 
     // Generar puntos de semilla en la esfera
     GenerateSeedPoints(LocalRandom);

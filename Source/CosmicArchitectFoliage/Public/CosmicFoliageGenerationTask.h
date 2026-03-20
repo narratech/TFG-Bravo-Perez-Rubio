@@ -32,7 +32,6 @@ public:
     TArray<FCosmicFoliageInstance> ResultInstances;
     FCubeMapCell Cell;
     UCosmicFoliageCollection* Collection;
-    int32 Seed;
     FVector PlanetCenter;
     float PlanetRadius;
     FCosmicNoiseGenerationParameters NoiseSettings;
@@ -54,14 +53,12 @@ public:
     FFoliageGenerationTask(
         const FCubeMapCell& InCell,
         UCosmicFoliageCollection* InCollection,
-        int32 InSeed,
         const FVector& InPlanetCenter,
         float InPlanetRadius,
         FCosmicNoiseGenerationParameters InNoiseSettings,
         float InCellAreaKm2)
         : Cell(InCell)
         , Collection(InCollection)
-        , Seed(InSeed)
         , PlanetCenter(InPlanetCenter)
         , PlanetRadius(InPlanetRadius)
         , NoiseSettings(InNoiseSettings)
