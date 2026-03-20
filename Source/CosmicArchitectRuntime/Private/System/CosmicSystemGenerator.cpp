@@ -149,7 +149,7 @@ void ACosmicSystemGenerator::GenerateBodies()
         StarMaterial,
         nullptr);
 
-    //Star->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
+    Star->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
 
     UGravityComponent* StarGravity = NewObject<UGravityComponent>(Star);
     StarGravity->RegisterComponent();
@@ -177,7 +177,7 @@ void ACosmicSystemGenerator::GenerateBodies()
         if (!Planet)
             continue;
 
-        //Planet->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
+        Planet->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
 
         // Distancia orbital
         float OrbitDistanceKm = Stream.FRandRange(StarRadiusKm * 3.0f, SystemRadiusKm);
@@ -267,7 +267,7 @@ void ACosmicSystemGenerator::GenerateBodies()
             if (!Moon)
                 continue;
 
-            //Moon->AttachToActor(Planet, FAttachmentTransformRules::KeepWorldTransform);
+            Moon->AttachToActor(Planet, FAttachmentTransformRules::KeepWorldTransform);
 
             float MoonOrbitKm = PlanetRadiusKm * Stream.FRandRange(10.0f, 15.0f);
 

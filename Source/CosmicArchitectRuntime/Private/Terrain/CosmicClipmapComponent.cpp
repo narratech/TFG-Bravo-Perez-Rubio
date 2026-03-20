@@ -62,6 +62,11 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
     ElapsedTime += DeltaTime;
 
+    if (DynamicPlanetMat) {
+        DynamicPlanetMat->SetVectorParameterValue("CentroPlaneta", GetOwner()->GetActorLocation());
+    }
+
+
     if (ElapsedTime > TimeToRefreshActive) {
 
         ElapsedTime = 0;
@@ -215,8 +220,10 @@ void UCosmicClipmapComponent::CreateLevels()
         if (DynamicPlanetMat)
         {
             Mesh->SetMaterial(0, DynamicPlanetMat);
-            DynamicPlanetMat->SetVectorParameterValue("CentroPlaneta", GetOwner()->GetActorLocation());
+            
+            
         }
+
         //else
         //{
         //    // Material por defecto
@@ -262,6 +269,7 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
             DynamicPlanetMat->SetVectorParameterValue(FName("ColdColor"), PlanetAltitudeColor);
             DynamicPlanetMat->SetScalarParameterValue(FName("NoiseScale"), MaterialNoiseScale);
             DynamicPlanetMat->SetTextureParameterValue(FName("PlanetTexture"), DefaultTexture);
+             
         }
     }
 

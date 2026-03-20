@@ -112,11 +112,11 @@ void UOrbitComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 	FRotator OrbitTilt(InclinationX, InclinationY, InclinationZ);
 	FVector RotatedPos = OrbitTilt.RotateVector(OrbitalPos);
 
-	FVector FinalLocation = ParentBody->GetActorLocation() + RotatedPos;
+	FVector FinalLocation = RotatedPos;
 
 	if (AActor* Owner = GetOwner())
 	{
-		Owner->SetActorLocation(FinalLocation);//Mover actor a la posicion
+		Owner->SetActorRelativeLocation(FinalLocation);//Mover actor a la posicion
 	}
 }
 
@@ -165,12 +165,12 @@ void UOrbitComponent::UpdateInitialOrbitPosition()
 	FVector RotatedPos = OrbitTilt.RotateVector(OrbitalPos);
 
 	// Posición final relativa al cuerpo padre
-	FVector FinalLocation = ParentBody->GetActorLocation() + RotatedPos;
+	FVector FinalLocation = RotatedPos;
 
 	// Mover el actor
 	if (AActor* Owner = GetOwner())
 	{
-		Owner->SetActorLocation(FinalLocation);
+		Owner->SetActorRelativeLocation(FinalLocation);
 	}
 }
 
