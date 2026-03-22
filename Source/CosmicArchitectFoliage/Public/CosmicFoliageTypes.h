@@ -25,14 +25,20 @@ struct COSMICARCHITECTFOLIAGE_API FCosmicFoliageMesh
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings")
     UStaticMesh* Mesh = nullptr;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings", meta = (ClampMin = "0.1", ClampMax = "10"))
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings", meta = (ClampMin = "0.1", ClampMax = "150"))
     float ScaleMin = 0.8f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings", meta = (ClampMin = "0.1", ClampMax = "10"))
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings", meta = (ClampMin = "0.1", ClampMax = "150"))
     float ScaleMax = 1.2f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings", meta = (ClampMin = "-1000", ClampMax = "1000"))
+    float HeightOffset = 0.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings")
     bool bAlignToGround = true;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings")
+    bool bAlignToPlanetNormal = false;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings", meta = (ClampMin = "-180", ClampMax = "180"))
     float RandomRotationMin = 0.0f;

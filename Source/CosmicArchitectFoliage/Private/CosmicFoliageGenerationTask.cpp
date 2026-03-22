@@ -260,27 +260,44 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
             SelectedMesh.ScaleMax
         );
 
+        FVector OffsetNormal = FVector::UpVector;
+
         FQuat Rotation;
         if (SelectedMesh.bAlignToGround)
         {
             // Obtener normal del terreno (también podría optimizarse con cálculo por lotes)
-            FVector TerrainNormal = GetTerrainNormal(Point.Direction, Random);
+            FVector TerrainNormal = OffsetNormal = GetTerrainNormal(Point.Direction, Random);
 
-            // Rotación que alinea el up vector del mesh con la normal
+            // Rotacion que alinea el up vector del mesh con la normal
             FQuat AlignRotation = FQuat::FindBetweenNormals(FVector::UpVector, TerrainNormal);
 
-            // Añadir rotación aleatoria alrededor de la normal
+            // Anadir rotacion aleatoria alrededor de la normal
             FQuat RandomYawRotation = FQuat(TerrainNormal, FMath::DegreesToRadians(Yaw));
 
             Rotation = RandomYawRotation * AlignRotation;
         }
-        else
+        else if(SelectedMesh.bAlignToPlanetNormal)
         {
+            FVector PlanetNormal = OffsetNormal = Point.Direction;
+
+            // Alinear el up del mesh con la normal del planeta
+            FQuat AlignRotation = FQuat::FindBetweenNormals(FVector::UpVector, PlanetNormal);
+
+            // Rotacion aleatoria alrededor de la normal (para variedad)
+            FQuat RandomYawRotation = FQuat(PlanetNormal, FMath::DegreesToRadians(Yaw));
+
+            Rotation = RandomYawRotation * AlignRotation;         
+        }
+        else {
             Rotation = FRotator(0, Yaw, 0).Quaternion();
         }
 
         FTransform Transform;
-        Transform.SetLocation(Point.WorldPosition);
+        FVector FinalPosition = Point.WorldPosition;
+
+        FinalPosition += OffsetNormal * SelectedMesh.HeightOffset;
+
+        Transform.SetLocation(FinalPosition);
         Transform.SetRotation(Rotation);
         Transform.SetScale3D(FVector(Scale));
 
