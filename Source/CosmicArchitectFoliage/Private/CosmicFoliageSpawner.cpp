@@ -13,9 +13,10 @@ UCosmicFoliageSpawner::UCosmicFoliageSpawner()
     PrimaryComponentTick.bCanEverTick = true;
 }
 
-void UCosmicFoliageSpawner::InitFoliageSpawner(float RadiusKm)
+void UCosmicFoliageSpawner::InitFoliageSpawner(float RadiusKm, UCosmicNoiseSettings* NoiseSettings)
 {
     PlanetRadiusCm = RadiusKm * 100000;
+    CurrentNoiseSettings = NoiseSettings;
 }
 
 void UCosmicFoliageSpawner::BeginPlay()
@@ -47,8 +48,8 @@ void UCosmicFoliageSpawner::TickComponent(float DeltaTime, ELevelTick TickType, 
     FVector PlanetCenter = PlanetActor->GetActorLocation();
 
     // Actualizar octree y generar foliage
-    UpdateOctreeAndGenerate(ViewerLocation, PlanetCenter, PlanetRadiusCm, nullptr);
-    UpdateFoliageGeneration(DeltaTime, PlanetCenter, PlanetRadiusCm, nullptr);
+    UpdateOctreeAndGenerate(ViewerLocation, PlanetCenter, PlanetRadiusCm, CurrentNoiseSettings);
+    UpdateFoliageGeneration(DeltaTime, PlanetCenter, PlanetRadiusCm, CurrentNoiseSettings);
 
     // Debug: Dibujar celdas
     DrawDebugCells(PlanetCenter, PlanetRadiusCm);

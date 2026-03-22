@@ -39,7 +39,7 @@ class COSMICARCHITECTFOLIAGE_API UCosmicFoliageSpawner : public UActorComponent
 public:
     UCosmicFoliageSpawner();
 
-    void InitFoliageSpawner(float PlanetRadius);
+    void InitFoliageSpawner(float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
 
     // Configuración principal
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
@@ -95,6 +95,7 @@ private:
     FRandomStream RandomStream;
     TSet<FCubeMapCell> PendingCells;
     TArray<FAsyncTask<FFoliageGenerationTask>*> ActiveTasks;
+    UCosmicNoiseSettings* CurrentNoiseSettings;
 
 
     /** Aplica las instancias generadas al mundo */
