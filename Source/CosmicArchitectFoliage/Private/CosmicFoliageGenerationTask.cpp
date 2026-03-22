@@ -162,7 +162,7 @@ void FFoliageGenerationTask::EvaluateEnvironmentalConditions(FRandomStream& Rand
         Point.Slope = CalculateSlope(Point.Direction, i, Heights, Random);
 
         // Actualizar posición final con la altura del terreno
-        Point.WorldPosition = PlanetCenter + Point.Direction * (PlanetRadius + Point.Height);
+        Point.WorldPosition = Point.Direction * (PlanetRadius + Point.Height);
     }
 }
 
