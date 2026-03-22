@@ -27,7 +27,7 @@ void ACosmicPlanet::PostInitializeComponents()
     Super::PostInitializeComponents();
 
     if (FoliageSpawnerComponent) {
-        FoliageSpawnerComponent->InitFoliageSpawner(RadiusKm);
+        FoliageSpawnerComponent->InitFoliageSpawner(RadiusKm, NoiseSettings);
     }
 }
 
