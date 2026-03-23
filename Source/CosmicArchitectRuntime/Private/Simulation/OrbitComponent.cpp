@@ -9,11 +9,14 @@
 #include "Engine/World.h"
 #include "Math/UnrealMathUtility.h"
 
-// Sets default values for this component's properties
+// E: Establece los valores predeterminados de las propiedades de este componente
+// I: Sets default values for this component's properties
 UOrbitComponent::UOrbitComponent()
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
+	// E: Configura este componente para inicializarse cuando el juego empieza y hacer tick cada frame. Puedes apagar
+	// E: estas funciones para mejorar el rendimiento si no las necesitas.
+	// I: Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
+	// I: off to improve performance if you don't need them.
 	bTickInEditor = true;
 
 	PrimaryComponentTick.bCanEverTick = true;
@@ -24,12 +27,14 @@ void UOrbitComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 
-	// Obtener el nombre de la propiedad que cambió
+	// E: Obtener el nombre de la propiedad que cambió
+	// I: Get the name of the property that changed
 	FName PropertyName = (PropertyChangedEvent.Property != nullptr)
 		? PropertyChangedEvent.Property->GetFName()
 		: NAME_None;
 
-	// Lista de propiedades que deberían triggerear una actualización
+	// E: Lista de propiedades que deberían triggerear una actualización
+	// I: List of properties that should trigger an update
 	bool bNeedsUpdate = (PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, ParentBody) ||
 		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, SemiMajorAxisKm) ||
 		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, Eccentricity) ||
@@ -43,17 +48,19 @@ void UOrbitComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, InitialPosition) ||
 		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, OrbitalPeriod));
 
-	// Si estamos en el editor y no jugando, actualizar posición
+	// E: Si estamos en el editor y no jugando, actualizar posición
+	// I: If we are in the editor and not playing, update position
 	UWorld* World = GetWorld();
 	if (bNeedsUpdate && World && World->WorldType == EWorldType::Editor)
-	{		
-		UpdateInitialOrbitPosition();		
+	{
+		UpdateInitialOrbitPosition();
 	}
 }
 #endif
 
 
-// Called when the game starts
+// E: Se llama cuando el juego comienza
+// I: Called when the game starts
 void UOrbitComponent::BeginPlay()
 {
 	Super::BeginPlay();
@@ -61,7 +68,8 @@ void UOrbitComponent::BeginPlay()
 }
 
 
-// Called every frame
+// E: Se llama cada frame
+// I: Called every frame
 void UOrbitComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
@@ -78,7 +86,9 @@ void UOrbitComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 		UPrimitiveComponent* RootPrim = Cast<UPrimitiveComponent>(Owner->GetRootComponent());
 
 		FRotator DeltaRotation = FRotator(0.0f, SpinSpeed * DeltaTime, 0.0f);
-		Owner->AddActorLocalRotation(DeltaRotation); //Aplicar rotación sobre si mismo
+		// E: Aplicar rotación sobre si mismo
+		// I: Apply rotation on itself
+		Owner->AddActorLocalRotation(DeltaRotation);
 	}
 
 	if (!ParentBody || OrbitalPeriod <= 0.0f) return;
@@ -87,12 +97,16 @@ void UOrbitComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 
 	CurrentOrbitTime = FMath::Fmod(CurrentOrbitTime, OrbitalPeriod);
 
-	float MeanMotion = (2.0f * PI) / OrbitalPeriod; //Calcular el porcentaje de la órbita completado
+	// E: Calcular el porcentaje de la órbita completado
+	// I: Calculate the percentage of the orbit completed
+	float MeanMotion = (2.0f * PI) / OrbitalPeriod;
 	float MeanAnomaly = MeanMotion * CurrentOrbitTime;
 
 	float E = MeanAnomaly;
 
-	for (int32 i = 0; i < 5; ++i) { //Iteraciones de la ecuacion de Kepler
+	// E: Iteraciones de la ecuacion de Kepler
+	// I: Iterations of Kepler's equation
+	for (int32 i = 0; i < 5; ++i) {
 		float SinE = FMath::Sin(E);
 		float CosE = FMath::Cos(E);
 
@@ -102,13 +116,15 @@ void UOrbitComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 
 	float SemiMajorAxisCm = SemiMajorAxisKm * 100000;
 
-	//Calcular posicion final
+	// E: Calcular posicion final
+	// I: Calculate final position
 	float X = SemiMajorAxisCm * (FMath::Cos(E) - Eccentricity);
 	float Y = SemiMajorAxisCm * FMath::Sqrt(1.0f - Eccentricity * Eccentricity) * FMath::Sin(E);
 
 	FVector OrbitalPos(X, Y, 0.0f);
 
-	//Aplicar inclinacion (Rotar plano de la orbita)
+	// E: Aplicar inclinacion (Rotar plano de la orbita)
+	// I: Apply inclination (Rotate orbit plane)
 	FRotator OrbitTilt(InclinationX, InclinationY, InclinationZ);
 	FVector RotatedPos = OrbitTilt.RotateVector(OrbitalPos);
 
@@ -116,7 +132,9 @@ void UOrbitComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 
 	if (AActor* Owner = GetOwner())
 	{
-		Owner->SetActorRelativeLocation(FinalLocation);//Mover actor a la posicion
+		// E: Mover actor a la posicion
+		// I: Move actor to the position
+		Owner->SetActorRelativeLocation(FinalLocation);
 	}
 }
 
@@ -129,15 +147,19 @@ void UOrbitComponent::InitOrbit(FColor color)
 
 void UOrbitComponent::UpdateInitialOrbitPosition()
 {
-	// Resetear el tiempo orbital
+	// E: Resetear el tiempo orbital
+	// I: Reset orbital time
 	CurrentOrbitTime = OrbitalPeriod * InitialPosition;
 
-	// Calcular posición inicial (t=0)
+	// E: Calcular posición inicial (t=0)
+	// I: Calculate initial position (t=0)
 	if (!ParentBody) return;
 
 	CurrentOrbitTime = FMath::Fmod(CurrentOrbitTime, OrbitalPeriod);
 
-	float MeanMotion = (2.0f * PI) / OrbitalPeriod; //Calcular el porcentaje de la órbita completado
+	// E: Calcular el porcentaje de la órbita completado
+	// I: Calculate the percentage of the orbit completed
+	float MeanMotion = (2.0f * PI) / OrbitalPeriod;
 	float MeanAnomaly = MeanMotion * CurrentOrbitTime;
 
 	float E = MeanAnomaly;
@@ -152,7 +174,8 @@ void UOrbitComponent::UpdateInitialOrbitPosition()
 		}
 	}
 
-	// Calcular posición en el plano orbital
+	// E: Calcular posición en el plano orbital
+	// I: Calculate position on the orbital plane
 	float SemiMajorAxisCm = SemiMajorAxisKm * 100000.0f;
 
 	float X = SemiMajorAxisCm * (FMath::Cos(E) - Eccentricity);
@@ -160,14 +183,17 @@ void UOrbitComponent::UpdateInitialOrbitPosition()
 
 	FVector OrbitalPos(X, Y, 0.0f);
 
-	// Aplicar inclinación
+	// E: Aplicar inclinación
+	// I: Apply inclination
 	FRotator OrbitTilt(InclinationX, InclinationY, InclinationZ);
 	FVector RotatedPos = OrbitTilt.RotateVector(OrbitalPos);
 
-	// Posición final relativa al cuerpo padre
+	// E: Posición final relativa al cuerpo padre
+	// I: Final position relative to the parent body
 	FVector FinalLocation = RotatedPos;
 
-	// Mover el actor
+	// E: Mover el actor
+	// I: Move the actor
 	if (AActor* Owner = GetOwner())
 	{
 		Owner->SetActorRelativeLocation(FinalLocation);
@@ -182,7 +208,10 @@ void UOrbitComponent::UpdateOrbitVisualization()
 	if (!World || World->WorldType != EWorldType::Editor) return;
 
 	float SemiMajorAxisCm = SemiMajorAxisKm * 100000.0f;
-	int32 NumPoints = OrbitSegments; // Resolución del círculo
+
+	// E: Resolución del círculo
+	// I: Circle resolution
+	int32 NumPoints = OrbitSegments;
 	FVector BodyLocation = ParentBody->GetActorLocation();
 
 	TArray<FVector> Points;
@@ -191,8 +220,10 @@ void UOrbitComponent::UpdateOrbitVisualization()
 	{
 		float Angle = (2.0f * PI * i) / NumPoints;
 
-		// Calcular punto en la órbita (aproximación circular para simplificar)
-		// Para una elipse real, necesitarías resolver Kepler para cada punto
+		// E: Calcular punto en la órbita (aproximación circular para simplificar)
+		// E: Para una elipse real, necesitarías resolver Kepler para cada punto
+		// I: Calculate point on the orbit (circular approximation for simplicity)
+		// I: For a real ellipse, you would need to solve Kepler for each point
 		float Radius = SemiMajorAxisCm * (1.0f - Eccentricity * Eccentricity) /
 			(1.0f + Eccentricity * FMath::Cos(Angle));
 
@@ -207,11 +238,10 @@ void UOrbitComponent::UpdateOrbitVisualization()
 		Points.Add(BodyLocation + RotatedPos);
 	}
 
-	// Dibujar líneas entre puntos
+	// E: Dibujar líneas entre puntos
+	// I: Draw lines between points
 	for (int32 i = 0; i < Points.Num() - 1; ++i)
 	{
 		DrawDebugLine(World, Points[i], Points[i + 1], OrbitColor, false, -1.0f, 0, OrbitThickness);
 	}
 }
-
-

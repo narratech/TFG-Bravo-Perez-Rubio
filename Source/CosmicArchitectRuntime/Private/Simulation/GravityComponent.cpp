@@ -6,7 +6,6 @@
 #include "Engine/World.h"
 #include "Components/PrimitiveComponent.h"
 
-// Sets default values for this component's properties
 UGravityComponent::UGravityComponent()
 {
 	// ...
@@ -23,14 +22,15 @@ void UGravityComponent::BeginPlay()
 
         if (RootPrimitive)
         {
-            // Asegurar que sea movible
+            // E: Asegurar que sea movible
+            // I: Make sure it's movable
             if (GravityMode != ECosmicGravityMode::None && RootPrimitive->Mobility != EComponentMobility::Movable)
             {
                 RootPrimitive->SetMobility(EComponentMobility::Movable);
             }
 
-            // Si quieres que siempre use físicas:
-            // 
+            // E: Si quieres que siempre use físicas:
+            // I: If you want to use physics always
             if (!IsPlanet) {
                 RootPrimitive->SetSimulatePhysics(true);
                 RootPrimitive->SetEnableGravity(false);
@@ -68,13 +68,16 @@ void UGravityComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void UGravityComponent::Integrate(double DeltaTime)
 {
 
-    FVector Acceleration = AccumulatedForce * 100 / Mass; //Calcular aceleracion a partir de fuerza y masa, de m a cm
+    FVector Acceleration = AccumulatedForce * 100 / Mass; // E: Calcular aceleracion a partir de fuerza y masa, de m a cm
+                                                          // I: Calculate acceleration from force and mass, from m to cm
 
     if (!IsPlanet && RootPrimitive && RootPrimitive->IsSimulatingPhysics())
     {
-        RootPrimitive->AddForce(Acceleration, NAME_None, true); //Si simula fisicas, aplicar fuerza
+        RootPrimitive->AddForce(Acceleration, NAME_None, true); // E: Si simula fisicas, aplicar fuerza 
+                                                                // I: If it uses phyisics, apply force
     }
-    else //Si no, calcular velocidad y actualizar posicion
+    else // E: Si no, calcular velocidad y actualizar posicion 
+        //  I: If not, calculate velocity and update position
     {
         AActor* Owner = GetOwner();
 
@@ -96,10 +99,12 @@ void UGravityComponent::SetIsPlanet(bool bNewIsPlanet)
 
     IsPlanet = bNewIsPlanet;
 
-    // Notificar al subsistema del cambio
+    // E: Notificar al subsistema del cambio
+    // I: Notify the subsystem of the change
     if (UGravitySubsystem* Subsystem = GetWorld()->GetSubsystem<UGravitySubsystem>())
     {
-        // Primero removemos y luego volvemos a registrar para actualizar las listas
+        // E: Primero desregistramos y luego volvemos a registrar para actualizar las listas
+        // I: Unregister first and then re-register to update lists
         Subsystem->UnregisterBody(this);
         Subsystem->RegisterBody(this);
     }
@@ -107,10 +112,12 @@ void UGravityComponent::SetIsPlanet(bool bNewIsPlanet)
 
 float UGravityComponent::GetObjectRadius() const
 {
-    // Obtenemos el radio aproximado del StaticMesh (o del Actor entero)
+    // E: Obtenemos el radio aproximado del StaticMesh (o del Actor entero)
+    // I: Obtain the approximated radius for the StaticMesh (or the whole Actor)
     FVector Origin, BoxExtent;
     GetOwner()->GetActorBounds(true, Origin, BoxExtent);
-
-    // Devolvemos la dimensión más grande (por si no es una esfera perfecta)
+    
+    // E: Devolvemos la dimensión más grande (por si no es una esfera perfecta)
+    // I: We return the biggest dimension (in case it's not a perfect sphere)
     return BoxExtent.GetMax();
 }
