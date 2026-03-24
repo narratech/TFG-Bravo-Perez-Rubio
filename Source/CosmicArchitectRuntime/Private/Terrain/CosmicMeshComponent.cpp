@@ -113,15 +113,18 @@ void UCosmicMeshComponent::BuildBaseMesh()
 
             if (bBorder)
             {
-                // Bordes horizontales
-                if ((y == 0 || y == QuadRes - 1) && (x % 2 == 0) && x < QuadRes - 1)
+                bool bIsHorizontal = (y == 0 || y == QuadRes - 1) && (x % 2 == 0) && x < QuadRes - 1;
+                bool bIsVertical = (x == 0 || x == QuadRes - 1) && (y % 2 == 0) && y < QuadRes - 1;
+
+                // bordes horizontales
+                if (bIsHorizontal)
                 {
                     int32 i4 = i1 + 1;
                     int32 i5 = i3 + 1;
 
                     if (i4 < TotalVertices)
                     {
-                        if (y == QuadRes - 1) // Borde inferior
+                        if (y == QuadRes - 1) // borde inferior 
                         {
                             if (x != QuadRes - 2) {
                                 Triangles.Add(i1); Triangles.Add(i5); Triangles.Add(i4); TriangleCount++;
@@ -131,7 +134,7 @@ void UCosmicMeshComponent::BuildBaseMesh()
                             }
                             Triangles.Add(i2); Triangles.Add(i5); Triangles.Add(i1); TriangleCount++;
                         }
-                        else // Borde superior
+                        else // borde superior 
                         {
                             if (x != 0) {
                                 Triangles.Add(i0); Triangles.Add(i2); Triangles.Add(i3); TriangleCount++;
@@ -143,15 +146,16 @@ void UCosmicMeshComponent::BuildBaseMesh()
                         }
                     }
                 }
-                // Bordes verticales
-                else if ((x == 0 || x == QuadRes - 1) && (y % 2 == 0) && y < QuadRes - 1)
+
+                // bordes verticales (Fíjate que ya NO es un "else if")
+                if (bIsVertical)
                 {
                     int32 i4 = i2 + VertRes;
                     int32 i5 = i3 + VertRes;
 
                     if (i4 < TotalVertices)
                     {
-                        if (x == QuadRes - 1) // Borde derecho
+                        if (x == QuadRes - 1) // borde derecho
                         {
                             Triangles.Add(i1); Triangles.Add(i2); Triangles.Add(i5); TriangleCount++;
 
@@ -162,7 +166,7 @@ void UCosmicMeshComponent::BuildBaseMesh()
                                 Triangles.Add(i2); Triangles.Add(i4); Triangles.Add(i5); TriangleCount++;
                             }
                         }
-                        else // Borde izquierdo
+                        else // borde izquierdo 
                         {
                             if (y != 0) {
                                 Triangles.Add(i0); Triangles.Add(i3); Triangles.Add(i1); TriangleCount++;
