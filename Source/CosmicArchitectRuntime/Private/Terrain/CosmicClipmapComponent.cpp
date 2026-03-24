@@ -104,30 +104,30 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         if (bPerformaceMode) return;
 
-        for (size_t i = 0; i < Levels.Num(); i++)
-        {
-            if (Levels[i]->bActiveMesh)
-            {
-                // Aplica los nuevos vértices a la gráfica si la tarea ya terminó
-                Levels[i]->CheckAndApplyMeshUpdate();
-            }
-        }
-        
-        if (Levels.Num() > 1)
-        {
-            UCosmicMeshComponent* MeshLast = Levels.Last();
-            UCosmicMeshComponent* MeshFirst = Levels[0];
+        //for (size_t i = 0; i < Levels.Num(); i++)
+        //{
+        //    if (Levels[i]->bActiveMesh)
+        //    {
+        //        // Aplica los nuevos vértices a la gráfica si la tarea ya terminó
+        //        Levels[i]->CheckAndApplyMeshUpdate();
+        //    }
+        //}
+        //
+        //if (Levels.Num() > 1)
+        //{
+        //    UCosmicMeshComponent* MeshLast = Levels.Last();
+        //    UCosmicMeshComponent* MeshFirst = Levels[0];
 
-            bool bIsVisible = IsClipmapRingVisible(Levels.Num() - 1, DistanceToSurface);
+        //    bool bIsVisible = IsClipmapRingVisible(Levels.Num() - 1, DistanceToSurface);
 
-            if (!bIsVisible && MeshFirst->GridSpacing > MinTriangleSize) {
-                ReduceClimapLevel();
-            }
-            else if(IsClipmapRingVisible(MeshLast->GridSpacing * 2, MeshLast->Resolution, DistanceToSurface) 
-                && MeshLast->GridSpacing < BaseGridSpacing * FMath::Pow(2.0f, NumLevels - 1)){
-                IncreaseClipmapLevel();
-            }         
-        }
+        //    if (!bIsVisible && MeshFirst->GridSpacing > MinTriangleSize) {
+        //        ReduceClimapLevel();
+        //    }
+        //    else if(IsClipmapRingVisible(MeshLast->GridSpacing * 2, MeshLast->Resolution, DistanceToSurface) 
+        //        && MeshLast->GridSpacing < BaseGridSpacing * FMath::Pow(2.0f, NumLevels - 1)){
+        //        IncreaseClipmapLevel();
+        //    }         
+        //}
 
         if (FreezeGeneration) {
             return;
@@ -135,14 +135,14 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         UpdatePatchTransform(SurfacePos, N);
 
-        for (size_t i = 0; i < Levels.Num(); i++)
-        {
-            if (Levels[i]->bActiveMesh)
-            {
-                // Inicia el cálculo de ruido en hilos de fondo si no está haciéndolo ya
-                Levels[i]->RequestMeshUpdate();
-            }
-        }
+        //for (size_t i = 0; i < Levels.Num(); i++)
+        //{
+        //    if (Levels[i]->bActiveMesh)
+        //    {
+        //        // Inicia el cálculo de ruido en hilos de fondo si no está haciéndolo ya
+        //        Levels[i]->RequestMeshUpdate();
+        //    }
+        //}
     }    
 }
 
