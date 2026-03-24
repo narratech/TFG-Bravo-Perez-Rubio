@@ -168,6 +168,12 @@ void UCosmicClipmapComponent::CreateLevels()
         return;
     }
 
+    int32 Remainder = BaseResolution % 4;
+
+    if (Remainder != 0) {
+        BaseResolution += 4 - Remainder;
+    }
+
     //UE_LOG(LogTemp, Warning, TEXT("UCosmicClipmapComponent::CreateLevels() - Creando %d niveles"), NumLevels);
 
     // 3. Inicializar array
