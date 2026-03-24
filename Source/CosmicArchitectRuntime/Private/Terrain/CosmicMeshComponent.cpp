@@ -6,272 +6,6 @@
 
 void UCosmicMeshComponent::BuildBaseMesh()
 {
-//    //UE_LOG(LogTemp, Warning, TEXT("UClipmapMeshComponent::BuildBaseMesh() iniciado"));
-//
-//    const int32 VertRes = Resolution + 1;
-//    const int32 TotalVertices = VertRes * VertRes;
-//    const int32 HalfRes = Resolution / 2;
-//
-//    //UE_LOG(LogTemp, Warning, TEXT("  Resolución: %d"), Resolution);
-//    //UE_LOG(LogTemp, Warning, TEXT("  VertRes: %d"), VertRes);
-//    //UE_LOG(LogTemp, Warning, TEXT("  Total vértices esperados: %d"), TotalVertices);
-//
-//    // 1. LIMPIAR TODO primero
-//    ClearAllMeshSections();
-//
-//    BaseVertices.Empty();
-//    BaseNormals.Empty();
-//    BaseTangents.Empty();
-//    UVs.Empty();
-//    Triangles.Empty();
-//    //HeightOffsets.Empty();
-//    CurrentVertices.Empty();
-//    CurrentNormals.Empty();
-//    CurrentTangents.Empty();
-//
-//    BaseVertices.Reserve(TotalVertices);
-//    BaseNormals.Reserve(TotalVertices);
-//    BaseTangents.Reserve(TotalVertices);
-//    UVs.Reserve(TotalVertices);
-//
-//    // 2. INICIALIZAR con tamaño correcto
-//    //HeightOffsets.Init(0.0f, TotalVertices);
-//
-//    // 3. CALCULAR VÉRTICES
-//    int32 ActualVerticesCalculated = 0;
-//
-//    for (int32 y = 0; y < VertRes; ++y)
-//    {
-//        for (int32 x = 0; x < VertRes; ++x)
-//        {
-//            float WorldX = (x - HalfRes) * GridSpacing;
-//            float WorldY = (y - HalfRes) * GridSpacing;
-//
-//            // Calcular posición en esfera
-//            FVector SphereCenter = FVector(0, 0, -PlanetRadius);
-//            float Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
-//            FVector BasePosition;
-//
-//            if (Distance2D <= PlanetRadius && Distance2D > 0.001f) // Evitar división por 0
-//            {
-//                float ZOffset = FMath::Sqrt(PlanetRadius * PlanetRadius - Distance2D * Distance2D);
-//                BasePosition = FVector(WorldX, WorldY, -PlanetRadius + ZOffset);
-//            }
-//            else if (Distance2D <= 0.001f)
-//            {
-//                // Centro - evitar NaN
-//                BasePosition = FVector(0, 0, 0);
-//            }
-//            else
-//            {
-//                float Scale = PlanetRadius / Distance2D;
-//                BasePosition = FVector(WorldX * Scale, WorldY * Scale, -PlanetRadius);
-//            }
-//
-//            BaseVertices.Add(BasePosition);
-//            ActualVerticesCalculated++;
-//
-//            // Normal
-//            FVector Normal = (BasePosition - SphereCenter);
-//            if (Normal.SizeSquared() > 0.001f)
-//            {
-//                Normal.Normalize();
-//            }
-//            else
-//            {
-//                Normal = FVector::UpVector;
-//            }
-//            BaseNormals.Add(Normal);
-//
-//            // Tangente
-//            FVector TangentDir = FVector(-Normal.Y, Normal.X, 0);
-//            if (TangentDir.SizeSquared() > 0.001f)
-//            {
-//                TangentDir.Normalize();
-//            }
-//            else
-//            {
-//                TangentDir = FVector(1, 0, 0);
-//            }
-//            BaseTangents.Add(FProcMeshTangent(TangentDir.X, TangentDir.Y, TangentDir.Z));
-//
-//            // UVs
-//            UVs.Add(FVector2D(
-//                (float)x / Resolution,
-//                (float)y / Resolution
-//            ));
-//        }
-//    }
-//
-//    //UE_LOG(LogTemp, Warning, TEXT("  Vértices calculados: %d"), ActualVerticesCalculated);
-//
-//    // 4. CALCULAR TRIÁNGULOS (CORREGIDO)
-//    Triangles.Empty();
-//    int32 TriangleCount = 0;
-//
-//    for (int32 y = 0; y < Resolution; ++y)
-//    {
-//        for (int32 x = 0; x < Resolution; ++x)
-//        {
-//            // Índices de vértices
-//            int32 i0 = y * VertRes + x;
-//            int32 i1 = i0 + 1;
-//            int32 i2 = i0 + VertRes;
-//            int32 i3 = i2 + 1;
-//
-//            if (bIsRing)
-//            {
-//                bool bInsideInner =
-//                    x > HalfRes / 2 &&
-//                    x < Resolution - HalfRes / 2 &&
-//                    y > HalfRes / 2 &&
-//                    y < Resolution - HalfRes / 2;
-//
-//                if (bInsideInner)
-//                {
-//                    continue;
-//                }
-//            }
-//
-//            if (i0 >= TotalVertices || i1 >= TotalVertices ||
-//                i2 >= TotalVertices || i3 >= TotalVertices)
-//            {
-//                UE_LOG(LogTemp, Error, TEXT("Índice de triángulo inválido en [%d,%d]"), x, y);
-//                continue;
-//            }
-//
-//            bool bBorder =
-//                (x == 0) ||
-//                (x == Resolution - 1) ||
-//                (y == 0) ||
-//                (y == Resolution - 1);
-//
-//            // BORDE DEL NIVEL 
-//            if (bBorder)
-//            {
-//                // bordes horizontales
-//                if ((y == 0 || y == Resolution - 1) && (x % 2 == 0) && x < Resolution - 1)
-//                {
-//                    int32 i4 = i1 + 1;
-//                    int32 i5 = i3 + 1;
-//
-//                    if (i4 < TotalVertices)
-//                    {
-//                        if (y == Resolution - 1) // borde inferior 
-//                        {
-//
-//                            if (x != Resolution - 2) {
-//                                Triangles.Add(i1);
-//                                Triangles.Add(i5);
-//                                Triangles.Add(i4);
-//                                TriangleCount++;
-//                            }
-//                            
-//                            if (x != 0) {
-//                                Triangles.Add(i1);
-//                                Triangles.Add(i0);
-//                                Triangles.Add(i2);
-//                                TriangleCount++;
-//                            }
-//                            
-//                            Triangles.Add(i2);
-//                            Triangles.Add(i5);
-//                            Triangles.Add(i1);
-//                            TriangleCount++;
-//                        }
-//                        else // borde superior 
-//                        {
-//                            if (x != 0) {
-//                                Triangles.Add(i0);
-//                                Triangles.Add(i2);
-//                                Triangles.Add(i3);
-//                                TriangleCount++;
-//                            }
-//
-//                            if (x != Resolution - 2) {
-//                                Triangles.Add(i3);
-//                                Triangles.Add(i5);
-//                                Triangles.Add(i4);
-//                                TriangleCount++;
-//                            }
-//
-//                            Triangles.Add(i0);
-//                            Triangles.Add(i3);
-//                            Triangles.Add(i4);
-//                            TriangleCount++;
-//                        }
-//                    }
-//                }
-//                // bordes verticales
-//                else if ((x == 0 || x == Resolution - 1) && (y % 2 == 0) && y < Resolution - 1)
-//                {
-//                    int32 i4 = i2 + VertRes;
-//                    int32 i5 = i3 + VertRes;
-//
-//                    if (i4 < TotalVertices)
-//                    {
-//                        if (x == Resolution - 1) // borde derecho
-//                        {
-//                            Triangles.Add(i1);
-//                            Triangles.Add(i2);
-//                            Triangles.Add(i5);
-//                            TriangleCount++;
-//
-//                            if (y != 0) {
-//                                Triangles.Add(i2);
-//                                Triangles.Add(i1);
-//                                Triangles.Add(i0);
-//                                TriangleCount++;
-//                            }
-//
-//                            if (y != Resolution - 2) {
-//                                Triangles.Add(i2);
-//                                Triangles.Add(i4);
-//                                Triangles.Add(i5);
-//                                TriangleCount++;
-//                            }
-//                        }
-//                        else // borde izquierdo 
-//                        {         
-//                            if (y != 0) {
-//                                Triangles.Add(i0);
-//                                Triangles.Add(i3);
-//                                Triangles.Add(i1);
-//                                TriangleCount++;
-//                            }
-//
-//                            if (y != Resolution - 2) {
-//                                Triangles.Add(i3);
-//                                Triangles.Add(i4);
-//                                Triangles.Add(i5);
-//                                TriangleCount++;
-//                            }
-//
-//                            Triangles.Add(i0);
-//                            Triangles.Add(i4);
-//                            Triangles.Add(i3);
-//                            TriangleCount++;
-//                        }
-//                    }
-//                }
-//            }
-//            else
-//            {
-//                // INTERIOR NORMAL 
-//
-//                Triangles.Add(i0);
-//                Triangles.Add(i2);
-//                Triangles.Add(i1);
-//                TriangleCount++;
-//
-//                Triangles.Add(i1);
-//                Triangles.Add(i2);
-//                Triangles.Add(i3);
-//                TriangleCount++;
-//            }
-//        }
-//    }
-
     // 1. NUEVA RESOLUCIÓN (Resolution - 1)
     const int32 VertRes = Resolution - 1;
     const int32 TotalVertices = VertRes * VertRes;
@@ -645,7 +379,8 @@ void UCosmicMeshComponent::RegenerateLevel(float newGridSpacing)
 
     GridSpacing = newGridSpacing;
 
-    const int32 VertRes = Resolution + 1;
+    // 1. APLICAMOS EL NUEVO TAMAÑO (Resolution - 1)
+    const int32 VertRes = Resolution - 1;
     const int32 HalfRes = Resolution / 2;
 
     FVector SphereCenter = FVector(0, 0, -PlanetRadius);
@@ -654,8 +389,12 @@ void UCosmicMeshComponent::RegenerateLevel(float newGridSpacing)
     {
         for (int32 x = 0; x < VertRes; ++x)
         {
+            // El índice encajará perfectamente porque los arrays se inicializaron
+            // con (Resolution - 1) * (Resolution - 1) en BuildBaseMesh()
             const int32 Index = x + y * VertRes;
 
+            // Al mantener HalfRes (Resolution / 2) pero iterar hasta VertRes, 
+            // se preserva el "Shift" hacia Arriba/Izquierda con el nuevo GridSpacing
             float WorldX = (x - HalfRes) * GridSpacing;
             float WorldY = (y - HalfRes) * GridSpacing;
 
@@ -705,7 +444,7 @@ void UCosmicMeshComponent::RegenerateLevel(float newGridSpacing)
 
             BaseTangents[Index] = FProcMeshTangent(TangentDir, false);
 
-            // UV
+            // UV - Mantenemos la misma escala proporcional
             UVs[Index] = FVector2D(
                 (float)x / Resolution,
                 (float)y / Resolution
