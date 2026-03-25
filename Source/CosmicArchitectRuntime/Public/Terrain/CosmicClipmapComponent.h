@@ -71,11 +71,15 @@ protected:
     bool bPerformaceMode = false;
     bool bInit = false;
     bool bPerformanceBuild = false;
+    
 
     FColor PlanetMainColor1 = FColor::Green;
     FColor PlanetMainColor2 = FColor::Red;
     FColor PlanetAltitudeColor = FColor::Yellow;
     float MaterialNoiseScale = 1.f;
+    FVector LastPlayerPos;
+    FIntPoint AccumulatedOffset;
+    FVector AccumulatedDelta = FVector::ZeroVector;
 
     virtual void BeginPlay() override;
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
@@ -83,8 +87,12 @@ protected:
     /** Actualizar colisión cerca del jugador */
     void UpdateCollisionNearPlayer(const FVector& SurfacePos, const FVector& SurfaceNormal, const float DistanceToSurface);
     void UpdatePatchTransform(const FVector& SurfacePos, const FVector& N);
-    float GetDistanceToSurface(FVector& SurfacePos, FVector& N);
+    float GetDistanceToSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N);
     FVector GetPlayerLocation();
+    FIntPoint ComputeGridShift(const FVector& PlayerPos, float GridSpacing);
+    void UpdateLevels(const FIntPoint& Shift);
+    void RotateLevel(UCosmicMeshComponent* Level, const FIntPoint& Shift);
+    bool UpdateClipmapOffset(const FVector& PlayerPos);
     bool IsClipmapRingVisible(const int32 LevelIndex, const float DistanceToSurface);
     bool IsClipmapRingVisible(const float GridSpacing, const int32 Resolution, const float DistanceToSurface);
     void ReduceClimapLevel();

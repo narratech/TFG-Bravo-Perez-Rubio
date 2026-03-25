@@ -73,8 +73,9 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         FVector SurfacePos = FVector();
         FVector N = FVector();
+        FVector ViewerPos = FVector();
 
-        float DistanceToSurface = GetDistanceToSurface(SurfacePos, N);
+        float DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
 
         UpdateCollisionNearPlayer(SurfacePos, N, DistanceToSurface);
 
@@ -113,38 +114,51 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             }
         }
         
-        if (Levels.Num() > 1)
+        //if (Levels.Num() > 1)
+        //{
+        //    UCosmicMeshComponent* MeshLast = Levels.Last();
+        //    UCosmicMeshComponent* MeshFirst = Levels[0];
+
+        //    bool bIsVisible = IsClipmapRingVisible(Levels.Num() - 1, DistanceToSurface);
+
+        //    //UE_LOG(LogTemp, Warning, TEXT("Ultimo visible %d"), bIsVisible);
+
+        //    if (!bIsVisible && MeshFirst->GridSpacing > MinTriangleSize) {
+        //        ReduceClimapLevel();
+        //    }
+        //    else if(IsClipmapRingVisible(MeshLast->GridSpacing * 2, MeshLast->Resolution, DistanceToSurface) 
+        //        && MeshLast->GridSpacing < BaseGridSpacing * FMath::Pow(2.0f, NumLevels - 1)){
+        //        IncreaseClipmapLevel();
+        //    }         
+        //}
+
+        FIntPoint Shift = ComputeGridShift(GetPlayerLocation(), BaseGridSpacing);
+
+        
+
+        if (Shift != FIntPoint::ZeroValue)
         {
-            UCosmicMeshComponent* MeshLast = Levels.Last();
-            UCosmicMeshComponent* MeshFirst = Levels[0];
+            // mover clipmap lógico
+            AccumulatedOffset += Shift;
 
-            bool bIsVisible = IsClipmapRingVisible(Levels.Num() - 1, DistanceToSurface);
-
-            //UE_LOG(LogTemp, Warning, TEXT("Ultimo visible %d"), bIsVisible);
-
-            if (!bIsVisible && MeshFirst->GridSpacing > MinTriangleSize) {
-                ReduceClimapLevel();
-            }
-            else if(IsClipmapRingVisible(MeshLast->GridSpacing * 2, MeshLast->Resolution, DistanceToSurface) 
-                && MeshLast->GridSpacing < BaseGridSpacing * FMath::Pow(2.0f, NumLevels - 1)){
-                IncreaseClipmapLevel();
-            }         
+            // actualizar niveles necesarios
+            UpdateLevels(Shift);
         }
 
         if (FreezeGeneration) {
             return;
         }
 
-        UpdatePatchTransform(SurfacePos, N);
+        //UpdatePatchTransform(SurfacePos, N);
 
-        for (size_t i = 0; i < Levels.Num(); i++)
-        {
-            if (Levels[i]->bActiveMesh)
-            {
-                // Inicia el cálculo de ruido en hilos de fondo si no está haciéndolo ya
-                Levels[i]->RequestMeshUpdate();
-            }
-        }
+        //for (size_t i = 0; i < Levels.Num(); i++)
+        //{
+        //    if (Levels[i]->bActiveMesh)
+        //    {
+        //        // Inicia el cálculo de ruido en hilos de fondo si no está haciéndolo ya
+        //        Levels[i]->RequestMeshUpdate();
+        //    }
+        //}
     }    
 }
 
@@ -161,6 +175,7 @@ void UCosmicClipmapComponent::CreateLevels()
         CollisionComponent->GenerateCollisionMesh(PlanetRadius);
     }
 
+    LastPlayerPos = GetPlayerLocation();
     //UE_LOG(LogTemp, Warning, TEXT("No entra"));
 
     // 2. Validar parámetros
@@ -245,11 +260,11 @@ void UCosmicClipmapComponent::CreateLevels()
         //    L, Mesh->GridSpacing, Mesh->bIsRing ? TEXT("true") : TEXT("false"));
     }
 
-    FVector SurfacePos = FVector();
+    /*FVector SurfacePos = FVector();
     FVector N = FVector();
 
     float DistanceToSurface = GetDistanceToSurface(SurfacePos, N);
-    UpdatePatchTransform(SurfacePos, N);
+    UpdatePatchTransform(SurfacePos, N);*/
 
         
     bInit = true;
@@ -478,6 +493,79 @@ void UCosmicClipmapComponent::UpdatePatchTransform(const FVector& SurfacePos, co
    
 }
 
+FIntPoint UCosmicClipmapComponent::ComputeGridShift(
+    const FVector& PlayerPos,
+    float GridSpacing)
+{
+    FVector FrameDelta = PlayerPos - LastPlayerPos;
+
+    UE_LOG(LogTemp, Warning, TEXT("PlayerPosX:%.4f, PlayerPosY:%.4f, LastPlayerPosX:%.4f, LastPlayerPosY:%.4f"),
+        PlayerPos.X, PlayerPos.Y, LastPlayerPos.X, LastPlayerPos.Y);
+
+    LastPlayerPos = PlayerPos;
+
+    AccumulatedDelta += FrameDelta;
+
+    int32 ShiftX = FMath::FloorToInt(AccumulatedDelta.X / GridSpacing);
+    int32 ShiftY = FMath::FloorToInt(AccumulatedDelta.Y / GridSpacing);
+
+    // Quitamos lo que ya hemos consumido
+    AccumulatedDelta.X -= ShiftX * GridSpacing;
+    AccumulatedDelta.Y -= ShiftY * GridSpacing;
+
+    UE_LOG(LogTemp, Warning, TEXT("Shift AcumulatedX:%.4f, AcumulatedY:%.4f, X:%d, Y:%d, GridSpacing:%.1f"),
+        AccumulatedDelta.X, AccumulatedDelta.Y, ShiftX, ShiftY, GridSpacing);
+
+    return FIntPoint(ShiftX, ShiftY);
+}
+
+void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
+{
+    for (int32 i = 0; i < Levels.Num(); ++i)
+    {
+        UCosmicMeshComponent* Level = Levels[i];
+
+        int32 Step = FMath::RoundToInt(Level->GridSpacing / BaseGridSpacing);
+
+        // acumulamos en espacio base
+        Level->PendingShift += Shift;
+
+        // calculamos cuánto le toca realmente a este nivel
+        FIntPoint LevelShift;
+        LevelShift.X = Level->PendingShift.X / Step;
+        LevelShift.Y = Level->PendingShift.Y / Step;
+
+        if (LevelShift == FIntPoint::ZeroValue)
+            continue;
+
+        // consumimos lo aplicado
+        Level->PendingShift.X -= LevelShift.X * Step;
+        Level->PendingShift.Y -= LevelShift.Y * Step;
+
+        RotateLevel(Level, LevelShift);
+        Level->RequestMeshUpdate();
+    }
+}
+
+void UCosmicClipmapComponent::RotateLevel(UCosmicMeshComponent* Level, const FIntPoint& Shift)
+{
+    Level->ShiftLevel(Shift);
+}
+
+bool UCosmicClipmapComponent::UpdateClipmapOffset(const FVector& PlayerPos)
+{
+    FIntPoint Shift = ComputeGridShift(PlayerPos, BaseGridSpacing);
+
+    if (Shift.X == 0 && Shift.Y == 0)
+        return false;
+
+    AccumulatedOffset += Shift;
+
+    LastPlayerPos = PlayerPos;
+
+    return true;
+}
+
 FVector UCosmicClipmapComponent::GetPlayerLocation()
 {
     FVector PlayerLocation = FVector::ZeroVector;
@@ -502,7 +590,7 @@ FVector UCosmicClipmapComponent::GetPlayerLocation()
     return PlayerLocation;
 }
 
-float UCosmicClipmapComponent::GetDistanceToSurface(FVector& SurfacePos, FVector& N)
+float UCosmicClipmapComponent::GetDistanceToSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N)
 {
     AActor* Owner = GetOwner();
     if (!Owner) return 0.f;

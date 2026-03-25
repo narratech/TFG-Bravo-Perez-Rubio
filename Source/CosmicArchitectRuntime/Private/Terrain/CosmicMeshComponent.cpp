@@ -32,47 +32,65 @@ void UCosmicMeshComponent::BuildBaseMesh()
     {
         for (int32 x = 0; x < VertRes; ++x)
         {
-            // Al iterar hasta VertRes (que es menor), y mantener HalfRes de la Resolution original,
-            // la malla entera queda geométricamente desplazada 1 unidad hacia Arriba/Izquierda (-X, -Y).
-            float WorldX = (x - HalfRes) * GridSpacing;
-            float WorldY = (y - HalfRes) * GridSpacing;
+            //// Al iterar hasta VertRes (que es menor), y mantener HalfRes de la Resolution original,
+            //// la malla entera queda geométricamente desplazada 1 unidad hacia Arriba/Izquierda (-X, -Y).
+            //float WorldX = (x - HalfRes) * GridSpacing;
+            //float WorldY = (y - HalfRes) * GridSpacing;
 
-            FVector SphereCenter = FVector(0, 0, -PlanetRadius);
-            float Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
-            FVector BasePosition;
+            //FVector SphereCenter = FVector(0, 0, -PlanetRadius);
+            //float Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
+            //FVector BasePosition;
 
-            if (Distance2D <= PlanetRadius && Distance2D > 0.001f)
-            {
-                float ZOffset = FMath::Sqrt(PlanetRadius * PlanetRadius - Distance2D * Distance2D);
-                BasePosition = FVector(WorldX, WorldY, -PlanetRadius + ZOffset);
-            }
-            else if (Distance2D <= 0.001f)
-            {
-                BasePosition = FVector(0, 0, 0);
-            }
-            else
-            {
-                float Scale = PlanetRadius / Distance2D;
-                BasePosition = FVector(WorldX * Scale, WorldY * Scale, -PlanetRadius);
-            }
+            //if (Distance2D <= PlanetRadius && Distance2D > 0.001f)
+            //{
+            //    float ZOffset = FMath::Sqrt(PlanetRadius * PlanetRadius - Distance2D * Distance2D);
+            //    BasePosition = FVector(WorldX, WorldY, -PlanetRadius + ZOffset);
+            //}
+            //else if (Distance2D <= 0.001f)
+            //{
+            //    BasePosition = FVector(0, 0, 0);
+            //}
+            //else
+            //{
+            //    float Scale = PlanetRadius / Distance2D;
+            //    BasePosition = FVector(WorldX * Scale, WorldY * Scale, -PlanetRadius);
+            //}
 
-            BaseVertices.Add(BasePosition);
-            ActualVerticesCalculated++;
+            //BaseVertices.Add(BasePosition);
+            //ActualVerticesCalculated++;
 
-            // Normal
-            FVector Normal = (BasePosition - SphereCenter);
-            if (Normal.SizeSquared() > 0.001f) Normal.Normalize();
-            else Normal = FVector::UpVector;
-            BaseNormals.Add(Normal);
+            //// Normal
+            //FVector Normal = (BasePosition - SphereCenter);
+            //if (Normal.SizeSquared() > 0.001f) Normal.Normalize();
+            //else Normal = FVector::UpVector;
+            //BaseNormals.Add(Normal);
 
-            // Tangente
-            FVector TangentDir = FVector(-Normal.Y, Normal.X, 0);
-            if (TangentDir.SizeSquared() > 0.001f) TangentDir.Normalize();
-            else TangentDir = FVector(1, 0, 0);
-            BaseTangents.Add(FProcMeshTangent(TangentDir.X, TangentDir.Y, TangentDir.Z));
+            //// Tangente
+            //FVector TangentDir = FVector(-Normal.Y, Normal.X, 0);
+            //if (TangentDir.SizeSquared() > 0.001f) TangentDir.Normalize();
+            //else TangentDir = FVector(1, 0, 0);
+            //BaseTangents.Add(FProcMeshTangent(TangentDir.X, TangentDir.Y, TangentDir.Z));
 
-            // UVs - Mantenemos la división por Resolution para no alterar la escala de texturas respecto al LOD anterior
-            UVs.Add(FVector2D((float)x / Resolution, (float)y / Resolution));
+            //// UVs - Mantenemos la división por Resolution para no alterar la escala de texturas respecto al LOD anterior
+            //UVs.Add(FVector2D((float)x / Resolution, (float)y / Resolution));
+
+            float LocalX = (x - HalfRes) * GridSpacing;
+            float LocalY = (y - HalfRes) * GridSpacing;
+
+            FVector Pos = FVector(LocalX, LocalY, 0);
+
+            BaseVertices.Add(Pos);
+
+            // Normal plana (luego se recalcula en esfera)
+            BaseNormals.Add(FVector::UpVector);
+
+            // Tangente plana
+            BaseTangents.Add(FProcMeshTangent(1, 0, 0));
+
+            UVs.Add(FVector2D(
+                (float)x / (VertRes - 1),
+                (float)y / (VertRes - 1)
+            ));
         }
     }
 
@@ -188,11 +206,16 @@ void UCosmicMeshComponent::BuildBaseMesh()
         }
     }
 
-
     UE_LOG(LogTemp, Warning, TEXT("  Triángulos calculados: %d"), TriangleCount);
     //UE_LOG(LogTemp, Warning, TEXT("  BaseVertices.Num(): %d"), BaseVertices.Num());
     //UE_LOG(LogTemp, Warning, TEXT("  UVs.Num(): %d"), UVs.Num());
     //UE_LOG(LogTemp, Warning, TEXT("  Triangles.Num(): %d"), Triangles.Num());
+
+    /*bMeshCreated = true;
+    if (LevelIndex == 1) {
+        SetHoleQuadrant(EClipmapQuadrant::BottomLeft);
+    }*/
+    
 
     // 5. COPIAR a Current arrays
     CurrentVertices = BaseVertices;
@@ -238,7 +261,6 @@ void UCosmicMeshComponent::BuildBaseMesh()
           
     bMeshCreated = true;
 }
-
 
 
 
@@ -371,6 +393,111 @@ void UCosmicMeshComponent::BuildSphereMesh()
     SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
     bMeshCreated = true;
+}
+
+int32 UCosmicMeshComponent::GetQuadrantIndex(EClipmapQuadrant Q) const{
+    switch (Q) {
+    case EClipmapQuadrant::TopLeft:     return 0;
+    case EClipmapQuadrant::TopRight:    return 1;
+    case EClipmapQuadrant::BottomRight: return 2;
+    case EClipmapQuadrant::BottomLeft:  return 3;
+    default: return 0;
+    }
+}
+
+EShiftDirection UCosmicMeshComponent::GetShiftDirection(FIntPoint Shift)
+{
+    if (Shift.X > 0) return EShiftDirection::X_Pos;
+    if (Shift.X < 0) return EShiftDirection::X_Neg;
+    if (Shift.Y > 0) return EShiftDirection::Y_Pos;
+    if (Shift.Y < 0) return EShiftDirection::Y_Neg;
+
+    return EShiftDirection::None;
+}
+
+void UCosmicMeshComponent::ShiftLevel(FIntPoint Shift)
+{
+    if (Shift == FIntPoint::ZeroValue) return;
+
+    FVector Offset = FVector(
+        Shift.X * GridSpacing,
+        Shift.Y * GridSpacing,
+        0.0f
+    );
+
+    for (size_t i = 0; i < BaseVertices.Num(); i++)
+    {
+        BaseVertices[i] += Offset;
+    }
+
+    if (!bIsRing) return;
+
+    //SetHoleQuadrant()
+}
+
+void UCosmicMeshComponent::SetHoleQuadrant(EClipmapQuadrant NewQuadrant)
+{
+    if (!bMeshCreated || !bIsRing || HoleState.CurrentQuadrant == NewQuadrant) return;
+
+    int32 OldIdx = GetQuadrantIndex(HoleState.CurrentQuadrant);
+    int32 NewIdx = GetQuadrantIndex(NewQuadrant);
+    int32 Steps = (NewIdx - OldIdx + 4) % 4;
+
+    // 1. Averiguamos qué rotación necesitamos (relativa a la posición actual)
+    // Para simplificar, asumimos que siempre partimos del estado base o calculamos el giro necesario.
+    // Vamos a mapear los cuadrantes a grados de rotación (0, 90, 180, 270).
+    int32 RotationAngle = 0;
+
+    // Suponiendo que TopLeft es 0º, TopRight 90º, BottomRight 180º, BottomLeft 270º
+    // (Ajusta los grados según cómo estén ordenados tus cuadrantes)
+    if (Steps == 1) RotationAngle = 90;
+    else if (Steps == 2) RotationAngle = 180;
+    else if (Steps == 3) RotationAngle = 270;
+
+    HoleState.CurrentQuadrant = NewQuadrant;
+
+    const int32 N = Resolution - 1;
+
+    // 2. Copias temporales para no machacar datos al reordenar
+    TArray<FVector> OldV = BaseVertices;
+    TArray<FVector> OldN = BaseNormals;
+    TArray<FProcMeshTangent> OldT = BaseTangents;
+
+    // 3. Rotamos la "Matriz"
+    for (int32 y = 0; y < N; ++y)
+    {
+        for (int32 x = 0; x < N; ++x)
+        {
+            int32 SourceIndex = y * N + x;
+            int32 TargetX = x;
+            int32 TargetY = y;
+
+            // Fórmulas estándar de rotación de matrices cuadradas
+            if (RotationAngle == 90)
+            {
+                TargetX = N - 1 - y;
+                TargetY = x;
+            }
+            else if (RotationAngle == 180)
+            {
+                TargetX = N - 1 - x;
+                TargetY = N - 1 - y;
+            }
+            else if (RotationAngle == 270)
+            {
+                TargetX = y;
+                TargetY = N - 1 - x;
+            }
+
+            int32 TargetIndex = TargetY * N + TargetX;
+
+            // 4. Reasignamos las posiciones en el array
+            // OJO AL DATO ABAJO CON LOS VECTORES
+            BaseVertices[TargetIndex] = OldV[SourceIndex];
+            BaseNormals[TargetIndex] = OldN[SourceIndex];
+            BaseTangents[TargetIndex] = OldT[SourceIndex];
+        }
+    }
 }
 
 void UCosmicMeshComponent::RegenerateLevel(float newGridSpacing)
