@@ -132,9 +132,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         //    }         
         //}
 
-        FIntPoint Shift = ComputeGridShift(GetPlayerLocation(), BaseGridSpacing);
-
-        
+        FIntPoint Shift = ComputeGridShift(ViewerPos, BaseGridSpacing);
 
         if (Shift != FIntPoint::ZeroValue)
         {
@@ -175,7 +173,7 @@ void UCosmicClipmapComponent::CreateLevels()
         CollisionComponent->GenerateCollisionMesh(PlanetRadius);
     }
 
-    LastPlayerPos = GetPlayerLocation();
+    
     //UE_LOG(LogTemp, Warning, TEXT("No entra"));
 
     // 2. Validar parámetros
@@ -499,9 +497,6 @@ FIntPoint UCosmicClipmapComponent::ComputeGridShift(
 {
     FVector FrameDelta = PlayerPos - LastPlayerPos;
 
-    UE_LOG(LogTemp, Warning, TEXT("PlayerPosX:%.4f, PlayerPosY:%.4f, LastPlayerPosX:%.4f, LastPlayerPosY:%.4f"),
-        PlayerPos.X, PlayerPos.Y, LastPlayerPos.X, LastPlayerPos.Y);
-
     LastPlayerPos = PlayerPos;
 
     AccumulatedDelta += FrameDelta;
@@ -513,9 +508,6 @@ FIntPoint UCosmicClipmapComponent::ComputeGridShift(
     AccumulatedDelta.X -= ShiftX * GridSpacing;
     AccumulatedDelta.Y -= ShiftY * GridSpacing;
 
-    UE_LOG(LogTemp, Warning, TEXT("Shift AcumulatedX:%.4f, AcumulatedY:%.4f, X:%d, Y:%d, GridSpacing:%.1f"),
-        AccumulatedDelta.X, AccumulatedDelta.Y, ShiftX, ShiftY, GridSpacing);
-
     return FIntPoint(ShiftX, ShiftY);
 }
 
@@ -526,24 +518,44 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
         UCosmicMeshComponent* Level = Levels[i];
 
         int32 Step = FMath::RoundToInt(Level->GridSpacing / BaseGridSpacing);
+        int32 HalfStep = Step / 2;
 
-        // acumulamos en espacio base
         Level->PendingShift += Shift;
 
-        // calculamos cuánto le toca realmente a este nivel
+        /*FIntPoint LevelRotate = FIntPoint::ZeroValue;
+
+        if (Level->PendingShift.X >= HalfStep) LevelRotate.X = 1;
+        else if (Level->PendingShift.X <= -HalfStep) LevelRotate.X = -1;
+
+        if (Level->PendingShift.Y >= HalfStep) LevelRotate.Y = 1;
+        else if (Level->PendingShift.Y <= -HalfStep) LevelRotate.Y = -1;*/
+
+        FIntPoint LevelRotate;
+        LevelRotate.X = Level->PendingShift.X * 2 / Step; 
+        LevelRotate.Y = Level->PendingShift.Y * 2 / Step;
+
+        if (LevelRotate != FIntPoint::ZeroValue)
+        {
+            Level->RotateLevel(LevelRotate);
+            UE_LOG(LogTemp, Warning, TEXT("Rotando Nivel: %d"), Level->LevelIndex);
+            // consumir rotación
+            /*Level->PendingShift.X -= LevelRotate.X * HalfStep;
+            Level->PendingShift.Y -= LevelRotate.Y * HalfStep;*/
+        }
+
         FIntPoint LevelShift;
         LevelShift.X = Level->PendingShift.X / Step;
         LevelShift.Y = Level->PendingShift.Y / Step;
 
-        if (LevelShift == FIntPoint::ZeroValue)
-            continue;
+        if (LevelShift != FIntPoint::ZeroValue)
+        {
+            Level->ShiftLevel(LevelShift);
 
-        // consumimos lo aplicado
-        Level->PendingShift.X -= LevelShift.X * Step;
-        Level->PendingShift.Y -= LevelShift.Y * Step;
+            Level->PendingShift.X -= LevelShift.X * Step;
+            Level->PendingShift.Y -= LevelShift.Y * Step;
 
-        RotateLevel(Level, LevelShift);
-        Level->RequestMeshUpdate();
+            Level->RequestMeshUpdate();
+        }
     }
 }
 
@@ -595,15 +607,15 @@ float UCosmicClipmapComponent::GetDistanceToSurface(FVector& ViewerPos, FVector&
     AActor* Owner = GetOwner();
     if (!Owner) return 0.f;
 
-    FVector ViewerPosWorld = GetPlayerLocation();
+    ViewerPos = GetPlayerLocation();
 
     FVector PlanetCenter = Owner->GetActorLocation();
 
-    FVector CenterToViewer = ViewerPosWorld - PlanetCenter;
+    FVector CenterToViewer = ViewerPos - PlanetCenter;
     float DistanceToCenter = CenterToViewer.Length();
 
     // Normal esférica
-    N = (ViewerPosWorld - PlanetCenter).GetSafeNormal();
+    N = (ViewerPos - PlanetCenter).GetSafeNormal();
 
     // Punto sobre la superficie
     SurfacePos = PlanetCenter + N * PlanetRadius;
@@ -613,7 +625,7 @@ float UCosmicClipmapComponent::GetDistanceToSurface(FVector& ViewerPos, FVector&
         return 0.f;
     }
 
-    return FVector::Distance(ViewerPosWorld, SurfacePos);
+    return FVector::Distance(ViewerPos, SurfacePos);
 }
 
 

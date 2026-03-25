@@ -29,7 +29,7 @@ enum class EClipmapQuadrant : uint8
 
 struct FClipmapHoleState
 {
-    EClipmapQuadrant CurrentQuadrant = EClipmapQuadrant::TopLeft;
+    EClipmapQuadrant CurrentQuadrant = EClipmapQuadrant::BottomRight;
     int32 OffsetX = 0;
     int32 OffsetY = 0;  
 };
@@ -80,6 +80,7 @@ public:
     void ShiftLevel(FIntPoint Shift);
     EShiftDirection GetShiftDirection(FIntPoint Shift);
     int32 GetQuadrantIndex(EClipmapQuadrant Q) const;
+    void RotateLevel(FIntPoint Shift);
     void SetHoleQuadrant(EClipmapQuadrant NewQuadrant);
 
     FAsyncTask<FCosmicArchitectNoiseGenerator>* NoiseTask = nullptr;
