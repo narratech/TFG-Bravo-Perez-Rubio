@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "GameFramework/Actor.h"
-#include "GravityComponent.generated.h"
+#include "CosmicGravityComponent.generated.h"
 
 // E: Enumeración que define los diferentes modos de simulación gravitacional.
 // I: Enumeration defining the different gravitational simulation modes.
@@ -36,12 +36,12 @@ enum class ECosmicGravityMode : uint8
 // E: Componente que maneja físicas gravitacionales personalizadas.
 // I: Component handling custom gravitational physics.
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class COSMICARCHITECTRUNTIME_API UGravityComponent : public UActorComponent
+class COSMICARCHITECTRUNTIME_API UCosmicGravityComponent : public UActorComponent
 {
     GENERATED_BODY()
 
 public:
-    UGravityComponent();
+    UCosmicGravityComponent();
 
     // E: Función de ayuda para obtener la transformación espacial del actor propietario.
     // I: Helper function to get the spatial transform of the owning actor.

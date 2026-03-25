@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Simulation/OrbitComponent.h"
+#include "Simulation/CosmicOrbitComponent.h"
 #include "Components/PrimitiveComponent.h"
 #include "Components/SceneComponent.h"
 #include "GameFramework/Actor.h"
@@ -11,7 +11,7 @@
 
 // E: Establece los valores predeterminados de las propiedades de este componente
 // I: Sets default values for this component's properties
-UOrbitComponent::UOrbitComponent()
+UCosmicOrbitComponent::UCosmicOrbitComponent()
 {
 	// E: Configura este componente para inicializarse cuando el juego empieza y hacer tick cada frame. Puedes apagar
 	// E: estas funciones para mejorar el rendimiento si no las necesitas.
@@ -23,7 +23,7 @@ UOrbitComponent::UOrbitComponent()
 }
 
 #if WITH_EDITOR
-void UOrbitComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+void UCosmicOrbitComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 
@@ -35,18 +35,18 @@ void UOrbitComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 
 	// E: Lista de propiedades que deberían triggerear una actualización
 	// I: List of properties that should trigger an update
-	bool bNeedsUpdate = (PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, ParentBody) ||
-		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, SemiMajorAxisKm) ||
-		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, Eccentricity) ||
-		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, InclinationX) ||
-		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, InclinationY) ||
-		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, InclinationZ) ||
-		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, OrbitColor) ||
-		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, OrbitSegments) ||
-		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, OrbitThickness) ||
-		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, bShowOrbitInEditor) ||
-		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, InitialPosition) ||
-		PropertyName == GET_MEMBER_NAME_CHECKED(UOrbitComponent, OrbitalPeriod));
+	bool bNeedsUpdate = (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOrbitComponent, ParentBody) ||
+		PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOrbitComponent, SemiMajorAxisKm) ||
+		PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOrbitComponent, Eccentricity) ||
+		PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOrbitComponent, InclinationX) ||
+		PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOrbitComponent, InclinationY) ||
+		PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOrbitComponent, InclinationZ) ||
+		PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOrbitComponent, OrbitColor) ||
+		PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOrbitComponent, OrbitSegments) ||
+		PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOrbitComponent, OrbitThickness) ||
+		PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOrbitComponent, bShowOrbitInEditor) ||
+		PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOrbitComponent, InitialPosition) ||
+		PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOrbitComponent, OrbitalPeriod));
 
 	// E: Si estamos en el editor y no jugando, actualizar posición
 	// I: If we are in the editor and not playing, update position
@@ -61,7 +61,7 @@ void UOrbitComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChan
 
 // E: Se llama cuando el juego comienza
 // I: Called when the game starts
-void UOrbitComponent::BeginPlay()
+void UCosmicOrbitComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	CurrentOrbitTime = OrbitalPeriod * InitialPosition;
@@ -70,7 +70,7 @@ void UOrbitComponent::BeginPlay()
 
 // E: Se llama cada frame
 // I: Called every frame
-void UOrbitComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void UCosmicOrbitComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
@@ -138,14 +138,14 @@ void UOrbitComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 	}
 }
 
-void UOrbitComponent::InitOrbit(FColor color)
+void UCosmicOrbitComponent::InitOrbit(FColor color)
 {
 	OrbitThickness = 5000.0f;
 	OrbitColor = color;
 	UpdateInitialOrbitPosition();
 }
 
-void UOrbitComponent::UpdateInitialOrbitPosition()
+void UCosmicOrbitComponent::UpdateInitialOrbitPosition()
 {
 	// E: Resetear el tiempo orbital
 	// I: Reset orbital time
@@ -200,7 +200,7 @@ void UOrbitComponent::UpdateInitialOrbitPosition()
 	}
 }
 
-void UOrbitComponent::UpdateOrbitVisualization()
+void UCosmicOrbitComponent::UpdateOrbitVisualization()
 {
 	if (!bShowOrbitInEditor || !ParentBody || !GetOwner()) return;
 

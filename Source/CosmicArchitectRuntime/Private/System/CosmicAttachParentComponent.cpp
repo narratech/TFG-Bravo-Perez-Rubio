@@ -1,7 +1,7 @@
 
 
 
-#include "System/AttachParentComponent.h"
+#include "System/CosmicAttachParentComponent.h"
 #include "Components/SphereComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
@@ -9,14 +9,14 @@
 #include "GameFramework/Pawn.h"
 
 // Constructor
-UAttachParentComponent::UAttachParentComponent()
+UCosmicAttachParentComponent::UCosmicAttachParentComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.bStartWithTickEnabled = true;
 	bTickInEditor = true;
 }
 
-void UAttachParentComponent::DebugTriggerState()
+void UCosmicAttachParentComponent::DebugTriggerState()
 {
 	if (!TriggerSphere)
 	{
@@ -70,7 +70,7 @@ void UAttachParentComponent::DebugTriggerState()
 }
 
 // BeginPlay
-void UAttachParentComponent::BeginPlay()
+void UCosmicAttachParentComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
@@ -119,16 +119,16 @@ void UAttachParentComponent::BeginPlay()
 
 	// Bind eventos
 	TriggerSphere->OnComponentBeginOverlap.AddDynamic(this,
-		&UAttachParentComponent::OnBeginOverlap);
+		&UCosmicAttachParentComponent::OnBeginOverlap);
 	TriggerSphere->OnComponentEndOverlap.AddDynamic(this,
-		&UAttachParentComponent::OnEndOverlap);
+		&UCosmicAttachParentComponent::OnEndOverlap);
 
 	// Debug
 	//DebugTriggerState();
 }
 
 // Tick
-void UAttachParentComponent::TickComponent(float DeltaTime, ELevelTick TickType,
+void UCosmicAttachParentComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 	FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
@@ -153,7 +153,7 @@ void UAttachParentComponent::TickComponent(float DeltaTime, ELevelTick TickType,
 }
 
 // Overlap begin
-void UAttachParentComponent::OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+void UCosmicAttachParentComponent::OnBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
 	bool bFromSweep, const FHitResult& SweepResult)
 {
@@ -177,7 +177,7 @@ void UAttachParentComponent::OnBeginOverlap(UPrimitiveComponent* OverlappedComp,
 }
 
 // Overlap end
-void UAttachParentComponent::OnEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+void UCosmicAttachParentComponent::OnEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
 	if (!OtherActor || !bAutoDetach) return;
@@ -200,7 +200,7 @@ void UAttachParentComponent::OnEndOverlap(UPrimitiveComponent* OverlappedComp, A
 }
 
 // Attach
-void UAttachParentComponent::TryAttach(AActor* Actor)
+void UCosmicAttachParentComponent::TryAttach(AActor* Actor)
 {
 	if (!Actor || !GetOwner()) return;
 
@@ -210,7 +210,7 @@ void UAttachParentComponent::TryAttach(AActor* Actor)
 }
 
 // Detach
-void UAttachParentComponent::TryDetach(AActor* Actor)
+void UCosmicAttachParentComponent::TryDetach(AActor* Actor)
 {
 	if (!Actor) return;
 
@@ -219,7 +219,7 @@ void UAttachParentComponent::TryDetach(AActor* Actor)
 	UE_LOG(LogTemp, Warning, TEXT("Desconectado"));
 }
 
-void UAttachParentComponent::DrawDebugArea()
+void UCosmicAttachParentComponent::DrawDebugArea()
 {
 	UWorld* World = GetWorld();
 	if (!World) return;

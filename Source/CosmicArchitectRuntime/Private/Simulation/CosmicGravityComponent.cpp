@@ -1,18 +1,18 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Simulation/GravityComponent.h"
-#include "Simulation/GravitySubsystem.h"
+#include "Simulation/CosmicGravityComponent.h"
+#include "Simulation/CosmicGravitySubsystem.h"
 #include "Engine/World.h"
 #include "Components/PrimitiveComponent.h"
 
-UGravityComponent::UGravityComponent()
+UCosmicGravityComponent::UCosmicGravityComponent()
 {
 	// ...
 }
 
 
-void UGravityComponent::BeginPlay()
+void UCosmicGravityComponent::BeginPlay()
 {
     Super::BeginPlay();
 
@@ -40,7 +40,7 @@ void UGravityComponent::BeginPlay()
         }
     }
 
-    UGravitySubsystem* Subsystem = GetWorld()->GetSubsystem<UGravitySubsystem>();
+    UCosmicGravitySubsystem* Subsystem = GetWorld()->GetSubsystem<UCosmicGravitySubsystem>();
 
     if (!Subsystem) return;
 
@@ -51,12 +51,12 @@ void UGravityComponent::BeginPlay()
     Subsystem->RegisterBody(this);
 }
 
-void UGravityComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+void UCosmicGravityComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     if (UWorld* World = GetWorld())
     {
-        if (UGravitySubsystem* Subsystem =
-            World->GetSubsystem<UGravitySubsystem>())
+        if (UCosmicGravitySubsystem* Subsystem =
+            World->GetSubsystem<UCosmicGravitySubsystem>())
         {
             Subsystem->UnregisterBody(this);
         }
@@ -65,7 +65,7 @@ void UGravityComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
     Super::EndPlay(EndPlayReason);
 }
 
-void UGravityComponent::Integrate(double DeltaTime)
+void UCosmicGravityComponent::Integrate(double DeltaTime)
 {
 
     FVector Acceleration = AccumulatedForce * 100 / Mass; // E: Calcular aceleracion a partir de fuerza y masa, de m a cm
@@ -93,7 +93,7 @@ void UGravityComponent::Integrate(double DeltaTime)
     AccumulatedForce = FVector::ZeroVector;
 }
 
-void UGravityComponent::SetIsPlanet(bool bNewIsPlanet)
+void UCosmicGravityComponent::SetIsPlanet(bool bNewIsPlanet)
 {
     if (bNewIsPlanet == IsPlanet) return;
 
@@ -101,7 +101,7 @@ void UGravityComponent::SetIsPlanet(bool bNewIsPlanet)
 
     // E: Notificar al subsistema del cambio
     // I: Notify the subsystem of the change
-    if (UGravitySubsystem* Subsystem = GetWorld()->GetSubsystem<UGravitySubsystem>())
+    if (UCosmicGravitySubsystem* Subsystem = GetWorld()->GetSubsystem<UCosmicGravitySubsystem>())
     {
         // E: Primero desregistramos y luego volvemos a registrar para actualizar las listas
         // I: Unregister first and then re-register to update lists
@@ -110,7 +110,7 @@ void UGravityComponent::SetIsPlanet(bool bNewIsPlanet)
     }
 }
 
-float UGravityComponent::GetObjectRadius() const
+float UCosmicGravityComponent::GetObjectRadius() const
 {
     // E: Obtenemos el radio aproximado del StaticMesh (o del Actor entero)
     // I: Obtain the approximated radius for the StaticMesh (or the whole Actor)

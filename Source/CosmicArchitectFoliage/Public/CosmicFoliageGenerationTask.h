@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "CosmicFoliageCollection.h"
 #include "CosmicArchitectNoise/Public/CosmicNoiseSettings.h"
-#include "CosmicArchitectCommon/Public/CubeMapCell.h"
+#include "CosmicArchitectCommon/Public/CosmicCubeMapCell.h"
 #include "CosmicFoliageGenerationTask.generated.h"
 
 /**

@@ -1,8 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Simulation/GravitySubsystem.h"
-#include "Simulation/GravityComponent.h"
+#include "Simulation/CosmicGravitySubsystem.h"
+#include "Simulation/CosmicGravityComponent.h"
 
 // E: Constante gravitacional
 // I: Gravitational constant
@@ -16,19 +16,19 @@ static const double GUnreal = G * 10000;
 // I: Smoothing factor to prevent infinite force if two bodies touch
 static const double Softening = 100000.0;
 
-void UGravitySubsystem::Initialize(FSubsystemCollectionBase& Collection)
+void UCosmicGravitySubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
     Super::Initialize(Collection);
 }
 
-void UGravitySubsystem::Deinitialize()
+void UCosmicGravitySubsystem::Deinitialize()
 {
     Bodies.Empty();
     Planets.Empty();
     Super::Deinitialize();
 }
 
-void UGravitySubsystem::Tick(float DeltaTime)
+void UCosmicGravitySubsystem::Tick(float DeltaTime)
 {
 
     const int32 Count = Bodies.Num();
@@ -37,7 +37,7 @@ void UGravitySubsystem::Tick(float DeltaTime)
     // E: Primero, acumulamos las fuerzas según el modo de gravedad de cada cuerpo
     // I: First, we accumulate forces according to the gravity mode of each body
     for (int32 i = 0; i < Count; ++i) {
-        UGravityComponent* BodyA = Bodies[i];
+        UCosmicGravityComponent* BodyA = Bodies[i];
         if (!BodyA) continue;
 
         FVector PosA = BodyA->getTransform().GetLocation();
@@ -57,10 +57,10 @@ void UGravitySubsystem::Tick(float DeltaTime)
             // I: Use the list of planets for better performance
             if (!BodyA->IsAffectedByOthers) break;
 
-            UGravityComponent* NearestPlanet = nullptr;
+            UCosmicGravityComponent* NearestPlanet = nullptr;
             double NearestDistanceSq = DBL_MAX;
 
-            for (UGravityComponent* Planet : Planets) {
+            for (UCosmicGravityComponent* Planet : Planets) {
                 if (!Planet || !Planet->AffectsOthers) continue;
 
                 double DistSq = FVector::DistSquared(PosA, Planet->getTransform().GetLocation());
@@ -80,8 +80,8 @@ void UGravitySubsystem::Tick(float DeltaTime)
 
             // E: Buscar el planeta específico en la lista de planetas
             // I: Search for the specific planet in the list of planets
-            UGravityComponent* SpecificPlanetComp = nullptr;
-            for (UGravityComponent* Planet : Planets) {
+            UCosmicGravityComponent* SpecificPlanetComp = nullptr;
+            for (UCosmicGravityComponent* Planet : Planets) {
                 if (Planet && Planet->GetOwner() == BodyA->SpecificGravitySource) {
                     SpecificPlanetComp = Planet;
                     break;
@@ -99,7 +99,7 @@ void UGravitySubsystem::Tick(float DeltaTime)
 
             // E: Usar la lista de planetas para mejor rendimiento
             // I: Use the list of planets for better performance
-            for (UGravityComponent* Planet : Planets) {
+            for (UCosmicGravityComponent* Planet : Planets) {
                 BodyAddForce(BodyA, Planet);
             }
             break;
@@ -110,7 +110,7 @@ void UGravitySubsystem::Tick(float DeltaTime)
             // E: Modo N-Body: todos los cuerpos se afectan entre sí
             // I: N-Body mode: all bodies affect each other
             for (int32 j = i + 1; j < Count; ++j) {
-                UGravityComponent* BodyB = Bodies[j];
+                UCosmicGravityComponent* BodyB = Bodies[j];
                 ApplyMutualForce(BodyA, BodyB);
             }
             break;
@@ -122,7 +122,7 @@ void UGravitySubsystem::Tick(float DeltaTime)
 
     // E: Integramos todos los cuerpos activos
     // I: We integrate all active bodies
-    for (UGravityComponent* Body : Bodies)
+    for (UCosmicGravityComponent* Body : Bodies)
     {
         if (Body)
         {
@@ -131,7 +131,7 @@ void UGravitySubsystem::Tick(float DeltaTime)
     }
 }
 
-void UGravitySubsystem::BodyAddForce(UGravityComponent* BodyA, UGravityComponent* BodyB)
+void UCosmicGravitySubsystem::BodyAddForce(UCosmicGravityComponent* BodyA, UCosmicGravityComponent* BodyB)
 {
     if (!BodyB || !BodyB->AffectsOthers || BodyA == BodyB) return;
 
@@ -159,7 +159,7 @@ void UGravitySubsystem::BodyAddForce(UGravityComponent* BodyA, UGravityComponent
     BodyA->AccumulatedForce += Difference.GetSafeNormal() * ForceMagnitude;
 }
 
-void UGravitySubsystem::ApplyMutualForce(UGravityComponent* BodyA, UGravityComponent* BodyB)
+void UCosmicGravitySubsystem::ApplyMutualForce(UCosmicGravityComponent* BodyA, UCosmicGravityComponent* BodyB)
 {
     if (!BodyB) return;
     if (!BodyB->IsAffectedByOthers && !BodyA->IsAffectedByOthers) return;
@@ -194,7 +194,7 @@ void UGravitySubsystem::ApplyMutualForce(UGravityComponent* BodyA, UGravityCompo
         BodyB->AccumulatedForce -= Force;
 }
 
-void UGravitySubsystem::RegisterBody(UGravityComponent* Body)
+void UCosmicGravitySubsystem::RegisterBody(UCosmicGravityComponent* Body)
 {
     if (!Body) return;
 
@@ -208,7 +208,7 @@ void UGravitySubsystem::RegisterBody(UGravityComponent* Body)
     }
 }
 
-void UGravitySubsystem::UnregisterBody(UGravityComponent* Body)
+void UCosmicGravitySubsystem::UnregisterBody(UCosmicGravityComponent* Body)
 {
     if (!Body) return;
 
@@ -220,17 +220,17 @@ void UGravitySubsystem::UnregisterBody(UGravityComponent* Body)
     }
 }
 
-double UGravitySubsystem::GetGravityConstant() const
+double UCosmicGravitySubsystem::GetGravityConstant() const
 {
     return G;
 }
 
-UWorld* UGravitySubsystem::GetTickableGameObjectWorld() const
+UWorld* UCosmicGravitySubsystem::GetTickableGameObjectWorld() const
 {
     return GetWorld();
 }
 
-bool UGravitySubsystem::IsTickable() const
+bool UCosmicGravitySubsystem::IsTickable() const
 {
     if (IsTemplate() || !GetWorld()) return false;
 

@@ -4,17 +4,17 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "AttachParentComponent.generated.h"
+#include "CosmicAttachParentComponent.generated.h"
 
 class USphereComponent;
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class COSMICARCHITECTRUNTIME_API UAttachParentComponent : public UActorComponent
+class COSMICARCHITECTRUNTIME_API UCosmicAttachParentComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
 public:
-	UAttachParentComponent();
+	UCosmicAttachParentComponent();
 
 	UFUNCTION(CallInEditor, Category = "Debug")
 	void DebugTriggerState();

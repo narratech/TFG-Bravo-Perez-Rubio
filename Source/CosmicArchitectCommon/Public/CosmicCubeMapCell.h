@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "CubeMapCell.generated.h"
+#include "CosmicCubeMapCell.generated.h"
 
 /**
  *

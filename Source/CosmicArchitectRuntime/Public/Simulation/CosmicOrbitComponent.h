@@ -4,19 +4,19 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "OrbitComponent.generated.h"
+#include "CosmicOrbitComponent.generated.h"
 
 // E: Componente que maneja el movimiento orbital y la rotación de un cuerpo celeste.
 // I: Component that handles the orbital movement and rotation of a celestial body.
 UCLASS(ClassGroup = (Cosmic), meta = (BlueprintSpawnableComponent))
-class COSMICARCHITECTRUNTIME_API UOrbitComponent : public UActorComponent
+class COSMICARCHITECTRUNTIME_API UCosmicOrbitComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
 public:
 	// E: Constructor: Establece los valores predeterminados de las propiedades de este componente.
 	// I: Constructor: Sets default values for this component's properties.
-	UOrbitComponent();
+	UCosmicOrbitComponent();
 
 #if WITH_EDITOR
 	// E: Se llama cuando cambia una propiedad en el editor (útil para actualizar visualizaciones).

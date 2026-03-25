@@ -6,8 +6,8 @@
 #include "Engine/EngineTypes.h"        
 #include "GameFramework/Actor.h"
 #include "CosmicArchitectRuntime/Public/Planet/CosmicPlanet.h"
-#include "CosmicArchitectRuntime/Public/Simulation/OrbitComponent.h"
-#include "CosmicArchitectRuntime/Public/Simulation/GravityComponent.h"
+#include "CosmicArchitectRuntime/Public/Simulation/CosmicOrbitComponent.h"
+#include "CosmicArchitectRuntime/Public/Simulation/CosmicGravityComponent.h"
 #include "Components/DirectionalLightComponent.h"
 #include "Engine/DirectionalLight.h"
 
@@ -153,7 +153,7 @@ void ACosmicSystemGenerator::GenerateBodies()
 
     Star->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
 
-    UGravityComponent* StarGravity = NewObject<UGravityComponent>(Star);
+    UCosmicGravityComponent* StarGravity = NewObject<UCosmicGravityComponent>(Star);
     StarGravity->RegisterComponent();
     StarGravity->SetIsPlanet(true);
     StarGravity->RadiusKm = StarRadiusKm;
@@ -224,7 +224,7 @@ void ACosmicSystemGenerator::GenerateBodies()
 
         /* Gravity */
 
-        UGravityComponent* Gravity = NewObject<UGravityComponent>(Planet);
+        UCosmicGravityComponent* Gravity = NewObject<UCosmicGravityComponent>(Planet);
         Gravity->RegisterComponent();
         Gravity->SetIsPlanet(true);
         Gravity->RadiusKm = PlanetRadiusKm;
@@ -235,7 +235,7 @@ void ACosmicSystemGenerator::GenerateBodies()
 
         /* Orbit */
 
-        UOrbitComponent* Orbit = NewObject<UOrbitComponent>(Planet);
+        UCosmicOrbitComponent* Orbit = NewObject<UCosmicOrbitComponent>(Planet);
         Orbit->RegisterComponent();
 
         Orbit->ParentBody = Star;
@@ -299,7 +299,7 @@ void ACosmicSystemGenerator::GenerateBodies()
                 nullptr
             );
 
-            UGravityComponent* MoonGravity = NewObject<UGravityComponent>(Moon);
+            UCosmicGravityComponent* MoonGravity = NewObject<UCosmicGravityComponent>(Moon);
 
             MoonGravity->RegisterComponent();
             MoonGravity->SetIsPlanet(true);
@@ -309,7 +309,7 @@ void ACosmicSystemGenerator::GenerateBodies()
 
             Moon->AddInstanceComponent(MoonGravity);
 
-            UOrbitComponent* MoonOrbit = NewObject<UOrbitComponent>(Moon);
+            UCosmicOrbitComponent* MoonOrbit = NewObject<UCosmicOrbitComponent>(Moon);
 
             MoonOrbit->RegisterComponent();
             MoonOrbit->ParentBody = Planet;

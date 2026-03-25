@@ -4,16 +4,16 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
-#include "GravitySubsystem.generated.h"
+#include "CosmicGravitySubsystem.generated.h"
 
 // E: Declaración anticipada de la clase UGravityComponent.
 // I: Forward declaration of the UGravityComponent class.
-class UGravityComponent;
+class UCosmicGravityComponent;
 
 // E: Subsistema del mundo encargado de gestionar, calcular y aplicar la simulación de gravedad a todos los cuerpos.
 // I: World subsystem in charge of managing, calculating, and applying the gravity simulation to all bodies.
 UCLASS()
-class COSMICARCHITECTRUNTIME_API UGravitySubsystem : public UWorldSubsystem, public FTickableGameObject
+class COSMICARCHITECTRUNTIME_API UCosmicGravitySubsystem : public UWorldSubsystem, public FTickableGameObject
 {
     GENERATED_BODY()
 
@@ -43,11 +43,11 @@ public:
 
     // E: Registra un nuevo cuerpo en la simulación (lo añade a las listas internas).
     // I: Registers a new body into the simulation (adds it to the internal lists).
-    void RegisterBody(UGravityComponent* Body);
+    void RegisterBody(UCosmicGravityComponent* Body);
 
     // E: Elimina un cuerpo de la simulación para que deje de ser afectado por la gravedad.
     // I: Removes a body from the simulation so it is no longer affected by gravity.
-    void UnregisterBody(UGravityComponent* Body);
+    void UnregisterBody(UCosmicGravityComponent* Body);
 
     // E: Devuelve el valor de la constante gravitacional base de la simulación.
     // I: Returns the value of the base gravitational constant of the simulation.
@@ -60,18 +60,18 @@ public:
 private:
     // E: Calcula y aplica la fuerza gravitacional del cuerpo B sobre el cuerpo A (unidireccional).
     // I: Calculates and applies the gravitational force of body B onto body A (unidirectional).
-    void BodyAddForce(UGravityComponent* BodyA, UGravityComponent* BodyB);
+    void BodyAddForce(UCosmicGravityComponent* BodyA, UCosmicGravityComponent* BodyB);
 
     // E: Calcula y aplica las fuerzas gravitacionales entre dos cuerpos mutuamente (N-Cuerpos).
     // I: Calculates and applies gravitational forces between two bodies mutually (N-Body).
-    void ApplyMutualForce(UGravityComponent* BodyA, UGravityComponent* BodyB);
+    void ApplyMutualForce(UCosmicGravityComponent* BodyA, UCosmicGravityComponent* BodyB);
 
     // E: Lista general de todos los cuerpos con gravedad registrados en este nivel.
     // I: General list of all gravity bodies registered in this level.
     UPROPERTY()
-    TArray<UGravityComponent*> Bodies;
+    TArray<UCosmicGravityComponent*> Bodies;
 
     // E: Sublista optimizada que contiene exclusivamente los cuerpos clasificados como planetas.
     // I: Optimized sublist containing exclusively the bodies classified as planets.
-    TArray<UGravityComponent*> Planets;
+    TArray<UCosmicGravityComponent*> Planets;
 };

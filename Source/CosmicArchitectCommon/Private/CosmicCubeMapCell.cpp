@@ -1,5 +1,5 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "CubeMapCell.h"
+#include "CosmicCubeMapCell.h"
 
