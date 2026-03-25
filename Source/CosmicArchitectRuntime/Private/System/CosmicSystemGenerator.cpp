@@ -8,6 +8,8 @@
 #include "CosmicArchitectRuntime/Public/Planet/CosmicPlanet.h"
 #include "CosmicArchitectRuntime/Public/Simulation/OrbitComponent.h"
 #include "CosmicArchitectRuntime/Public/Simulation/GravityComponent.h"
+#include "Components/DirectionalLightComponent.h"
+#include "Engine/DirectionalLight.h"
 
 ACosmicSystemGenerator::ACosmicSystemGenerator()
 {
@@ -160,6 +162,21 @@ void ACosmicSystemGenerator::GenerateBodies()
     Star->AddInstanceComponent(StarGravity);
     
     GeneratedBodies.Add(Star);
+
+    //Crear luz para la estrella
+    ADirectionalLight* NuevaLuz = GetWorld()->SpawnActor<ADirectionalLight>(
+        ADirectionalLight::StaticClass(),
+        Star->GetActorLocation(),
+        Star->GetActorRotation(),
+        SpawnParams
+    );
+    NuevaLuz->AttachToActor(Star, FAttachmentTransformRules::KeepWorldTransform);
+    ULightComponent* LightComp = NuevaLuz->GetLightComponent();
+    UDirectionalLightComponent* DirectionalLightComp = Cast<UDirectionalLightComponent>(LightComp);
+    DirectionalLightComp->AtmosphereSunLightIndex = 0; // Importante para el cielo
+    DirectionalLightComp->Intensity = 50.0f;
+
+
 
     FColor color;
 
