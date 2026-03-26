@@ -132,7 +132,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         //    }         
         //}
 
-        FIntPoint Shift = ComputeGridShift(ViewerPos, BaseGridSpacing);
+        FIntPoint Shift = ComputeGridShift(ViewerPos, BaseGridSpacing * 2);
 
         if (Shift != FIntPoint::ZeroValue)
         {
@@ -511,52 +511,70 @@ FIntPoint UCosmicClipmapComponent::ComputeGridShift(
     return FIntPoint(ShiftX, ShiftY);
 }
 
+bool ShouldShiftInsteadOfRotate(EClipmapQuadrant Q, FIntPoint Dir)
+{
+    // Dir es el movimiento del nivel inferior (normalizado a -1,0,1)
+
+    switch (Q)
+    {
+    case EClipmapQuadrant::TopLeft:
+        return (Dir.X < 0 || Dir.Y < 0);
+
+    case EClipmapQuadrant::TopRight:
+        return (Dir.X > 0 || Dir.Y < 0);
+
+    case EClipmapQuadrant::BottomLeft:
+        return (Dir.X < 0 || Dir.Y > 0);
+
+    case EClipmapQuadrant::BottomRight:
+        return (Dir.X > 0 || Dir.Y > 0);
+    }
+
+    return false;
+}
+
 void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
 {
-
-    bool RotateNext = false;
+    FIntPoint PropagatedMove = Shift;
+    bool ContinuePropagating = true;
 
     for (int32 i = 0; i < Levels.Num(); ++i)
     {
         UCosmicMeshComponent* Level = Levels[i];
 
-        int32 Step = FMath::RoundToInt(Level->GridSpacing * 2 / BaseGridSpacing);
-
-        Level->PendingShift += Shift;
-
-        bool Update = false;
-
-        if (RotateNext) {
-            if(Level->NeedsToShift(Shift))
-            {
-                Update = true;
-            }
-            else 
-            {
-                Level->RotateLevel(Shift);
-            }
-        }
-
-        RotateNext = false;
-
-        FIntPoint LevelShift;
-        LevelShift.X = Level->PendingShift.X / Step;
-        LevelShift.Y = Level->PendingShift.Y / Step;
-
-        if (LevelShift != FIntPoint::ZeroValue || Update)
+        if (i == 0)
         {
-            Level->ShiftLevel(LevelShift);
-
-            Level->PendingShift.X -= LevelShift.X * Step;
-            Level->PendingShift.Y -= LevelShift.Y * Step;
-
-            RotateNext = true;
-            Update = true;
-        }
-
-        if (Update) {
+            // nivel base SIEMPRE se mueve
+            Level->ShiftLevel(Shift);
             Level->RequestMeshUpdate();
+            continue;
         }
+
+        // normalizamos dirección (-1, 0, 1)
+        FIntPoint Dir = FIntPoint(
+            FMath::Clamp(PropagatedMove.X, -1, 1),
+            FMath::Clamp(PropagatedMove.Y, -1, 1)
+        );
+
+        bool bShift = ShouldShiftInsteadOfRotate(Level->HoleState.CurrentQuadrant, Dir);
+
+        if (bShift)
+        {
+            Level->RotateLevel(Dir);
+            Level->ShiftLevel(Dir);
+        }
+        else
+        {
+            ContinuePropagating = false;
+            Level->RotateLevel(Dir);
+        }
+
+        Level->RequestMeshUpdate();
+
+        if (!ContinuePropagating) return;
+
+        // propagas el movimiento al siguiente nivel
+        PropagatedMove = Dir;
     }
 }
 
