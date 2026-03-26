@@ -78,8 +78,9 @@ protected:
     FColor PlanetAltitudeColor = FColor::Yellow;
     float MaterialNoiseScale = 1.f;
     FVector LastPlayerPos;
-    FIntPoint AccumulatedOffset;
+    FIntPoint AccumulatedOffset = FIntPoint::ZeroValue;
     FVector AccumulatedDelta = FVector::ZeroVector;
+    TArray<FIntPoint> PreviousLevelCoords;
 
     virtual void BeginPlay() override;
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
@@ -91,8 +92,9 @@ protected:
     FVector GetPlayerLocation();
     FIntPoint ComputeGridShift(const FVector& PlayerPos, float GridSpacing);
     void UpdateLevels(const FIntPoint& Shift);
+    int32 DivFloor(int32 Value, int32 Div);
     void RotateLevel(UCosmicMeshComponent* Level, const FIntPoint& Shift);
-    bool UpdateClipmapOffset(const FVector& PlayerPos);
+    //bool UpdateClipmapOffset(const FVector& PlayerPos);
     bool IsClipmapRingVisible(const int32 LevelIndex, const float DistanceToSurface);
     bool IsClipmapRingVisible(const float GridSpacing, const int32 Resolution, const float DistanceToSurface);
     void ReduceClimapLevel();

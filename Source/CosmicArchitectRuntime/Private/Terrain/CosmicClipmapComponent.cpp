@@ -198,6 +198,16 @@ void UCosmicClipmapComponent::CreateLevels()
     BaseGridSpacing = (PlanetRadius * 2.0f) / (BaseResolution * FMath::Pow(2.0f, NumLevels - 1));
     //UE_LOG(LogTemp, Error, TEXT("BaseGridSpacing %.4f"), BaseGridSpacing);
 
+    PreviousLevelCoords.Empty();
+    PreviousLevelCoords.SetNum(NumLevels);
+
+    AccumulatedOffset = FIntPoint(1, 0);
+
+    for (size_t i = 0; i < NumLevels; i++)
+    {
+        PreviousLevelCoords[i] = FIntPoint(0, 0);
+    }
+
     // 4. Crear cada nivel
     for (int32 L = 0; L < NumLevels; ++L)
     {
@@ -535,8 +545,8 @@ bool ShouldShiftInsteadOfRotate(EClipmapQuadrant Q, FIntPoint Dir)
 
 void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
 {
-    FIntPoint PropagatedMove = Shift;
-    bool ContinuePropagating = true;
+    UE_LOG(LogTemp, Warning, TEXT("AcumX:%d, AcumY:%d"),
+        AccumulatedOffset.X, AccumulatedOffset.Y);
 
     for (int32 i = 0; i < Levels.Num(); ++i)
     {
@@ -544,38 +554,56 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
 
         if (i == 0)
         {
-            // nivel base SIEMPRE se mueve
             Level->ShiftLevel(Shift);
             Level->RequestMeshUpdate();
             continue;
         }
 
-        // normalizamos dirección (-1, 0, 1)
-        FIntPoint Dir = FIntPoint(
-            FMath::Clamp(PropagatedMove.X, -1, 1),
-            FMath::Clamp(PropagatedMove.Y, -1, 1)
+        // posición discreta en este nivel
+        int32 Scale = 1 << i;
+        int32 ScaleLast = 1 << (i - 1);
+
+        FIntPoint CurrentCoord(
+            DivFloor(AccumulatedOffset.X, Scale),
+            -DivFloor(-AccumulatedOffset.Y, Scale)
         );
 
-        bool bShift = ShouldShiftInsteadOfRotate(Level->HoleState.CurrentQuadrant, Dir);
+        UE_LOG(LogTemp, Warning, TEXT("Level:%d, ACordX:%d, ACordY:%d, PCordX:%d, PCordY:%d,"),
+            Level->LevelIndex, CurrentCoord.X, CurrentCoord.Y, PreviousLevelCoords[i].X, PreviousLevelCoords[i].Y);
 
-        if (bShift)
-        {
-            Level->RotateLevel(Dir);
-            Level->ShiftLevel(Dir);
-        }
-        else
-        {
-            ContinuePropagating = false;
-            Level->RotateLevel(Dir);
-        }
+        // cuánto debe moverse realmente
+        FIntPoint LevelShift = CurrentCoord - PreviousLevelCoords[i];
+
+        // guardar estado
+        PreviousLevelCoords[i] = CurrentCoord;
+
+        
+
+        int32 CellX = DivFloor(Shift.X, ScaleLast);
+        int32 CellY = DivFloor(Shift.Y, ScaleLast);
+
+        bool FlipX = (CellX & 1) != 0;
+        bool FlipY = (CellY & 1) != 0;
+
+        // rotación 
+        Level->RotateLevel(FlipX, FlipY);
+
+        // movimiento REAL del nivel
+        Level->ShiftLevel(LevelShift);
 
         Level->RequestMeshUpdate();
 
-        if (!ContinuePropagating) return;
-
-        // propagas el movimiento al siguiente nivel
-        PropagatedMove = Dir;
+        if (LevelShift == FIntPoint::ZeroValue)
+            return;
     }
+}
+
+int32 UCosmicClipmapComponent::DivFloor(int32 Value, int32 Div)
+{
+    if (Value >= 0)
+        return Value / Div;
+    else
+        return (Value - (Div - 1)) / Div;
 }
 
 void UCosmicClipmapComponent::RotateLevel(UCosmicMeshComponent* Level, const FIntPoint& Shift)
@@ -583,19 +611,19 @@ void UCosmicClipmapComponent::RotateLevel(UCosmicMeshComponent* Level, const FIn
     Level->ShiftLevel(Shift);
 }
 
-bool UCosmicClipmapComponent::UpdateClipmapOffset(const FVector& PlayerPos)
-{
-    FIntPoint Shift = ComputeGridShift(PlayerPos, BaseGridSpacing);
-
-    if (Shift.X == 0 && Shift.Y == 0)
-        return false;
-
-    AccumulatedOffset += Shift;
-
-    LastPlayerPos = PlayerPos;
-
-    return true;
-}
+//bool UCosmicClipmapComponent::UpdateClipmapOffset(const FVector& PlayerPos)
+//{
+//    FIntPoint Shift = ComputeGridShift(PlayerPos, BaseGridSpacing);
+//
+//    if (Shift.X == 0 && Shift.Y == 0)
+//        return false;
+//
+//    AccumulatedOffset += Shift;
+//
+//    LastPlayerPos = PlayerPos;
+//
+//    return true;
+//}
 
 FVector UCosmicClipmapComponent::GetPlayerLocation()
 {

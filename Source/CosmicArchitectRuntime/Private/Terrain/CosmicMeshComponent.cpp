@@ -458,69 +458,70 @@ void UCosmicMeshComponent::ShiftLevel(FIntPoint Shift)
     }
 }
 
-void UCosmicMeshComponent::RotateLevel(FIntPoint Shift)
+void UCosmicMeshComponent::RotateLevel(bool FlipX, bool FlipY)
 {
     if (!bIsRing) return;
+    if (!FlipX && !FlipY) return;
 
     EClipmapQuadrant OldQuadrant = HoleState.CurrentQuadrant;
     EClipmapQuadrant NewQuadrant = HoleState.CurrentQuadrant;
 
     if (OldQuadrant == EClipmapQuadrant::TopRight) 
     {
-        if (Shift.X != 0 && Shift.Y != 0)
+        if (FlipX && FlipY)
         {
             NewQuadrant = EClipmapQuadrant::BottomLeft;
         }
-        else if (Shift.X != 0 && Shift.Y == 0)
+        else if (FlipX && !FlipY)
         {
             NewQuadrant = EClipmapQuadrant::TopLeft;
         }
-        else if (Shift.X == 0 && Shift.Y != 0)
+        else if (!FlipX && FlipY)
         {
             NewQuadrant = EClipmapQuadrant::BottomRight;
         }
     }
     else if (OldQuadrant == EClipmapQuadrant::TopLeft)
     {
-        if (Shift.X != 0 && Shift.Y != 0)
+        if (FlipX && FlipY)
         {
             NewQuadrant = EClipmapQuadrant::BottomRight;
         }
-        else if (Shift.X != 0 && Shift.Y == 0)
+        else if (FlipX && !FlipY)
         {
             NewQuadrant = EClipmapQuadrant::TopRight;
         }
-        else if (Shift.X == 0 && Shift.Y != 0)
+        else if (!FlipX && FlipY)
         {
             NewQuadrant = EClipmapQuadrant::BottomLeft;
         }
     }
     else if (OldQuadrant == EClipmapQuadrant::BottomRight)
     {
-        if (Shift.X != 0 && Shift.Y != 0)
+        if (FlipX && FlipY)
         {
             NewQuadrant = EClipmapQuadrant::TopLeft;
         }
-        else if (Shift.X != 0 && Shift.Y == 0)
+        else if (FlipX && !FlipY)
         {
             NewQuadrant = EClipmapQuadrant::BottomLeft;
         }
-        else if (Shift.X == 0 && Shift.Y != 0)
+        else if (!FlipX && FlipY)
         {
             NewQuadrant = EClipmapQuadrant::TopRight;
         }
     }
     else if (OldQuadrant == EClipmapQuadrant::BottomLeft)
     {
-        if (Shift.X != 0 && Shift.Y != 0)
+        if (FlipX && FlipY)
         {
             NewQuadrant = EClipmapQuadrant::TopRight;
         }
-        else if (Shift.X != 0 && Shift.Y == 0)
+        else if (FlipX && !FlipY)
         {
             NewQuadrant = EClipmapQuadrant::BottomRight;
         }
-        else if (Shift.X == 0 && Shift.Y != 0)
+        else if (!FlipX && FlipY)
         {
             NewQuadrant = EClipmapQuadrant::TopLeft;
         }

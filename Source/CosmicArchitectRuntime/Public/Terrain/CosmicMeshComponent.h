@@ -81,7 +81,7 @@ public:
     EShiftDirection GetShiftDirection(FIntPoint Shift);
     bool NeedsToShift(FIntPoint Shift);
     int32 GetQuadrantIndex(EClipmapQuadrant Q) const;
-    void RotateLevel(FIntPoint Shift);
+    void RotateLevel(bool FlipX, bool FlipY);
     void SetHoleQuadrant(EClipmapQuadrant NewQuadrant);
 
     FAsyncTask<FCosmicArchitectNoiseGenerator>* NoiseTask = nullptr;
