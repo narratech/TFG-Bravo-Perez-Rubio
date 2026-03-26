@@ -201,11 +201,15 @@ void UCosmicClipmapComponent::CreateLevels()
     PreviousLevelCoords.Empty();
     PreviousLevelCoords.SetNum(NumLevels);
 
+    PreviousLevelCoordsForRotation.Empty();
+    PreviousLevelCoordsForRotation.SetNum(NumLevels);
+
     AccumulatedOffset = FIntPoint(1, 0);
 
     for (size_t i = 0; i < NumLevels; i++)
     {
         PreviousLevelCoords[i] = FIntPoint(0, 0);
+        PreviousLevelCoordsForRotation[i] = FIntPoint(0, 0);
     }
 
     // 4. Crear cada nivel
@@ -545,9 +549,6 @@ bool ShouldShiftInsteadOfRotate(EClipmapQuadrant Q, FIntPoint Dir)
 
 void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
 {
-    UE_LOG(LogTemp, Warning, TEXT("AcumX:%d, AcumY:%d"),
-        AccumulatedOffset.X, AccumulatedOffset.Y);
-
     for (int32 i = 0; i < Levels.Num(); ++i)
     {
         UCosmicMeshComponent* Level = Levels[i];
@@ -559,42 +560,42 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
             continue;
         }
 
-        // posición discreta en este nivel
         int32 Scale = 1 << i;
         int32 ScaleLast = 1 << (i - 1);
 
+        // ---- MOVIMIENTO ----
         FIntPoint CurrentCoord(
-            DivFloor(AccumulatedOffset.X, Scale),
+            -DivFloor(-AccumulatedOffset.X, Scale),
             -DivFloor(-AccumulatedOffset.Y, Scale)
         );
 
-        UE_LOG(LogTemp, Warning, TEXT("Level:%d, ACordX:%d, ACordY:%d, PCordX:%d, PCordY:%d,"),
-            Level->LevelIndex, CurrentCoord.X, CurrentCoord.Y, PreviousLevelCoords[i].X, PreviousLevelCoords[i].Y);
-
-        // cuánto debe moverse realmente
         FIntPoint LevelShift = CurrentCoord - PreviousLevelCoords[i];
 
-        // guardar estado
-        PreviousLevelCoords[i] = CurrentCoord;
+        // ---- ROTACIÓN (basada en nivel inferior) ----
+        FIntPoint CurrCoordLower(
+            -DivFloor(-AccumulatedOffset.X, ScaleLast),
+            -DivFloor(-AccumulatedOffset.Y, ScaleLast)
+        );
 
-        
+        FIntPoint DeltaLower = CurrCoordLower - PreviousLevelCoordsForRotation[i - 1];
 
-        int32 CellX = DivFloor(Shift.X, ScaleLast);
-        int32 CellY = DivFloor(Shift.Y, ScaleLast);
+        bool FlipX = (DeltaLower.X != 0);
+        bool FlipY = (DeltaLower.Y != 0);
 
-        bool FlipX = (CellX & 1) != 0;
-        bool FlipY = (CellY & 1) != 0;
-
-        // rotación 
+        // aplicar rotación SIEMPRE que haya evento inferior
         Level->RotateLevel(FlipX, FlipY);
 
-        // movimiento REAL del nivel
-        Level->ShiftLevel(LevelShift);
+        // actualizar estado rotación SIEMPRE
+        PreviousLevelCoordsForRotation[i - 1] = CurrCoordLower;
+
+        // ---- MOVIMIENTO ----
+        if (LevelShift != FIntPoint::ZeroValue)
+        {
+            Level->ShiftLevel(LevelShift);
+            PreviousLevelCoords[i] = CurrentCoord;
+        }
 
         Level->RequestMeshUpdate();
-
-        if (LevelShift == FIntPoint::ZeroValue)
-            return;
     }
 }
 

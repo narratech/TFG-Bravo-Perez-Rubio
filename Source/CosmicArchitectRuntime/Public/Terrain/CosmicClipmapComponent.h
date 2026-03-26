@@ -81,6 +81,7 @@ protected:
     FIntPoint AccumulatedOffset = FIntPoint::ZeroValue;
     FVector AccumulatedDelta = FVector::ZeroVector;
     TArray<FIntPoint> PreviousLevelCoords;
+    TArray<FIntPoint> PreviousLevelCoordsForRotation;
 
     virtual void BeginPlay() override;
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
