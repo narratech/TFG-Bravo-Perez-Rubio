@@ -467,88 +467,60 @@ void UCosmicMeshComponent::RotateLevel(FIntPoint Shift)
 
     if (OldQuadrant == EClipmapQuadrant::TopRight) 
     {
-        if (Shift.X > 0)
+        if (Shift.X != 0 && Shift.Y != 0)
         {
-            // mover hueco a la derecha
+            NewQuadrant = EClipmapQuadrant::BottomLeft;
+        }
+        else if (Shift.X != 0 && Shift.Y == 0)
+        {
             NewQuadrant = EClipmapQuadrant::TopLeft;
         }
-        else if (Shift.X < 0)
-        {
-            NewQuadrant = EClipmapQuadrant::TopLeft;
-        }
-
-        if (Shift.Y > 0)
-        {
-            // mover hueco abajo
-            NewQuadrant = EClipmapQuadrant::BottomRight;
-        }
-        else if (Shift.Y < 0)
+        else if (Shift.X == 0 && Shift.Y != 0)
         {
             NewQuadrant = EClipmapQuadrant::BottomRight;
         }
     }
     else if (OldQuadrant == EClipmapQuadrant::TopLeft)
     {
-        if (Shift.X > 0)
+        if (Shift.X != 0 && Shift.Y != 0)
         {
-            // mover hueco a la derecha
+            NewQuadrant = EClipmapQuadrant::BottomRight;
+        }
+        else if (Shift.X != 0 && Shift.Y == 0)
+        {
             NewQuadrant = EClipmapQuadrant::TopRight;
         }
-        else if (Shift.X < 0)
-        {
-            NewQuadrant = EClipmapQuadrant::TopRight;
-        }
-
-        if (Shift.Y > 0)
-        {
-            // mover hueco abajo
-            NewQuadrant = EClipmapQuadrant::BottomLeft;
-        }
-        else if (Shift.Y < 0)
+        else if (Shift.X == 0 && Shift.Y != 0)
         {
             NewQuadrant = EClipmapQuadrant::BottomLeft;
         }
     }
     else if (OldQuadrant == EClipmapQuadrant::BottomRight)
     {
-        if (Shift.X > 0)
+        if (Shift.X != 0 && Shift.Y != 0)
         {
-            // mover hueco a la derecha
+            NewQuadrant = EClipmapQuadrant::TopLeft;
+        }
+        else if (Shift.X != 0 && Shift.Y == 0)
+        {
             NewQuadrant = EClipmapQuadrant::BottomLeft;
         }
-        else if (Shift.X < 0)
-        {
-            NewQuadrant = EClipmapQuadrant::BottomLeft;
-        }
-
-        if (Shift.Y > 0)
-        {
-            // mover hueco abajo
-            NewQuadrant = EClipmapQuadrant::TopRight;
-        }
-        else if (Shift.Y < 0)
+        else if (Shift.X == 0 && Shift.Y != 0)
         {
             NewQuadrant = EClipmapQuadrant::TopRight;
         }
     }
     else if (OldQuadrant == EClipmapQuadrant::BottomLeft)
     {
-        if (Shift.X > 0)
+        if (Shift.X != 0 && Shift.Y != 0)
         {
-            // mover hueco a la derecha
+            NewQuadrant = EClipmapQuadrant::TopRight;
+        }
+        else if (Shift.X != 0 && Shift.Y == 0)
+        {
             NewQuadrant = EClipmapQuadrant::BottomRight;
         }
-        else if (Shift.X < 0)
-        {
-            NewQuadrant = EClipmapQuadrant::BottomRight;
-        }
-
-        if (Shift.Y > 0)
-        {
-            // mover hueco abajo
-            NewQuadrant = EClipmapQuadrant::TopLeft;
-        }
-        else if (Shift.Y < 0)
+        else if (Shift.X == 0 && Shift.Y != 0)
         {
             NewQuadrant = EClipmapQuadrant::TopLeft;
         }
