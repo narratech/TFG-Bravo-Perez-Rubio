@@ -211,9 +211,13 @@ void UCosmicMeshComponent::BuildBaseMesh()
     //UE_LOG(LogTemp, Warning, TEXT("  UVs.Num(): %d"), UVs.Num());
     //UE_LOG(LogTemp, Warning, TEXT("  Triangles.Num(): %d"), Triangles.Num());
 
-    /*bMeshCreated = true;
+   /* bMeshCreated = true;
     if (LevelIndex == 1) {
         SetHoleQuadrant(EClipmapQuadrant::BottomLeft);
+        SetHoleQuadrant(EClipmapQuadrant::BottomRight);
+        SetHoleQuadrant(EClipmapQuadrant::TopLeft);
+        SetHoleQuadrant(EClipmapQuadrant::TopRight);
+        SetHoleQuadrant(EClipmapQuadrant::TopLeft);
     }*/
     
 
@@ -398,9 +402,9 @@ void UCosmicMeshComponent::BuildSphereMesh()
 int32 UCosmicMeshComponent::GetQuadrantIndex(EClipmapQuadrant Q) const{
     switch (Q) {
     case EClipmapQuadrant::TopLeft:     return 0;
-    case EClipmapQuadrant::TopRight:    return 1;
+    case EClipmapQuadrant::TopRight:    return 3;
     case EClipmapQuadrant::BottomRight: return 2;
-    case EClipmapQuadrant::BottomLeft:  return 3;
+    case EClipmapQuadrant::BottomLeft:  return 1;
     default: return 0;
     }
 }
@@ -420,8 +424,8 @@ void UCosmicMeshComponent::ShiftLevel(FIntPoint Shift)
     if (Shift == FIntPoint::ZeroValue) return;
 
     FVector Offset = FVector(
-        Shift.X * GridSpacing,
-        Shift.Y * GridSpacing,
+        Shift.X * GridSpacing * 2,
+        Shift.Y * GridSpacing * 2,
         0.0f
     );
 

@@ -513,35 +513,25 @@ FIntPoint UCosmicClipmapComponent::ComputeGridShift(
 
 void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
 {
+
+    bool RotateNext = false;
+
     for (int32 i = 0; i < Levels.Num(); ++i)
     {
         UCosmicMeshComponent* Level = Levels[i];
 
-        int32 Step = FMath::RoundToInt(Level->GridSpacing / BaseGridSpacing);
-        int32 HalfStep = Step / 2;
+        int32 Step = FMath::RoundToInt(Level->GridSpacing * 2 / BaseGridSpacing);
 
         Level->PendingShift += Shift;
 
-        /*FIntPoint LevelRotate = FIntPoint::ZeroValue;
+        bool Update = false;
 
-        if (Level->PendingShift.X >= HalfStep) LevelRotate.X = 1;
-        else if (Level->PendingShift.X <= -HalfStep) LevelRotate.X = -1;
-
-        if (Level->PendingShift.Y >= HalfStep) LevelRotate.Y = 1;
-        else if (Level->PendingShift.Y <= -HalfStep) LevelRotate.Y = -1;*/
-
-        FIntPoint LevelRotate;
-        LevelRotate.X = Level->PendingShift.X * 2 / Step; 
-        LevelRotate.Y = Level->PendingShift.Y * 2 / Step;
-
-        if (LevelRotate != FIntPoint::ZeroValue)
-        {
-            Level->RotateLevel(LevelRotate);
-            UE_LOG(LogTemp, Warning, TEXT("Rotando Nivel: %d"), Level->LevelIndex);
-            // consumir rotación
-            /*Level->PendingShift.X -= LevelRotate.X * HalfStep;
-            Level->PendingShift.Y -= LevelRotate.Y * HalfStep;*/
+        if (RotateNext) {
+            Level->RotateLevel(Shift);
+            Update = true;
         }
+
+        RotateNext = false;
 
         FIntPoint LevelShift;
         LevelShift.X = Level->PendingShift.X / Step;
@@ -554,6 +544,11 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
             Level->PendingShift.X -= LevelShift.X * Step;
             Level->PendingShift.Y -= LevelShift.Y * Step;
 
+            RotateNext = true;
+            Update = true;
+        }
+
+        if (Update) {
             Level->RequestMeshUpdate();
         }
     }
