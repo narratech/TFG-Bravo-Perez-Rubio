@@ -538,6 +538,13 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
     FIntPoint PropagatedMove = Shift;
     bool ContinuePropagating = true;
 
+    bool Jumped = true;
+
+    int32 PropagatedShiftX = Shift.X;
+    int32 PropagatedShiftY = Shift.Y;
+
+    UE_LOG(LogTemp, Warning, TEXT("Comenzando actualizado"));
+
     for (int32 i = 0; i < Levels.Num(); ++i)
     {
         UCosmicMeshComponent* Level = Levels[i];
@@ -550,28 +557,96 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
             continue;
         }
 
+        int32 Scale = 1 << i;
+
+        int32 ShiftX = PropagatedShiftX;
+        int32 ShiftY = PropagatedShiftY;
+
+        EClipmapQuadrant currentQuadrant = Level->HoleState.CurrentQuadrant;
+
+        int32 StepsX = ShiftX * 2 / Scale;
+        int32 StepsY = ShiftY * 2 / Scale;
+
+        UE_LOG(LogTemp, Warning, TEXT("Nivel:%d, Scale:%d"), Level->LevelIndex, Scale);
+        UE_LOG(LogTemp, Warning, TEXT("StepsX:%d, StepsY:%d"), StepsX, StepsY);
+
         // normalizamos dirección (-1, 0, 1)
         FIntPoint Dir = FIntPoint(
             FMath::Clamp(PropagatedMove.X, -1, 1),
             FMath::Clamp(PropagatedMove.Y, -1, 1)
         );
 
-        bool bShift = ShouldShiftInsteadOfRotate(Level->HoleState.CurrentQuadrant, Dir);
+        //bool bShift = ShouldShiftInsteadOfRotate(Level->HoleState.CurrentQuadrant, Dir);
 
-        if (bShift)
+        FIntPoint MovementX = FIntPoint(0, 0);
+
+        if (currentQuadrant == EClipmapQuadrant::BottomRight) {
+            if (Shift.X > 0) {
+
+                int32 Jumps = StepsX / 2 + 1;
+
+                if (!Jumped) {
+                    Jumps = 0;
+                }
+
+                if (StepsX % 2 == 1) {
+                    Level->SetHoleQuadrant(EClipmapQuadrant::BottomLeft);                
+                }
+  
+                MovementX.X = Jumps;
+                Level->ShiftLevel(MovementX);
+
+                
+                if (Jumps > 0) {
+                    Jumped = true;
+                    PropagatedShiftX += ShiftX;
+                    PropagatedShiftY += ShiftY;
+                }
+                else {
+                    Jumped = false;
+                }
+            }
+        }
+        else if (currentQuadrant == EClipmapQuadrant::BottomLeft) {
+            if (Shift.X > 0) {
+
+                int32 Jumps = StepsX / 2;
+
+                if (StepsX % 2 == 1) {
+                    Level->SetHoleQuadrant(EClipmapQuadrant::BottomRight);
+                }
+
+                MovementX.X = Jumps;
+                Level->ShiftLevel(MovementX);
+
+                
+                if (Jumps > 0) {
+                    Jumped = true;
+                    PropagatedShiftX += ShiftX;
+                    PropagatedShiftY += ShiftY;
+                }
+                else {
+                    Jumped = false;
+                }
+            }
+        }
+
+        /*if (bShift)
         {
             Level->RotateLevel(Dir);
-            Level->ShiftLevel(Dir);
+            Level->ShiftLevel(Shift);
+            PropagatedShiftX += ShiftX;
+            PropagatedShiftY += ShiftY;
         }
         else
         {
             ContinuePropagating = false;
             Level->RotateLevel(Dir);
-        }
+        }*/
 
         Level->RequestMeshUpdate();
 
-        if (!ContinuePropagating) return;
+        //if (!ContinuePropagating) return;
 
         // propagas el movimiento al siguiente nivel
         PropagatedMove = Dir;
