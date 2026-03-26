@@ -419,6 +419,29 @@ EShiftDirection UCosmicMeshComponent::GetShiftDirection(FIntPoint Shift)
     return EShiftDirection::None;
 }
 
+bool UCosmicMeshComponent::NeedsToShift(FIntPoint Shift)
+{
+    EClipmapQuadrant CurrentQuadrant = HoleState.CurrentQuadrant;
+
+    if ((CurrentQuadrant == EClipmapQuadrant::TopLeft ||
+        CurrentQuadrant == EClipmapQuadrant::TopRight) && Shift.Y < 0)
+        return true;
+
+    if ((CurrentQuadrant == EClipmapQuadrant::BottomLeft ||
+        CurrentQuadrant == EClipmapQuadrant::TopLeft) && Shift.X < 0)
+        return true;
+
+    if ((CurrentQuadrant == EClipmapQuadrant::BottomRight ||
+        CurrentQuadrant == EClipmapQuadrant::TopRight) && Shift.Y > 0)
+        return true;
+
+    if ((CurrentQuadrant == EClipmapQuadrant::BottomLeft ||
+        CurrentQuadrant == EClipmapQuadrant::BottomRight) && Shift.X > 0)
+        return true;
+
+    return false;
+}
+
 void UCosmicMeshComponent::ShiftLevel(FIntPoint Shift)
 {
     if (Shift == FIntPoint::ZeroValue) return;

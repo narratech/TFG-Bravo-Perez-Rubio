@@ -79,6 +79,7 @@ public:
     
     void ShiftLevel(FIntPoint Shift);
     EShiftDirection GetShiftDirection(FIntPoint Shift);
+    bool NeedsToShift(FIntPoint Shift);
     int32 GetQuadrantIndex(EClipmapQuadrant Q) const;
     void RotateLevel(FIntPoint Shift);
     void SetHoleQuadrant(EClipmapQuadrant NewQuadrant);

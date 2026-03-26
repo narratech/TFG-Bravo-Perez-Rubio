@@ -527,8 +527,14 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
         bool Update = false;
 
         if (RotateNext) {
-            Level->RotateLevel(Shift);
-            Update = true;
+            if(Level->NeedsToShift(Shift))
+            {
+                Update = true;
+            }
+            else 
+            {
+                Level->RotateLevel(Shift);
+            }
         }
 
         RotateNext = false;
@@ -537,7 +543,7 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
         LevelShift.X = Level->PendingShift.X / Step;
         LevelShift.Y = Level->PendingShift.Y / Step;
 
-        if (LevelShift != FIntPoint::ZeroValue)
+        if (LevelShift != FIntPoint::ZeroValue || Update)
         {
             Level->ShiftLevel(LevelShift);
 
