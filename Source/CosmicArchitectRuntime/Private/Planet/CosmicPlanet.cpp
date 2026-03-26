@@ -4,6 +4,7 @@
 #include "Planet/CosmicPlanet.h"
 #include "Terrain/CosmicCollisionComponent.h"
 #include "Terrain/CosmicClipmapComponent.h"
+#include "Terrain/CosmicOceanClipmap.h"
 #include "CosmicFoliageSpawner.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
@@ -19,6 +20,7 @@ ACosmicPlanet::ACosmicPlanet()
 
     CollisionComponent = CreateDefaultSubobject<UCosmicCollisionComponent>(TEXT("CollisionComponent"));
     ClipmapComponent = CreateDefaultSubobject<UCosmicClipmapComponent>(TEXT("ClipmapComponent"));
+    OceanClipmapComponent = CreateDefaultSubobject<UCosmicOceanClipmap>(TEXT("OceanClipmapComponent"));
     FoliageSpawnerComponent = CreateDefaultSubobject<UCosmicFoliageSpawner>(TEXT("FoliageSpawnerComponent"));
 }
 
@@ -52,6 +54,17 @@ void ACosmicPlanet::BeginPlay()
             ClipmapComponent->CreatePerformanceLevel(true);   
         }
     }
+
+    if (OceanClipmapComponent) {
+        if (OceanClipmapComponent->bInitializedInEditor) {
+            OceanClipmapComponent->ReasignLevels();
+        }
+        else {
+            OceanClipmapComponent->ParentRoot = Root;
+            OceanClipmapComponent->PlanetRadius = RadiusKm * 100000;
+            OceanClipmapComponent->CreatePerformanceLevel(true);
+        }
+    }
 }
 
 void ACosmicPlanet::Tick(float DeltaTime)
@@ -80,6 +93,19 @@ void ACosmicPlanet::InitClipmap()
     }
     else {
         UE_LOG(LogTemp, Error, TEXT("No existe el clipmap"));
+    }
+
+    if (OceanClipmapComponent) {
+
+        OceanClipmapComponent->ParentRoot = Root;
+        OceanClipmapComponent->PlanetRadius = RadiusKm * 100000;
+        OceanClipmapComponent->ClearLevels();
+        OceanClipmapComponent->CreatePerformanceLevel(true);
+        OceanClipmapComponent->bInitializedInEditor = true;
+
+    }
+    else {
+        UE_LOG(LogTemp, Error, TEXT("No existe el ocean clipmap"));
     }
 }
 
@@ -125,6 +151,11 @@ void ACosmicPlanet::InitPlanet(float InRadiusKm, UCosmicNoiseSettings* NewNoiseS
     if (ClipmapComponent) {
         ClipmapComponent->BaseMaterial = BaseMaterial;
         ClipmapComponent->DefaultTexture = DefaultTexture;
+    }
+
+    if (OceanClipmapComponent) {
+        OceanClipmapComponent->BaseMaterial = BaseMaterial;
+        OceanClipmapComponent->DefaultTexture = DefaultTexture;
     }
 
     PlanetMainColor1 = color1;
