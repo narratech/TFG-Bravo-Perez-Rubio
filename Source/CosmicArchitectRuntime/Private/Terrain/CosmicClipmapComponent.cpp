@@ -535,17 +535,8 @@ bool ShouldShiftInsteadOfRotate(EClipmapQuadrant Q, FIntPoint Dir)
 
 void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
 {
-    FIntPoint PropagatedMove = Shift;
-    bool ContinuePropagating = true;
-
-    bool Jumped = true;
-
-    /*int32 StepsX;
-    int32 StepsY;*/
-
-    int JumpsX = Shift.X;
-
-    UE_LOG(LogTemp, Warning, TEXT("Comenzando actualizado"));
+    int32 JumpsX = Shift.X;
+    int32 JumpsY = Shift.Y;
 
     for (int32 i = 0; i < Levels.Num(); ++i)
     {
@@ -553,61 +544,84 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
 
         if (i == 0)
         {
-            // nivel base SIEMPRE se mueve
+            // El nivel base siempre se mueve
             Level->ShiftLevel(Shift);
-            //StepsX = Shift.X * 2;
-            //StepsY = Shift.Y * 2;
             Level->RequestMeshUpdate();
             continue;
         }
 
         EClipmapQuadrant currentQuadrant = Level->HoleState.CurrentQuadrant;
 
-        FIntPoint MovementX = FIntPoint(0, 0);
+        // Descomponemos el cuadrante: ahora usamos bIsBottom porque +Y es Bottom
+        bool bIsRight = (currentQuadrant == EClipmapQuadrant::TopRight || currentQuadrant == EClipmapQuadrant::BottomRight);
+        bool bIsBottom = (currentQuadrant == EClipmapQuadrant::BottomLeft || currentQuadrant == EClipmapQuadrant::BottomRight);
 
-        if (currentQuadrant == EClipmapQuadrant::BottomRight) {
-            if (Shift.X > 0) {              
-
-                if (JumpsX % 2 == 1) {
-                    Level->SetHoleQuadrant(EClipmapQuadrant::BottomLeft);
-                }
-
-                if (JumpsX % 2 == 1) {
-                    JumpsX = 1 + JumpsX / 2;
+        // LOGICA DEL EJE X (+X es Derecha)
+        if (JumpsX != 0)
+        {
+            if (FMath::Abs(JumpsX) % 2 == 1)
+            {
+                if (bIsRight) {
+                    if (JumpsX > 0) JumpsX = (JumpsX / 2) + 1; // Empuja el borde derecho
+                    else JumpsX = (JumpsX / 2);                // Absorbe hacia el centro
+                    bIsRight = false; // El hueco cambia a la izquierda
                 }
                 else {
-                    JumpsX = JumpsX / 2;
+                    if (JumpsX < 0) JumpsX = (JumpsX / 2) - 1; // Empuja el borde izquierdo
+                    else JumpsX = (JumpsX / 2);                // Absorbe hacia el centro
+                    bIsRight = true;  // El hueco cambia a la derecha
                 }
-
-                MovementX.X = JumpsX;
-                Level->ShiftLevel(MovementX);
-
-                Jumped = (JumpsX > 0);
             }
-        }
-        else if (currentQuadrant == EClipmapQuadrant::BottomLeft) {
-            if (Shift.X > 0) {
-
-                if (JumpsX % 2 == 1) {
-                    Level->SetHoleQuadrant(EClipmapQuadrant::BottomRight);
-                }
-
+            else
+            {
                 JumpsX = JumpsX / 2;
-
-                MovementX.X = JumpsX;
-                Level->ShiftLevel(MovementX);
-
-                Jumped = (JumpsX > 0);
             }
         }
 
-       /* if (StepsX % 2 == 1) {
-            StepsX--;
-        }*/
-        
+        // LOGICA DEL EJE Y (+Y es Abajo / Bottom)
+        if (JumpsY != 0)
+        {
+            if (FMath::Abs(JumpsY) % 2 == 1)
+            {
+                if (bIsBottom) {
+                    if (JumpsY > 0) JumpsY = (JumpsY / 2) + 1; // Empuja el borde inferior (+Y)
+                    else JumpsY = (JumpsY / 2);                // Absorbe el salto -Y hacia el centro
+                    bIsBottom = false; // El hueco cambia a Arriba (Top)
+                }
+                else {
+                    if (JumpsY < 0) JumpsY = (JumpsY / 2) - 1; // Empuja el borde superior (-Y)
+                    else JumpsY = (JumpsY / 2);                // Absorbe el salto +Y hacia el centro
+                    bIsBottom = true;  // El hueco cambia a Abajo (Bottom)
+                }
+            }
+            else
+            {
+                JumpsY = JumpsY / 2;
+            }
+        }
+
+        // Reconstruimos el cuadrante a partir de los booleanos
+        EClipmapQuadrant NewQuadrant;
+        if (!bIsBottom && !bIsRight) NewQuadrant = EClipmapQuadrant::TopLeft;
+        else if (!bIsBottom && bIsRight) NewQuadrant = EClipmapQuadrant::TopRight;
+        else if (bIsBottom && !bIsRight) NewQuadrant = EClipmapQuadrant::BottomLeft;
+        else NewQuadrant = EClipmapQuadrant::BottomRight;
+
+        // Solo actualizamos el cuadrante si realmente ha cambiado
+        if (NewQuadrant != currentQuadrant) {
+            Level->SetHoleQuadrant(NewQuadrant);
+        }
+
+        // Aplicamos el movimiento fisico a este nivel
+        FIntPoint Movement(JumpsX, JumpsY);
+        if (Movement != FIntPoint::ZeroValue) {
+            Level->ShiftLevel(Movement);
+        }
+
         Level->RequestMeshUpdate();
 
-        if (!Jumped) return;
+        // Salida temprana, si ya no hay movimiento que propagar, cortamos el bucle para ahorrar CPU
+        if (JumpsX == 0 && JumpsY == 0) return;
     }
 }
 
