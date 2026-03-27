@@ -140,7 +140,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             AccumulatedOffset += Shift;
 
             // actualizar niveles necesarios
-            UpdateLevels(Shift);
+            UpdateLevels(Shift * 2);
         }
 
         if (FreezeGeneration) {
@@ -540,8 +540,13 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
 
     bool Jumped = true;
 
-    int32 PropagatedShiftX = Shift.X;
-    int32 PropagatedShiftY = Shift.Y;
+    //int32 Scale = 1 << 1;
+
+    /*int32 ShiftX = Shift.X * 2 / Scale;
+    int32 ShiftY = Shift.Y * 2 / Scale;*/
+
+    int32 StepsX;
+    int32 StepsY;
 
     UE_LOG(LogTemp, Warning, TEXT("Comenzando actualizado"));
 
@@ -553,22 +558,16 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
         {
             // nivel base SIEMPRE se mueve
             Level->ShiftLevel(Shift);
+            StepsX = Shift.X * 2;
+            StepsY = Shift.Y * 2;
             Level->RequestMeshUpdate();
             continue;
         }
 
-        int32 Scale = 1 << i;
-
-        int32 ShiftX = PropagatedShiftX;
-        int32 ShiftY = PropagatedShiftY;
-
         EClipmapQuadrant currentQuadrant = Level->HoleState.CurrentQuadrant;
 
-        int32 StepsX = ShiftX * 2 / Scale;
-        int32 StepsY = ShiftY * 2 / Scale;
-
-        UE_LOG(LogTemp, Warning, TEXT("Nivel:%d, Scale:%d"), Level->LevelIndex, Scale);
-        UE_LOG(LogTemp, Warning, TEXT("StepsX:%d, StepsY:%d"), StepsX, StepsY);
+        //UE_LOG(LogTemp, Warning, TEXT("Nivel:%d, Scale:%d"), Level->LevelIndex, Scale);
+        //UE_LOG(LogTemp, Warning, TEXT("StepsX:%d, StepsY:%d"), StepsX, StepsY);
 
         // normalizamos dirección (-1, 0, 1)
         FIntPoint Dir = FIntPoint(
@@ -583,34 +582,32 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
         if (currentQuadrant == EClipmapQuadrant::BottomRight) {
             if (Shift.X > 0) {
 
-                int32 Jumps = StepsX / 2 + 1;
+                StepsX = (3 * StepsX + 4 - 1) / 4;
 
-                if (!Jumped) {
-                    Jumps = 0;
-                }
+                int32 Jumps = StepsX / 2;
 
-                if (StepsX % 2 == 1) {
+                if (Jumps % 2 == 1) {
                     Level->SetHoleQuadrant(EClipmapQuadrant::BottomLeft);                
                 }
   
                 MovementX.X = Jumps;
                 Level->ShiftLevel(MovementX);
 
-                
                 if (Jumps > 0) {
-                    Jumped = true;
-                    PropagatedShiftX += ShiftX;
-                    PropagatedShiftY += ShiftY;
+                    Jumped = true;            
                 }
                 else {
                     Jumped = false;
                 }
+                UE_LOG(LogTemp, Warning, TEXT("Jumps:%d"), Jumps);
             }
         }
         else if (currentQuadrant == EClipmapQuadrant::BottomLeft) {
             if (Shift.X > 0) {
 
-                int32 Jumps = StepsX / 2;
+                StepsX = (StepsX * 3) / 4;
+
+                int32 Jumps = (StepsX) / 2;
 
                 if (StepsX % 2 == 1) {
                     Level->SetHoleQuadrant(EClipmapQuadrant::BottomRight);
@@ -619,15 +616,13 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
                 MovementX.X = Jumps;
                 Level->ShiftLevel(MovementX);
 
-                
                 if (Jumps > 0) {
                     Jumped = true;
-                    PropagatedShiftX += ShiftX;
-                    PropagatedShiftY += ShiftY;
                 }
                 else {
                     Jumped = false;
                 }
+                UE_LOG(LogTemp, Warning, TEXT("Jumps:%d"), Jumps);
             }
         }
 
@@ -646,7 +641,7 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
 
         Level->RequestMeshUpdate();
 
-        //if (!ContinuePropagating) return;
+        if (!Jumped) return;
 
         // propagas el movimiento al siguiente nivel
         PropagatedMove = Dir;
