@@ -540,11 +540,6 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
 
     bool Jumped = true;
 
-    //int32 Scale = 1 << 1;
-
-    /*int32 ShiftX = Shift.X * 2 / Scale;
-    int32 ShiftY = Shift.Y * 2 / Scale;*/
-
     int32 StepsX;
     int32 StepsY;
 
@@ -565,17 +560,6 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
         }
 
         EClipmapQuadrant currentQuadrant = Level->HoleState.CurrentQuadrant;
-
-        //UE_LOG(LogTemp, Warning, TEXT("Nivel:%d, Scale:%d"), Level->LevelIndex, Scale);
-        //UE_LOG(LogTemp, Warning, TEXT("StepsX:%d, StepsY:%d"), StepsX, StepsY);
-
-        // normalizamos dirección (-1, 0, 1)
-        FIntPoint Dir = FIntPoint(
-            FMath::Clamp(PropagatedMove.X, -1, 1),
-            FMath::Clamp(PropagatedMove.Y, -1, 1)
-        );
-
-        //bool bShift = ShouldShiftInsteadOfRotate(Level->HoleState.CurrentQuadrant, Dir);
 
         FIntPoint MovementX = FIntPoint(0, 0);
 
@@ -630,26 +614,9 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
             StepsX--;
         }
         
-
-        /*if (bShift)
-        {
-            Level->RotateLevel(Dir);
-            Level->ShiftLevel(Shift);
-            PropagatedShiftX += ShiftX;
-            PropagatedShiftY += ShiftY;
-        }
-        else
-        {
-            ContinuePropagating = false;
-            Level->RotateLevel(Dir);
-        }*/
-
         Level->RequestMeshUpdate();
 
         if (!Jumped) return;
-
-        // propagas el movimiento al siguiente nivel
-        PropagatedMove = Dir;
     }
 }
 
