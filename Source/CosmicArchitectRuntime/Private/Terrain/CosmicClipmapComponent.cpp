@@ -140,7 +140,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             AccumulatedOffset += Shift;
 
             // actualizar niveles necesarios
-            UpdateLevels(Shift * 2);
+            UpdateLevels(Shift * 3);
         }
 
         if (FreezeGeneration) {
@@ -580,13 +580,13 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
         FIntPoint MovementX = FIntPoint(0, 0);
 
         if (currentQuadrant == EClipmapQuadrant::BottomRight) {
-            if (Shift.X > 0) {
-
+            if (Shift.X > 0) {              
                 StepsX = (3 * StepsX + 4 - 1) / 4;
 
                 int32 Jumps = StepsX / 2;
 
-                if (Jumps % 2 == 1) {
+                if (StepsX % 2 == 0) {
+                    UE_LOG(LogTemp, Warning, TEXT("Girando nivel %d, Jumps:%d"), Level->LevelIndex, Jumps);
                     Level->SetHoleQuadrant(EClipmapQuadrant::BottomLeft);                
                 }
   
@@ -625,6 +625,11 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
                 UE_LOG(LogTemp, Warning, TEXT("Jumps:%d"), Jumps);
             }
         }
+
+        if (StepsX % 2 == 1) {
+            StepsX--;
+        }
+        
 
         /*if (bShift)
         {
