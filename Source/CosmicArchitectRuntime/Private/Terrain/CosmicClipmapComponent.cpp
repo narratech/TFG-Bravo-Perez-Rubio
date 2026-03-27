@@ -567,16 +567,11 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
 
         if (currentQuadrant == EClipmapQuadrant::BottomRight) {
             if (Shift.X > 0) {              
-                //StepsX = (3 * StepsX + 4 - 1) / 4;
-
-                UE_LOG(LogTemp, Warning, TEXT("ff, Jumps:%d"), JumpsX);
 
                 if (JumpsX % 2 == 1) {
-                    UE_LOG(LogTemp, Warning, TEXT("Girando nivel %d, Jumps:%d"), Level->LevelIndex, JumpsX);
                     Level->SetHoleQuadrant(EClipmapQuadrant::BottomLeft);
                 }
 
-                //int32 Jumps = StepsX / 2;
                 if (JumpsX % 2 == 1) {
                     JumpsX = 1 + JumpsX / 2;
                 }
@@ -584,34 +579,18 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
                     JumpsX = JumpsX / 2;
                 }
 
-                //JumpsX = 3 - JumpsX + JumpsX / 3;
-                
-                //JumpsX = 2;
-
                 MovementX.X = JumpsX;
                 Level->ShiftLevel(MovementX);
 
                 Jumped = (JumpsX > 0);
-                //UE_LOG(LogTemp, Warning, TEXT("Jumps:%d"), JumpsX);
             }
         }
         else if (currentQuadrant == EClipmapQuadrant::BottomLeft) {
             if (Shift.X > 0) {
 
-                //StepsX = (StepsX * 3) / 4;
-
-                //int32 Jumps = (StepsX) / 2;
-
                 if (JumpsX % 2 == 1) {
                     Level->SetHoleQuadrant(EClipmapQuadrant::BottomRight);
                 }
-
-                /*if (JumpsX % 2 == 1) {
-                    JumpsX = JumpsX / 2;
-                }
-                else {
-                    JumpsX = JumpsX / 2;
-                }*/
 
                 JumpsX = JumpsX / 2;
 
@@ -619,7 +598,6 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
                 Level->ShiftLevel(MovementX);
 
                 Jumped = (JumpsX > 0);
-                UE_LOG(LogTemp, Warning, TEXT("Jumps:%d"), JumpsX);
             }
         }
 
