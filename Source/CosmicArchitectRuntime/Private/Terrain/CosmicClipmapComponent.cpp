@@ -140,7 +140,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             AccumulatedOffset += Shift;
 
             // actualizar niveles necesarios
-            UpdateLevels(Shift * 3);
+            UpdateLevels(Shift * 1);
         }
 
         if (FreezeGeneration) {
@@ -540,8 +540,10 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
 
     bool Jumped = true;
 
-    int32 StepsX;
-    int32 StepsY;
+    /*int32 StepsX;
+    int32 StepsY;*/
+
+    int JumpsX = Shift.X;
 
     UE_LOG(LogTemp, Warning, TEXT("Comenzando actualizado"));
 
@@ -553,8 +555,8 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
         {
             // nivel base SIEMPRE se mueve
             Level->ShiftLevel(Shift);
-            StepsX = Shift.X * 2;
-            StepsY = Shift.Y * 2;
+            //StepsX = Shift.X * 2;
+            //StepsY = Shift.Y * 2;
             Level->RequestMeshUpdate();
             continue;
         }
@@ -565,54 +567,65 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
 
         if (currentQuadrant == EClipmapQuadrant::BottomRight) {
             if (Shift.X > 0) {              
-                StepsX = (3 * StepsX + 4 - 1) / 4;
+                //StepsX = (3 * StepsX + 4 - 1) / 4;
 
-                int32 Jumps = StepsX / 2;
+                UE_LOG(LogTemp, Warning, TEXT("ff, Jumps:%d"), JumpsX);
 
-                if (StepsX % 2 == 0) {
-                    UE_LOG(LogTemp, Warning, TEXT("Girando nivel %d, Jumps:%d"), Level->LevelIndex, Jumps);
-                    Level->SetHoleQuadrant(EClipmapQuadrant::BottomLeft);                
+                if (JumpsX % 2 == 1) {
+                    UE_LOG(LogTemp, Warning, TEXT("Girando nivel %d, Jumps:%d"), Level->LevelIndex, JumpsX);
+                    Level->SetHoleQuadrant(EClipmapQuadrant::BottomLeft);
                 }
-  
-                MovementX.X = Jumps;
-                Level->ShiftLevel(MovementX);
 
-                if (Jumps > 0) {
-                    Jumped = true;            
+                //int32 Jumps = StepsX / 2;
+                if (JumpsX % 2 == 1) {
+                    JumpsX = 1 + JumpsX / 2;
                 }
                 else {
-                    Jumped = false;
+                    JumpsX = JumpsX / 2;
                 }
-                UE_LOG(LogTemp, Warning, TEXT("Jumps:%d"), Jumps);
+
+                //JumpsX = 3 - JumpsX + JumpsX / 3;
+                
+                //JumpsX = 2;
+
+                MovementX.X = JumpsX;
+                Level->ShiftLevel(MovementX);
+
+                Jumped = (JumpsX > 0);
+                //UE_LOG(LogTemp, Warning, TEXT("Jumps:%d"), JumpsX);
             }
         }
         else if (currentQuadrant == EClipmapQuadrant::BottomLeft) {
             if (Shift.X > 0) {
 
-                StepsX = (StepsX * 3) / 4;
+                //StepsX = (StepsX * 3) / 4;
 
-                int32 Jumps = (StepsX) / 2;
+                //int32 Jumps = (StepsX) / 2;
 
-                if (StepsX % 2 == 1) {
+                if (JumpsX % 2 == 1) {
                     Level->SetHoleQuadrant(EClipmapQuadrant::BottomRight);
                 }
 
-                MovementX.X = Jumps;
-                Level->ShiftLevel(MovementX);
-
-                if (Jumps > 0) {
-                    Jumped = true;
+                /*if (JumpsX % 2 == 1) {
+                    JumpsX = JumpsX / 2;
                 }
                 else {
-                    Jumped = false;
-                }
-                UE_LOG(LogTemp, Warning, TEXT("Jumps:%d"), Jumps);
+                    JumpsX = JumpsX / 2;
+                }*/
+
+                JumpsX = JumpsX / 2;
+
+                MovementX.X = JumpsX;
+                Level->ShiftLevel(MovementX);
+
+                Jumped = (JumpsX > 0);
+                UE_LOG(LogTemp, Warning, TEXT("Jumps:%d"), JumpsX);
             }
         }
 
-        if (StepsX % 2 == 1) {
+       /* if (StepsX % 2 == 1) {
             StepsX--;
-        }
+        }*/
         
         Level->RequestMeshUpdate();
 
