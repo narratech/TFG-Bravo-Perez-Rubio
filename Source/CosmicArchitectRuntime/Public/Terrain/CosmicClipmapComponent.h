@@ -46,7 +46,7 @@ public:
     int32 NumLevels = 4;
 
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "50"))
-    float MinTriangleSize = 200.f;
+    int32 MinTriangleSize = 200;
 
     UPROPERTY(VisibleAnywhere, Category = "Clipmap")
     int64 BaseGridSpacing = 200;
@@ -78,6 +78,7 @@ protected:
     FColor PlanetAltitudeColor = FColor::Yellow;
     float MaterialNoiseScale = 1.f;
     FVector LastPlayerPos;
+    FVector CurrentActorPosition;
     FVector AccumulatedDelta = FVector::ZeroVector;
 
     virtual void BeginPlay() override;
@@ -92,7 +93,7 @@ protected:
     FIntPoint ComputeGridShift(const FVector& PlayerPos, float GridSpacing);
     void UpdateLevels(const FIntPoint& Shift);
     bool IsClipmapRingVisible(const int32 LevelIndex, const float DistanceToSurface);
-    bool IsClipmapRingVisible(const float GridSpacing, const int32 Resolution, const float DistanceToSurface);
+    bool IsClipmapRingVisible(const int64 GridSpacing, const int64 Resolution, const float DistanceToSurface);
     void ReduceClimapLevel();
     void IncreaseClipmapLevel();
 

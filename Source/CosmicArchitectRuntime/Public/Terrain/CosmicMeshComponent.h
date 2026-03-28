@@ -34,6 +34,7 @@ public:
     bool bIsRing;
     bool bMeshCreated = false;
     bool bActiveMesh;
+    FVector ShiftOffset;
 
     EClipmapQuadrant CurrentQuadrant = EClipmapQuadrant::BottomRight;
 
@@ -53,7 +54,7 @@ public:
 
     void BuildBaseMesh();
     void BuildSphereMesh();
-    void ReScaleLevel(int64 GridSpacing);
+    void ReScaleLevel(int64 GridSpacing, const FVector ActorPosition);
     void SetMeshActive(bool active);
     // Lanza la tarea de ruido
     void RequestMeshUpdate();

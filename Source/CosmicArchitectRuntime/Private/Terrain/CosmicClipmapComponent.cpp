@@ -116,23 +116,23 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         if (!MeshesUpdated) return;
      
-        //if (Levels.Num() > 1)
-        //{
-        //    UCosmicMeshComponent* MeshLast = Levels.Last();
-        //    UCosmicMeshComponent* MeshFirst = Levels[0];
+        if (Levels.Num() > 1)
+        {
+            UCosmicMeshComponent* MeshLast = Levels.Last();
+            UCosmicMeshComponent* MeshFirst = Levels[0];
 
-        //    bool bIsVisible = IsClipmapRingVisible(Levels.Num() - 1, DistanceToSurface);
+            bool bIsVisible = IsClipmapRingVisible(Levels.Num() - 1, DistanceToSurface);
 
-        //    //UE_LOG(LogTemp, Warning, TEXT("Ultimo visible %d"), bIsVisible);
+            //UE_LOG(LogTemp, Warning, TEXT("Ultimo visible %d"), bIsVisible);
 
-        //    if (!bIsVisible && MeshFirst->GridSpacing > MinTriangleSize) {
-        //        ReduceClimapLevel();
-        //    }
-        //    else if(IsClipmapRingVisible(MeshLast->GridSpacing * 2, MeshLast->Resolution, DistanceToSurface) 
-        //        && MeshLast->GridSpacing < BaseGridSpacing * FMath::Pow(2.0f, NumLevels - 1)){
-        //        IncreaseClipmapLevel();
-        //    }         
-        //}
+            if (!bIsVisible && MeshFirst->GridSpacing > MinTriangleSize) {
+                ReduceClimapLevel();
+            }
+            else if(IsClipmapRingVisible(MeshLast->GridSpacing * 2, MeshLast->Resolution, DistanceToSurface) 
+                && MeshLast->GridSpacing < BaseGridSpacing * FMath::Pow(2.0f, NumLevels - 1)){
+                IncreaseClipmapLevel();
+            }         
+        }
 
         FIntPoint Shift = ComputeGridShift(ViewerPos, BaseGridSpacing * 2);
 
@@ -619,16 +619,16 @@ float UCosmicClipmapComponent::GetDistanceToSurface(FVector& OutViewerPos, FVect
 
     OutViewerPos = GetPlayerLocation();
 
-    FVector PlanetCenter = Owner->GetActorLocation();
+    CurrentActorPosition = Owner->GetActorLocation();
 
-    FVector CenterToViewer = OutViewerPos - PlanetCenter;
+    FVector CenterToViewer = OutViewerPos - CurrentActorPosition;
     float DistanceToCenter = CenterToViewer.Length();
 
     // Normal esferica
-    OutN = (OutViewerPos - PlanetCenter).GetSafeNormal();
+    OutN = (OutViewerPos - CurrentActorPosition).GetSafeNormal();
 
     // Punto sobre la superficie
-    OutSurfacePos = PlanetCenter + OutN * PlanetRadius;
+    OutSurfacePos = CurrentActorPosition + OutN * PlanetRadius;
 
     if (DistanceToCenter <= PlanetRadius)
     {
@@ -646,14 +646,14 @@ float UCosmicClipmapComponent::GetDistanceToPlainSurface(FVector& OutViewerPos, 
     // Posición del viewer
     OutViewerPos = GetPlayerLocation();
 
-    // Punto base del plano (puede ser el actor)
-    FVector PlanePoint = Owner->GetActorLocation();
+    // Punto base del plano 
+    CurrentActorPosition = Owner->GetActorLocation();
 
     // Normal del plano
     OutN = FVector::UpVector;
 
     // Vector del plano al viewer
-    FVector PlaneToViewer = OutViewerPos - PlanePoint;
+    FVector PlaneToViewer = OutViewerPos - CurrentActorPosition;
 
     // Distancia firmada al plano
     float Distance = FVector::DotProduct(PlaneToViewer, OutN);
@@ -670,7 +670,7 @@ bool UCosmicClipmapComponent::IsClipmapRingVisible(const int32 LevelIndex, const
 {  
     
     // Calcular el radio del clipmap en la superficie
-    float ClipmapSurfaceRadius = Levels[LevelIndex]->GridSpacing * (Levels[LevelIndex]->Resolution - 2) * 0.5f;
+    int64 ClipmapSurfaceRadius = Levels[LevelIndex]->GridSpacing * (Levels[LevelIndex]->Resolution - 2) / 2;
 
     // Radio maximo visible desde esta altura (proyeccion en la superficie)
     float VisibleRadius = PlanetRadius * FMath::Sin(FMath::Acos(PlanetRadius / (PlanetRadius + DistanceToSurface)));
@@ -682,9 +682,9 @@ bool UCosmicClipmapComponent::IsClipmapRingVisible(const int32 LevelIndex, const
     return ClipmapSurfaceRadius <= VisibleRadius * 2.f; 
 }
 
-bool UCosmicClipmapComponent::IsClipmapRingVisible(const float GridSpacing, const int32 Resolution, const float DistanceToSurface)
+bool UCosmicClipmapComponent::IsClipmapRingVisible(const int64 GridSpacing, const int64 Resolution, const float DistanceToSurface)
 {
-    float ClipmapSurfaceRadius = GridSpacing * (Resolution - 2) * 0.5f;
+    int64 ClipmapSurfaceRadius = GridSpacing * (Resolution - 2) / 2;
 
     // Radio maximo visible desde esta altura (proyeccion en la superficie)
     float VisibleRadius = PlanetRadius * FMath::Sin(FMath::Acos(PlanetRadius / (PlanetRadius + DistanceToSurface)));
@@ -719,8 +719,8 @@ void UCosmicClipmapComponent::ReduceClimapLevel()
         }
 
         // Solo regenerar los necesarios
-        Levels[0]->ReScaleLevel(Spacing / 2);
-        Levels[1]->ReScaleLevel(Spacing);
+        Levels[0]->ReScaleLevel(Spacing / 2, CurrentActorPosition);
+        Levels[1]->ReScaleLevel(Spacing, CurrentActorPosition);
     }
 }
 
@@ -748,8 +748,8 @@ void UCosmicClipmapComponent::IncreaseClipmapLevel()
             Levels[i]->LevelIndex = i;
         }
 
-        Levels[0]->ReScaleLevel(Spacing * 2);
-        Levels[NumLevels - 1]->ReScaleLevel(Levels[NumLevels - 2]->GridSpacing * 2);
+        Levels[0]->ReScaleLevel(Spacing * 2, CurrentActorPosition);
+        Levels[NumLevels - 1]->ReScaleLevel(Levels[NumLevels - 2]->GridSpacing * 2, CurrentActorPosition);
     }
 }
 

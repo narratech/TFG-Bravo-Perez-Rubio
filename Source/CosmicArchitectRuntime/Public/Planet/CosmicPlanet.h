@@ -27,7 +27,7 @@ public:
 	USceneComponent* Root;
 
 	UPROPERTY(VisibleAnywhere, Category = "Planet", BlueprintReadOnly)
-	UCosmicClipmapComponent* ClipmapComponent;
+	TObjectPtr<UCosmicClipmapComponent> ClipmapComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Planet", meta = (ShowOnlyInnerProperties))
 	UCosmicCollisionComponent* CollisionComponent;

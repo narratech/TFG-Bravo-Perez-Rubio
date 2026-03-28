@@ -358,9 +358,11 @@ void UCosmicMeshComponent::ShiftLevel(FIntPoint Shift)
         0.0f
     );
 
+    ShiftOffset += Offset;
+
     for (size_t i = 0; i < BaseVertices.Num(); i++)
     {
-        BaseVertices[i] += Offset;
+        BaseVertices[i] += Offset;       
     }
 }
 
@@ -439,7 +441,7 @@ void UCosmicMeshComponent::SetHoleQuadrant(EClipmapQuadrant NewQuadrant)
     }
 }
 
-void UCosmicMeshComponent::ReScaleLevel(int64 NewGridSpacing)
+void UCosmicMeshComponent::ReScaleLevel(int64 NewGridSpacing, const FVector ActorPosition)
 {
     if (!bMeshCreated)
     {
@@ -447,15 +449,22 @@ void UCosmicMeshComponent::ReScaleLevel(int64 NewGridSpacing)
         return;
     }
 
-    const float ScaleRatio = NewGridSpacing / GridSpacing;
+    const double ScaleRatio = (double)NewGridSpacing / (double)GridSpacing;
     GridSpacing = NewGridSpacing;
 
     const int32 VertCount = BaseVertices.Num();
 
+    UE_LOG(LogTemp, Warning, TEXT("VerX:%.1f, VerY:%.1f, ShiftOffsetX:%.1f, ShiftOffsetY:%.1f, ScaleRatio:%.3f")
+    , BaseVertices[0].X, BaseVertices[0].Y, ShiftOffset.X, ShiftOffset.Y, ScaleRatio);
+
     // Reescalar vértices base
     for (int32 i = 0; i < VertCount; ++i)
     {
+        BaseVertices[i] -= ActorPosition;
+        BaseVertices[i] -= ShiftOffset;
         BaseVertices[i] *= ScaleRatio;
+        BaseVertices[i] += ShiftOffset;
+        BaseVertices[i] += ActorPosition;
     }
 }
 
@@ -476,12 +485,18 @@ void UCosmicMeshComponent::RequestMeshUpdate()
     // Centro del planeta 
     FVector PlanetCenter = GetOwner()->GetActorLocation();
 
+    FCosmicNoiseGenerationParameters Params;
+    if (NoiseSettings)
+    {
+        Params = NoiseSettings->Params;
+    }
+
     NoiseTask = new FAsyncTask<FCosmicArchitectNoiseGenerator>(
         BaseVertices,
         BaseNormals,
         GetComponentTransform(),
         PlanetCenter,
-        NoiseSettings->Params
+        Params
     );
     // Lanzar la tarea asincrona
     NoiseTask->StartBackgroundTask();
