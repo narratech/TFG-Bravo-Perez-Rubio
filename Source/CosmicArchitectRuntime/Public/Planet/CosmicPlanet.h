@@ -8,7 +8,6 @@
 #include "CosmicPlanet.generated.h"
 
 class UCosmicClipmapComponent;
-class UCosmicOceanClipmap;
 class UCosmicFoliageSpawner;
 class UCosmicCollisionComponent;
 
@@ -29,8 +28,12 @@ public:
 
 	UPROPERTY(VisibleAnywhere, Category = "Planet", BlueprintReadOnly)
 	UCosmicClipmapComponent* ClipmapComponent;
-	UPROPERTY(VisibleAnywhere, Category = "Planet", BlueprintReadOnly)
-	UCosmicOceanClipmap* OceanClipmapComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Planet|Ocean")
+	UStaticMeshComponent* OceanMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Ocean")
+	float SeaLevel = 500.0f;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Planet", meta = (ShowOnlyInnerProperties))
 	UCosmicCollisionComponent* CollisionComponent;

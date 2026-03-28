@@ -4,7 +4,6 @@
 #include "Planet/CosmicPlanet.h"
 #include "Terrain/CosmicCollisionComponent.h"
 #include "Terrain/CosmicClipmapComponent.h"
-#include "Terrain/CosmicOceanClipmap.h"
 #include "CosmicFoliageSpawner.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
@@ -20,7 +19,10 @@ ACosmicPlanet::ACosmicPlanet()
 
     CollisionComponent = CreateDefaultSubobject<UCosmicCollisionComponent>(TEXT("CollisionComponent"));
     ClipmapComponent = CreateDefaultSubobject<UCosmicClipmapComponent>(TEXT("ClipmapComponent"));
-    OceanClipmapComponent = CreateDefaultSubobject<UCosmicOceanClipmap>(TEXT("OceanClipmapComponent"));
+    OceanMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("OceanMesh"));
+    OceanMesh->SetupAttachment(Root);
+    OceanMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    OceanMesh->SetCastShadow(false);
     FoliageSpawnerComponent = CreateDefaultSubobject<UCosmicFoliageSpawner>(TEXT("FoliageSpawnerComponent"));
 }
 
@@ -54,17 +56,6 @@ void ACosmicPlanet::BeginPlay()
             ClipmapComponent->CreatePerformanceLevel(true);   
         }
     }
-
-    if (OceanClipmapComponent) {
-        if (OceanClipmapComponent->bInitializedInEditor) {
-            OceanClipmapComponent->ReasignLevels();
-        }
-        else {
-            OceanClipmapComponent->ParentRoot = Root;
-            OceanClipmapComponent->PlanetRadius = RadiusKm * 100000;
-            OceanClipmapComponent->CreatePerformanceLevel(true);
-        }
-    }
 }
 
 void ACosmicPlanet::Tick(float DeltaTime)
@@ -95,17 +86,17 @@ void ACosmicPlanet::InitClipmap()
         UE_LOG(LogTemp, Error, TEXT("No existe el clipmap"));
     }
 
-    if (OceanClipmapComponent) {
+    if (OceanMesh)
+    {
+        // Calculamos el radio total en unidades de Unreal
+        float PlanetRadiusUnreal = RadiusKm * 100000.0f;
+        float TotalOceanRadius = PlanetRadiusUnreal + SeaLevel;
 
-        OceanClipmapComponent->ParentRoot = Root;
-        OceanClipmapComponent->PlanetRadius = RadiusKm * 100000;
-        OceanClipmapComponent->ClearLevels();
-        OceanClipmapComponent->CreatePerformanceLevel(true);
-        OceanClipmapComponent->bInitializedInEditor = true;
+        // Dividimos entre 50 porque el radio base de SM_Sphere es 50
+        float SphereScale = TotalOceanRadius / 50.0f;
 
-    }
-    else {
-        UE_LOG(LogTemp, Error, TEXT("No existe el ocean clipmap"));
+        // Aplicamos la escala uniforme en X, Y, Z
+        OceanMesh->SetWorldScale3D(FVector(SphereScale));
     }
 }
 
@@ -151,11 +142,6 @@ void ACosmicPlanet::InitPlanet(float InRadiusKm, UCosmicNoiseSettings* NewNoiseS
     if (ClipmapComponent) {
         ClipmapComponent->BaseMaterial = BaseMaterial;
         ClipmapComponent->DefaultTexture = DefaultTexture;
-    }
-
-    if (OceanClipmapComponent) {
-        OceanClipmapComponent->BaseMaterial = BaseMaterial;
-        OceanClipmapComponent->DefaultTexture = DefaultTexture;
     }
 
     PlanetMainColor1 = color1;
