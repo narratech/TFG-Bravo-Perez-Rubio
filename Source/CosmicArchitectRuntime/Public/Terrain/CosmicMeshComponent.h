@@ -29,7 +29,7 @@ class UCosmicMeshComponent : public UProceduralMeshComponent
 public:
     int32 LevelIndex;
     int32 Resolution;
-    float GridSpacing;
+    int64 GridSpacing;
     float PlanetRadius;
     bool bIsRing;
     bool bMeshCreated = false;
@@ -53,7 +53,7 @@ public:
 
     void BuildBaseMesh();
     void BuildSphereMesh();
-    void RegenerateLevel(float GridSpacing);
+    void ReScaleLevel(int64 GridSpacing);
     void SetMeshActive(bool active);
     // Lanza la tarea de ruido
     void RequestMeshUpdate();

@@ -49,7 +49,7 @@ public:
     float MinTriangleSize = 200.f;
 
     UPROPERTY(VisibleAnywhere, Category = "Clipmap")
-    float BaseGridSpacing = 200.f;
+    int64 BaseGridSpacing = 200;
 
     UPROPERTY(EditAnywhere, Category = "Clipmap")
     float HeightVisibility = 1.5f;

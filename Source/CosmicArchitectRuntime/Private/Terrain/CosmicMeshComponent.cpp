@@ -32,48 +32,6 @@ void UCosmicMeshComponent::BuildBaseMesh()
     {
         for (int32 x = 0; x < VertRes; ++x)
         {
-            //// Al iterar hasta VertRes (que es menor), y mantener HalfRes de la Resolution original,
-            //// la malla entera queda geométricamente desplazada 1 unidad hacia Arriba/Izquierda (-X, -Y).
-            //float WorldX = (x - HalfRes) * GridSpacing;
-            //float WorldY = (y - HalfRes) * GridSpacing;
-
-            //FVector SphereCenter = FVector(0, 0, -PlanetRadius);
-            //float Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
-            //FVector BasePosition;
-
-            //if (Distance2D <= PlanetRadius && Distance2D > 0.001f)
-            //{
-            //    float ZOffset = FMath::Sqrt(PlanetRadius * PlanetRadius - Distance2D * Distance2D);
-            //    BasePosition = FVector(WorldX, WorldY, -PlanetRadius + ZOffset);
-            //}
-            //else if (Distance2D <= 0.001f)
-            //{
-            //    BasePosition = FVector(0, 0, 0);
-            //}
-            //else
-            //{
-            //    float Scale = PlanetRadius / Distance2D;
-            //    BasePosition = FVector(WorldX * Scale, WorldY * Scale, -PlanetRadius);
-            //}
-
-            //BaseVertices.Add(BasePosition);
-            //ActualVerticesCalculated++;
-
-            //// Normal
-            //FVector Normal = (BasePosition - SphereCenter);
-            //if (Normal.SizeSquared() > 0.001f) Normal.Normalize();
-            //else Normal = FVector::UpVector;
-            //BaseNormals.Add(Normal);
-
-            //// Tangente
-            //FVector TangentDir = FVector(-Normal.Y, Normal.X, 0);
-            //if (TangentDir.SizeSquared() > 0.001f) TangentDir.Normalize();
-            //else TangentDir = FVector(1, 0, 0);
-            //BaseTangents.Add(FProcMeshTangent(TangentDir.X, TangentDir.Y, TangentDir.Z));
-
-            //// UVs - Mantenemos la división por Resolution para no alterar la escala de texturas respecto al LOD anterior
-            //UVs.Add(FVector2D((float)x / Resolution, (float)y / Resolution));
-
             float LocalX = (x - HalfRes) * GridSpacing;
             float LocalY = (y - HalfRes) * GridSpacing;
 
@@ -210,15 +168,6 @@ void UCosmicMeshComponent::BuildBaseMesh()
     //UE_LOG(LogTemp, Warning, TEXT("  BaseVertices.Num(): %d"), BaseVertices.Num());
     //UE_LOG(LogTemp, Warning, TEXT("  UVs.Num(): %d"), UVs.Num());
     //UE_LOG(LogTemp, Warning, TEXT("  Triangles.Num(): %d"), Triangles.Num());
-
-   /* bMeshCreated = true;
-    if (LevelIndex == 1) {
-        SetHoleQuadrant(EClipmapQuadrant::BottomLeft);
-        SetHoleQuadrant(EClipmapQuadrant::BottomRight);
-        SetHoleQuadrant(EClipmapQuadrant::TopLeft);
-        SetHoleQuadrant(EClipmapQuadrant::TopRight);
-        SetHoleQuadrant(EClipmapQuadrant::TopLeft);
-    }*/
     
 
     // 5. COPIAR a Current arrays
@@ -490,92 +439,24 @@ void UCosmicMeshComponent::SetHoleQuadrant(EClipmapQuadrant NewQuadrant)
     }
 }
 
-void UCosmicMeshComponent::RegenerateLevel(float newGridSpacing)
+void UCosmicMeshComponent::ReScaleLevel(int64 NewGridSpacing)
 {
     if (!bMeshCreated)
     {
-        UE_LOG(LogTemp, Error, TEXT("RegenerateLevel() llamado pero bMeshCreated = false"));
+        UE_LOG(LogTemp, Error, TEXT("ReScaleLevel() llamado pero bMeshCreated = false"));
         return;
     }
 
-    GridSpacing = newGridSpacing;
+    const float ScaleRatio = NewGridSpacing / GridSpacing;
+    GridSpacing = NewGridSpacing;
 
-    // 1. APLICAMOS EL NUEVO TAMAÑO (Resolution - 1)
-    const int32 VertRes = Resolution - 1;
-    const int32 HalfRes = Resolution / 2;
+    const int32 VertCount = BaseVertices.Num();
 
-    FVector SphereCenter = FVector(0, 0, -PlanetRadius);
-
-    for (int32 y = 0; y < VertRes; ++y)
+    // Reescalar vértices base
+    for (int32 i = 0; i < VertCount; ++i)
     {
-        for (int32 x = 0; x < VertRes; ++x)
-        {
-            // El índice encajará perfectamente porque los arrays se inicializaron
-            // con (Resolution - 1) * (Resolution - 1) en BuildBaseMesh()
-            const int32 Index = x + y * VertRes;
-
-            // Al mantener HalfRes (Resolution / 2) pero iterar hasta VertRes, 
-            // se preserva el "Shift" hacia Arriba/Izquierda con el nuevo GridSpacing
-            float WorldX = (x - HalfRes) * GridSpacing;
-            float WorldY = (y - HalfRes) * GridSpacing;
-
-            float Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
-            FVector BasePosition;
-
-            if (Distance2D <= PlanetRadius && Distance2D > 0.001f)
-            {
-                float ZOffset = FMath::Sqrt(PlanetRadius * PlanetRadius - Distance2D * Distance2D);
-                BasePosition = FVector(WorldX, WorldY, -PlanetRadius + ZOffset);
-            }
-            else if (Distance2D <= 0.001f)
-            {
-                BasePosition = FVector(0, 0, 0);
-            }
-            else
-            {
-                float Scale = PlanetRadius / Distance2D;
-                BasePosition = FVector(WorldX * Scale, WorldY * Scale, -PlanetRadius);
-            }
-
-            BaseVertices[Index] = BasePosition;
-
-            // Normal
-            FVector Normal = BasePosition - SphereCenter;
-            if (Normal.SizeSquared() > 0.001f)
-            {
-                Normal.Normalize();
-            }
-            else
-            {
-                Normal = FVector::UpVector;
-            }
-
-            BaseNormals[Index] = Normal;
-
-            // Tangente
-            FVector TangentDir = FVector(-Normal.Y, Normal.X, 0);
-            if (TangentDir.SizeSquared() > 0.001f)
-            {
-                TangentDir.Normalize();
-            }
-            else
-            {
-                TangentDir = FVector(1, 0, 0);
-            }
-
-            BaseTangents[Index] = FProcMeshTangent(TangentDir, false);
-
-            // UV - Mantenemos la misma escala proporcional
-            UVs[Index] = FVector2D(
-                (float)x / Resolution,
-                (float)y / Resolution
-            );
-        }
+        BaseVertices[i] *= ScaleRatio;
     }
-
-    //CurrentVertices = BaseVertices;
-    CurrentNormals = BaseNormals;
-    CurrentTangents = BaseTangents;
 }
 
 void UCosmicMeshComponent::SetMeshActive(bool active)

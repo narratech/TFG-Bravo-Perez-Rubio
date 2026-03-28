@@ -699,7 +699,7 @@ void UCosmicClipmapComponent::ReduceClimapLevel()
 {
     if (NumLevels > 1)
     {
-        float spacing = Levels[0]->GridSpacing;
+        int64 Spacing = Levels[0]->GridSpacing;
 
         // Guardar ultimo
         UCosmicMeshComponent* Last = Levels[NumLevels - 1];
@@ -719,8 +719,8 @@ void UCosmicClipmapComponent::ReduceClimapLevel()
         }
 
         // Solo regenerar los necesarios
-        Levels[0]->RegenerateLevel(spacing / 2.f);
-        Levels[1]->RegenerateLevel(spacing);
+        Levels[0]->ReScaleLevel(Spacing / 2);
+        Levels[1]->ReScaleLevel(Spacing);
     }
 }
 
@@ -728,7 +728,7 @@ void UCosmicClipmapComponent::IncreaseClipmapLevel()
 {
     if (NumLevels > 1)
     {
-        float spacing = Levels[0]->GridSpacing;
+        int64 Spacing = Levels[0]->GridSpacing;
 
         // Guardar el segundo nivel
         UCosmicMeshComponent* Second = Levels[1];
@@ -748,8 +748,8 @@ void UCosmicClipmapComponent::IncreaseClipmapLevel()
             Levels[i]->LevelIndex = i;
         }
 
-        Levels[0]->RegenerateLevel(spacing * 2.f);
-        Levels[NumLevels - 1]->RegenerateLevel(Levels[NumLevels - 2]->GridSpacing * 2.f);
+        Levels[0]->ReScaleLevel(Spacing * 2);
+        Levels[NumLevels - 1]->ReScaleLevel(Levels[NumLevels - 2]->GridSpacing * 2);
     }
 }
 
