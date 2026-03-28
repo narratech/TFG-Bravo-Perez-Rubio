@@ -9,15 +9,6 @@
 
 class UCosmicNoiseSettings;
 
-enum class EShiftDirection
-{
-    None,
-    X_Pos,
-    X_Neg,
-    Y_Pos,
-    Y_Neg
-};
-
 UENUM(BlueprintType)
 enum class EClipmapQuadrant : uint8
 {
@@ -25,13 +16,6 @@ enum class EClipmapQuadrant : uint8
     TopRight = 1,    // Movido a la derecha
     BottomLeft = 2,  // Movido hacia abajo
     BottomRight = 3  // Movido derecha y abajo
-};
-
-struct FClipmapHoleState
-{
-    EClipmapQuadrant CurrentQuadrant = EClipmapQuadrant::BottomRight;
-    int32 OffsetX = 0;
-    int32 OffsetY = 0;  
 };
 
 /**
@@ -50,9 +34,8 @@ public:
     bool bIsRing;
     bool bMeshCreated = false;
     bool bActiveMesh;
-    FIntPoint PendingShift;
 
-    FClipmapHoleState HoleState;
+    EClipmapQuadrant CurrentQuadrant = EClipmapQuadrant::BottomRight;
 
     UCosmicNoiseSettings* NoiseSettings = nullptr;
     // Malla base (deformada a la esfera, sin alturas adicionales)
@@ -76,12 +59,8 @@ public:
     void RequestMeshUpdate();
     // Comprueba si la tarea termino y aplica la malla
     bool CheckAndApplyMeshUpdate();
-    
-    void ShiftLevel(FIntPoint Shift);
-    EShiftDirection GetShiftDirection(FIntPoint Shift);
-    bool NeedsToShift(FIntPoint Shift);
+    void ShiftLevel(FIntPoint Shift);     
     int32 GetQuadrantIndex(EClipmapQuadrant Q) const;
-    void RotateLevel(FIntPoint Shift);
     void SetHoleQuadrant(EClipmapQuadrant NewQuadrant);
 
     FAsyncTask<FCosmicArchitectNoiseGenerator>* NoiseTask = nullptr;

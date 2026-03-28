@@ -66,7 +66,6 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         DynamicPlanetMat->SetVectorParameterValue("CentroPlaneta", GetOwner()->GetActorLocation());
     }
 
-
     if (ElapsedTime > TimeToRefreshActive) {
 
         ElapsedTime = 0;
@@ -103,17 +102,19 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             }
         }
 
-        if (bPerformaceMode) return;
+        if (bPerformaceMode || FreezeGeneration) return;
+
+        bool MeshesUpdated = true;
 
         for (size_t i = 0; i < Levels.Num(); i++)
         {
-            if (Levels[i]->bActiveMesh)
-            {
-                // Aplica los nuevos vértices a la gráfica si la tarea ya terminó
-                Levels[i]->CheckAndApplyMeshUpdate();
+            if (!Levels[i]->CheckAndApplyMeshUpdate()) {
+                MeshesUpdated = false;
             }
         }
-        
+
+        if (!MeshesUpdated) return;
+     
         //if (Levels.Num() > 1)
         //{
         //    UCosmicMeshComponent* MeshLast = Levels.Last();
@@ -136,27 +137,10 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         if (Shift != FIntPoint::ZeroValue)
         {
-            // mover clipmap lógico
-            AccumulatedOffset += Shift;
-
             // actualizar niveles necesarios
-            UpdateLevels(Shift * 1);
+            UpdateLevels(Shift);
         }
 
-        if (FreezeGeneration) {
-            return;
-        }
-
-        //UpdatePatchTransform(SurfacePos, N);
-
-        //for (size_t i = 0; i < Levels.Num(); i++)
-        //{
-        //    if (Levels[i]->bActiveMesh)
-        //    {
-        //        // Inicia el cálculo de ruido en hilos de fondo si no está haciéndolo ya
-        //        Levels[i]->RequestMeshUpdate();
-        //    }
-        //}
     }    
 }
 
@@ -511,28 +495,6 @@ FIntPoint UCosmicClipmapComponent::ComputeGridShift(
     return FIntPoint(ShiftX, ShiftY);
 }
 
-bool ShouldShiftInsteadOfRotate(EClipmapQuadrant Q, FIntPoint Dir)
-{
-    // Dir es el movimiento del nivel inferior (normalizado a -1,0,1)
-
-    switch (Q)
-    {
-    case EClipmapQuadrant::TopLeft:
-        return (Dir.X < 0 || Dir.Y < 0);
-
-    case EClipmapQuadrant::TopRight:
-        return (Dir.X > 0 || Dir.Y < 0);
-
-    case EClipmapQuadrant::BottomLeft:
-        return (Dir.X < 0 || Dir.Y > 0);
-
-    case EClipmapQuadrant::BottomRight:
-        return (Dir.X > 0 || Dir.Y > 0);
-    }
-
-    return false;
-}
-
 void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
 {
     int32 JumpsX = Shift.X;
@@ -550,7 +512,7 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
             continue;
         }
 
-        EClipmapQuadrant currentQuadrant = Level->HoleState.CurrentQuadrant;
+        EClipmapQuadrant currentQuadrant = Level->CurrentQuadrant;
 
         // Descomponemos el cuadrante: ahora usamos bIsBottom porque +Y es Bottom
         bool bIsRight = (currentQuadrant == EClipmapQuadrant::TopRight || currentQuadrant == EClipmapQuadrant::BottomRight);
@@ -623,25 +585,6 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
         // Salida temprana, si ya no hay movimiento que propagar, cortamos el bucle para ahorrar CPU
         if (JumpsX == 0 && JumpsY == 0) return;
     }
-}
-
-void UCosmicClipmapComponent::RotateLevel(UCosmicMeshComponent* Level, const FIntPoint& Shift)
-{
-    Level->ShiftLevel(Shift);
-}
-
-bool UCosmicClipmapComponent::UpdateClipmapOffset(const FVector& PlayerPos)
-{
-    FIntPoint Shift = ComputeGridShift(PlayerPos, BaseGridSpacing);
-
-    if (Shift.X == 0 && Shift.Y == 0)
-        return false;
-
-    AccumulatedOffset += Shift;
-
-    LastPlayerPos = PlayerPos;
-
-    return true;
 }
 
 FVector UCosmicClipmapComponent::GetPlayerLocation()

@@ -399,49 +399,6 @@ void UCosmicMeshComponent::BuildSphereMesh()
     bMeshCreated = true;
 }
 
-int32 UCosmicMeshComponent::GetQuadrantIndex(EClipmapQuadrant Q) const{
-    switch (Q) {
-    case EClipmapQuadrant::TopLeft:     return 0;
-    case EClipmapQuadrant::TopRight:    return 3;
-    case EClipmapQuadrant::BottomRight: return 2;
-    case EClipmapQuadrant::BottomLeft:  return 1;
-    default: return 0;
-    }
-}
-
-EShiftDirection UCosmicMeshComponent::GetShiftDirection(FIntPoint Shift)
-{
-    if (Shift.X > 0) return EShiftDirection::X_Pos;
-    if (Shift.X < 0) return EShiftDirection::X_Neg;
-    if (Shift.Y > 0) return EShiftDirection::Y_Pos;
-    if (Shift.Y < 0) return EShiftDirection::Y_Neg;
-
-    return EShiftDirection::None;
-}
-
-bool UCosmicMeshComponent::NeedsToShift(FIntPoint Shift)
-{
-    EClipmapQuadrant CurrentQuadrant = HoleState.CurrentQuadrant;
-
-    if ((CurrentQuadrant == EClipmapQuadrant::TopLeft ||
-        CurrentQuadrant == EClipmapQuadrant::TopRight) && Shift.Y < 0)
-        return true;
-
-    if ((CurrentQuadrant == EClipmapQuadrant::BottomLeft ||
-        CurrentQuadrant == EClipmapQuadrant::TopLeft) && Shift.X < 0)
-        return true;
-
-    if ((CurrentQuadrant == EClipmapQuadrant::BottomRight ||
-        CurrentQuadrant == EClipmapQuadrant::TopRight) && Shift.Y > 0)
-        return true;
-
-    if ((CurrentQuadrant == EClipmapQuadrant::BottomLeft ||
-        CurrentQuadrant == EClipmapQuadrant::BottomRight) && Shift.X > 0)
-        return true;
-
-    return false;
-}
-
 void UCosmicMeshComponent::ShiftLevel(FIntPoint Shift)
 {
     if (Shift == FIntPoint::ZeroValue) return;
@@ -458,84 +415,21 @@ void UCosmicMeshComponent::ShiftLevel(FIntPoint Shift)
     }
 }
 
-void UCosmicMeshComponent::RotateLevel(FIntPoint Shift)
-{
-    if (!bIsRing) return;
-
-    EClipmapQuadrant OldQuadrant = HoleState.CurrentQuadrant;
-    EClipmapQuadrant NewQuadrant = HoleState.CurrentQuadrant;
-
-    if (OldQuadrant == EClipmapQuadrant::TopRight) 
-    {
-        if (Shift.X != 0 && Shift.Y != 0)
-        {
-            NewQuadrant = EClipmapQuadrant::BottomLeft;
-        }
-        else if (Shift.X != 0 && Shift.Y == 0)
-        {
-            NewQuadrant = EClipmapQuadrant::TopLeft;
-        }
-        else if (Shift.X == 0 && Shift.Y != 0)
-        {
-            NewQuadrant = EClipmapQuadrant::BottomRight;
-        }
+int32 UCosmicMeshComponent::GetQuadrantIndex(EClipmapQuadrant Q) const {
+    switch (Q) {
+    case EClipmapQuadrant::TopLeft:     return 0;
+    case EClipmapQuadrant::TopRight:    return 3;
+    case EClipmapQuadrant::BottomRight: return 2;
+    case EClipmapQuadrant::BottomLeft:  return 1;
+    default: return 0;
     }
-    else if (OldQuadrant == EClipmapQuadrant::TopLeft)
-    {
-        if (Shift.X != 0 && Shift.Y != 0)
-        {
-            NewQuadrant = EClipmapQuadrant::BottomRight;
-        }
-        else if (Shift.X != 0 && Shift.Y == 0)
-        {
-            NewQuadrant = EClipmapQuadrant::TopRight;
-        }
-        else if (Shift.X == 0 && Shift.Y != 0)
-        {
-            NewQuadrant = EClipmapQuadrant::BottomLeft;
-        }
-    }
-    else if (OldQuadrant == EClipmapQuadrant::BottomRight)
-    {
-        if (Shift.X != 0 && Shift.Y != 0)
-        {
-            NewQuadrant = EClipmapQuadrant::TopLeft;
-        }
-        else if (Shift.X != 0 && Shift.Y == 0)
-        {
-            NewQuadrant = EClipmapQuadrant::BottomLeft;
-        }
-        else if (Shift.X == 0 && Shift.Y != 0)
-        {
-            NewQuadrant = EClipmapQuadrant::TopRight;
-        }
-    }
-    else if (OldQuadrant == EClipmapQuadrant::BottomLeft)
-    {
-        if (Shift.X != 0 && Shift.Y != 0)
-        {
-            NewQuadrant = EClipmapQuadrant::TopRight;
-        }
-        else if (Shift.X != 0 && Shift.Y == 0)
-        {
-            NewQuadrant = EClipmapQuadrant::BottomRight;
-        }
-        else if (Shift.X == 0 && Shift.Y != 0)
-        {
-            NewQuadrant = EClipmapQuadrant::TopLeft;
-        }
-    }
-  
-    if (NewQuadrant == OldQuadrant) return;
-
-    SetHoleQuadrant(NewQuadrant);
 }
 
 void UCosmicMeshComponent::SetHoleQuadrant(EClipmapQuadrant NewQuadrant)
 {
-    if (!bMeshCreated || !bIsRing || HoleState.CurrentQuadrant == NewQuadrant) return;
+    if (!bMeshCreated || !bIsRing || CurrentQuadrant == NewQuadrant) return;
 
-    int32 OldIdx = GetQuadrantIndex(HoleState.CurrentQuadrant);
+    int32 OldIdx = GetQuadrantIndex(CurrentQuadrant);
     int32 NewIdx = GetQuadrantIndex(NewQuadrant);
     int32 Steps = (NewIdx - OldIdx + 4) % 4;
 
@@ -550,7 +444,7 @@ void UCosmicMeshComponent::SetHoleQuadrant(EClipmapQuadrant NewQuadrant)
     else if (Steps == 2) RotationAngle = 180;
     else if (Steps == 3) RotationAngle = 270;
 
-    HoleState.CurrentQuadrant = NewQuadrant;
+    CurrentQuadrant = NewQuadrant;
 
     const int32 N = Resolution - 1;
 
@@ -682,17 +576,6 @@ void UCosmicMeshComponent::RegenerateLevel(float newGridSpacing)
     //CurrentVertices = BaseVertices;
     CurrentNormals = BaseNormals;
     CurrentTangents = BaseTangents;
-
-    //UpdateMeshSection_LinearColor(
-    //    0,
-    //    CurrentVertices,
-    //    CurrentNormals,
-    //    UVs,
-    //    TArray<FLinearColor>(),
-    //    CurrentTangents
-    //);
-
-    //SetCollisionEnabled(/*LevelIndex == 0 ? ECollisionEnabled::QueryAndPhysics :*/ ECollisionEnabled::NoCollision);
 }
 
 void UCosmicMeshComponent::SetMeshActive(bool active)
@@ -725,8 +608,10 @@ void UCosmicMeshComponent::RequestMeshUpdate()
 
 bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
 {
-    // Si no hay tarea o no ha terminado, devolvemos false
-    if (!NoiseTask || !NoiseTask->IsDone()) return false;
+    //Si no hay tarea devolvemos true para saber que esta libre
+    if (!NoiseTask) return true;
+    // Si no ha terminado, devolvemos false
+    if (!NoiseTask->IsDone()) return false;
 
     // Copiamos los vértices calculados del hilo secundario a nuestro array principal
     CurrentVertices = NoiseTask->GetTask().CalculatedVertices;
