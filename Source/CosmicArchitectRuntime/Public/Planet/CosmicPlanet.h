@@ -29,10 +29,13 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Planet", BlueprintReadOnly)
 	UCosmicClipmapComponent* ClipmapComponent;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Ocean")
+	bool bHasOcean = true;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Planet|Ocean")
 	UStaticMeshComponent* OceanMesh;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Ocean")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Ocean", meta = (EditCondition = "bHasOcean"))
 	float SeaLevel = 500.0f;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Planet", meta = (ShowOnlyInnerProperties))
@@ -75,4 +78,9 @@ protected:
 	virtual void Tick(float DeltaTime) override;
 
 	void InitClipmap();
+
+#if WITH_EDITOR
+	// Se llama automáticamente cuando cambias algo en el panel de Detalles
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
 };

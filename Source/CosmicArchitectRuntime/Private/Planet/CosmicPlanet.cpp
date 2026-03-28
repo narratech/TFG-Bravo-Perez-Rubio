@@ -88,15 +88,19 @@ void ACosmicPlanet::InitClipmap()
 
     if (OceanMesh)
     {
-        // Calculamos el radio total en unidades de Unreal
-        float PlanetRadiusUnreal = RadiusKm * 100000.0f;
-        float TotalOceanRadius = PlanetRadiusUnreal + SeaLevel;
+        OceanMesh->SetVisibility(bHasOcean);
 
-        // Dividimos entre 50 porque el radio base de SM_Sphere es 50
-        float SphereScale = TotalOceanRadius / 50.0f;
+        if (bHasOcean) {
+            // Calculamos el radio total en unidades de Unreal
+            float PlanetRadiusUnreal = RadiusKm * 100000.0f;
+            float TotalOceanRadius = PlanetRadiusUnreal + SeaLevel;
 
-        // Aplicamos la escala uniforme en X, Y, Z
-        OceanMesh->SetWorldScale3D(FVector(SphereScale));
+            // Dividimos entre 50 porque el radio base de SM_Sphere es 50
+            float SphereScale = TotalOceanRadius / 50.0f;
+
+            // Aplicamos la escala uniforme en X, Y, Z
+            OceanMesh->SetWorldScale3D(FVector(SphereScale));
+        }  
     }
 }
 
@@ -163,3 +167,35 @@ void ACosmicPlanet::CleanupNoiseSettings()
     }
 }
 
+#if WITH_EDITOR
+void ACosmicPlanet::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+    // Llamar a la clase padre por seguridad
+    Super::PostEditChangeProperty(PropertyChangedEvent);
+
+    // Averiguar exactamente qué variable acabamos de modificar
+    FName PropertyName = (PropertyChangedEvent.Property != nullptr) ? PropertyChangedEvent.Property->GetFName() : NAME_None;
+
+    // Si hemos tocado el checkbox del océano, el nivel del mar, o el radio del planeta...
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, bHasOcean) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, SeaLevel) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, RadiusKm))
+    {
+        if (OceanMesh)
+        {
+            // Actualizamos la visibilidad al instante
+            OceanMesh->SetVisibility(bHasOcean);
+
+            // Si está visible, reajustamos su tamaño al instante
+            if (bHasOcean)
+            {
+                float PlanetRadiusUnreal = RadiusKm * 100000.0f;
+                float TotalOceanRadius = PlanetRadiusUnreal + SeaLevel;
+                float SphereScale = TotalOceanRadius / 50.0f; // Asumiendo SM_Sphere de radio 50
+
+                OceanMesh->SetWorldScale3D(FVector(SphereScale));
+            }
+        }
+    }
+}
+#endif
