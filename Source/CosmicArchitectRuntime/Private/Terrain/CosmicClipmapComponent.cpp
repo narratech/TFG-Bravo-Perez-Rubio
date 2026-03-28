@@ -74,9 +74,10 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         FVector N = FVector();
         FVector ViewerPos = FVector();
 
-        float DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
+        //float DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
+        float DistanceToSurface = GetDistanceToPlainSurface(ViewerPos, SurfacePos, N);
 
-        UpdateCollisionNearPlayer(SurfacePos, N, DistanceToSurface);
+        //UpdateCollisionNearPlayer(SurfacePos, N, DistanceToSurface);
 
         if (!FarLevel)
             return;
@@ -611,30 +612,56 @@ FVector UCosmicClipmapComponent::GetPlayerLocation()
     return PlayerLocation;
 }
 
-float UCosmicClipmapComponent::GetDistanceToSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N)
+float UCosmicClipmapComponent::GetDistanceToSurface(FVector& OutViewerPos, FVector& OutSurfacePos, FVector& OutN)
 {
     AActor* Owner = GetOwner();
     if (!Owner) return 0.f;
 
-    ViewerPos = GetPlayerLocation();
+    OutViewerPos = GetPlayerLocation();
 
     FVector PlanetCenter = Owner->GetActorLocation();
 
-    FVector CenterToViewer = ViewerPos - PlanetCenter;
+    FVector CenterToViewer = OutViewerPos - PlanetCenter;
     float DistanceToCenter = CenterToViewer.Length();
 
-    // Normal esférica
-    N = (ViewerPos - PlanetCenter).GetSafeNormal();
+    // Normal esferica
+    OutN = (OutViewerPos - PlanetCenter).GetSafeNormal();
 
     // Punto sobre la superficie
-    SurfacePos = PlanetCenter + N * PlanetRadius;
+    OutSurfacePos = PlanetCenter + OutN * PlanetRadius;
 
     if (DistanceToCenter <= PlanetRadius)
     {
         return 0.f;
     }
 
-    return FVector::Distance(ViewerPos, SurfacePos);
+    return FVector::Distance(OutViewerPos, OutSurfacePos);
+}
+
+float UCosmicClipmapComponent::GetDistanceToPlainSurface(FVector& OutViewerPos, FVector& OutSurfacePos, FVector& OutN)
+{
+    AActor* Owner = GetOwner();
+    if (!Owner) return 0.f;
+
+    // Posición del viewer
+    OutViewerPos = GetPlayerLocation();
+
+    // Punto base del plano (puede ser el actor)
+    FVector PlanePoint = Owner->GetActorLocation();
+
+    // Normal del plano
+    OutN = FVector::UpVector;
+
+    // Vector del plano al viewer
+    FVector PlaneToViewer = OutViewerPos - PlanePoint;
+
+    // Distancia firmada al plano
+    float Distance = FVector::DotProduct(PlaneToViewer, OutN);
+
+    // Proyeccion del viewer sobre el plano 
+    OutSurfacePos = OutViewerPos - Distance * OutN;
+
+    return Distance;
 }
 
 
