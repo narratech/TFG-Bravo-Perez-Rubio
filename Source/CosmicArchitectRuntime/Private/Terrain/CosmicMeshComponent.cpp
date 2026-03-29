@@ -164,7 +164,7 @@ void UCosmicMeshComponent::BuildBaseMesh()
         }
     }
 
-    UE_LOG(LogTemp, Warning, TEXT("  Triángulos calculados: %d"), TriangleCount);
+    //UE_LOG(LogTemp, Warning, TEXT("  Triángulos calculados: %d"), TriangleCount);
     //UE_LOG(LogTemp, Warning, TEXT("  BaseVertices.Num(): %d"), BaseVertices.Num());
     //UE_LOG(LogTemp, Warning, TEXT("  UVs.Num(): %d"), UVs.Num());
     //UE_LOG(LogTemp, Warning, TEXT("  Triangles.Num(): %d"), Triangles.Num());

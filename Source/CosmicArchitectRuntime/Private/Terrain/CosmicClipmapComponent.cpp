@@ -351,10 +351,12 @@ void UCosmicClipmapComponent::ClearLevels()
 
     int LevelsCleared = 0;  
 
+    TotalShift = FIntPoint::ZeroValue;
+
     // 1. Destruir componentes del array Levels
     for (UCosmicMeshComponent* Mesh : Levels)
     {
-        UE_LOG(LogTemp, Warning, TEXT("  Destruyendo nivel %d"), Mesh->LevelIndex);
+        //UE_LOG(LogTemp, Warning, TEXT("  Destruyendo nivel %d"), Mesh->LevelIndex);
 
         // Desactivar y limpiar la malla
         Mesh->SetMeshActive(false);
@@ -369,7 +371,7 @@ void UCosmicClipmapComponent::ClearLevels()
     // 2. Destruir nivel exterior
     if (FarLevel)
     {
-        UE_LOG(LogTemp, Warning, TEXT("  Destruyendo nivel exterior"));
+        //UE_LOG(LogTemp, Warning, TEXT("  Destruyendo nivel exterior"));
 
         FarLevel->SetMeshActive(false);
         FarLevel->ClearAllMeshSections();
@@ -692,7 +694,6 @@ void UCosmicClipmapComponent::UpdateLevel(const FIntPoint& Shift, int32 LevelInd
                 Level->ShiftLevel(Movement);
             }
 
-            Level->RequestMeshUpdate();
             return;
         }
 
@@ -808,10 +809,34 @@ bool UCosmicClipmapComponent::IsClipmapRingVisible(const int64 GridSpacing, cons
     return ClipmapSurfaceRadius <= VisibleRadius * 2.f;
 }
 
+static FString QuadrantToString(EClipmapQuadrant Q)
+{
+    switch (Q)
+    {
+    case EClipmapQuadrant::TopLeft:     return TEXT("TopLeft");
+    case EClipmapQuadrant::TopRight:    return TEXT("TopRight");
+    case EClipmapQuadrant::BottomLeft:  return TEXT("BottomLeft");
+    case EClipmapQuadrant::BottomRight: return TEXT("BottomRight");
+    default: return TEXT("Unknown");
+    }
+}
+
 void UCosmicClipmapComponent::ReduceClimapLevel()
 {
     if (NumLevels > 1)
     {
+        UE_LOG(LogTemp, Warning, TEXT("---- REDUCE CLIPMAP ----"));
+        UE_LOG(LogTemp, Warning, TEXT("TotalShift BEFORE: X=%d Y=%d"), TotalShift.X, TotalShift.Y);
+
+        for (int32 i = 0; i < NumLevels; ++i)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Level %d BEFORE -> Spacing:%lld | Quadrant:%s"),
+                Levels[i]->LevelIndex,
+                Levels[i]->GridSpacing,
+                *QuadrantToString(Levels[i]->CurrentQuadrant)
+            );
+        }
+
         int64 Spacing = Levels[0]->GridSpacing;
 
         // Guardar ultimo
@@ -834,11 +859,23 @@ void UCosmicClipmapComponent::ReduceClimapLevel()
         BaseGridSpacing /= 2;
         TotalShift *= 2;
 
+        UE_LOG(LogTemp, Warning, TEXT("TotalShift AFTER SCALE: X=%d Y=%d"), TotalShift.X, TotalShift.Y);
+
         // Solo regenerar los necesarios
         Levels[0]->ReScaleLevel(Spacing / 2);
         Levels[0]->ShiftLevel(TotalShift);
         Levels[1]->ReScaleLevel(Spacing);
+        Levels[1]->CurrentQuadrant = EClipmapQuadrant::BottomRight;
         UpdateLevel(TotalShift, 1);
+
+        for (int32 i = 0; i < NumLevels; ++i)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Level %d AFTER -> Spacing:%lld | Quadrant:%s"),
+                Levels[i]->LevelIndex,
+                Levels[i]->GridSpacing,
+                *QuadrantToString(Levels[i]->CurrentQuadrant)
+            );
+        }
     }
 }
 
@@ -846,6 +883,18 @@ void UCosmicClipmapComponent::IncreaseClipmapLevel()
 {
     if (NumLevels > 1)
     {
+        UE_LOG(LogTemp, Warning, TEXT("---- INCREASE CLIPMAP ----"));
+        UE_LOG(LogTemp, Warning, TEXT("TotalShift BEFORE: X=%d Y=%d"), TotalShift.X, TotalShift.Y);
+
+        for (int32 i = 0; i < NumLevels; ++i)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Level %d BEFORE -> Spacing:%lld | Quadrant:%s"),
+                Levels[i]->LevelIndex,
+                Levels[i]->GridSpacing,
+                *QuadrantToString(Levels[i]->CurrentQuadrant)
+            );
+        }
+
         int64 Spacing = Levels[0]->GridSpacing;
 
         // Guardar el segundo nivel
@@ -867,14 +916,43 @@ void UCosmicClipmapComponent::IncreaseClipmapLevel()
         }
 
         BaseGridSpacing *= 2;
+
         TotalShift /= 2;
+
+        /*if (TotalShift.X % 2 == 1) {
+            TotalShift.X = TotalShift.X / 2 + ((TotalShift.X >= 0) ? 1 : -1);
+        }
+        else {
+            TotalShift.X = TotalShift.X / 2;
+        }
+
+        if (TotalShift.Y % 2 == 1) {
+            TotalShift.Y = TotalShift.Y / 2 + ((TotalShift.Y >= 0) ? 1 : -1);
+        }
+        else {
+            TotalShift.Y = TotalShift.Y / 2;
+        }*/
+        
+
+        UE_LOG(LogTemp, Warning, TEXT("TotalShift AFTER SCALE: X=%d Y=%d"), TotalShift.X, TotalShift.Y);
 
         Levels[0]->ReScaleLevel(Spacing * 2);
         Levels[0]->ShiftLevel(TotalShift);
         Levels[NumLevels - 1]->ReScaleLevel(Levels[NumLevels - 2]->GridSpacing * 2);
         UpdateLevel(TotalShift, NumLevels - 1);
+
+        for (int32 i = 0; i < NumLevels; ++i)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Level %d AFTER -> Spacing:%lld | Quadrant:%s"),
+                Levels[i]->LevelIndex,
+                Levels[i]->GridSpacing,
+                *QuadrantToString(Levels[i]->CurrentQuadrant)
+            );
+        }
     }
 }
+
+
 
 
 
