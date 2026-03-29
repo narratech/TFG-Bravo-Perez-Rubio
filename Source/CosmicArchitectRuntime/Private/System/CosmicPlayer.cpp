@@ -15,6 +15,12 @@ ACosmicPlayer::ACosmicPlayer()
 	// E: Activamos el Tick para aplicar la gravedad esférica frame a frame.
 	// I: We enable Tick to apply spherical gravity frame by frame.
 	PrimaryActorTick.bCanEverTick = true;
+
+	// E: Forzamos que nuestro Tick ocurra DESPUÉS de que las físicas del frame se hayan calculado.
+	// I: Force our Tick to happen AFTER the frame's physics have been calculated.
+	PrimaryActorTick.TickGroup = TG_PostPhysics;
+
+	
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
 
 	// E: Configuración de la cápsula física (Raíz).
@@ -44,11 +50,16 @@ ACosmicPlayer::ACosmicPlayer()
 	SpringArmComp->SetupAttachment(CapsuleComp);
 	SpringArmComp->TargetArmLength = 0.0f; // E: 0.0f para primera persona o 300.0f para tercera persona. / I: 0.0f for first person or 300.0f for third.
 	SpringArmComp->bUsePawnControlRotation = true;
+	// E: Activamos el "Lag" para que la cámara siga al jugador de forma fluida y absorba temblores.
+	// I: Enable "Lag" so the camera follows the player smoothly and absorbs jitter.
+	SpringArmComp->bEnableCameraLag = true;
+	SpringArmComp->bEnableCameraRotationLag = true;
+	SpringArmComp->CameraLagSpeed = 15.0f;         // Ajusta este valor a tu gusto
+	SpringArmComp->CameraRotationLagSpeed = 20.0f; // Ajusta este valor a tu gusto
 
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->SetupAttachment(SpringArmComp, USpringArmComponent::SocketName);
 	CameraComp->bUsePawnControlRotation = false;
-
 	// E: Instanciamos el componente gravitacional.
 	// I: Instantiate the gravitational component.
 	GravityComp = CreateDefaultSubobject<UCosmicGravityComponent>(TEXT("GravityComp"));
