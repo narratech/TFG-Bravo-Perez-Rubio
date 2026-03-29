@@ -358,8 +358,6 @@ void UCosmicMeshComponent::ShiftLevel(FIntPoint Shift)
         0.0f
     );
 
-    ShiftOffset += Offset;
-
     for (size_t i = 0; i < BaseVertices.Num(); i++)
     {
         BaseVertices[i] += Offset;       
@@ -441,7 +439,7 @@ void UCosmicMeshComponent::SetHoleQuadrant(EClipmapQuadrant NewQuadrant)
     }
 }
 
-void UCosmicMeshComponent::ReScaleLevel(int64 NewGridSpacing, const FVector ActorPosition)
+void UCosmicMeshComponent::ReScaleLevel(int64 NewGridSpacing)
 {
     if (!bMeshCreated)
     {
@@ -449,22 +447,22 @@ void UCosmicMeshComponent::ReScaleLevel(int64 NewGridSpacing, const FVector Acto
         return;
     }
 
-    const double ScaleRatio = (double)NewGridSpacing / (double)GridSpacing;
     GridSpacing = NewGridSpacing;
 
-    const int32 VertCount = BaseVertices.Num();
+    const int32 VertRes = Resolution - 1;
+    const int32 HalfRes = Resolution / 2;
 
-    UE_LOG(LogTemp, Warning, TEXT("VerX:%.1f, VerY:%.1f, ShiftOffsetX:%.1f, ShiftOffsetY:%.1f, ScaleRatio:%.3f")
-    , BaseVertices[0].X, BaseVertices[0].Y, ShiftOffset.X, ShiftOffset.Y, ScaleRatio);
-
-    // Reescalar vértices base
-    for (int32 i = 0; i < VertCount; ++i)
+    for (int32 y = 0; y < VertRes; ++y)
     {
-        BaseVertices[i] -= ActorPosition;
-        BaseVertices[i] -= ShiftOffset;
-        BaseVertices[i] *= ScaleRatio;
-        BaseVertices[i] += ShiftOffset;
-        BaseVertices[i] += ActorPosition;
+        for (int32 x = 0; x < VertRes; ++x)
+        {
+            float LocalX = (x - HalfRes) * GridSpacing;
+            float LocalY = (y - HalfRes) * GridSpacing;
+
+            FVector Pos = FVector(LocalX, LocalY, 0);
+
+            BaseVertices[x + y * VertRes] = Pos;
+        }
     }
 }
 

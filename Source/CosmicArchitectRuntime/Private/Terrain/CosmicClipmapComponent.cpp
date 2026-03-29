@@ -115,6 +115,8 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         }
 
         if (!MeshesUpdated) return;
+
+        uint8 UpdateClipmapLevels = 0;
      
         if (Levels.Num() > 1)
         {
@@ -127,19 +129,33 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
             if (!bIsVisible && MeshFirst->GridSpacing > MinTriangleSize) {
                 ReduceClimapLevel();
+                UpdateClipmapLevels = 1;
             }
             else if(IsClipmapRingVisible(MeshLast->GridSpacing * 2, MeshLast->Resolution, DistanceToSurface) 
-                && MeshLast->GridSpacing < BaseGridSpacing * FMath::Pow(2.0f, NumLevels - 1)){
+                && MeshLast->GridSpacing < BaseSpacing * FMath::Pow(2.0f, NumLevels - 1)){
                 IncreaseClipmapLevel();
+                UpdateClipmapLevels = 2;
             }         
         }
 
         FIntPoint Shift = ComputeGridShift(ViewerPos, BaseGridSpacing * 2);
 
+        TotalShift += Shift;
+
         if (Shift != FIntPoint::ZeroValue)
         {
             // actualizar niveles necesarios
             UpdateLevels(Shift);
+        }
+
+        if (UpdateClipmapLevels == 1) {
+            Levels[0]->RequestMeshUpdate();
+            Levels[1]->RequestMeshUpdate();
+        }
+        else if(UpdateClipmapLevels == 2)
+        {
+            Levels[0]->RequestMeshUpdate();
+            Levels.Last()->RequestMeshUpdate();
         }
 
     }    
@@ -180,7 +196,10 @@ void UCosmicClipmapComponent::CreateLevels()
     Levels.Empty();
     Levels.SetNum(NumLevels);
 
-    BaseGridSpacing = (PlanetRadius * 2.0f) / (BaseResolution * FMath::Pow(2.0f, NumLevels - 1));
+    TotalShift = FIntPoint::ZeroValue;
+
+    BaseGridSpacing = BaseSpacing = (PlanetRadius * 2.0f) / (BaseResolution * FMath::Pow(2.0f, NumLevels - 1));
+     
     //UE_LOG(LogTemp, Error, TEXT("BaseGridSpacing %.4f"), BaseGridSpacing);
 
     // 4. Crear cada nivel
@@ -588,6 +607,100 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
     }
 }
 
+void UCosmicClipmapComponent::UpdateLevel(const FIntPoint& Shift, int32 LevelIndex)
+{
+    if (LevelIndex < 1 || LevelIndex > Levels.Num() - 1) return;
+
+    int32 JumpsX = Shift.X;
+    int32 JumpsY = Shift.Y;
+
+    UCosmicMeshComponent* Mesh = Levels[LevelIndex];
+
+    for (int32 i = 0; i < Levels.Num(); ++i)
+    {
+
+        if (i == 0) continue;
+
+        UCosmicMeshComponent* Level = Levels[i];
+
+        EClipmapQuadrant currentQuadrant = Level->CurrentQuadrant;
+
+        // Descomponemos el cuadrante: ahora usamos bIsBottom porque +Y es Bottom
+        bool bIsRight = (currentQuadrant == EClipmapQuadrant::TopRight || currentQuadrant == EClipmapQuadrant::BottomRight);
+        bool bIsBottom = (currentQuadrant == EClipmapQuadrant::BottomLeft || currentQuadrant == EClipmapQuadrant::BottomRight);
+
+        // LOGICA DEL EJE X (+X es Derecha)
+        if (JumpsX != 0)
+        {
+            if (FMath::Abs(JumpsX) % 2 == 1)
+            {
+                if (bIsRight) {
+                    if (JumpsX > 0) JumpsX = (JumpsX / 2) + 1; // Empuja el borde derecho
+                    else JumpsX = (JumpsX / 2);                // Absorbe hacia el centro
+                    bIsRight = false; // El hueco cambia a la izquierda
+                }
+                else {
+                    if (JumpsX < 0) JumpsX = (JumpsX / 2) - 1; // Empuja el borde izquierdo
+                    else JumpsX = (JumpsX / 2);                // Absorbe hacia el centro
+                    bIsRight = true;  // El hueco cambia a la derecha
+                }
+            }
+            else
+            {
+                JumpsX = JumpsX / 2;
+            }
+        }
+
+        // LOGICA DEL EJE Y (+Y es Abajo / Bottom)
+        if (JumpsY != 0)
+        {
+            if (FMath::Abs(JumpsY) % 2 == 1)
+            {
+                if (bIsBottom) {
+                    if (JumpsY > 0) JumpsY = (JumpsY / 2) + 1; // Empuja el borde inferior (+Y)
+                    else JumpsY = (JumpsY / 2);                // Absorbe el salto -Y hacia el centro
+                    bIsBottom = false; // El hueco cambia a Arriba (Top)
+                }
+                else {
+                    if (JumpsY < 0) JumpsY = (JumpsY / 2) - 1; // Empuja el borde superior (-Y)
+                    else JumpsY = (JumpsY / 2);                // Absorbe el salto +Y hacia el centro
+                    bIsBottom = true;  // El hueco cambia a Abajo (Bottom)
+                }
+            }
+            else
+            {
+                JumpsY = JumpsY / 2;
+            }
+        }
+
+        if (i == LevelIndex) {
+            
+            EClipmapQuadrant NewQuadrant;
+            if (!bIsBottom && !bIsRight) NewQuadrant = EClipmapQuadrant::TopLeft;
+            else if (!bIsBottom && bIsRight) NewQuadrant = EClipmapQuadrant::TopRight;
+            else if (bIsBottom && !bIsRight) NewQuadrant = EClipmapQuadrant::BottomLeft;
+            else NewQuadrant = EClipmapQuadrant::BottomRight;
+
+            // Solo actualizamos el cuadrante si realmente ha cambiado
+            if (NewQuadrant != currentQuadrant) {
+                Level->SetHoleQuadrant(NewQuadrant);
+            }
+
+            // Aplicamos el movimiento fisico a este nivel
+            FIntPoint Movement(JumpsX, JumpsY);
+            if (Movement != FIntPoint::ZeroValue) {
+                Level->ShiftLevel(Movement);
+            }
+
+            Level->RequestMeshUpdate();
+            return;
+        }
+
+        // Salida temprana, si ya no hay movimiento que propagar, cortamos el bucle
+        if (JumpsX == 0 && JumpsY == 0) return;
+    }
+}
+
 FVector UCosmicClipmapComponent::GetPlayerLocation()
 {
     FVector PlayerLocation = FVector::ZeroVector;
@@ -718,9 +831,14 @@ void UCosmicClipmapComponent::ReduceClimapLevel()
             Levels[i]->LevelIndex = i;
         }
 
+        BaseGridSpacing /= 2;
+        TotalShift *= 2;
+
         // Solo regenerar los necesarios
-        Levels[0]->ReScaleLevel(Spacing / 2, CurrentActorPosition);
-        Levels[1]->ReScaleLevel(Spacing, CurrentActorPosition);
+        Levels[0]->ReScaleLevel(Spacing / 2);
+        Levels[0]->ShiftLevel(TotalShift);
+        Levels[1]->ReScaleLevel(Spacing);
+        UpdateLevel(TotalShift, 1);
     }
 }
 
@@ -748,8 +866,13 @@ void UCosmicClipmapComponent::IncreaseClipmapLevel()
             Levels[i]->LevelIndex = i;
         }
 
-        Levels[0]->ReScaleLevel(Spacing * 2, CurrentActorPosition);
-        Levels[NumLevels - 1]->ReScaleLevel(Levels[NumLevels - 2]->GridSpacing * 2, CurrentActorPosition);
+        BaseGridSpacing *= 2;
+        TotalShift /= 2;
+
+        Levels[0]->ReScaleLevel(Spacing * 2);
+        Levels[0]->ShiftLevel(TotalShift);
+        Levels[NumLevels - 1]->ReScaleLevel(Levels[NumLevels - 2]->GridSpacing * 2);
+        UpdateLevel(TotalShift, NumLevels - 1);
     }
 }
 

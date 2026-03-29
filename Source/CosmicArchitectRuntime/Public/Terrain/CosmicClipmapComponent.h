@@ -71,6 +71,7 @@ protected:
     bool bPerformaceMode = false;
     bool bInit = false;
     bool bPerformanceBuild = false;
+    int64 BaseSpacing = 200;
     
 
     FColor PlanetMainColor1 = FColor::Green;
@@ -80,6 +81,7 @@ protected:
     FVector LastPlayerPos;
     FVector CurrentActorPosition;
     FVector AccumulatedDelta = FVector::ZeroVector;
+    FIntPoint TotalShift = FIntPoint::ZeroValue;
 
     virtual void BeginPlay() override;
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
@@ -92,6 +94,7 @@ protected:
     FVector GetPlayerLocation();
     FIntPoint ComputeGridShift(const FVector& PlayerPos, float GridSpacing);
     void UpdateLevels(const FIntPoint& Shift);
+    void UpdateLevel(const FIntPoint& Shift, int32 LevelIndex);
     bool IsClipmapRingVisible(const int32 LevelIndex, const float DistanceToSurface);
     bool IsClipmapRingVisible(const int64 GridSpacing, const int64 Resolution, const float DistanceToSurface);
     void ReduceClimapLevel();
