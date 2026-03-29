@@ -90,6 +90,12 @@ void UCosmicGravityComponent::Integrate(double DeltaTime)
         Owner->SetActorLocation(NewLocation);
     }
 
+    // E: Guardamos la dirección normalizada antes de limpiar la fuerza
+    if (!AccumulatedForce.IsNearlyZero())
+    {
+        CurrentGravityDirection = AccumulatedForce.GetSafeNormal();
+    }
+
     AccumulatedForce = FVector::ZeroVector;
 }
 

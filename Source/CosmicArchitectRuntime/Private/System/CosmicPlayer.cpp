@@ -8,6 +8,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
 #include "GameFramework/PlayerController.h"
+#include "Simulation/CosmicGravityComponent.h"
 
 ACosmicPlayer::ACosmicPlayer()
 {
@@ -47,6 +48,11 @@ ACosmicPlayer::ACosmicPlayer()
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->SetupAttachment(SpringArmComp, USpringArmComponent::SocketName);
 	CameraComp->bUsePawnControlRotation = false;
+
+	// E: Instanciamos el componente gravitacional.
+	// I: Instantiate the gravitational component.
+	GravityComp = CreateDefaultSubobject<UCosmicGravityComponent>(TEXT("GravityComp"));
+	GravityComp->IsPlanet = false;
 }
 
 void ACosmicPlayer::BeginPlay()
@@ -58,9 +64,40 @@ void ACosmicPlayer::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// E: AQUÍ IRÁ LA LÓGICA DE GRAVEDAD ESFÉRICA.
-	// I: SPHERICAL GRAVITY LOGIC GOES HERE.
-	// TODO: Calcular dirección hacia CurrentPlanetCenter, aplicar fuerza, y hacer Slerp de rotación.
+	// E: 1. Asegurarnos de que tenemos el componente de gravedad
+	// I: 1. Make sure we have the gravity component
+	if (!GravityComp) return;
+
+	// E: 2. Obtenemos la dirección hacia donde tira la gravedad (Hacia abajo)
+	// I: 2. Get the direction gravity is pulling towards (Downwards)
+	FVector GravityDown = GravityComp->CurrentGravityDirection;
+
+	// Si no hay gravedad actuando, no alteramos la rotación
+	if (GravityDown.IsNearlyZero()) return;
+
+	// E: 3. El "Arriba" al que queremos que apunte la cabeza del jugador es lo contrario a la gravedad
+	// I: 3. The "Up" we want the player's head to point to is the opposite of gravity
+	FVector TargetUp = -GravityDown;
+
+	// E: 4. Proyectamos el frente actual del jugador sobre el nuevo plano del suelo.
+	// Esto evita que el personaje gire bruscamente perdiendo la dirección en la que estabas mirando.
+	// I: 4. Project the current forward of the player onto the new ground plane.
+	FVector CurrentForward = CapsuleComp->GetForwardVector();
+	FVector NewForward = FVector::VectorPlaneProject(CurrentForward, TargetUp).GetSafeNormal();
+
+	// E: 5. Creamos la rotación deseada diciéndole a Unreal cuál es nuestro Frente (X) y nuestro Arriba (Z)
+	// I: 5. Create the desired rotation telling Unreal our Forward (X) and Up (Z)
+	FQuat TargetQuat = FRotationMatrix::MakeFromXZ(NewForward, TargetUp).ToQuat();
+	FQuat CurrentQuat = CapsuleComp->GetComponentQuat();
+
+	// E: 6. Interpolación Esférica (Slerp) para que el ajuste sea suave y no un "chasquido"
+	// I: 6. Spherical Interpolation (Slerp) so the adjustment is smooth and not a snap
+	// El valor '5.0f' es la velocidad de rotación. Puedes ajustarlo a tu gusto.
+	FQuat NewQuat = FMath::QInterpTo(CurrentQuat, TargetQuat, DeltaTime, 5.0f);
+
+	// E: 7. Aplicamos la nueva rotación a la cápsula
+	// I: 7. Apply the new rotation to the capsule
+	CapsuleComp->SetWorldRotation(NewQuat, false, nullptr, ETeleportType::TeleportPhysics);
 }
 
 void ACosmicPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)

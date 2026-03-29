@@ -106,6 +106,10 @@ public:
     // I: Vector accumulating all gravitational forces in the current frame.
     FVector AccumulatedForce = FVector::ZeroVector;
 
+    // E: Vector que guarda la dirección de la gravedad de este frame para ser leída por otros.
+    // I: Vector storing this frame's gravity direction to be read by others.
+    FVector CurrentGravityDirection = FVector::DownVector;
+
     // E: Calcula y aplica el movimiento basado en las fuerzas y el tiempo delta.
     // I: Calculates and applies movement based on forces and delta time.
     void Integrate(double DeltaTime);

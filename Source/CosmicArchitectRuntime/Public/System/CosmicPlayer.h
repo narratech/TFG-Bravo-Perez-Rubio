@@ -7,9 +7,12 @@
 #include "InputActionValue.h"
 #include "CosmicPlayer.generated.h"
 
+class UCosmicGravityComponent;
+
 // E: Peón principal para la exploración a pie en superficies planetarias (6DOF / Gravedad Esférica).
 // I: Main pawn for on-foot exploration on planetary surfaces (6DOF / Spherical Gravity).
 UCLASS(Blueprintable, BlueprintType)
+
 class COSMICARCHITECTRUNTIME_API ACosmicPlayer : public APawn
 {
 	GENERATED_BODY()
@@ -44,6 +47,11 @@ protected:
 	// I: Main player camera.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Componentes")
 	class UCameraComponent* CameraComp;
+
+	// E: Componente de gravedad que calculará las fuerzas del planeta.
+	// I: Gravity component that will calculate the planet's forces.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Componentes")
+	UCosmicGravityComponent* GravityComp;
 
 	// =========================================================================
 	// VARIABLES CONFIGURABLES DESDE EL EDITOR / CONFIGURABLE VARIABLES FROM EDITOR
