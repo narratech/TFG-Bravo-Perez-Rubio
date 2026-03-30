@@ -99,6 +99,8 @@ protected:
     bool IsClipmapRingVisible(const int64 GridSpacing, const int64 Resolution, const float DistanceToSurface);
     void ReduceClimapLevel();
     void IncreaseClipmapLevel();
+    void DecreaseClipmapLevelFull();
+    void IncreaseClipmapLevelFull();
 
 private:
     UPROPERTY(EditAnywhere, Category = "Materials")

@@ -128,12 +128,12 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             //UE_LOG(LogTemp, Warning, TEXT("Ultimo visible %d"), bIsVisible);
 
             if (!bIsVisible && MeshFirst->GridSpacing > MinTriangleSize) {
-                ReduceClimapLevel();
+                DecreaseClipmapLevelFull();
                 UpdateClipmapLevels = 1;
             }
             else if(IsClipmapRingVisible(MeshLast->GridSpacing * 2, MeshLast->Resolution, DistanceToSurface) 
                 && MeshLast->GridSpacing < BaseSpacing * FMath::Pow(2.0f, NumLevels - 1)){
-                IncreaseClipmapLevel();
+                IncreaseClipmapLevelFull();
                 UpdateClipmapLevels = 2;
             }         
         }
@@ -142,20 +142,19 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         TotalShift += Shift;
 
-        if (Shift != FIntPoint::ZeroValue)
+        if (UpdateClipmapLevels != 0) {
+
+            UpdateLevels(TotalShift);
+
+            for (size_t i = 0; i < NumLevels; i++)
+            {
+                Levels[i]->RequestMeshUpdate();
+            }
+        }
+        else if (Shift != FIntPoint::ZeroValue)
         {
             // actualizar niveles necesarios
             UpdateLevels(Shift);
-        }
-
-        if (UpdateClipmapLevels == 1) {
-            Levels[0]->RequestMeshUpdate();
-            Levels[1]->RequestMeshUpdate();
-        }
-        else if(UpdateClipmapLevels == 2)
-        {
-            Levels[0]->RequestMeshUpdate();
-            Levels.Last()->RequestMeshUpdate();
         }
 
     }    
@@ -825,18 +824,6 @@ void UCosmicClipmapComponent::ReduceClimapLevel()
 {
     if (NumLevels > 1)
     {
-        UE_LOG(LogTemp, Warning, TEXT("---- REDUCE CLIPMAP ----"));
-        UE_LOG(LogTemp, Warning, TEXT("TotalShift BEFORE: X=%d Y=%d"), TotalShift.X, TotalShift.Y);
-
-        for (int32 i = 0; i < NumLevels; ++i)
-        {
-            UE_LOG(LogTemp, Warning, TEXT("Level %d BEFORE -> Spacing:%lld | Quadrant:%s"),
-                Levels[i]->LevelIndex,
-                Levels[i]->GridSpacing,
-                *QuadrantToString(Levels[i]->CurrentQuadrant)
-            );
-        }
-
         int64 Spacing = Levels[0]->GridSpacing;
 
         // Guardar ultimo
@@ -859,23 +846,11 @@ void UCosmicClipmapComponent::ReduceClimapLevel()
         BaseGridSpacing /= 2;
         TotalShift *= 2;
 
-        UE_LOG(LogTemp, Warning, TEXT("TotalShift AFTER SCALE: X=%d Y=%d"), TotalShift.X, TotalShift.Y);
-
         // Solo regenerar los necesarios
         Levels[0]->ReScaleLevel(Spacing / 2);
         Levels[0]->ShiftLevel(TotalShift);
         Levels[1]->ReScaleLevel(Spacing);
-        Levels[1]->CurrentQuadrant = EClipmapQuadrant::BottomRight;
         UpdateLevel(TotalShift, 1);
-
-        for (int32 i = 0; i < NumLevels; ++i)
-        {
-            UE_LOG(LogTemp, Warning, TEXT("Level %d AFTER -> Spacing:%lld | Quadrant:%s"),
-                Levels[i]->LevelIndex,
-                Levels[i]->GridSpacing,
-                *QuadrantToString(Levels[i]->CurrentQuadrant)
-            );
-        }
     }
 }
 
@@ -919,27 +894,13 @@ void UCosmicClipmapComponent::IncreaseClipmapLevel()
 
         TotalShift /= 2;
 
-        /*if (TotalShift.X % 2 == 1) {
-            TotalShift.X = TotalShift.X / 2 + ((TotalShift.X >= 0) ? 1 : -1);
-        }
-        else {
-            TotalShift.X = TotalShift.X / 2;
-        }
-
-        if (TotalShift.Y % 2 == 1) {
-            TotalShift.Y = TotalShift.Y / 2 + ((TotalShift.Y >= 0) ? 1 : -1);
-        }
-        else {
-            TotalShift.Y = TotalShift.Y / 2;
-        }*/
-        
-
         UE_LOG(LogTemp, Warning, TEXT("TotalShift AFTER SCALE: X=%d Y=%d"), TotalShift.X, TotalShift.Y);
 
         Levels[0]->ReScaleLevel(Spacing * 2);
         Levels[0]->ShiftLevel(TotalShift);
         Levels[NumLevels - 1]->ReScaleLevel(Levels[NumLevels - 2]->GridSpacing * 2);
         UpdateLevel(TotalShift, NumLevels - 1);
+        Levels[NumLevels - 1]->SetHoleQuadrant(EClipmapQuadrant::BottomRight);
 
         for (int32 i = 0; i < NumLevels; ++i)
         {
@@ -948,6 +909,32 @@ void UCosmicClipmapComponent::IncreaseClipmapLevel()
                 Levels[i]->GridSpacing,
                 *QuadrantToString(Levels[i]->CurrentQuadrant)
             );
+        }
+    }
+}
+
+void UCosmicClipmapComponent::DecreaseClipmapLevelFull()
+{
+    if (NumLevels > 1) {
+        BaseGridSpacing /= 2;
+        TotalShift *= 2;
+
+        for (size_t i = 0; i < NumLevels; i++)
+        {
+            Levels[i]->ReScaleLevel(Levels[i]->GridSpacing / 2);
+        }
+    }
+}
+
+void UCosmicClipmapComponent::IncreaseClipmapLevelFull()
+{
+    if (NumLevels > 1) {
+        BaseGridSpacing *= 2;
+        TotalShift /= 2;
+
+        for (size_t i = 0; i < NumLevels; i++)
+        {
+            Levels[i]->ReScaleLevel(Levels[i]->GridSpacing * 2);
         }
     }
 }

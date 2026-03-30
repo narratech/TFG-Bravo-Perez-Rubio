@@ -464,6 +464,8 @@ void UCosmicMeshComponent::ReScaleLevel(int64 NewGridSpacing)
             BaseVertices[x + y * VertRes] = Pos;
         }
     }
+
+    CurrentQuadrant = EClipmapQuadrant::BottomRight;
 }
 
 void UCosmicMeshComponent::SetMeshActive(bool active)
