@@ -197,6 +197,10 @@ void UCosmicClipmapComponent::CreateLevels()
 
     TotalShift = FIntPoint::ZeroValue;
 
+    AActor* Owner = GetOwner();
+    if (!Owner) LastPlayerPos = FVector::Zero();
+    else LastPlayerPos = Owner->GetActorLocation();
+        
     BaseGridSpacing = BaseSpacing = (PlanetRadius * 2.0f) / (BaseResolution * FMath::Pow(2.0f, NumLevels - 1));
      
     //UE_LOG(LogTemp, Error, TEXT("BaseGridSpacing %.4f"), BaseGridSpacing);
@@ -919,9 +923,13 @@ void UCosmicClipmapComponent::DecreaseClipmapLevelFull()
         BaseGridSpacing /= 2;
         TotalShift *= 2;
 
+        // Recalcular desde el nivel base
+        float NewGridSpacing = BaseGridSpacing;
+
         for (size_t i = 0; i < NumLevels; i++)
         {
-            Levels[i]->ReScaleLevel(Levels[i]->GridSpacing / 2);
+            Levels[i]->ReScaleLevel(NewGridSpacing);
+            NewGridSpacing *= 2; // cada nivel duplica el spacing
         }
     }
 }

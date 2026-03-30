@@ -32,8 +32,8 @@ void UCosmicMeshComponent::BuildBaseMesh()
     {
         for (int32 x = 0; x < VertRes; ++x)
         {
-            float LocalX = (x - HalfRes) * GridSpacing;
-            float LocalY = (y - HalfRes) * GridSpacing;
+            double LocalX = (x - HalfRes) * GridSpacing;
+            double LocalY = (y - HalfRes) * GridSpacing;
 
             FVector Pos = FVector(LocalX, LocalY, 0);
 
@@ -456,8 +456,8 @@ void UCosmicMeshComponent::ReScaleLevel(int64 NewGridSpacing)
     {
         for (int32 x = 0; x < VertRes; ++x)
         {
-            float LocalX = (x - HalfRes) * GridSpacing;
-            float LocalY = (y - HalfRes) * GridSpacing;
+            double LocalX = (x - HalfRes) * GridSpacing;
+            double LocalY = (y - HalfRes) * GridSpacing;
 
             FVector Pos = FVector(LocalX, LocalY, 0);
 
