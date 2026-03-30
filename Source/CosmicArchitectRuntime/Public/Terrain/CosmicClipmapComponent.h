@@ -58,6 +58,9 @@ public:
     float TimeToRefresh = 0.033f;
 
     UPROPERTY(EditAnywhere, Category = "Clipmap")
+    bool IsPlanet = true;
+
+    UPROPERTY(EditAnywhere, Category = "Clipmap")
     bool FreezeGeneration = false;
 
     UCosmicCollisionComponent* CollisionComponent;

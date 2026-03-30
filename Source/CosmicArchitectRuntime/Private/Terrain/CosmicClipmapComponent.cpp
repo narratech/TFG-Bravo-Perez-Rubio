@@ -73,9 +73,14 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         FVector SurfacePos = FVector();
         FVector N = FVector();
         FVector ViewerPos = FVector();
+        float DistanceToSurface;
 
-        //float DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
-        float DistanceToSurface = GetDistanceToPlainSurface(ViewerPos, SurfacePos, N);
+        if (IsPlanet) {
+            DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
+        }
+        else {
+            DistanceToSurface = GetDistanceToPlainSurface(ViewerPos, SurfacePos, N);
+        }
 
         //UpdateCollisionNearPlayer(SurfacePos, N, DistanceToSurface);
 
@@ -84,7 +89,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         if (!bPerformanceBuild) {
             FarLevel->RequestMeshUpdate();
-            bPerformanceBuild = FarLevel->CheckAndApplyMeshUpdate();
+            bPerformanceBuild = FarLevel->CheckAndApplyMeshUpdate(ViewerPos);
         }
 
         //Activar/desactivar modo rendimiento al alejarte lo suficiente
@@ -109,7 +114,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         for (size_t i = 0; i < Levels.Num(); i++)
         {
-            if (!Levels[i]->CheckAndApplyMeshUpdate()) {
+            if (!Levels[i]->CheckAndApplyMeshUpdate(ViewerPos)) {
                 MeshesUpdated = false;
             }
         }
@@ -136,6 +141,25 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
                 IncreaseClipmapLevelFull();
                 UpdateClipmapLevels = true;
             }         
+        }
+
+        FVector TangentX = FVector::CrossProduct(FVector::UpVector, N);
+        if (TangentX.SizeSquared() < 0.001f)
+        {
+            TangentX = FVector::CrossProduct(FVector::RightVector, N);
+        }
+        TangentX.Normalize();
+
+        FVector TangentY = FVector::CrossProduct(N, TangentX);
+
+        for (UCosmicMeshComponent* Level : Levels)
+        {
+            Level->SetPlanetBasis(
+                N,
+                TangentX,
+                TangentY,
+                ViewerPos
+            );
         }
 
         FIntPoint Shift = ComputeGridShift(ViewerPos, BaseGridSpacing * 2);
@@ -240,6 +264,7 @@ void UCosmicClipmapComponent::CreateLevels()
         Mesh->PlanetRadius = PlanetRadius;
         Mesh->bActiveMesh = true;
         Mesh->NoiseSettings = NoiseSettings;
+        Mesh->bIsPlanet = IsPlanet;
 
         // Construir malla
         Mesh->BuildBaseMesh();
@@ -323,6 +348,7 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
         Mesh->bIsRing = false;
         Mesh->PlanetRadius = PlanetRadius;
         Mesh->NoiseSettings = NoiseSettings;
+        Mesh->bIsPlanet = false;
 
         Mesh->BuildSphereMesh();
         Mesh->SetMeshActive(bActive);
@@ -504,7 +530,43 @@ FIntPoint UCosmicClipmapComponent::ComputeGridShift(
     const FVector& PlayerPos,
     float GridSpacing)
 {
-    FVector FrameDelta = PlayerPos - LastPlayerPos;
+    FVector PlanetCenter = GetOwner()->GetActorLocation();
+
+    FVector FrameDelta;
+
+    if (IsPlanet)
+    {
+        // Base estable usando el frame anterior
+        FVector N = (LastPlayerPos - PlanetCenter).GetSafeNormal();
+
+        FVector TangentX = FVector::CrossProduct(FVector::UpVector, N);
+        if (TangentX.SizeSquared() < 0.001f)
+        {
+            TangentX = FVector::CrossProduct(FVector::RightVector, N);
+        }
+        TangentX.Normalize();
+
+        FVector TangentY = FVector::CrossProduct(N, TangentX);
+
+        // Proyectar ambas posiciones
+        FVector LocalPrev(
+            FVector::DotProduct(LastPlayerPos, TangentX),
+            FVector::DotProduct(LastPlayerPos, TangentY),
+            0.f
+        );
+
+        FVector LocalCurr(
+            FVector::DotProduct(PlayerPos, TangentX),
+            FVector::DotProduct(PlayerPos, TangentY),
+            0.f
+        );
+
+        FrameDelta = LocalCurr - LocalPrev;
+    }
+    else
+    {
+        FrameDelta = PlayerPos - LastPlayerPos;
+    }
 
     LastPlayerPos = PlayerPos;
 
@@ -513,7 +575,6 @@ FIntPoint UCosmicClipmapComponent::ComputeGridShift(
     int32 ShiftX = FMath::FloorToInt(AccumulatedDelta.X / GridSpacing);
     int32 ShiftY = FMath::FloorToInt(AccumulatedDelta.Y / GridSpacing);
 
-    // Quitamos lo que ya hemos consumido
     AccumulatedDelta.X -= ShiftX * GridSpacing;
     AccumulatedDelta.Y -= ShiftY * GridSpacing;
 

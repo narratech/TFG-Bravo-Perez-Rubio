@@ -164,20 +164,10 @@ void UCosmicMeshComponent::BuildBaseMesh()
         }
     }
 
-    //UE_LOG(LogTemp, Warning, TEXT("  Triángulos calculados: %d"), TriangleCount);
-    //UE_LOG(LogTemp, Warning, TEXT("  BaseVertices.Num(): %d"), BaseVertices.Num());
-    //UE_LOG(LogTemp, Warning, TEXT("  UVs.Num(): %d"), UVs.Num());
-    //UE_LOG(LogTemp, Warning, TEXT("  Triangles.Num(): %d"), Triangles.Num());
-    
-
-    // 5. COPIAR a Current arrays
+    // COPIAR a Current arrays
     CurrentVertices = BaseVertices;
     CurrentNormals = BaseNormals;
     CurrentTangents = BaseTangents;
-
-    // 6. CREAR LA MALLA por primera vez
-    
-    //double CreateStartTime = FPlatformTime::Seconds();
 
     // Inicializamos el array de colores con el mismo tamaño que los vértices
     CurrentColors.Init(FLinearColor(0.5f, 0.5f, 0.5f, 1.0f), CurrentVertices.Num());
@@ -190,19 +180,13 @@ void UCosmicMeshComponent::BuildBaseMesh()
         UVs,                 // UVs
         CurrentColors,    // Colores de vértice
         CurrentTangents,     // Tangentes
-        //LevelIndex == 0      // Crear colisión
         false
     );
 
-    //double CreateEndTime = FPlatformTime::Seconds();
-
-    //UE_LOG(LogTemp, Warning, TEXT("CreateMeshSection tomo: %.4f ms"), (CreateEndTime - CreateStartTime) * 1000.0);
-
-    // 7. VERIFICAR que se creó correctamente
+    // VERIFICAR que se creó correctamente
     if (GetNumSections() > 0)
     {
         bMeshCreated = true;
-        //UE_LOG(LogTemp, Warning, TEXT("Malla creada exitosamente. Secciones: %d"), GetNumSections());
     }
     else
     {
@@ -210,7 +194,7 @@ void UCosmicMeshComponent::BuildBaseMesh()
     }
 
 
-    SetCollisionEnabled(/*LevelIndex == 0 ? ECollisionEnabled::QueryAndPhysics : */ECollisionEnabled::NoCollision);
+    SetCollisionEnabled(ECollisionEnabled::NoCollision);
           
     bMeshCreated = true;
 }
@@ -309,10 +293,6 @@ void UCosmicMeshComponent::BuildSphereMesh()
     CurrentNormals = BaseNormals;
     CurrentTangents = BaseTangents;
 
-    // 6. CREAR LA MALLA por primera vez
-
-    double CreateStartTime = FPlatformTime::Seconds();
-
     // Inicializamos el array de colores con el mismo tamaño que los vértices
     CurrentColors.Init(FLinearColor(0.5f, 0.5f, 0.5f, 1.0f), CurrentVertices.Num());
 
@@ -326,10 +306,6 @@ void UCosmicMeshComponent::BuildSphereMesh()
         CurrentTangents,     // Tangentes
         false      // Crear colisión
     );
-
-    double CreateEndTime = FPlatformTime::Seconds();
-
-    //UE_LOG(LogTemp, Warning, TEXT("CreateSphereMesh tomo: %.4f ms"), (CreateEndTime - CreateStartTime) * 1000.0);
 
     // 7. VERIFICAR que se creó correctamente
     if (GetNumSections() > 0)
@@ -362,6 +338,14 @@ void UCosmicMeshComponent::ShiftLevel(FIntPoint Shift)
     {
         BaseVertices[i] += Offset;       
     }
+}
+
+void UCosmicMeshComponent::SetPlanetBasis(const FVector& PlanetNormal, const FVector& TangentX, const FVector& TangentY, const FVector& PlayerPos)
+{
+    CachedPlanetNormal = PlanetNormal;
+    CachedTangentX = TangentX;
+    CachedTangentY = TangentY;
+    CachedPlayerPos = PlayerPos;
 }
 
 int32 UCosmicMeshComponent::GetQuadrantIndex(EClipmapQuadrant Q) const {
@@ -468,6 +452,12 @@ void UCosmicMeshComponent::ReScaleLevel(int64 NewGridSpacing)
     CurrentQuadrant = EClipmapQuadrant::BottomRight;
 }
 
+FVector UCosmicMeshComponent::ProjectToPlanet(const FVector& WorldPos, const FVector& PlanetCenter) const
+{
+    FVector Dir = (WorldPos - PlanetCenter).GetSafeNormal();
+    return PlanetCenter + Dir * PlanetRadius;
+}
+
 void UCosmicMeshComponent::SetMeshActive(bool active)
 {
     bActiveMesh = active;
@@ -502,7 +492,7 @@ void UCosmicMeshComponent::RequestMeshUpdate()
     NoiseTask->StartBackgroundTask();
 }
 
-bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
+bool UCosmicMeshComponent::CheckAndApplyMeshUpdate(const FVector PlayerPos)
 {
     //Si no hay tarea devolvemos true para saber que esta libre
     if (!NoiseTask) return true;
@@ -510,7 +500,38 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
     if (!NoiseTask->IsDone()) return false;
 
     // Copiamos los vértices calculados del hilo secundario a nuestro array principal
-    CurrentVertices = NoiseTask->GetTask().CalculatedVertices;
+    if (bIsPlanet) {
+
+        AActor* ParentActor = GetOwner();
+
+        if (ParentActor) {
+
+            TArray<FVector> Vertices = NoiseTask->GetTask().CalculatedVertices;
+
+            FVector PlanetCenter = ParentActor->GetActorLocation();
+
+            for (int32 i = 0; i < BaseVertices.Num(); i++)
+            {
+                FVector Local = Vertices[i];
+
+                FVector WorldPos =
+                    CachedPlayerPos +
+                    CachedTangentX * Local.X +
+                    CachedTangentY * Local.Y;
+
+                FVector Dir = (WorldPos - PlanetCenter).GetSafeNormal();
+
+                CurrentVertices[i] = PlanetCenter + Dir * PlanetRadius;
+
+                CurrentNormals[i] = Dir;
+            }
+        }
+    }
+    else
+    {
+        CurrentVertices = NoiseTask->GetTask().CalculatedVertices;
+    }
+    
     CurrentColors = NoiseTask->GetTask().CalculatedColors;
 
     // Limpiamos la memoria de la tarea
