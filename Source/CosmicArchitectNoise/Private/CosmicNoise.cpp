@@ -19,9 +19,18 @@ TArray<float> CosmicNoise::CalculateHeights(const TArray<FVector>& Points, const
     const int32 PointCount = Points.Num();
     OutHeights.SetNumUninitialized(PointCount); // Reservar memoria exacta
 
+    FastNoiseLite HumidityNoise;
+    HumidityNoise.SetSeed(Settings.Seed);
+    HumidityNoise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+    HumidityNoise.SetFractalType(FastNoiseLite::FractalType_FBm);
+    HumidityNoise.SetFrequency(Settings.HumidityFrequency * 100.0f);
+    HumidityNoise.SetFractalOctaves(Settings.HumidityOctaves);
+
     // Crear ruidos configurados una vez por capa
-    TArray<FastNoiseLite> ConfiguredNoises;
-    ConfiguredNoises.Reserve(Settings.NoiseLayers.Num());
+    TArray<FastNoiseLite> ConfiguredNoisesA;
+    ConfiguredNoisesA.Reserve(Settings.NoiseLayersA.Num());
+    TArray<FastNoiseLite> ConfiguredNoisesB;
+    ConfiguredNoisesB.Reserve(Settings.NoiseLayersB.Num());
 
     FastNoiseLite CraterNoise;
 
@@ -35,7 +44,7 @@ TArray<float> CosmicNoise::CalculateHeights(const TArray<FVector>& Points, const
         CraterNoise.SetCellularReturnType(FastNoiseLite::CellularReturnType_Distance);
     }
 
-    for (const FCosmicNoiseTypes& Layer : Settings.NoiseLayers)
+    for (const FCosmicNoiseTypes& Layer : Settings.NoiseLayersA)
     {
         FastNoiseLite Noise;
         Noise.SetSeed(Settings.Seed);
@@ -81,8 +90,60 @@ TArray<float> CosmicNoise::CalculateHeights(const TArray<FVector>& Points, const
         Noise.SetFractalLacunarity(Layer.Lacunarity);
         Noise.SetFractalGain(Layer.Persistence);
 
-        ConfiguredNoises.Add(Noise);
+        ConfiguredNoisesA.Add(Noise);
     }
+
+    for (const FCosmicNoiseTypes& Layer : Settings.NoiseLayersB)
+    {
+        FastNoiseLite Noise;
+        Noise.SetSeed(Settings.Seed);
+
+        // Noise Type 
+        switch (Layer.NoiseType)
+        {
+        case ECosmicNoiseType::Perlin:
+            Noise.SetNoiseType(FastNoiseLite::NoiseType_Perlin);
+            break;
+        case ECosmicNoiseType::Simplex:
+        case ECosmicNoiseType::Ridged: // Ridged usa Simplex como base
+            Noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+            break;
+        case ECosmicNoiseType::Cellular:
+            Noise.SetNoiseType(FastNoiseLite::NoiseType_Cellular);
+            break;
+        case ECosmicNoiseType::Value:
+            Noise.SetNoiseType(FastNoiseLite::NoiseType_Value);
+            break;
+        }
+
+        // Fractal Type 
+        switch (Layer.FractalType)
+        {
+        case ECosmicFractalType::None:
+            Noise.SetFractalType(FastNoiseLite::FractalType_None);
+            break;
+        case ECosmicFractalType::FBM:
+            Noise.SetFractalType(FastNoiseLite::FractalType_FBm);
+            break;
+        case ECosmicFractalType::Ridged:
+            Noise.SetFractalType(FastNoiseLite::FractalType_Ridged);
+            break;
+        case ECosmicFractalType::PingPong:
+            Noise.SetFractalType(FastNoiseLite::FractalType_PingPong);
+            break;
+        }
+
+        // Parámetros fractales
+        Noise.SetFrequency(Layer.Frequency);
+        Noise.SetFractalOctaves(Layer.Octaves);
+        Noise.SetFractalLacunarity(Layer.Lacunarity);
+        Noise.SetFractalGain(Layer.Persistence);
+
+        ConfiguredNoisesB.Add(Noise);
+    }
+
+    const bool bHasLayersA = Settings.NoiseLayersA.Num() > 0;
+    const bool bHasLayersB = Settings.NoiseLayersB.Num() > 0;
 
     // Domain Warp (configurado UNA VEZ) 
     FastNoiseLite WarpNoise;
@@ -93,7 +154,6 @@ TArray<float> CosmicNoise::CalculateHeights(const TArray<FVector>& Points, const
         WarpNoise.SetFrequency(Settings.DomainWarpFrequency);
     }
 
-    const bool bHasLayers = Settings.NoiseLayers.Num() > 0;
 
     // Loop de puntos
     for (int32 i = 0; i < PointCount; i++)
@@ -119,28 +179,35 @@ TArray<float> CosmicNoise::CalculateHeights(const TArray<FVector>& Points, const
             Z += WarpZ;
         }
 
-        float BaseHeight = 0.0f;
+        // Máscara de Bioma (Humedad)
+        float RawHum = HumidityNoise.GetNoise(NoiseDir.X, NoiseDir.Y, NoiseDir.Z);
+        float FinalHum = (RawHum + 1.0f) * 0.5f + Settings.HumidityOffset;
+        FinalHum = FMath::Clamp((FinalHum - 0.5f) * Settings.HumidityContrast + 0.5f, 0.0f, 1.0f);
 
-        // Altura base del terreno (capas de ruido)
-        for (int32 LayerIndex = 0; LayerIndex < Settings.NoiseLayers.Num(); LayerIndex++)
+        float BiomeMask = FMath::SmoothStep(0.48f, 0.52f, FinalHum);
+
+        // Altura A (Llanura)
+        float HeightA = 0.0f;
+        if (BiomeMask < 1.0f && bHasLayersA)
         {
-            const FCosmicNoiseTypes& Layer = Settings.NoiseLayers[LayerIndex];
-            FastNoiseLite& Noise = ConfiguredNoises[LayerIndex];
-
-            float LayerNoise = Noise.GetNoise(X, Y, Z);
-            BaseHeight += LayerNoise * Layer.Amplitude;
+            for (int32 LayerIndex = 0; LayerIndex < Settings.NoiseLayersA.Num(); LayerIndex++)
+            {
+                HeightA += ConfiguredNoisesA[LayerIndex].GetNoise(X, Y, Z) * Settings.NoiseLayersA[LayerIndex].Amplitude;
+            }
         }
 
-        // Fallback si no hay capas
-        if (!bHasLayers)
+        // Altura B (Montañas)
+        float HeightB = 0.0f;
+        if (BiomeMask > 0.0f && bHasLayersB)
         {
-            FastNoiseLite DefaultNoise;
-            DefaultNoise.SetSeed(Settings.Seed);
-            DefaultNoise.SetFrequency(0.001f);
-            BaseHeight = DefaultNoise.GetNoise(X, Y, Z) * 1000.0f;
+            for (int32 LayerIndex = 0; LayerIndex < Settings.NoiseLayersB.Num(); LayerIndex++)
+            {
+                HeightB += ConfiguredNoisesB[LayerIndex].GetNoise(X, Y, Z) * Settings.NoiseLayersB[LayerIndex].Amplitude;
+            }
         }
 
-        float FinalHeight = BaseHeight;
+        // Mezcla de biomas
+        float FinalHeight = FMath::Lerp(HeightA, HeightB, BiomeMask);
 
         // Cráteres
         if (Settings.bIsCraterPlanet)
@@ -193,8 +260,6 @@ TArray<float> CosmicNoise::CalculateHeights(const TArray<FVector>& Points, const
         OutHeights[i] = FinalHeight;
     }
 
-    
-
     return OutHeights;
 }
 
@@ -211,9 +276,18 @@ TArray<float> CosmicNoise::CalculateHeightsDirect(const TArray<FVector>& Points,
     const int32 PointCount = Points.Num();
     OutHeights.SetNumUninitialized(PointCount); // Reservar memoria exacta
 
+    FastNoiseLite HumidityNoise;
+    HumidityNoise.SetSeed(Settings.Seed);
+    HumidityNoise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+    HumidityNoise.SetFractalType(FastNoiseLite::FractalType_FBm);
+    HumidityNoise.SetFrequency(Settings.HumidityFrequency * 100.0f);
+    HumidityNoise.SetFractalOctaves(Settings.HumidityOctaves);
+
     // Crear ruidos configurados una vez por capa
-    TArray<FastNoiseLite> ConfiguredNoises;
-    ConfiguredNoises.Reserve(Settings.NoiseLayers.Num());
+    TArray<FastNoiseLite> ConfiguredNoisesA;
+    ConfiguredNoisesA.Reserve(Settings.NoiseLayersA.Num());
+    TArray<FastNoiseLite> ConfiguredNoisesB;
+    ConfiguredNoisesB.Reserve(Settings.NoiseLayersB.Num());
 
     FastNoiseLite CraterNoise;
 
@@ -227,7 +301,7 @@ TArray<float> CosmicNoise::CalculateHeightsDirect(const TArray<FVector>& Points,
         CraterNoise.SetCellularReturnType(FastNoiseLite::CellularReturnType_Distance);
     }
 
-    for (const FCosmicNoiseTypes& Layer : Settings.NoiseLayers)
+    for (const FCosmicNoiseTypes& Layer : Settings.NoiseLayersA)
     {
         FastNoiseLite Noise;
         Noise.SetSeed(Settings.Seed);
@@ -273,7 +347,55 @@ TArray<float> CosmicNoise::CalculateHeightsDirect(const TArray<FVector>& Points,
         Noise.SetFractalLacunarity(Layer.Lacunarity);
         Noise.SetFractalGain(Layer.Persistence);
 
-        ConfiguredNoises.Add(Noise);
+        ConfiguredNoisesA.Add(Noise);
+    }
+    for (const FCosmicNoiseTypes& Layer : Settings.NoiseLayersB)
+    {
+        FastNoiseLite Noise;
+        Noise.SetSeed(Settings.Seed);
+
+        // Noise Type 
+        switch (Layer.NoiseType)
+        {
+        case ECosmicNoiseType::Perlin:
+            Noise.SetNoiseType(FastNoiseLite::NoiseType_Perlin);
+            break;
+        case ECosmicNoiseType::Simplex:
+        case ECosmicNoiseType::Ridged: // Ridged usa Simplex como base
+            Noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+            break;
+        case ECosmicNoiseType::Cellular:
+            Noise.SetNoiseType(FastNoiseLite::NoiseType_Cellular);
+            break;
+        case ECosmicNoiseType::Value:
+            Noise.SetNoiseType(FastNoiseLite::NoiseType_Value);
+            break;
+        }
+
+        // Fractal Type 
+        switch (Layer.FractalType)
+        {
+        case ECosmicFractalType::None:
+            Noise.SetFractalType(FastNoiseLite::FractalType_None);
+            break;
+        case ECosmicFractalType::FBM:
+            Noise.SetFractalType(FastNoiseLite::FractalType_FBm);
+            break;
+        case ECosmicFractalType::Ridged:
+            Noise.SetFractalType(FastNoiseLite::FractalType_Ridged);
+            break;
+        case ECosmicFractalType::PingPong:
+            Noise.SetFractalType(FastNoiseLite::FractalType_PingPong);
+            break;
+        }
+
+        // Parámetros fractales
+        Noise.SetFrequency(Layer.Frequency);
+        Noise.SetFractalOctaves(Layer.Octaves);
+        Noise.SetFractalLacunarity(Layer.Lacunarity);
+        Noise.SetFractalGain(Layer.Persistence);
+
+        ConfiguredNoisesB.Add(Noise);
     }
 
     // Domain Warp (configurado UNA VEZ) 
@@ -285,7 +407,8 @@ TArray<float> CosmicNoise::CalculateHeightsDirect(const TArray<FVector>& Points,
         WarpNoise.SetFrequency(Settings.DomainWarpFrequency);
     }
 
-    const bool bHasLayers = Settings.NoiseLayers.Num() > 0;
+    const bool bHasLayersA = Settings.NoiseLayersA.Num() > 0;
+    const bool bHasLayersB = Settings.NoiseLayersB.Num() > 0;
 
     // Loop de puntos
     for (int32 i = 0; i < PointCount; i++)
@@ -306,28 +429,35 @@ TArray<float> CosmicNoise::CalculateHeightsDirect(const TArray<FVector>& Points,
             Z += WarpZ;
         }
 
-        float BaseHeight = 0.0f;
+        // Máscara de Bioma (Humedad)
+        float RawHum = HumidityNoise.GetNoise(Points[i].GetSafeNormal().X, Points[i].GetSafeNormal().Y, Points[i].GetSafeNormal().Z);
+        float FinalHum = (RawHum + 1.0f) * 0.5f + Settings.HumidityOffset;
+        FinalHum = FMath::Clamp((FinalHum - 0.5f) * Settings.HumidityContrast + 0.5f, 0.0f, 1.0f);
 
-        // Altura base del terreno (capas de ruido)
-        for (int32 LayerIndex = 0; LayerIndex < Settings.NoiseLayers.Num(); LayerIndex++)
+        float BiomeMask = FMath::SmoothStep(0.48f, 0.52f, FinalHum);
+
+        // Altura A (Llanura)
+        float HeightA = 0.0f;
+        if (BiomeMask < 1.0f && bHasLayersA)
         {
-            const FCosmicNoiseTypes& Layer = Settings.NoiseLayers[LayerIndex];
-            FastNoiseLite& Noise = ConfiguredNoises[LayerIndex];
-
-            float LayerNoise = Noise.GetNoise(X, Y, Z);
-            BaseHeight += LayerNoise * Layer.Amplitude;
+            for (int32 LayerIndex = 0; LayerIndex < Settings.NoiseLayersA.Num(); LayerIndex++)
+            {
+                HeightA += ConfiguredNoisesA[LayerIndex].GetNoise(X, Y, Z) * Settings.NoiseLayersA[LayerIndex].Amplitude;
+            }
         }
 
-        // Fallback si no hay capas
-        if (!bHasLayers)
+        // Altura B (Montañas)
+        float HeightB = 0.0f;
+        if (BiomeMask > 0.0f && bHasLayersB)
         {
-            FastNoiseLite DefaultNoise;
-            DefaultNoise.SetSeed(Settings.Seed);
-            DefaultNoise.SetFrequency(0.001f);
-            BaseHeight = DefaultNoise.GetNoise(X, Y, Z) * 1000.0f;
+            for (int32 LayerIndex = 0; LayerIndex < Settings.NoiseLayersB.Num(); LayerIndex++)
+            {
+                HeightB += ConfiguredNoisesB[LayerIndex].GetNoise(X, Y, Z) * Settings.NoiseLayersB[LayerIndex].Amplitude;
+            }
         }
 
-        float FinalHeight = BaseHeight;
+        // Mezcla de biomas
+        float FinalHeight = FMath::Lerp(HeightA, HeightB, BiomeMask);
 
         // Cráteres
         if (Settings.bIsCraterPlanet)

@@ -64,7 +64,9 @@ struct FCosmicNoiseGenerationParameters
     /* ADVANCED MODE */
 
     UPROPERTY(EditAnywhere, Category = "Advanced", meta = (EditCondition = "bUseAdvancedSettings"))
-    TArray<FCosmicNoiseTypes> NoiseLayers;
+    TArray<FCosmicNoiseTypes> NoiseLayersA;
+    UPROPERTY(EditAnywhere, Category = "Advanced", meta = (EditCondition = "bUseAdvancedSettings"))
+    TArray<FCosmicNoiseTypes> NoiseLayersB;
 
     UPROPERTY(EditAnywhere, Category = "Advanced", meta = (EditCondition = "bUseAdvancedSettings"))
     bool bUseDomainWarp = false;

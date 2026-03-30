@@ -47,9 +47,12 @@ public:
 
     void DoWork()
     {
+
         // Crear ruidos configurados una vez por capa
-        TArray<FastNoiseLite> ConfiguredNoises;
-        ConfiguredNoises.Reserve(NoiseSettings.NoiseLayers.Num());
+        TArray<FastNoiseLite> ConfiguredNoisesA;
+        ConfiguredNoisesA.Reserve(NoiseSettings.NoiseLayersA.Num());
+        TArray<FastNoiseLite> ConfiguredNoisesB;
+        ConfiguredNoisesB.Reserve(NoiseSettings.NoiseLayersB.Num());
 
         //Temperatura y humedad
         FastNoiseLite HumidityNoise;
@@ -80,7 +83,8 @@ public:
 
         }
 
-        for (const FCosmicNoiseTypes& Layer : NoiseSettings.NoiseLayers)
+        float MaxPossibleHeightA = 0.0f;
+        for (const FCosmicNoiseTypes& Layer : NoiseSettings.NoiseLayersA)
         {
             FastNoiseLite Noise;
             Noise.SetSeed(NoiseSettings.Seed);
@@ -126,7 +130,58 @@ public:
             Noise.SetFractalLacunarity(Layer.Lacunarity);
             Noise.SetFractalGain(Layer.Persistence);
 
-            ConfiguredNoises.Add(Noise);
+            ConfiguredNoisesA.Add(Noise);
+            MaxPossibleHeightA += Layer.Amplitude;
+        }
+        float MaxPossibleHeightB = 0.0f;
+        for (const FCosmicNoiseTypes& Layer : NoiseSettings.NoiseLayersB)
+        {
+            FastNoiseLite Noise;
+            Noise.SetSeed(NoiseSettings.Seed);
+
+            // Noise Type 
+            switch (Layer.NoiseType)
+            {
+            case ECosmicNoiseType::Perlin:
+                Noise.SetNoiseType(FastNoiseLite::NoiseType_Perlin);
+                break;
+            case ECosmicNoiseType::Simplex:
+            case ECosmicNoiseType::Ridged: // Ridged usa Simplex como base
+                Noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+                break;
+            case ECosmicNoiseType::Cellular:
+                Noise.SetNoiseType(FastNoiseLite::NoiseType_Cellular);
+                break;
+            case ECosmicNoiseType::Value:
+                Noise.SetNoiseType(FastNoiseLite::NoiseType_Value);
+                break;
+            }
+
+            // Fractal Type 
+            switch (Layer.FractalType)
+            {
+            case ECosmicFractalType::None:
+                Noise.SetFractalType(FastNoiseLite::FractalType_None);
+                break;
+            case ECosmicFractalType::FBM:
+                Noise.SetFractalType(FastNoiseLite::FractalType_FBm);
+                break;
+            case ECosmicFractalType::Ridged:
+                Noise.SetFractalType(FastNoiseLite::FractalType_Ridged);
+                break;
+            case ECosmicFractalType::PingPong:
+                Noise.SetFractalType(FastNoiseLite::FractalType_PingPong);
+                break;
+            }
+
+            // Parámetros fractales
+            Noise.SetFrequency(Layer.Frequency);
+            Noise.SetFractalOctaves(Layer.Octaves);
+            Noise.SetFractalLacunarity(Layer.Lacunarity);
+            Noise.SetFractalGain(Layer.Persistence);
+
+            ConfiguredNoisesB.Add(Noise);
+            MaxPossibleHeightB += Layer.Amplitude;
         }
 
         // Domain Warp (configurado UNA VEZ) 
@@ -138,16 +193,13 @@ public:
             WarpNoise.SetFrequency(NoiseSettings.DomainWarpFrequency);
         }
 
-        // Calcular la altura máxima posible sumando las amplitudes de las capas
-        float MaxPossibleHeight = 0.0f;
-        for (const FCosmicNoiseTypes& Layer : NoiseSettings.NoiseLayers)
-        {
-            MaxPossibleHeight += Layer.Amplitude;
-        }
+        float MaxPossibleHeight = FMath::Max(MaxPossibleHeightA, MaxPossibleHeightB);
         if (MaxPossibleHeight == 0.0f) MaxPossibleHeight = 1000.0f; // Seguridad
 
+        const bool bHasLayersA = NoiseSettings.NoiseLayersA.Num() > 0;
+        const bool bHasLayersB = NoiseSettings.NoiseLayersB.Num() > 0;
+
         const int32 VertexCount = BaseVertices.Num();
-        const bool bHasLayers = NoiseSettings.NoiseLayers.Num() > 0;
 
         // Loop de vértices
         for (int32 i = 0; i < VertexCount; i++)
@@ -171,27 +223,33 @@ public:
                 Z += WarpZ;
             }
 
-            float BaseHeight = 0.0f;
+            float RawHum = HumidityNoise.GetNoise(NoiseDir.X, NoiseDir.Y, NoiseDir.Z);
+            float BaseHum = (RawHum + 1.0f) * 0.5f + NoiseSettings.HumidityOffset;
+            BaseHum = FMath::Clamp((BaseHum - 0.5f) * NoiseSettings.HumidityContrast + 0.5f, 0.0f, 1.0f);
+            float BiomeMask = FMath::SmoothStep(0.3f, 0.7f, BaseHum);// Usamos un SmoothStep para que la transición entre biomas no sea tan lineal
 
-            // Altura base del terreno (capas de ruido)
-            for (int32 LayerIndex = 0; LayerIndex < NoiseSettings.NoiseLayers.Num(); LayerIndex++)
+            float HeightA = 0.0f; // Llanuras
+            float HeightB = 0.0f; // Montañas
+
+            // Solo calculamos A si la máscara no es 100% montaña
+            if (BiomeMask < 1.0f)
             {
-                const FCosmicNoiseTypes& Layer = NoiseSettings.NoiseLayers[LayerIndex];
-                FastNoiseLite& Noise = ConfiguredNoises[LayerIndex];
-
-                float LayerNoise = Noise.GetNoise(X, Y, Z);
-                BaseHeight += LayerNoise * Layer.Amplitude;
+                for (int32 j = 0; j < NoiseSettings.NoiseLayersA.Num(); j++) {
+                    HeightA += ConfiguredNoisesA[j].GetNoise(X, Y, Z) * NoiseSettings.NoiseLayersA[j].Amplitude;
+                }
             }
 
-            // Fallback si no hay capas
-            if (!bHasLayers)
+            // Solo calculamos B si la máscara no es 100% llanura
+            if (BiomeMask > 0.0f)
             {
-                FastNoiseLite DefaultNoise;
-                DefaultNoise.SetSeed(NoiseSettings.Seed);
-                DefaultNoise.SetFrequency(0.001f);
-                BaseHeight = DefaultNoise.GetNoise(X, Y, Z) * 1000.0f;
+                for (int32 j = 0; j < NoiseSettings.NoiseLayersB.Num(); j++) {
+                    HeightB += ConfiguredNoisesB[j].GetNoise(X, Y, Z) * NoiseSettings.NoiseLayersB[j].Amplitude;
+                }
             }
+            if (!bHasLayersA)HeightA = 0.0f;
+            if (!bHasLayersB)HeightB = 0.0f;
 
+            float BaseHeight = FMath::Lerp(HeightA, HeightB, BiomeMask);
             float FinalHeight = BaseHeight;
 
            
@@ -259,13 +317,8 @@ public:
             float TempVariance = TempNoise.GetNoise(NoiseDir.X, NoiseDir.Y, NoiseDir.Z) * 0.2f;
             float FinalTemp = FMath::Clamp(BaseTemp + TempVariance, 0.0f, 1.0f);
 
-            // Humedad 
-            float RawHum = HumidityNoise.GetNoise(NoiseDir.X, NoiseDir.Y, NoiseDir.Z);
-            float FinalHum = (RawHum + 1.0f) * 0.5f + NoiseSettings.HumidityOffset;
-            FinalHum = FMath::Clamp((FinalHum - 0.5f) * NoiseSettings.HumidityContrast + 0.5f, 0.0f, 1.0f);
-
             // Guardar colores
-            CalculatedColors[i] = FLinearColor(AltitudePenalty, FinalTemp, FinalHum, 1.0f);
+            CalculatedColors[i] = FLinearColor(AltitudePenalty, FinalTemp, BiomeMask, 1.0f);
             
         }
     }

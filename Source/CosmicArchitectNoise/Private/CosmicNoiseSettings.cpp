@@ -175,7 +175,8 @@ void UCosmicNoiseSettings::UpdateBiomesFromSimple()
 void UCosmicNoiseSettings::UpdateNoiseFromSimple()
 {
     // 2. Limpiar capas existentes
-    Params.NoiseLayers.Empty();
+    Params.NoiseLayersA.Empty();
+    Params.NoiseLayersB.Empty();
 
     FCosmicNoiseTypes Layer;
 
@@ -203,7 +204,8 @@ void UCosmicNoiseSettings::UpdateNoiseFromSimple()
     // Control principal de altura
     Layer.Amplitude = Params.MaxMountainHeight;
 
-    Params.NoiseLayers.Add(Layer);
+    Params.NoiseLayersA.Add(Layer);
+    Params.NoiseLayersB.Add(Layer);
 
     // Warp proporcional a la altura máxima
     Params.DomainWarpStrength = Params.MaxMountainHeight * FMath::Lerp(0.02f, 0.15f, Params.Roughness);

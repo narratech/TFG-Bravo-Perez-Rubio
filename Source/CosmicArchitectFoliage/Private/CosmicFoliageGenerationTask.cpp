@@ -113,11 +113,17 @@ void FFoliageGenerationTask::EvaluateEnvironmentalConditions(FRandomStream& Rand
     TempNoise.SetSeed(NoiseSettings.Seed);
     TempNoise.SetFrequency(NoiseSettings.TemperatureFrequency * 100.0f);
 
-    float MaxPossibleHeight = 0.0f;
-    for (const FCosmicNoiseTypes& Layer : NoiseSettings.NoiseLayers)
+    float MaxPossibleHeightA = 0.0f;
+    float MaxPossibleHeightB = 0.0f;
+    for (const FCosmicNoiseTypes& Layer : NoiseSettings.NoiseLayersA)
     {
-        MaxPossibleHeight += Layer.Amplitude;
+        MaxPossibleHeightA += Layer.Amplitude;
     }
+    for (const FCosmicNoiseTypes& Layer : NoiseSettings.NoiseLayersB)
+    {
+        MaxPossibleHeightB += Layer.Amplitude;
+    }
+    float MaxPossibleHeight = FMath::Max(MaxPossibleHeightA, MaxPossibleHeightB);
     if (MaxPossibleHeight == 0.0f) MaxPossibleHeight = 1000.0f; // Seguridad
 
     for (int32 i = 0; i < SeedPoints.Num(); i++)
