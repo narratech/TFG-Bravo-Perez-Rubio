@@ -116,7 +116,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         if (!MeshesUpdated) return;
 
-        uint8 UpdateClipmapLevels = 0;
+        bool UpdateClipmapLevels = false;
      
         if (Levels.Num() > 1)
         {
@@ -129,12 +129,12 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
             if (!bIsVisible && MeshFirst->GridSpacing > MinTriangleSize) {
                 DecreaseClipmapLevelFull();
-                UpdateClipmapLevels = 1;
+                UpdateClipmapLevels = true;
             }
             else if(IsClipmapRingVisible(MeshLast->GridSpacing * 2, MeshLast->Resolution, DistanceToSurface) 
                 && MeshLast->GridSpacing < BaseSpacing * FMath::Pow(2.0f, NumLevels - 1)){
                 IncreaseClipmapLevelFull();
-                UpdateClipmapLevels = 2;
+                UpdateClipmapLevels = true;
             }         
         }
 
@@ -142,7 +142,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         TotalShift += Shift;
 
-        if (UpdateClipmapLevels != 0) {
+        if (UpdateClipmapLevels) {
 
             UpdateLevels(TotalShift);
 
@@ -612,99 +612,6 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
     }
 }
 
-void UCosmicClipmapComponent::UpdateLevel(const FIntPoint& Shift, int32 LevelIndex)
-{
-    if (LevelIndex < 1 || LevelIndex > Levels.Num() - 1) return;
-
-    int32 JumpsX = Shift.X;
-    int32 JumpsY = Shift.Y;
-
-    UCosmicMeshComponent* Mesh = Levels[LevelIndex];
-
-    for (int32 i = 0; i < Levels.Num(); ++i)
-    {
-
-        if (i == 0) continue;
-
-        UCosmicMeshComponent* Level = Levels[i];
-
-        EClipmapQuadrant currentQuadrant = Level->CurrentQuadrant;
-
-        // Descomponemos el cuadrante: ahora usamos bIsBottom porque +Y es Bottom
-        bool bIsRight = (currentQuadrant == EClipmapQuadrant::TopRight || currentQuadrant == EClipmapQuadrant::BottomRight);
-        bool bIsBottom = (currentQuadrant == EClipmapQuadrant::BottomLeft || currentQuadrant == EClipmapQuadrant::BottomRight);
-
-        // LOGICA DEL EJE X (+X es Derecha)
-        if (JumpsX != 0)
-        {
-            if (FMath::Abs(JumpsX) % 2 == 1)
-            {
-                if (bIsRight) {
-                    if (JumpsX > 0) JumpsX = (JumpsX / 2) + 1; // Empuja el borde derecho
-                    else JumpsX = (JumpsX / 2);                // Absorbe hacia el centro
-                    bIsRight = false; // El hueco cambia a la izquierda
-                }
-                else {
-                    if (JumpsX < 0) JumpsX = (JumpsX / 2) - 1; // Empuja el borde izquierdo
-                    else JumpsX = (JumpsX / 2);                // Absorbe hacia el centro
-                    bIsRight = true;  // El hueco cambia a la derecha
-                }
-            }
-            else
-            {
-                JumpsX = JumpsX / 2;
-            }
-        }
-
-        // LOGICA DEL EJE Y (+Y es Abajo / Bottom)
-        if (JumpsY != 0)
-        {
-            if (FMath::Abs(JumpsY) % 2 == 1)
-            {
-                if (bIsBottom) {
-                    if (JumpsY > 0) JumpsY = (JumpsY / 2) + 1; // Empuja el borde inferior (+Y)
-                    else JumpsY = (JumpsY / 2);                // Absorbe el salto -Y hacia el centro
-                    bIsBottom = false; // El hueco cambia a Arriba (Top)
-                }
-                else {
-                    if (JumpsY < 0) JumpsY = (JumpsY / 2) - 1; // Empuja el borde superior (-Y)
-                    else JumpsY = (JumpsY / 2);                // Absorbe el salto +Y hacia el centro
-                    bIsBottom = true;  // El hueco cambia a Abajo (Bottom)
-                }
-            }
-            else
-            {
-                JumpsY = JumpsY / 2;
-            }
-        }
-
-        if (i == LevelIndex) {
-            
-            EClipmapQuadrant NewQuadrant;
-            if (!bIsBottom && !bIsRight) NewQuadrant = EClipmapQuadrant::TopLeft;
-            else if (!bIsBottom && bIsRight) NewQuadrant = EClipmapQuadrant::TopRight;
-            else if (bIsBottom && !bIsRight) NewQuadrant = EClipmapQuadrant::BottomLeft;
-            else NewQuadrant = EClipmapQuadrant::BottomRight;
-
-            // Solo actualizamos el cuadrante si realmente ha cambiado
-            if (NewQuadrant != currentQuadrant) {
-                Level->SetHoleQuadrant(NewQuadrant);
-            }
-
-            // Aplicamos el movimiento fisico a este nivel
-            FIntPoint Movement(JumpsX, JumpsY);
-            if (Movement != FIntPoint::ZeroValue) {
-                Level->ShiftLevel(Movement);
-            }
-
-            return;
-        }
-
-        // Salida temprana, si ya no hay movimiento que propagar, cortamos el bucle
-        if (JumpsX == 0 && JumpsY == 0) return;
-    }
-}
-
 FVector UCosmicClipmapComponent::GetPlayerLocation()
 {
     FVector PlayerLocation = FVector::ZeroVector;
@@ -792,9 +699,6 @@ bool UCosmicClipmapComponent::IsClipmapRingVisible(const int32 LevelIndex, const
     // Radio maximo visible desde esta altura (proyeccion en la superficie)
     float VisibleRadius = PlanetRadius * FMath::Sin(FMath::Acos(PlanetRadius / (PlanetRadius + DistanceToSurface)));
 
-    /*UE_LOG(LogTemp, Warning, TEXT("ClipmapSurface: %.4f"), ClipmapSurfaceRadius);
-    UE_LOG(LogTemp, Warning, TEXT("VisibleRadius: %.4f"), VisibleRadius * 2);*/
-
     // El clipmap es visible si su radio es menor que el radio visible
     return ClipmapSurfaceRadius <= VisibleRadius * 2.f; 
 }
@@ -806,116 +710,10 @@ bool UCosmicClipmapComponent::IsClipmapRingVisible(const int64 GridSpacing, cons
     // Radio maximo visible desde esta altura (proyeccion en la superficie)
     float VisibleRadius = PlanetRadius * FMath::Sin(FMath::Acos(PlanetRadius / (PlanetRadius + DistanceToSurface)));
 
-   /* UE_LOG(LogTemp, Warning, TEXT("ClipmapSurface: %.4f"), ClipmapSurfaceRadius);
-    UE_LOG(LogTemp, Warning, TEXT("VisibleRadius: %.4f"), VisibleRadius * 2);*/
     // El clipmap es visible si su radio es menor que el radio visible
     return ClipmapSurfaceRadius <= VisibleRadius * 2.f;
 }
 
-static FString QuadrantToString(EClipmapQuadrant Q)
-{
-    switch (Q)
-    {
-    case EClipmapQuadrant::TopLeft:     return TEXT("TopLeft");
-    case EClipmapQuadrant::TopRight:    return TEXT("TopRight");
-    case EClipmapQuadrant::BottomLeft:  return TEXT("BottomLeft");
-    case EClipmapQuadrant::BottomRight: return TEXT("BottomRight");
-    default: return TEXT("Unknown");
-    }
-}
-
-void UCosmicClipmapComponent::ReduceClimapLevel()
-{
-    if (NumLevels > 1)
-    {
-        int64 Spacing = Levels[0]->GridSpacing;
-
-        // Guardar ultimo
-        UCosmicMeshComponent* Last = Levels[NumLevels - 1];
-
-        // Shift manual correcto 
-        for (int32 i = NumLevels - 1; i > 1; --i)
-        {
-            Levels[i] = Levels[i - 1];
-        }
-
-        Levels[1] = Last;
-
-        // Reasignar indices coherentes
-        for (int32 i = 0; i < NumLevels; ++i)
-        {
-            Levels[i]->LevelIndex = i;
-        }
-
-        BaseGridSpacing /= 2;
-        TotalShift *= 2;
-
-        // Solo regenerar los necesarios
-        Levels[0]->ReScaleLevel(Spacing / 2);
-        Levels[0]->ShiftLevel(TotalShift);
-        Levels[1]->ReScaleLevel(Spacing);
-        UpdateLevel(TotalShift, 1);
-    }
-}
-
-void UCosmicClipmapComponent::IncreaseClipmapLevel()
-{
-    if (NumLevels > 1)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("---- INCREASE CLIPMAP ----"));
-        UE_LOG(LogTemp, Warning, TEXT("TotalShift BEFORE: X=%d Y=%d"), TotalShift.X, TotalShift.Y);
-
-        for (int32 i = 0; i < NumLevels; ++i)
-        {
-            UE_LOG(LogTemp, Warning, TEXT("Level %d BEFORE -> Spacing:%lld | Quadrant:%s"),
-                Levels[i]->LevelIndex,
-                Levels[i]->GridSpacing,
-                *QuadrantToString(Levels[i]->CurrentQuadrant)
-            );
-        }
-
-        int64 Spacing = Levels[0]->GridSpacing;
-
-        // Guardar el segundo nivel
-        UCosmicMeshComponent* Second = Levels[1];
-
-        // Shift hacia la izquierda desde índice 1
-        for (int32 i = 1; i < NumLevels - 1; ++i)
-        {
-            Levels[i] = Levels[i + 1];
-        }
-
-        // Colocar el antiguo segundo al final
-        Levels[NumLevels - 1] = Second;
-
-        // Reasignar índices coherentes
-        for (int32 i = 0; i < NumLevels; ++i)
-        {
-            Levels[i]->LevelIndex = i;
-        }
-
-        BaseGridSpacing *= 2;
-
-        TotalShift /= 2;
-
-        UE_LOG(LogTemp, Warning, TEXT("TotalShift AFTER SCALE: X=%d Y=%d"), TotalShift.X, TotalShift.Y);
-
-        Levels[0]->ReScaleLevel(Spacing * 2);
-        Levels[0]->ShiftLevel(TotalShift);
-        Levels[NumLevels - 1]->ReScaleLevel(Levels[NumLevels - 2]->GridSpacing * 2);
-        UpdateLevel(TotalShift, NumLevels - 1);
-        Levels[NumLevels - 1]->SetHoleQuadrant(EClipmapQuadrant::BottomRight);
-
-        for (int32 i = 0; i < NumLevels; ++i)
-        {
-            UE_LOG(LogTemp, Warning, TEXT("Level %d AFTER -> Spacing:%lld | Quadrant:%s"),
-                Levels[i]->LevelIndex,
-                Levels[i]->GridSpacing,
-                *QuadrantToString(Levels[i]->CurrentQuadrant)
-            );
-        }
-    }
-}
 
 void UCosmicClipmapComponent::DecreaseClipmapLevelFull()
 {

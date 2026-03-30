@@ -94,11 +94,8 @@ protected:
     FVector GetPlayerLocation();
     FIntPoint ComputeGridShift(const FVector& PlayerPos, float GridSpacing);
     void UpdateLevels(const FIntPoint& Shift);
-    void UpdateLevel(const FIntPoint& Shift, int32 LevelIndex);
     bool IsClipmapRingVisible(const int32 LevelIndex, const float DistanceToSurface);
     bool IsClipmapRingVisible(const int64 GridSpacing, const int64 Resolution, const float DistanceToSurface);
-    void ReduceClimapLevel();
-    void IncreaseClipmapLevel();
     void DecreaseClipmapLevelFull();
     void IncreaseClipmapLevelFull();
 
