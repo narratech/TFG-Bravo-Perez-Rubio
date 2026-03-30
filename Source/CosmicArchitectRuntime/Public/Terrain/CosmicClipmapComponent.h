@@ -94,7 +94,10 @@ protected:
     float GetDistanceToSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N);
     float GetDistanceToPlainSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N);
     FVector GetPlayerLocation();
+    FIntPoint ComputeGridShiftPlanar(const FVector& PlayerPos, float GridSpacing);
+    FIntPoint ComputeGridShiftSpherical(const FVector& PlayerPos, float GridSpacing);
     FIntPoint ComputeGridShift(const FVector& PlayerPos, float GridSpacing);
+    FVector2D GetSurfaceAngles(const FVector& SurfacePos);
     uint32 UpdateLevels(const FIntPoint& Shift);
     bool IsClipmapRingVisible(const int32 LevelIndex, const float DistanceToSurface);
     bool IsClipmapRingVisible(const int64 GridSpacing, const int64 Resolution, const float DistanceToSurface);
@@ -105,5 +108,8 @@ protected:
 private:
     UPROPERTY(EditAnywhere, Category = "Materials")
     UMaterialInstanceDynamic* DynamicPlanetMat;
+
+    FVector2D LastSurfaceAngles;        // Ultimos angulos del jugador
+    FVector2D AccumulatedLinearDelta;   // Desplazamiento lineal acumulado (en unidades)
 };
 

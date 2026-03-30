@@ -52,6 +52,21 @@ void UCosmicClipmapComponent::BeginPlay()
     Super::BeginPlay();
 
     TimeToRefreshActive = TimeToRefresh;
+
+    // Inicializar valores para el shift
+    LastSurfaceAngles = FVector2D::ZeroVector;
+    AccumulatedLinearDelta = FVector2D::ZeroVector;
+
+    // Obtener posición inicial del jugador
+    AActor* Owner = GetOwner();
+    if (Owner)
+    {
+        FVector PlayerPos = GetPlayerLocation();
+        FVector PlanetCenter = Owner->GetActorLocation();
+        FVector SurfacePos = (PlayerPos - PlanetCenter).GetSafeNormal() * PlanetRadius;
+        LastSurfaceAngles = GetSurfaceAngles(SurfacePos);
+        LastPlayerPos = PlayerPos;
+    }
 }
 
 
@@ -145,6 +160,10 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         }
 
         FIntPoint Shift = ComputeGridShift(ViewerPos, BaseGridSpacing * 2);
+
+        if (Shift != FIntPoint::ZeroValue) {
+            UE_LOG(LogTemp, Warning, TEXT("SHIFT: %s"), *Shift.ToString());
+        }
 
         TotalShift += Shift;
 
@@ -515,47 +534,13 @@ void UCosmicClipmapComponent::UpdatePatchTransform(const FVector& SurfacePos, co
    
 }
 
-FIntPoint UCosmicClipmapComponent::ComputeGridShift(
+FIntPoint UCosmicClipmapComponent::ComputeGridShiftPlanar(
     const FVector& PlayerPos,
     float GridSpacing)
 {
     FVector PlanetCenter = GetOwner()->GetActorLocation();
 
-    FVector FrameDelta;
-
-    if (IsPlanet)
-    {
-        // Base estable usando el frame anterior
-        FVector N = (LastPlayerPos - PlanetCenter).GetSafeNormal();
-
-        FVector TangentX = FVector::CrossProduct(FVector::UpVector, N);
-        if (TangentX.SizeSquared() < 0.001f)
-        {
-            TangentX = FVector::CrossProduct(FVector::RightVector, N);
-        }
-        TangentX.Normalize();
-
-        FVector TangentY = FVector::CrossProduct(N, TangentX);
-
-        // Proyectar ambas posiciones
-        FVector LocalPrev(
-            FVector::DotProduct(LastPlayerPos, TangentX),
-            FVector::DotProduct(LastPlayerPos, TangentY),
-            0.f
-        );
-
-        FVector LocalCurr(
-            FVector::DotProduct(PlayerPos, TangentX),
-            FVector::DotProduct(PlayerPos, TangentY),
-            0.f
-        );
-
-        FrameDelta = LocalCurr - LocalPrev;
-    }
-    else
-    {
-        FrameDelta = PlayerPos - LastPlayerPos;
-    }
+    FVector FrameDelta = PlayerPos - LastPlayerPos;
 
     LastPlayerPos = PlayerPos;
 
@@ -568,6 +553,83 @@ FIntPoint UCosmicClipmapComponent::ComputeGridShift(
     AccumulatedDelta.Y -= ShiftY * GridSpacing;
 
     return FIntPoint(ShiftX, ShiftY);
+}
+
+FIntPoint UCosmicClipmapComponent::ComputeGridShiftSpherical(const FVector& PlayerPos, float GridSpacing)
+{
+    FVector PlanetCenter = GetOwner()->GetActorLocation();
+
+    // Posición actual y anterior del jugador en la superficie de la esfera
+    FVector CurrentSurfacePos = (PlayerPos - PlanetCenter).GetSafeNormal() * PlanetRadius;
+    FVector PreviousSurfacePos = (LastPlayerPos - PlanetCenter).GetSafeNormal() * PlanetRadius;
+
+    // Si es la primera vez, no hay movimiento
+    if (LastPlayerPos.IsZero())
+    {
+        LastPlayerPos = PlayerPos;
+        LastSurfaceAngles = GetSurfaceAngles(CurrentSurfacePos);
+        return FIntPoint::ZeroValue;
+    }
+
+    // Obtener ángulos esféricos (longitud y latitud) de ambas posiciones
+    FVector2D CurrentAngles = GetSurfaceAngles(CurrentSurfacePos);
+    FVector2D PreviousAngles = GetSurfaceAngles(PreviousSurfacePos);
+
+    // Calcular el desplazamiento angular (en radianes)
+    FVector2D DeltaAngles = CurrentAngles - PreviousAngles;
+
+    // Normalizar la longitud al rango [-PI, PI] para tomar el camino más corto
+    if (DeltaAngles.X > PI) DeltaAngles.X -= 2 * PI;
+    if (DeltaAngles.X < -PI) DeltaAngles.X += 2 * PI;
+
+    // Convertir el desplazamiento angular a distancia lineal en la superficie
+    FVector2D LinearDelta = DeltaAngles * PlanetRadius;
+
+    // Acumular el desplazamiento lineal
+    AccumulatedLinearDelta += LinearDelta;
+
+    // Calcular cuántos "grid steps" nos hemos movido
+    // GridSpacing es la distancia entre vértices en el plano tangente
+    int32 ShiftX = FMath::FloorToInt(AccumulatedLinearDelta.X / GridSpacing);
+    int32 ShiftY = FMath::FloorToInt(AccumulatedLinearDelta.Y / GridSpacing);
+
+    // Restar lo que ya hemos usado
+    AccumulatedLinearDelta.X -= ShiftX * GridSpacing;
+    AccumulatedLinearDelta.Y -= ShiftY * GridSpacing;
+
+    // Guardar para el próximo frame
+    LastPlayerPos = PlayerPos;
+    LastSurfaceAngles = CurrentAngles;
+
+    return FIntPoint(ShiftX, ShiftY);
+}
+
+FIntPoint UCosmicClipmapComponent::ComputeGridShift(const FVector& PlayerPos, float GridSpacing)
+{
+    if (IsPlanet)
+    {
+        // Usar la versión esférica
+        return ComputeGridShiftSpherical(PlayerPos, GridSpacing);
+    }
+    else
+    {
+        // Usar la versión plana original
+        return ComputeGridShiftPlanar(PlayerPos, GridSpacing);
+    }
+}
+
+FVector2D UCosmicClipmapComponent::GetSurfaceAngles(const FVector& SurfacePos)
+{
+    // Asumiendo que el centro del planeta está en (0,0,0) o ajustando
+    FVector Normalized = SurfacePos.GetSafeNormal();
+
+    // Longitud: ángulo en el plano XY (-PI a PI)
+    double Longitude = FMath::Atan2(Normalized.Y, Normalized.X);
+
+    // Latitud: ángulo desde el ecuador (-PI/2 a PI/2)
+    double Latitude = FMath::Asin(FMath::Clamp(Normalized.Z, -0.999999f, 0.999999f));
+
+    return FVector2D(Longitude, Latitude);
 }
 
 uint32 UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
