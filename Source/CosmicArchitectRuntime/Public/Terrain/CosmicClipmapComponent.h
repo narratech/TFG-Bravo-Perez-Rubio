@@ -75,7 +75,11 @@ protected:
     bool bInit = false;
     bool bPerformanceBuild = false;
     int64 BaseSpacing = 200;
-    
+
+    FVector CachedPlanetNormal;
+    FVector CachedTangentX;
+    FVector CachedTangentY;
+    FVector CachedPlayerPos;
 
     FColor PlanetMainColor1 = FColor::Green;
     FColor PlanetMainColor2 = FColor::Red;
@@ -96,9 +100,10 @@ protected:
     float GetDistanceToPlainSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N);
     FVector GetPlayerLocation();
     FIntPoint ComputeGridShift(const FVector& PlayerPos, float GridSpacing);
-    void UpdateLevels(const FIntPoint& Shift);
+    uint32 UpdateLevels(const FIntPoint& Shift);
     bool IsClipmapRingVisible(const int32 LevelIndex, const float DistanceToSurface);
     bool IsClipmapRingVisible(const int64 GridSpacing, const int64 Resolution, const float DistanceToSurface);
+    void UpdatePlanetBasis(const FVector& SurfacePos, const FVector& N);
     void DecreaseClipmapLevelFull();
     void IncreaseClipmapLevelFull();
 

@@ -97,6 +97,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         if (!bInit && !bPerformaceMode) {
             CreateLevels();
+            UpdatePlanetBasis(SurfacePos, N);
         }
 
         if (FarLevel->bActiveMesh && !bPerformaceMode || !FarLevel->bActiveMesh && bPerformaceMode)
@@ -143,28 +144,11 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             }         
         }
 
-        FVector TangentX = FVector::CrossProduct(FVector::UpVector, N);
-        if (TangentX.SizeSquared() < 0.001f)
-        {
-            TangentX = FVector::CrossProduct(FVector::RightVector, N);
-        }
-        TangentX.Normalize();
-
-        FVector TangentY = FVector::CrossProduct(N, TangentX);
-
-        for (UCosmicMeshComponent* Level : Levels)
-        {
-            Level->SetPlanetBasis(
-                N,
-                TangentX,
-                TangentY,
-                ViewerPos
-            );
-        }
-
         FIntPoint Shift = ComputeGridShift(ViewerPos, BaseGridSpacing * 2);
 
         TotalShift += Shift;
+
+        bool bUpdateBasis = false;
 
         if (UpdateClipmapLevels) {
 
@@ -174,13 +158,18 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             {
                 Levels[i]->RequestMeshUpdate();
             }
+            bUpdateBasis = true;
         }
         else if (Shift != FIntPoint::ZeroValue)
         {
             // actualizar niveles necesarios
-            UpdateLevels(Shift);
+            bUpdateBasis = UpdateLevels(Shift) == NumLevels - 1;
         }
 
+        if (IsPlanet && bUpdateBasis)
+        {
+            UpdatePlanetBasis(SurfacePos, N);
+        }
     }    
 }
 
@@ -581,7 +570,7 @@ FIntPoint UCosmicClipmapComponent::ComputeGridShift(
     return FIntPoint(ShiftX, ShiftY);
 }
 
-void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
+uint32 UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
 {
     int32 JumpsX = Shift.X;
     int32 JumpsY = Shift.Y;
@@ -669,8 +658,10 @@ void UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
         Level->RequestMeshUpdate();
 
         // Salida temprana, si ya no hay movimiento que propagar, cortamos el bucle para ahorrar CPU
-        if (JumpsX == 0 && JumpsY == 0) return;
+        if (JumpsX == 0 && JumpsY == 0) return i;
     }
+
+    return NumLevels - 1;
 }
 
 FVector UCosmicClipmapComponent::GetPlayerLocation()
@@ -775,6 +766,34 @@ bool UCosmicClipmapComponent::IsClipmapRingVisible(const int64 GridSpacing, cons
     return ClipmapSurfaceRadius <= VisibleRadius * 2.f;
 }
 
+void UCosmicClipmapComponent::UpdatePlanetBasis(const FVector& SurfacePos, const FVector& N)
+{
+    const FVector Up = N;
+
+    const FVector Tangent = (FMath::Abs(Up.Z) < 0.99f)
+        ? FVector(0, 0, 1)
+        : FVector(1, 0, 0);
+
+    FVector Right = FVector::CrossProduct(Tangent, Up);
+    Right.Normalize();
+
+    const FVector Forward = FVector::CrossProduct(Up, Right);
+
+    CachedPlanetNormal = Up;
+    CachedTangentX = Right;
+    CachedTangentY = Forward;
+    CachedPlayerPos = SurfacePos;
+
+    for (UCosmicMeshComponent* Level : Levels)
+    {
+        Level->SetPlanetBasis(
+            CachedPlanetNormal,
+            CachedTangentX,
+            CachedTangentY,
+            CachedPlayerPos
+        );
+    }
+}
 
 void UCosmicClipmapComponent::DecreaseClipmapLevelFull()
 {
@@ -792,6 +811,8 @@ void UCosmicClipmapComponent::DecreaseClipmapLevelFull()
         }
     }
 }
+
+
 
 void UCosmicClipmapComponent::IncreaseClipmapLevelFull()
 {
