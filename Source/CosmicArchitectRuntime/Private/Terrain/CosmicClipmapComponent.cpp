@@ -658,7 +658,7 @@ uint32 UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
         Level->RequestMeshUpdate();
 
         // Salida temprana, si ya no hay movimiento que propagar, cortamos el bucle para ahorrar CPU
-        if (JumpsX == 0 && JumpsY == 0) return i;
+        if (JumpsX == 0 && JumpsY == 0) return i - 1;
     }
 
     return NumLevels - 1;
@@ -779,18 +779,13 @@ void UCosmicClipmapComponent::UpdatePlanetBasis(const FVector& SurfacePos, const
 
     const FVector Forward = FVector::CrossProduct(Up, Right);
 
-    CachedPlanetNormal = Up;
-    CachedTangentX = Right;
-    CachedTangentY = Forward;
-    CachedPlayerPos = SurfacePos;
-
     for (UCosmicMeshComponent* Level : Levels)
     {
         Level->SetPlanetBasis(
-            CachedPlanetNormal,
-            CachedTangentX,
-            CachedTangentY,
-            CachedPlayerPos
+            Up,
+            Right,
+            Forward,
+            SurfacePos
         );
     }
 }

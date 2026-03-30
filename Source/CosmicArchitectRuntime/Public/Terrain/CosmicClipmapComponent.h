@@ -76,11 +76,6 @@ protected:
     bool bPerformanceBuild = false;
     int64 BaseSpacing = 200;
 
-    FVector CachedPlanetNormal;
-    FVector CachedTangentX;
-    FVector CachedTangentY;
-    FVector CachedPlayerPos;
-
     FColor PlanetMainColor1 = FColor::Green;
     FColor PlanetMainColor2 = FColor::Red;
     FColor PlanetAltitudeColor = FColor::Yellow;
