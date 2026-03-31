@@ -236,8 +236,10 @@ public:
                     if (Dist1 < 0.0001f) Dist1 = 0.0001f;
                     if (Dist2 < 0.0001f) Dist2 = 0.0001f;
 
-                    float Weight1 = 1.0f / Dist1;
-                    float Weight2 = 1.0f / Dist2;
+                    float BlendSharpness = 5.0f;
+
+                    float Weight1 = 1.0f / FMath::Pow(Dist1, BlendSharpness);
+                    float Weight2 = 1.0f / FMath::Pow(Dist2, BlendSharpness);
                     float SumWeights = Weight1 + Weight2;
 
                     Weight1 /= SumWeights;
@@ -311,7 +313,7 @@ public:
             float VisualTemp = FMath::Clamp(FinalTemp - (AltitudePenalty * NoiseSettings.AltitudeTemperaturePenalty), 0.0f, 1.0f);
             float BiomeID = (ClosestBiomeIdx != -1) ? ((float)ClosestBiomeIdx / 255.0f) : 0.0f;
             // Guardar colores
-            CalculatedColors[i] = FLinearColor(AltitudePenalty, VisualTemp, BiomeID, 1.0f);
+            CalculatedColors[i] = FLinearColor(AltitudePenalty, VisualTemp, FinalHum, BiomeID);
             
         }
     }

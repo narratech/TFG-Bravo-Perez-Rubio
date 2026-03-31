@@ -174,35 +174,27 @@ void UCosmicNoiseSettings::UpdateBiomesFromSimple()
 
 void UCosmicNoiseSettings::UpdateNoiseFromSimple()
 {
-    // 2. Limpiar capas existentes
+
     Params.Biomes.Empty();
+    
+    FCosmicBiomeData SimpleBiome;
+    SimpleBiome.BiomeName = "Simple Global Biome";
+
+    SimpleBiome.TargetTemperature = 0.5f;
+    SimpleBiome.TargetHumidity = 0.5f;
 
     FCosmicNoiseTypes Layer;
-
-    // Tipo 
     Layer.NoiseType = ECosmicNoiseType::Simplex;
     Layer.FractalType = ECosmicFractalType::FBM;
-
-    // Frecuencia
-    // Mas Smoothness = formas mas grandes (menor frecuencia)
     Layer.Frequency = FMath::Lerp(0.01f, 10.f, 1.f - Params.Smoothness);
-
-    // Octavas
-    // Mas Detail = mas octavas
     Layer.Octaves = FMath::RoundToInt(FMath::Lerp(2.f, 12.f, Params.Detail));
-
-    // Lacunarity 
-    // Mas Roughness = mas separacion entre octavas
     Layer.Lacunarity = FMath::Lerp(1.8f, 2.3f, Params.Roughness);
-
-    // Persistence (Gain en FastNoiseLite) 
-    // Mas Mountainous = mas energia en altas frecuencias
     Layer.Persistence = FMath::Lerp(0.4f, 0.65f, Params.Mountainous);
-
-    // Amplitud
-    // Control principal de altura
     Layer.Amplitude = Params.MaxMountainHeight;
 
+    SimpleBiome.NoiseLayers.Add(Layer);
+
+    Params.Biomes.Add(SimpleBiome);
     Params.Biomes.Empty();
 
     // Warp proporcional a la altura máxima
