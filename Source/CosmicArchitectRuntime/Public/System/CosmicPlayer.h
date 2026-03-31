@@ -67,6 +67,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Fisicas")
 	double JumpForce = 500000.0;
 
+	// [E: Almacena la dirección del input para que el Tick rote la cápsula hacia el movimiento]
+	// [I: Stores the input direction so the Tick can rotate the capsule towards movement]
+	FVector TargetFacingDirection = FVector::ZeroVector;
+
 	// E: Multiplicador de sensibilidad para la cámara (Ratón).
 	// I: Sensitivity multiplier for the camera (Mouse).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Fisicas")

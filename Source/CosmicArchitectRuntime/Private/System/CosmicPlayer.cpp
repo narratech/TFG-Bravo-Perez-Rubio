@@ -43,13 +43,23 @@ ACosmicPlayer::ACosmicPlayer()
 	// Si no se bloquea, la cápsula volcaría al colisionar.
 	// I: We lock physical rotation (X, Y, Z). We will control orientation via code in Tick.
 	// If not locked, the capsule would tip over on collision.
-	CapsuleComp->BodyInstance.bLockXRotation = true;
-	CapsuleComp->BodyInstance.bLockYRotation = true;
-	CapsuleComp->BodyInstance.bLockZRotation = true;
+	CapsuleComp->BodyInstance.bLockXRotation = false;
+	CapsuleComp->BodyInstance.bLockYRotation = false;
+	CapsuleComp->BodyInstance.bLockZRotation = false;
+
+	// [E: EL TRUCO: Escalamos el Tensor de Inercia a un valor colosal. Esto hace que chocar contra 
+	// paredes o el suelo no tenga fuerza suficiente para volcarte, pero SetWorldRotation sí pueda girarte]
+	// [I: THE TRICK: Scale Inertia Tensor to a colossal value. This makes hitting walls or ground 
+	// lack the force to tip you over, but SetWorldRotation can still turn you]
+	CapsuleComp->BodyInstance.InertiaTensorScale = FVector(10000.0f, 10000.0f, 10000.0f);
+
+	// [E: Aplicamos una amortiguación angular altísima para estabilizar cualquier bamboleo]
+	// [I: Apply extremely high angular damping to stabilize any wobbling]
+	CapsuleComp->SetAngularDamping(10.0f);
 
 	// E: Amortiguación lineal alta (Fricción) para que el jugador se detenga al soltar las teclas.
 	// I: High linear damping (Friction) so the player stops when releasing keys.
-	CapsuleComp->SetLinearDamping(4.0f);
+	CapsuleComp->SetLinearDamping(1.0f);
 
 	// E: Configuración del brazo elástico (SpringArm).
 	// I: Setup for spring arm.
@@ -190,54 +200,46 @@ void ACosmicPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 void ACosmicPlayer::Move(const FInputActionValue& Value)
 {
 	// E: Obtenemos el vector 2D de input (W/S -> Y, A/D -> X).
-	// I: Get the 2D input vector (W/S -> Y, A/D -> X).
 	FVector2D MovementVector = Value.Get<FVector2D>();
 
-	if (Controller && CapsuleComp)
+	if (Controller && CapsuleComp && CameraComp)
 	{
-		// E: LÓGICA EXISTENTE: Calculamos direcciones basadas en la rotación del control (cámara), ignorando Pitch/Roll.
-		// I: EXISTING LOGIC: Calculate directions based on control rotation (camera), ignoring Pitch/Roll.
-		const FRotator Rotation = Controller->GetControlRotation();
-		const FRotator YawRotation(0, Rotation.Yaw, 0);
+		// =========================================================================
+		// [NUEVO] CÁLCULO DE DIRECCIÓN 6DOF (Gravedad Esférica)
+		// =========================================================================
 
-		const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+		// 1. Obtenemos cuál es nuestro "Arriba" local (ya estabilizado por el Tick)
+		FVector UpDirection = CapsuleComp->GetUpVector();
 
-		// E: LÓGICA EXISTENTE: Calculamos la fuerza física final multiplicando por MovementForce.
-		// I: EXISTING LOGIC: Calculate final physical force multiplying by MovementForce.
+		// 2. Tomamos los vectores puros de la cámara
+		FVector CameraForward = CameraComp->GetForwardVector();
+		FVector CameraRight = CameraComp->GetRightVector();
+
+		// 3. Proyectamos la visión de la cámara sobre el plano del suelo actual
+		// Esto asegura que caminar hacia adelante nunca nos empuje hacia el cielo o hacia el núcleo del planeta
+		FVector ForwardDirection = FVector::VectorPlaneProject(CameraForward, UpDirection).GetSafeNormal();
+		FVector RightDirection = FVector::VectorPlaneProject(CameraRight, UpDirection).GetSafeNormal();
+
+		// =========================================================================
+
+		// E: Calculamos la fuerza física final
 		FVector ForceToApply = (ForwardDirection * MovementVector.Y + RightDirection * MovementVector.X) * MovementForce;
 
-		// =========================================================================
-		// REQUERIMIENTO: FLECHA BLANCA DE LA FUERZA APLICADA POR INPUT
-		// REQUERIMENT: WHITE ARROW OF THE APPLIED INPUT FORCE
-		// =========================================================================
-
-		// E: Si hay algún input (la fuerza no es cero)...
-		// I: If there is any input (force is not zero)...
+		// E: Si hay algún input...
 		if (!ForceToApply.IsNearlyZero())
 		{
-			FVector DebugStart = CapsuleComp->GetComponentLocation(); // Centro del jugador / Player's center
+			// [NUEVO] Guardamos la dirección para que el código del Tick rote la cápsula hacia allí
+			TargetFacingDirection = ForceToApply.GetSafeNormal();
 
-			// E: Normalizamos la fuerza para que la flecha tenga un tamaño constante (visibilidad) y no dependa de MovementForce.
-			// I: Normalize force so the arrow has a constant size (visibility) and doesn't depend on MovementForce.
+			FVector DebugStart = CapsuleComp->GetComponentLocation();
 			FVector ForceDirection = ForceToApply.GetSafeNormal();
-			float DebugArrowLength = 100.0f; // Longitud flecha debug / Debug arrow length
+			float DebugArrowLength = 100.0f;
 
-			// E: Dibujamos una flecha BLANCA, gruesa, que dura 1 frame (se actualiza constantemente en el Triggered).
-			// I: Draw a WHITE, thick arrow, lasting 1 frame (constantly updated in Triggered).
+			// Flecha BLANCA de depuración
 			DrawDebugDirectionalArrow(GetWorld(), DebugStart, DebugStart + (ForceDirection * DebugArrowLength), 20.0f, FColor::White, false, -1.0f, 0, 4.0f);
 		}
-		// =========================================================================
 
-		// E: Mensaje en pantalla existente (Depuración numérica).
-		// I: Existing on-screen message (Numerical debugging).
-		if (GEngine)
-		{
-			GEngine->AddOnScreenDebugMessage(1, 0.0f, FColor::Green, FString::Printf(TEXT("x: %f, y: %f"), ForceToApply.X, ForceToApply.Y));
-		}
-
-		// E: LÓGICA EXISTENTE: Aplicamos la fuerza física al colisionador.
-		// I: EXISTING LOGIC: Apply physical force to the collider.
+		// E: Aplicamos la fuerza física al colisionador.
 		CapsuleComp->AddForce(ForceToApply, NAME_None, false);
 	}
 }
