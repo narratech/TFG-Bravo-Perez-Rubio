@@ -26,6 +26,26 @@ enum class ECosmicBiomeType : uint8
 };
 
 USTRUCT(BlueprintType)
+struct FCosmicBiomeData
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, Category = "Biome")
+    FName BiomeName = "New Biome";
+
+    // Las condiciones "ideales" para que este bioma aparezca (0.0 a 1.0)
+    UPROPERTY(EditAnywhere, Category = "Biome", meta = (ClampMin = "0", ClampMax = "1"))
+    float TargetTemperature = 0.5f;
+
+    UPROPERTY(EditAnywhere, Category = "Biome", meta = (ClampMin = "0", ClampMax = "1"))
+    float TargetHumidity = 0.5f;
+
+    // El relieve específico de este bioma
+    UPROPERTY(EditAnywhere, Category = "Biome")
+    TArray<FCosmicNoiseTypes> NoiseLayers;
+};
+
+USTRUCT(BlueprintType)
 struct FCosmicNoiseGenerationParameters
 {
     GENERATED_BODY()
@@ -64,9 +84,7 @@ struct FCosmicNoiseGenerationParameters
     /* ADVANCED MODE */
 
     UPROPERTY(EditAnywhere, Category = "Advanced", meta = (EditCondition = "bUseAdvancedSettings"))
-    TArray<FCosmicNoiseTypes> NoiseLayersA;
-    UPROPERTY(EditAnywhere, Category = "Advanced", meta = (EditCondition = "bUseAdvancedSettings"))
-    TArray<FCosmicNoiseTypes> NoiseLayersB;
+    TArray<FCosmicBiomeData> Biomes;
 
     UPROPERTY(EditAnywhere, Category = "Advanced", meta = (EditCondition = "bUseAdvancedSettings"))
     bool bUseDomainWarp = false;
