@@ -20,11 +20,9 @@ ACosmicPlayer::ACosmicPlayer()
 	// I: We enable Tick to apply gravitational alignment frame by frame.
 	PrimaryActorTick.bCanEverTick = true;
 
-	// E: Forzamos que nuestro Tick ocurra DESPUÉS de que el motor de físicas haya resuelto las colisiones.
-	// Esto es crucial para evitar temblores (jitter) en la rotación.
-	// I: Force our Tick to happen AFTER the physics engine has resolved collisions.
-	// This is crucial to avoid rotation jitter.
-	PrimaryActorTick.TickGroup = TG_PostPhysics;
+	// [E: El Tick DEBE ocurrir ANTES de las físicas (PrePhysics) para que Chaos use nuestra rotación correcta al movernos]
+	// [I: Tick MUST happen BEFORE physics (PrePhysics) so Chaos uses our correct rotation when moving us]
+	PrimaryActorTick.TickGroup = TG_PrePhysics;
 
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
 
@@ -167,9 +165,9 @@ void ACosmicPlayer::Tick(float DeltaTime)
 	DrawDebugDirectionalArrow(GetWorld(), StartLoc, StartLoc + (NewForward * LineLength), ArrowSize, FColor::Blue, false, -1.0f, 0, Thickness);
 	// =========================================================================
 
-	// E: 7. Aplicamos la nueva rotación a la cápsula usando TeleportPhysics para no interferir con el motor de colisiones.
-	// I: 7. Apply new rotation to capsule using TeleportPhysics so as not to interfere with collision engine.
-	CapsuleComp->SetWorldRotation(NewQuat, false, nullptr, ETeleportType::TeleportPhysics);
+	// [E: Usamos ETeleportType::None para no destruir el caché de velocidad del motor Chaos cada frame]
+	// [I: Use ETeleportType::None to avoid destroying the Chaos engine's velocity cache every frame]
+	CapsuleComp->SetWorldRotation(NewQuat, false, nullptr, ETeleportType::None);
 }
 
 void ACosmicPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
