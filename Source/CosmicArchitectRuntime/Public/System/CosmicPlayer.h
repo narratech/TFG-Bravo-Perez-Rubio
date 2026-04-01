@@ -71,6 +71,11 @@ protected:
 	// [I: Stores the input direction so the Tick can rotate the capsule towards movement]
 	FVector TargetFacingDirection = FVector::ZeroVector;
 
+	// [E: Variables para almacenar la rotación local de la cámara y evitar conflictos con el CameraLag]
+	// [I: Variables to store local camera rotation and avoid conflicts with CameraLag]
+	float CameraPitch = 0.0f;
+	float CameraYaw = 0.0f;
+
 	// E: Multiplicador de sensibilidad para la cámara (Ratón).
 	// I: Sensitivity multiplier for the camera (Mouse).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Fisicas")

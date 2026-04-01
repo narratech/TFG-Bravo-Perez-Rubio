@@ -67,9 +67,11 @@ ACosmicPlayer::ACosmicPlayer()
 	SpringArmComp->SetupAttachment(CapsuleComp);
 	SpringArmComp->TargetArmLength = 0.0f; // E: 0.0f para cámara en primera persona. / I: 0.0f for first person camera.
 
-	// E: Usamos la rotación del controlador (ratón) para girar el brazo.
-	// I: Use controller rotation (mouse) to rotate the arm.
-	SpringArmComp->bUsePawnControlRotation = true;
+	// E: Desactivamos la rotación del controlador. Rotaremos el brazo manualmente de forma local en Look() 
+	// para evitar que los controles se inviertan al caminar boca abajo (Gravedad 6DOF).
+	// I: Disable controller rotation. We will rotate the arm manually in local space in Look() 
+	// to prevent controls from inverting when walking upside down (6DOF Gravity).
+	SpringArmComp->bUsePawnControlRotation = false;
 
 	// E: Activamos el "Lag" de cámara para suavizar tirones físicos y absorber vibraciones del terreno.
 	// I: Enable Camera "Lag" to smooth physical jerks and absorb terrain vibrations.
@@ -204,9 +206,6 @@ void ACosmicPlayer::Move(const FInputActionValue& Value)
 
 	if (Controller && CapsuleComp && CameraComp)
 	{
-		// =========================================================================
-		// [NUEVO] CÁLCULO DE DIRECCIÓN 6DOF (Gravedad Esférica)
-		// =========================================================================
 
 		// 1. Obtenemos cuál es nuestro "Arriba" local (ya estabilizado por el Tick)
 		FVector UpDirection = CapsuleComp->GetUpVector();
@@ -250,12 +249,24 @@ void ACosmicPlayer::Look(const FInputActionValue& Value)
 	// I: Get mouse movement scaled by sensitivity.
 	FVector2D LookAxisVector = Value.Get<FVector2D>() * MouseSensitivity;
 
-	if (Controller)
+	if (Controller && SpringArmComp)
 	{
-		// E: LÓGICA EXISTENTE: Inyectamos el movimiento en el PlayerController para girar la cámara.
-		// I: EXISTING LOGIC: Inject movement into PlayerController to turn camera.
-		AddControllerYawInput(LookAxisVector.X);
-		AddControllerPitchInput(LookAxisVector.Y);
+		// E: Actualizamos nuestras variables internas puras con el movimiento del ratón.
+		// Nota: Si quieres invertir el eje Y (Arriba/Abajo), cambia el "+=" por un "-=".
+		// I: Update our pure internal variables with mouse movement.
+		// Note: If you want to invert the Y axis (Up/Down), change "+=" to "-=".
+		CameraYaw += LookAxisVector.X;
+		CameraPitch += LookAxisVector.Y;
+
+		// E: Limitamos el Pitch para que la cámara no dé vueltas completas sobre sí misma.
+		// I: Clamp the Pitch so the camera doesn't do full loops on itself.
+		CameraPitch = FMath::Clamp(CameraPitch, -85.0f, 85.0f);
+
+		// E: Aplicamos la nueva rotación usando FRotator(Pitch, Yaw, Roll).
+		// Al hacer esto, el CameraRotationLag funcionará perfectamente sin congelar el input.
+		// I: Apply the new rotation using FRotator(Pitch, Yaw, Roll).
+		// By doing this, CameraRotationLag will work perfectly without freezing the input.
+		SpringArmComp->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.0f));
 	}
 }
 
