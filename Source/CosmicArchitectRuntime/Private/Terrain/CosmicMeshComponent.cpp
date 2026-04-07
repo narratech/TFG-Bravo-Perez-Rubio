@@ -28,29 +28,97 @@ void UCosmicMeshComponent::BuildBaseMesh()
     // 2. CALCULAR VÉRTICES
     int32 ActualVerticesCalculated = 0;
 
-    for (int32 y = 0; y < VertRes; ++y)
-    {
-        for (int32 x = 0; x < VertRes; ++x)
+    if (bIsPlanet) {
+        for (int32 y = 0; y < VertRes; ++y)
         {
-            double LocalX = (x - HalfRes) * GridSpacing;
-            double LocalY = (y - HalfRes) * GridSpacing;
+            for (int32 x = 0; x < VertRes; ++x)
+            {
+                float WorldX = (x - HalfRes) * GridSpacing;
+                float WorldY = (y - HalfRes) * GridSpacing;
 
-            FVector Pos = FVector(LocalX, LocalY, 0);
+                // Calcular posición en esfera
+                FVector SphereCenter = FVector(0, 0, -PlanetRadius);
+                float Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
+                FVector BasePosition;
 
-            BaseVertices.Add(Pos);
+                if (Distance2D <= PlanetRadius && Distance2D > 0.001f) // Evitar división por 0
+                {
+                    float ZOffset = FMath::Sqrt(PlanetRadius * PlanetRadius - Distance2D * Distance2D);
+                    BasePosition = FVector(WorldX, WorldY, -PlanetRadius + ZOffset);
+                }
+                else if (Distance2D <= 0.001f)
+                {
+                    // Centro - evitar NaN
+                    BasePosition = FVector(0, 0, 0);
+                }
+                else
+                {
+                    float Scale = PlanetRadius / Distance2D;
+                    BasePosition = FVector(WorldX * Scale, WorldY * Scale, -PlanetRadius);
+                }
 
-            // Normal plana (luego se recalcula en esfera)
-            BaseNormals.Add(FVector::UpVector);
+                BaseVertices.Add(BasePosition);
+                ActualVerticesCalculated++;
 
-            // Tangente plana
-            BaseTangents.Add(FProcMeshTangent(1, 0, 0));
+                // Normal
+                FVector Normal = (BasePosition - SphereCenter);
+                if (Normal.SizeSquared() > 0.001f)
+                {
+                    Normal.Normalize();
+                }
+                else
+                {
+                    Normal = FVector::UpVector;
+                }
+                BaseNormals.Add(Normal);
 
-            UVs.Add(FVector2D(
-                (float)x / (VertRes - 1),
-                (float)y / (VertRes - 1)
-            ));
+                // Tangente
+                FVector TangentDir = FVector(-Normal.Y, Normal.X, 0);
+                if (TangentDir.SizeSquared() > 0.001f)
+                {
+                    TangentDir.Normalize();
+                }
+                else
+                {
+                    TangentDir = FVector(1, 0, 0);
+                }
+                BaseTangents.Add(FProcMeshTangent(TangentDir.X, TangentDir.Y, TangentDir.Z));
+
+                // UVs
+                UVs.Add(FVector2D(
+                    (float)x / Resolution,
+                    (float)y / Resolution
+                ));
+            }
         }
     }
+    else {
+        for (int32 y = 0; y < VertRes; ++y)
+        {
+            for (int32 x = 0; x < VertRes; ++x)
+            {
+
+                double LocalX = (x - HalfRes) * GridSpacing;
+                double LocalY = (y - HalfRes) * GridSpacing;
+
+                FVector Pos = FVector(LocalX, LocalY, 0);
+
+                BaseVertices.Add(Pos);
+
+                // Normal plana (luego se recalcula en esfera)
+                BaseNormals.Add(FVector::UpVector);
+
+                // Tangente plana
+                BaseTangents.Add(FProcMeshTangent(1, 0, 0));
+
+                UVs.Add(FVector2D(
+                    (float)x / (VertRes - 1),
+                    (float)y / (VertRes - 1)
+                ));
+            }
+        }
+    }
+    
 
     // 3. CALCULAR TRIÁNGULOS CON NUEVOS LÍMITES
     int32 TriangleCount = 0;
@@ -504,7 +572,7 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate(const FVector PlayerPos)
     // Copiamos los vértices calculados del hilo secundario a nuestro array principal
     if (bIsPlanet) {
 
-        AActor* ParentActor = GetOwner();
+       /* AActor* ParentActor = GetOwner();
 
         if (ParentActor) {
 
@@ -527,7 +595,8 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate(const FVector PlayerPos)
 
                 CurrentNormals[i] = Dir;
             }
-        }
+        }*/
+        CurrentVertices = NoiseTask->GetTask().CalculatedVertices;
     }
     else
     {

@@ -128,6 +128,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         bool MeshesUpdated = true;
 
+        //Ver si han acabado todas las tareas
         for (size_t i = 0; i < Levels.Num(); i++)
         {
             if (Levels[i]->IsTaskActive()) {
@@ -138,15 +139,17 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         if (!MeshesUpdated) {
             return;
         } 
-        else {
+        else { //Aplicar actualizaciones de malla
             for (size_t i = 0; i < Levels.Num(); i++)
             {
                 Levels[i]->CheckAndApplyMeshUpdate(ViewerPos);
             }
         }
 
+        
         bool UpdateClipmapLevels = false;
-     
+        
+        //Ver si hay que reducir o incrementar niveles
         if (Levels.Num() > 1)
         {
             UCosmicMeshComponent* MeshLast = Levels.Last();
@@ -167,6 +170,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             }         
         }
 
+        //Calcular numero de celdas que hay que desplazar
         FIntPoint Shift = ComputeGridShift(ViewerPos, BaseGridSpacing * 2);
 
         if (Shift != FIntPoint::ZeroValue) {
