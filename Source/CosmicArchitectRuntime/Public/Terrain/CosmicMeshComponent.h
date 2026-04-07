@@ -36,6 +36,8 @@ public:
     bool bMeshCreated = false;
     bool bActiveMesh;
 
+    FTransform PatchTransform;
+
     EClipmapQuadrant CurrentQuadrant = EClipmapQuadrant::BottomRight;
 
     UCosmicNoiseSettings* NoiseSettings = nullptr;
@@ -60,6 +62,9 @@ public:
     void BuildBaseMesh();
     void BuildSphereMesh();
     void ReScaleLevel(int64 GridSpacing);
+
+    void SetPositionAndRotation(const FVector& PlanetCenter);
+
     FVector ProjectToPlanet(const FVector& WorldPos, const FVector& PlanetCenter) const;
     void SetMeshActive(bool active);
     // Lanza la tarea de ruido

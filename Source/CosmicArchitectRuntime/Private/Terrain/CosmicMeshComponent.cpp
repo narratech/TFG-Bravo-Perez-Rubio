@@ -504,20 +504,84 @@ void UCosmicMeshComponent::ReScaleLevel(int64 NewGridSpacing)
     const int32 VertRes = Resolution - 1;
     const int32 HalfRes = Resolution / 2;
 
-    for (int32 y = 0; y < VertRes; ++y)
-    {
-        for (int32 x = 0; x < VertRes; ++x)
+    if (bIsPlanet) {
+        for (int32 y = 0; y < VertRes; ++y)
         {
-            double LocalX = (x - HalfRes) * GridSpacing;
-            double LocalY = (y - HalfRes) * GridSpacing;
+            for (int32 x = 0; x < VertRes; ++x)
+            {
+                float WorldX = (x - HalfRes) * GridSpacing;
+                float WorldY = (y - HalfRes) * GridSpacing;
 
-            FVector Pos = FVector(LocalX, LocalY, 0);
+                // Calcular posición en esfera
+                FVector SphereCenter = FVector(0, 0, -PlanetRadius);
+                float Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
+                FVector BasePosition;
 
-            BaseVertices[x + y * VertRes] = Pos;
+                if (Distance2D <= PlanetRadius && Distance2D > 0.001f) // Evitar división por 0
+                {
+                    float ZOffset = FMath::Sqrt(PlanetRadius * PlanetRadius - Distance2D * Distance2D);
+                    BasePosition = FVector(WorldX, WorldY, -PlanetRadius + ZOffset);
+                }
+                else if (Distance2D <= 0.001f)
+                {
+                    // Centro - evitar NaN
+                    BasePosition = FVector(0, 0, 0);
+                }
+                else
+                {
+                    float Scale = PlanetRadius / Distance2D;
+                    BasePosition = FVector(WorldX * Scale, WorldY * Scale, -PlanetRadius);
+                }
+
+                BaseVertices.Add(BasePosition);
+            }
+        }
+    }
+    else {
+        for (int32 y = 0; y < VertRes; ++y)
+        {
+            for (int32 x = 0; x < VertRes; ++x)
+            {
+                double LocalX = (x - HalfRes) * GridSpacing;
+                double LocalY = (y - HalfRes) * GridSpacing;
+
+                FVector Pos = FVector(LocalX, LocalY, 0);
+
+                BaseVertices[x + y * VertRes] = Pos;
+            }
         }
     }
 
     CurrentQuadrant = EClipmapQuadrant::BottomRight;
+}
+
+void UCosmicMeshComponent::SetPositionAndRotation(const FVector& PlanetCenter)
+{
+    FRotator Rotation = FRotator(0, 90, 0); // 90° en Yaw
+    PatchTransform = FTransform(
+        Rotation,
+        FVector(0, 0, PlanetRadius), // lo colocas sobre la superficie
+        FVector(1, 1, 1)
+    );
+
+    FMatrix TransformMatrix = PatchTransform.ToMatrixWithScale();
+
+    for(int32 i = 0; i < BaseVertices.Num(); ++i)
+    {
+        // 2. Transformar el vértice base a su posición "plana" en el mundo
+        // Esto sitúa el parche en su lugar en la superficie de la esfera
+        FVector WorldPos = TransformMatrix.TransformPosition(BaseVertices[i]);
+
+        // 3. Calcular la Normal Real (Dirección desde el centro del planeta)
+        // Asumiendo que el centro del planeta es PlanetCenter (ej: 0,0,0)
+        FVector DirectionFromCenter = WorldPos - PlanetCenter;
+        DirectionFromCenter.Normalize();
+
+        // 5. Aplicar el desplazamiento final
+        // Desplazamos el vértice desde su posición base a lo largo de su normal real
+        CurrentVertices[i] = WorldPos;
+        CurrentNormals[i] = DirectionFromCenter;
+    }
 }
 
 FVector UCosmicMeshComponent::ProjectToPlanet(const FVector& WorldPos, const FVector& PlanetCenter) const
