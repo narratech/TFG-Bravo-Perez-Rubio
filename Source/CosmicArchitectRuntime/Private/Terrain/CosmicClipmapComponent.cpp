@@ -130,12 +130,20 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         for (size_t i = 0; i < Levels.Num(); i++)
         {
-            if (!Levels[i]->CheckAndApplyMeshUpdate(ViewerPos)) {
+            if (Levels[i]->IsTaskActive()) {
                 MeshesUpdated = false;
             }
         }
 
-        if (!MeshesUpdated) return;
+        if (!MeshesUpdated) {
+            return;
+        } 
+        else {
+            for (size_t i = 0; i < Levels.Num(); i++)
+            {
+                Levels[i]->CheckAndApplyMeshUpdate(ViewerPos);
+            }
+        }
 
         bool UpdateClipmapLevels = false;
      

@@ -492,6 +492,8 @@ void UCosmicMeshComponent::RequestMeshUpdate()
     NoiseTask->StartBackgroundTask();
 }
 
+
+
 bool UCosmicMeshComponent::CheckAndApplyMeshUpdate(const FVector PlayerPos)
 {
     //Si no hay tarea devolvemos true para saber que esta libre
@@ -552,4 +554,9 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate(const FVector PlayerPos)
     SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
     return true; // La malla se ha actualizado
+}
+
+bool UCosmicMeshComponent::IsTaskActive()
+{
+    return NoiseTask && !NoiseTask->IsDone();
 }

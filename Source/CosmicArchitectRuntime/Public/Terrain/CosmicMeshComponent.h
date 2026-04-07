@@ -66,6 +66,7 @@ public:
     void RequestMeshUpdate();
     // Comprueba si la tarea termino y aplica la malla
     bool CheckAndApplyMeshUpdate(const FVector PlayerPos);
+    bool IsTaskActive();
     void ShiftLevel(FIntPoint Shift);
     void SetPlanetBasis(const FVector& PlanetNormal, const FVector& TangentX,
         const FVector& TangentY, const FVector& PlayerPos);
