@@ -101,7 +101,6 @@ protected:
     uint32 UpdateLevels(const FIntPoint& Shift);
     bool IsClipmapRingVisible(const int32 LevelIndex, const float DistanceToSurface);
     bool IsClipmapRingVisible(const int64 GridSpacing, const int64 Resolution, const float DistanceToSurface);
-    void UpdatePlanetBasis(const FVector& SurfacePos, const FVector& N);
     void DecreaseClipmapLevelFull();
     void IncreaseClipmapLevelFull();
 

@@ -20,6 +20,8 @@ public:
 	FTransform ComponentTransform;
 	FVector PlanetCenter;
 
+    bool IsPlanet;
+
     FCosmicNoiseGenerationParameters NoiseSettings;
 
     FCosmicArchitectNoiseGenerator(
@@ -27,11 +29,13 @@ public:
         const TArray<FVector>& InBaseNormals,
         FTransform InTransform,
         FVector InPlanetCenter,
+        bool InPlanet,
         FCosmicNoiseGenerationParameters NoiseSettings)
         : BaseVertices(InBaseVerts)
         , BaseNormals(InBaseNormals)
         , ComponentTransform(InTransform)
-        , PlanetCenter(InPlanetCenter),
+        , PlanetCenter(InPlanetCenter)
+        ,IsPlanet(InPlanet),
         NoiseSettings(NoiseSettings)
     {
         CalculatedVertices.SetNumUninitialized(BaseVertices.Num());
@@ -47,6 +51,19 @@ public:
 
     void DoWork()
     {
+
+        const int32 VertexCount = BaseVertices.Num();
+
+        if (IsPlanet) {
+            
+            FMatrix TransformMatrix = ComponentTransform.ToMatrixWithScale();
+
+            for (size_t i = 0; i < VertexCount; i++)
+            {
+                CalculatedVertices[i] = TransformMatrix.TransformPosition(BaseVertices[i]);
+            }
+        }
+        
         // Crear ruidos configurados una vez por capa
         TArray<FastNoiseLite> ConfiguredNoises;
         ConfiguredNoises.Reserve(NoiseSettings.NoiseLayers.Num());
@@ -146,14 +163,14 @@ public:
         }
         if (MaxPossibleHeight == 0.0f) MaxPossibleHeight = 1000.0f; // Seguridad
 
-        const int32 VertexCount = BaseVertices.Num();
+        
         const bool bHasLayers = NoiseSettings.NoiseLayers.Num() > 0;
 
         // Loop de vértices
         for (int32 i = 0; i < VertexCount; i++)
         {
-            FVector WorldPos = ComponentTransform.TransformPosition(BaseVertices[i]);
-            FVector NoiseDir = (WorldPos - PlanetCenter).GetSafeNormal();
+            FVector WorldPos = IsPlanet ? CalculatedVertices[i] : BaseVertices[i];
+            FVector NoiseDir = IsPlanet ? (WorldPos - PlanetCenter).GetSafeNormal() : FVector::UpVector;
 
             float X = NoiseDir.X;
             float Y = NoiseDir.Y;

@@ -492,7 +492,7 @@ void UCosmicMeshComponent::BuildSphereMesh()
     BaseTangents.Empty();
     UVs.Empty();
     Triangles.Empty();
-    //HeightOffsets.Empty();
+    
     CurrentVertices.Empty();
     CurrentNormals.Empty();
     CurrentTangents.Empty();
@@ -622,14 +622,6 @@ void UCosmicMeshComponent::ShiftLevel(FIntPoint Shift)
     }
 }
 
-void UCosmicMeshComponent::SetPlanetBasis(const FVector& PlanetNormal, const FVector& TangentX, const FVector& TangentY, const FVector& PlayerPos)
-{
-    CachedPlanetNormal = PlanetNormal;
-    CachedTangentX = TangentX;
-    CachedTangentY = TangentY;
-    CachedPlayerPos = PlayerPos;
-}
-
 int32 UCosmicMeshComponent::GetQuadrantIndex(EClipmapQuadrant Q) const {
     switch (Q) {
     case EClipmapQuadrant::TopLeft:     return 0;
@@ -715,10 +707,12 @@ void UCosmicMeshComponent::ReScaleLevel(int64 NewGridSpacing)
 
     GridSpacing = NewGridSpacing;
 
-    const int32 VertRes = Resolution - 1;
     const int32 HalfRes = Resolution / 2;
 
     if (bIsPlanet) {
+
+        const int32 VertRes = Resolution + 1;
+
         for (int32 y = 0; y < VertRes; ++y)
         {
             for (int32 x = 0; x < VertRes; ++x)
@@ -752,6 +746,9 @@ void UCosmicMeshComponent::ReScaleLevel(int64 NewGridSpacing)
         }
     }
     else {
+
+        const int32 VertRes = Resolution - 1;
+
         for (int32 y = 0; y < VertRes; ++y)
         {
             for (int32 x = 0; x < VertRes; ++x)
@@ -769,33 +766,16 @@ void UCosmicMeshComponent::ReScaleLevel(int64 NewGridSpacing)
     CurrentQuadrant = EClipmapQuadrant::BottomRight;
 }
 
-void UCosmicMeshComponent::SetPositionAndRotation(const FVector& PlanetCenter)
+void UCosmicMeshComponent::SetPositionAndRotation(const FVector& SurfacePos, const FRotator& PatchRotation)
 {
-    FRotator Rotation = FRotator(0, 90, 0); // 90° en Yaw
+
     PatchTransform = FTransform(
-        Rotation,
-        FVector(0, 0, PlanetRadius), // lo colocas sobre la superficie
+        PatchRotation,
+        SurfacePos, // lo colocas sobre la superficie
         FVector(1, 1, 1)
     );
 
-    FMatrix TransformMatrix = PatchTransform.ToMatrixWithScale();
-
-    for(int32 i = 0; i < BaseVertices.Num(); ++i)
-    {
-        // 2. Transformar el vértice base a su posición "plana" en el mundo
-        // Esto sitúa el parche en su lugar en la superficie de la esfera
-        FVector WorldPos = TransformMatrix.TransformPosition(BaseVertices[i]);
-
-        // 3. Calcular la Normal Real (Dirección desde el centro del planeta)
-        // Asumiendo que el centro del planeta es PlanetCenter (ej: 0,0,0)
-        FVector DirectionFromCenter = WorldPos - PlanetCenter;
-        DirectionFromCenter.Normalize();
-
-        // 5. Aplicar el desplazamiento final
-        // Desplazamos el vértice desde su posición base a lo largo de su normal real
-        CurrentVertices[i] = WorldPos;
-        CurrentNormals[i] = DirectionFromCenter;
-    }
+    
 }
 
 FVector UCosmicMeshComponent::ProjectToPlanet(const FVector& WorldPos, const FVector& PlanetCenter) const
@@ -830,7 +810,7 @@ void UCosmicMeshComponent::RequestMeshUpdate()
     NoiseTask = new FAsyncTask<FCosmicArchitectNoiseGenerator>(
         BaseVertices,
         BaseNormals,
-        GetComponentTransform(),
+        PatchTransform,
         PlanetCenter,
         Params
     );
@@ -840,47 +820,14 @@ void UCosmicMeshComponent::RequestMeshUpdate()
 
 
 
-bool UCosmicMeshComponent::CheckAndApplyMeshUpdate(const FVector PlayerPos)
+bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
 {
     //Si no hay tarea devolvemos true para saber que esta libre
     if (!NoiseTask) return true;
     // Si no ha terminado, devolvemos false
     if (!NoiseTask->IsDone()) return false;
-
-    // Copiamos los vértices calculados del hilo secundario a nuestro array principal
-    if (bIsPlanet) {
-
-       /* AActor* ParentActor = GetOwner();
-
-        if (ParentActor) {
-
-            TArray<FVector> Vertices = NoiseTask->GetTask().CalculatedVertices;
-
-            FVector PlanetCenter = ParentActor->GetActorLocation();
-
-            for (int32 i = 0; i < BaseVertices.Num(); i++)
-            {
-                FVector Local = Vertices[i];
-
-                FVector WorldPos =
-                    CachedPlayerPos +
-                    CachedTangentX * Local.X +
-                    CachedTangentY * Local.Y;
-
-                FVector Dir = (WorldPos - PlanetCenter).GetSafeNormal();
-
-                CurrentVertices[i] = PlanetCenter + Dir * PlanetRadius;
-
-                CurrentNormals[i] = Dir;
-            }
-        }*/
-        CurrentVertices = NoiseTask->GetTask().CalculatedVertices;
-    }
-    else
-    {
-        CurrentVertices = NoiseTask->GetTask().CalculatedVertices;
-    }
-    
+  
+    CurrentVertices = NoiseTask->GetTask().CalculatedVertices;
     CurrentColors = NoiseTask->GetTask().CalculatedColors;
 
     // Limpiamos la memoria de la tarea

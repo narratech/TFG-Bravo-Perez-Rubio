@@ -37,7 +37,6 @@ public:
     bool bActiveMesh;
 
     FTransform PatchTransform;
-
     EClipmapQuadrant CurrentQuadrant = EClipmapQuadrant::BottomRight;
 
     UCosmicNoiseSettings* NoiseSettings = nullptr;
@@ -54,29 +53,22 @@ public:
     TArray<FProcMeshTangent> CurrentTangents;
     TArray<FVector2D> UVs;
 
-    FVector CachedPlanetNormal;
-    FVector CachedTangentX;
-    FVector CachedTangentY;
-    FVector CachedPlayerPos;
-
     void BuildBaseMesh();
     void BuildBaseProjectedMesh();
     void BuildBasePlainMesh();
     void BuildSphereMesh();
     void ReScaleLevel(int64 GridSpacing);
 
-    void SetPositionAndRotation(const FVector& PlanetCenter);
+    void SetPositionAndRotation(const FVector& SurfacePos, const FRotator& PatchRotation);
 
     FVector ProjectToPlanet(const FVector& WorldPos, const FVector& PlanetCenter) const;
     void SetMeshActive(bool active);
     // Lanza la tarea de ruido
     void RequestMeshUpdate();
     // Comprueba si la tarea termino y aplica la malla
-    bool CheckAndApplyMeshUpdate(const FVector PlayerPos);
+    bool CheckAndApplyMeshUpdate();
     bool IsTaskActive();
     void ShiftLevel(FIntPoint Shift);
-    void SetPlanetBasis(const FVector& PlanetNormal, const FVector& TangentX,
-        const FVector& TangentY, const FVector& PlayerPos);
     int32 GetQuadrantIndex(EClipmapQuadrant Q) const;
     void SetHoleQuadrant(EClipmapQuadrant NewQuadrant);
 

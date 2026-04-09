@@ -104,7 +104,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         if (!bPerformanceBuild) {
             FarLevel->RequestMeshUpdate();
-            bPerformanceBuild = FarLevel->CheckAndApplyMeshUpdate(ViewerPos);
+            bPerformanceBuild = FarLevel->CheckAndApplyMeshUpdate();
         }
 
         //Activar/desactivar modo rendimiento al alejarte lo suficiente
@@ -141,7 +141,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         else { //Aplicar actualizaciones de malla
             for (size_t i = 0; i < Levels.Num(); i++)
             {
-                Levels[i]->CheckAndApplyMeshUpdate(ViewerPos);
+                Levels[i]->CheckAndApplyMeshUpdate();
             }
         }
 
@@ -822,29 +822,6 @@ bool UCosmicClipmapComponent::IsClipmapRingVisible(const int64 GridSpacing, cons
     return ClipmapSurfaceRadius <= VisibleRadius * 2.f;
 }
 
-void UCosmicClipmapComponent::UpdatePlanetBasis(const FVector& SurfacePos, const FVector& N)
-{
-    const FVector Up = N;
-
-    const FVector Tangent = (FMath::Abs(Up.Z) < 0.99f)
-        ? FVector(0, 0, 1)
-        : FVector(1, 0, 0);
-
-    FVector Right = FVector::CrossProduct(Tangent, Up);
-    Right.Normalize();
-
-    const FVector Forward = FVector::CrossProduct(Up, Right);
-
-    for (UCosmicMeshComponent* Level : Levels)
-    {
-        Level->SetPlanetBasis(
-            Up,
-            Right,
-            Forward,
-            SurfacePos
-        );
-    }
-}
 
 void UCosmicClipmapComponent::DecreaseClipmapLevelFull()
 {
