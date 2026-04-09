@@ -21,10 +21,7 @@ void UCosmicMeshComponent::BuildBasePlainMesh()
     BaseTangents.Empty(TotalVertices);
     UVs.Empty(TotalVertices);
 
-    Triangles.Empty();
-    CurrentVertices.Empty();
-    CurrentNormals.Empty();
-    CurrentTangents.Empty();
+    TArray<int32> Triangles;
 
     for (int32 y = 0; y < VertRes; ++y)
     {
@@ -159,16 +156,13 @@ void UCosmicMeshComponent::BuildBasePlainMesh()
         }
     }
 
-    // Inicializamos el array de colores con el mismo tamaño que los vértices
-    CurrentColors.Init(FLinearColor(0.5f, 0.5f, 0.5f, 1.0f), CurrentVertices.Num());
-
     CreateMeshSection_LinearColor(
         0,                    // SectionIndex
         BaseVertices,      // Vértices
         Triangles,           // Triángulos
         BaseNormals,      // Normales
         UVs,                 // UVs
-        CurrentColors,    // Colores de vértice
+        TArray<FLinearColor>(),
         BaseTangents,     // Tangentes
         false
     );
@@ -201,11 +195,8 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
     BaseNormals.Empty(TotalVertices);
     BaseTangents.Empty(TotalVertices);
     UVs.Empty(TotalVertices);
-    Triangles.Empty();
 
-    CurrentVertices.Empty();
-    CurrentNormals.Empty();
-    CurrentTangents.Empty();
+    TArray<int32> Triangles;
 
     for (int32 y = 0; y < VertRes; ++y)
     {
@@ -436,16 +427,13 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
         }
     }
 
-    // Inicializamos el array de colores con el mismo tamaño que los vértices
-    CurrentColors.Init(FLinearColor(0.5f, 0.5f, 0.5f, 1.0f), CurrentVertices.Num());
-
     CreateMeshSection_LinearColor(
         0,                    // SectionIndex
         BaseVertices,      // Vértices
         Triangles,           // Triángulos
         BaseNormals,      // Normales
         UVs,                 // UVs
-        CurrentColors,    // Colores de vértice
+        TArray<FLinearColor>(),    // Colores de vértice
         BaseTangents,     // Tangentes
         false
     );
@@ -486,11 +474,8 @@ void UCosmicMeshComponent::BuildSphereMesh()
     BaseNormals.Empty();
     BaseTangents.Empty();
     UVs.Empty();
-    Triangles.Empty();
-    
-    CurrentVertices.Empty();
-    CurrentNormals.Empty();
-    CurrentTangents.Empty();
+
+    TArray<int32> Triangles;
 
     // Aseguramos múltiplo de 2
     Resolution = FMath::Max(4, Resolution & ~1);
@@ -565,16 +550,13 @@ void UCosmicMeshComponent::BuildSphereMesh()
         }
     }
 
-    // Inicializamos el array de colores con el mismo tamaño que los vértices
-    CurrentColors.Init(FLinearColor(0.5f, 0.5f, 0.5f, 1.0f), CurrentVertices.Num());
-
     CreateMeshSection_LinearColor(
         0,                    // SectionIndex
         BaseVertices,      // Vértices
         Triangles,           // Triángulos
         BaseNormals,      // Normales
         UVs,                 // UVs
-        CurrentColors,    // Colores de vértice
+        TArray<FLinearColor>(),    // Colores de vértice
         BaseTangents,     // Tangentes
         false      // Crear colisión
     );
@@ -817,8 +799,8 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
     // Si no ha terminado, devolvemos false
     if (!NoiseTask->IsDone()) return false;
   
-    CurrentVertices = NoiseTask->GetTask().CalculatedVertices;
-    CurrentColors = NoiseTask->GetTask().CalculatedColors;
+    TArray<FVector> CurrentVertices = NoiseTask->GetTask().CalculatedVertices;
+    TArray<FLinearColor> CurrentColors = NoiseTask->GetTask().CalculatedColors;
 
     // Limpiamos la memoria de la tarea
     delete NoiseTask;
@@ -829,10 +811,10 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
     UpdateMeshSection_LinearColor(
         0,
         CurrentVertices,
-        CurrentNormals,
+        BaseNormals,
         UVs,
         CurrentColors,
-        CurrentTangents
+        BaseTangents
     );
 
     SetCollisionEnabled(ECollisionEnabled::NoCollision);

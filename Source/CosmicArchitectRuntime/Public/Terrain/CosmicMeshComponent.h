@@ -43,15 +43,8 @@ public:
     // Malla base (deformada a la esfera, sin alturas adicionales)
     TArray<FVector> BaseVertices;
     TArray<FVector> BaseNormals;
-    TArray<FProcMeshTangent> BaseTangents;
-
-    // Malla final (base + alturas)
-    TArray<FVector> CurrentVertices;
-    TArray<FLinearColor> CurrentColors;
-    TArray<int32> Triangles;
-    TArray<FVector> CurrentNormals;
-    TArray<FProcMeshTangent> CurrentTangents;
     TArray<FVector2D> UVs;
+    TArray<FProcMeshTangent> BaseTangents;
 
     void BuildBaseMesh();
     void BuildBaseProjectedMesh();

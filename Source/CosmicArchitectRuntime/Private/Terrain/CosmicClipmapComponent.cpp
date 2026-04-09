@@ -172,9 +172,9 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         //Calcular numero de celdas que hay que desplazar
         FIntPoint Shift = ComputeGridShift(ViewerPos, BaseGridSpacing * 2);
 
-        if (Shift != FIntPoint::ZeroValue) {
+        /*if (Shift != FIntPoint::ZeroValue) {
             UE_LOG(LogTemp, Warning, TEXT("SHIFT: %s"), *Shift.ToString());
-        }
+        }*/
 
         TotalShift += Shift;
 
