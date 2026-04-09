@@ -802,6 +802,10 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
     TArray<FVector> CurrentVertices = NoiseTask->GetTask().CalculatedVertices;
     TArray<FLinearColor> CurrentColors = NoiseTask->GetTask().CalculatedColors;
 
+    if (bIsPlanet) {
+        BaseNormals = NoiseTask->GetTask().CalculatedNormals;
+    }
+    
     // Limpiamos la memoria de la tarea
     delete NoiseTask;
     NoiseTask = nullptr;

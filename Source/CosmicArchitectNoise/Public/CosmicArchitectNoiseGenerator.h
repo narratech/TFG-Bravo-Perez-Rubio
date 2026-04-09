@@ -13,14 +13,13 @@ public:
 
 	// El array donde guardaremos el resultado
 	TArray<FVector> CalculatedVertices;
+    TArray<FVector> CalculatedNormals;
     TArray<FLinearColor> CalculatedColors;
 
 	// Datos de transformación
 	FTransform ComponentTransform;
 	FVector PlanetCenter;
-
     bool IsPlanet;
-
     FCosmicNoiseGenerationParameters NoiseSettings;
 
     FCosmicArchitectNoiseGenerator(
@@ -37,6 +36,7 @@ public:
     {
         CalculatedVertices.SetNumUninitialized(BaseVertices.Num());
         CalculatedColors.SetNumUninitialized(BaseVertices.Num());
+        CalculatedNormals.SetNumUninitialized(BaseVertices.Num());
     }
 
     
@@ -260,6 +260,7 @@ public:
 
             // Calcular posición final del vértice
             if (IsPlanet) {
+                CalculatedNormals[i] = NoiseDir;
                 CalculatedVertices[i] += (NoiseDir * FinalHeight);
             }
             else {
