@@ -809,7 +809,6 @@ void UCosmicMeshComponent::RequestMeshUpdate()
 
     NoiseTask = new FAsyncTask<FCosmicArchitectNoiseGenerator>(
         BaseVertices,
-        BaseNormals,
         PatchTransform,
         PlanetCenter,
         bIsPlanet,

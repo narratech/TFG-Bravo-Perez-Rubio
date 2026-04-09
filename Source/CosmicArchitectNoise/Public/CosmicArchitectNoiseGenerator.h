@@ -10,7 +10,6 @@ class FCosmicArchitectNoiseGenerator: public FNonAbandonableTask {
 public:
 	// Referencias a los datos inmutables de la malla
 	const TArray<FVector>& BaseVertices;
-	const TArray<FVector>& BaseNormals;
 
 	// El array donde guardaremos el resultado
 	TArray<FVector> CalculatedVertices;
@@ -26,13 +25,11 @@ public:
 
     FCosmicArchitectNoiseGenerator(
         const TArray<FVector>& InBaseVerts,
-        const TArray<FVector>& InBaseNormals,
         FTransform InTransform,
         FVector InPlanetCenter,
         bool InPlanet,
         FCosmicNoiseGenerationParameters NoiseSettings)
         : BaseVertices(InBaseVerts)
-        , BaseNormals(InBaseNormals)
         , ComponentTransform(InTransform)
         , PlanetCenter(InPlanetCenter)
         ,IsPlanet(InPlanet),
@@ -262,7 +259,13 @@ public:
             }
 
             // Calcular posición final del vértice
-            CalculatedVertices[i] = BaseVertices[i] + (BaseNormals[i] * FinalHeight);
+            if (IsPlanet) {
+                CalculatedVertices[i] += (NoiseDir * FinalHeight);
+            }
+            else {
+                CalculatedVertices[i] = BaseVertices[i] + (FVector::UpVector * FinalHeight);
+            }
+            
 
             // --- CÁLCULO DE COLOR (Temperatura y Humedad) ---
             float Latitude = FMath::Abs(NoiseDir.Z);
