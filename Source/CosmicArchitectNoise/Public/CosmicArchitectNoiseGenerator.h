@@ -57,7 +57,7 @@ public:
 
             for (size_t i = 0; i < VertexCount; i++)
             {
-                CalculatedVertices[i] = TransformMatrix.TransformPosition(BaseVertices[i] + PlanetCenter);
+                CalculatedVertices[i] = TransformMatrix.TransformPosition(BaseVertices[i]);
             }
         }
         

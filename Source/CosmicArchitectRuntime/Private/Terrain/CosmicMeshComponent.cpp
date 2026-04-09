@@ -745,7 +745,7 @@ void UCosmicMeshComponent::SetPositionAndRotation(const FVector& SurfacePos, con
 
     PatchTransform = FTransform(
         PatchRotation,
-        SurfacePos, // lo colocas sobre la superficie
+        SurfacePos, 
         FVector(1, 1, 1)
     );
 }

@@ -193,9 +193,12 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             }
         }
         else if (Shift != FIntPoint::ZeroValue){
+
+            FRotator Rotation = GetPatchRotation(N);
+
             for (size_t i = 0; i < NumLevels; i++)
             {
-                Levels[i]->SetPositionAndRotation(SurfacePos, GetPatchRotation(N));
+                Levels[i]->SetPositionAndRotation(SurfacePos - CurrentActorPosition, Rotation);
                 Levels[i]->RequestMeshUpdate();
             }
         }
