@@ -195,6 +195,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         else if (Shift != FIntPoint::ZeroValue){
             for (size_t i = 0; i < NumLevels; i++)
             {
+                Levels[i]->SetPositionAndRotation(SurfacePos, GetPatchRotation(N));
                 Levels[i]->RequestMeshUpdate();
             }
         }
@@ -526,6 +527,24 @@ void UCosmicClipmapComponent::UpdatePatchTransform(const FVector& SurfacePos, co
         CollisionComponent->SetWorldLocationAndRotation(SurfacePos, PatchRotation);
     }
    
+}
+
+FRotator UCosmicClipmapComponent::GetPatchRotation(const FVector& N) const
+{
+    const FVector Up = N;
+
+    // Elegimos un vector no colineal (branch barato)
+    const FVector Tangent = (FMath::Abs(Up.Z) < 0.99f)
+        ? FVector(0, 0, 1)
+        : FVector(1, 0, 0);
+
+    // Right sale normalizado si Up y Tangent son unitarios
+    FVector Right = FVector::CrossProduct(Tangent, Up);
+    Right.Normalize(); // solo UNA normalización
+
+    const FVector Forward = FVector::CrossProduct(Up, Right); // ya unitario
+
+    return FRotationMatrix::MakeFromXZ(Forward, Up).Rotator();
 }
 
 FIntPoint UCosmicClipmapComponent::ComputeGridShiftPlanar(

@@ -91,6 +91,7 @@ protected:
     /** Actualizar colisión cerca del jugador */
     void UpdateCollisionNearPlayer(const FVector& SurfacePos, const FVector& SurfaceNormal, const float DistanceToSurface);
     void UpdatePatchTransform(const FVector& SurfacePos, const FVector& N);
+    FRotator GetPatchRotation(const FVector& SurfacePos) const;
     float GetDistanceToSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N);
     float GetDistanceToPlainSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N);
     FVector GetPlayerLocation();

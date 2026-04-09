@@ -812,6 +812,7 @@ void UCosmicMeshComponent::RequestMeshUpdate()
         BaseNormals,
         PatchTransform,
         PlanetCenter,
+        bIsPlanet,
         Params
     );
     // Lanzar la tarea asincrona

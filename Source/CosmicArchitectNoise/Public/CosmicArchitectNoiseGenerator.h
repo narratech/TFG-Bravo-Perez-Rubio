@@ -170,7 +170,7 @@ public:
         for (int32 i = 0; i < VertexCount; i++)
         {
             FVector WorldPos = IsPlanet ? CalculatedVertices[i] : BaseVertices[i];
-            FVector NoiseDir = IsPlanet ? (WorldPos - PlanetCenter).GetSafeNormal() : FVector::UpVector;
+            FVector NoiseDir = IsPlanet ? (WorldPos - PlanetCenter).GetSafeNormal() : WorldPos;
 
             float X = NoiseDir.X;
             float Y = NoiseDir.Y;
