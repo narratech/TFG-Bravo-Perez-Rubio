@@ -21,14 +21,14 @@ public:
 	FTransform ComponentTransform;
 	FVector PlanetCenter;
 
-    FCosmicNoiseGenerationParameters NoiseSettings;
+    UCosmicNoiseSettings* NoiseSettings;
 
     FCosmicArchitectNoiseGenerator(
         const TArray<FVector>& InBaseVerts,
         const TArray<FVector>& InBaseNormals,
         FTransform InTransform,
         FVector InPlanetCenter,
-        FCosmicNoiseGenerationParameters NoiseSettings)
+        UCosmicNoiseSettings* NoiseSettings)
         : BaseVertices(InBaseVerts)
         , BaseNormals(InBaseNormals)
         , ComponentTransform(InTransform)
@@ -49,7 +49,7 @@ public:
     void DoWork()
     {
 
-        FCosmicNoiseEvaluator Evaluator(NoiseSettings);
+        FCosmicNoiseEvaluator Evaluator(NoiseSettings->Params);
 
         const int32 VertexCount = BaseVertices.Num();
 

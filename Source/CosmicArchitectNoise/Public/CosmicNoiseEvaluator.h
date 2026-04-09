@@ -7,7 +7,7 @@
 struct COSMICARCHITECTNOISE_API FCosmicNoiseEvaluator
 {
 public:
-    FCosmicNoiseEvaluator(const FCosmicNoiseGenerationParameters& InSettings);
+    FCosmicNoiseEvaluator(FCosmicNoiseGenerationParameters InSettings);
 
     // Copia de los ajustes para tenerlos a mano
     FCosmicNoiseGenerationParameters Settings;

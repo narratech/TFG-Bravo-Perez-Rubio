@@ -159,12 +159,6 @@ void UCosmicFoliageSpawner::GenerateCellFoliage(const FCubeMapCell& Cell, const 
     if (!FoliageCollection)
         return;
 
-    FCosmicNoiseGenerationParameters Params;
-    if (NoiseSettings)
-    {
-        Params = NoiseSettings->Params;
-    }
-
     float CellAreaKm2 = Octree.GetNodeAreaKm2(Cell);
 
     FAsyncTask<FFoliageGenerationTask>* Task =
@@ -173,7 +167,7 @@ void UCosmicFoliageSpawner::GenerateCellFoliage(const FCubeMapCell& Cell, const 
             FoliageCollection,
             PlanetCenter,
             PlanetRadius,
-            Params,
+            NoiseSettings,
             CellAreaKm2
         );
 

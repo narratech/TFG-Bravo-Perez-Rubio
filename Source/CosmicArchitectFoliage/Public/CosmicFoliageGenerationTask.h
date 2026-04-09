@@ -34,7 +34,7 @@ public:
     UCosmicFoliageCollection* Collection;
     FVector PlanetCenter;
     float PlanetRadius;
-    FCosmicNoiseGenerationParameters NoiseSettings;
+    UCosmicNoiseSettings* NoiseSettings;
     float CellAreaKm2;
 
     // Almacenamos los puntos de generación con su información ambiental
@@ -55,7 +55,7 @@ public:
         UCosmicFoliageCollection* InCollection,
         const FVector& InPlanetCenter,
         float InPlanetRadius,
-        FCosmicNoiseGenerationParameters InNoiseSettings,
+        UCosmicNoiseSettings* InNoiseSettings,
         float InCellAreaKm2)
         : Cell(InCell)
         , Collection(InCollection)

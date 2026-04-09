@@ -7,14 +7,14 @@
 #include "CosmicNoiseEvaluator.h"
 
 
-TArray<float> CosmicNoise::CalculateHeights(const TArray<FVector>& Points, const FVector& PlanetCenter, const FTransform& ComponentTransform, FCosmicNoiseGenerationParameters Settings)
+TArray<float> CosmicNoise::CalculateHeights(const TArray<FVector>& Points, const FVector& PlanetCenter, const FTransform& ComponentTransform, UCosmicNoiseSettings* Settings)
 {
     TArray<float> OutHeights;
     if (Points.IsEmpty()) return OutHeights;
 
     OutHeights.SetNumUninitialized(Points.Num());
 
-    FCosmicNoiseEvaluator Evaluator(Settings);
+    FCosmicNoiseEvaluator Evaluator(Settings->Params);
 
     for (int32 i = 0; i < Points.Num(); i++)
     {
@@ -32,7 +32,7 @@ TArray<float> CosmicNoise::CalculateHeights(const TArray<FVector>& Points, const
     return OutHeights;
 }
 
-TArray<float> CosmicNoise::CalculateHeightsDirect(const TArray<FVector>& Points, FCosmicNoiseGenerationParameters Settings)
+TArray<float> CosmicNoise::CalculateHeightsDirect(const TArray<FVector>& Points, UCosmicNoiseSettings* Settings)
 {
     TArray<float> OutHeights;
 
@@ -44,7 +44,7 @@ TArray<float> CosmicNoise::CalculateHeightsDirect(const TArray<FVector>& Points,
 
     OutHeights.SetNumUninitialized(Points.Num());
 
-    FCosmicNoiseEvaluator Evaluator(Settings);
+    FCosmicNoiseEvaluator Evaluator(Settings->Params);
 
     // Loop de puntos
     for (int32 i = 0; i < Points.Num(); i++)

@@ -195,7 +195,6 @@ void UCosmicNoiseSettings::UpdateNoiseFromSimple()
     SimpleBiome.NoiseLayers.Add(Layer);
 
     Params.Biomes.Add(SimpleBiome);
-    Params.Biomes.Empty();
 
     // Warp proporcional a la altura máxima
     Params.DomainWarpStrength = Params.MaxMountainHeight * FMath::Lerp(0.02f, 0.15f, Params.Roughness);
@@ -240,5 +239,6 @@ void UCosmicNoiseSettings::PostEditChangeProperty(FPropertyChangedEvent& Propert
             }
         }
     }
+
 }
 #endif

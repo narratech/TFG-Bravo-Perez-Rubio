@@ -53,7 +53,7 @@ public:
 
     void GenerateCollisionMesh(float Radius);
 
-    void UpdateCollisionMesh(const UCosmicNoiseSettings* NoiseSettings);
+    void UpdateCollisionMesh(UCosmicNoiseSettings* NoiseSettings);
 
     
 

@@ -1,6 +1,6 @@
 #include "CosmicNoiseEvaluator.h"
 
-FCosmicNoiseEvaluator::FCosmicNoiseEvaluator(const FCosmicNoiseGenerationParameters& InSettings)
+FCosmicNoiseEvaluator::FCosmicNoiseEvaluator(FCosmicNoiseGenerationParameters InSettings)
     : Settings(InSettings)
 {
     // 1. CONFIGURAR CLIMA Y WARP GLOBALES
