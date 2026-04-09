@@ -159,22 +159,17 @@ void UCosmicMeshComponent::BuildBasePlainMesh()
         }
     }
 
-    // COPIAR a Current arrays
-    CurrentVertices = BaseVertices;
-    CurrentNormals = BaseNormals;
-    CurrentTangents = BaseTangents;
-
     // Inicializamos el array de colores con el mismo tamaño que los vértices
     CurrentColors.Init(FLinearColor(0.5f, 0.5f, 0.5f, 1.0f), CurrentVertices.Num());
 
     CreateMeshSection_LinearColor(
         0,                    // SectionIndex
-        CurrentVertices,      // Vértices
+        BaseVertices,      // Vértices
         Triangles,           // Triángulos
-        CurrentNormals,      // Normales
+        BaseNormals,      // Normales
         UVs,                 // UVs
         CurrentColors,    // Colores de vértice
-        CurrentTangents,     // Tangentes
+        BaseTangents,     // Tangentes
         false
     );
 
@@ -216,17 +211,17 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
     {
         for (int32 x = 0; x < VertRes; ++x)
         {
-            float WorldX = (x - HalfRes) * GridSpacing;
-            float WorldY = (y - HalfRes) * GridSpacing;
+            double WorldX = (x - HalfRes) * GridSpacing;
+            double WorldY = (y - HalfRes) * GridSpacing;
 
             // Calcular posición en esfera
             FVector SphereCenter = FVector(0, 0, -PlanetRadius);
-            float Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
+            double Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
             FVector BasePosition;
 
             if (Distance2D <= PlanetRadius && Distance2D > 0.001f) // Evitar división por 0
             {
-                float ZOffset = FMath::Sqrt(PlanetRadius * PlanetRadius - Distance2D * Distance2D);
+                double ZOffset = FMath::Sqrt(PlanetRadius * PlanetRadius - Distance2D * Distance2D);
                 BasePosition = FVector(WorldX, WorldY, -PlanetRadius + ZOffset);
             }
             else if (Distance2D <= 0.001f)
@@ -236,7 +231,7 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
             }
             else
             {
-                float Scale = PlanetRadius / Distance2D;
+                double Scale = PlanetRadius / Distance2D;
                 BasePosition = FVector(WorldX * Scale, WorldY * Scale, -PlanetRadius);
             }
 
@@ -570,22 +565,17 @@ void UCosmicMeshComponent::BuildSphereMesh()
         }
     }
 
-    // 5. COPIAR a Current arrays
-    CurrentVertices = BaseVertices;
-    CurrentNormals = BaseNormals;
-    CurrentTangents = BaseTangents;
-
     // Inicializamos el array de colores con el mismo tamaño que los vértices
     CurrentColors.Init(FLinearColor(0.5f, 0.5f, 0.5f, 1.0f), CurrentVertices.Num());
 
     CreateMeshSection_LinearColor(
         0,                    // SectionIndex
-        CurrentVertices,      // Vértices
+        BaseVertices,      // Vértices
         Triangles,           // Triángulos
-        CurrentNormals,      // Normales
+        BaseNormals,      // Normales
         UVs,                 // UVs
         CurrentColors,    // Colores de vértice
-        CurrentTangents,     // Tangentes
+        BaseTangents,     // Tangentes
         false      // Crear colisión
     );
 
@@ -717,31 +707,31 @@ void UCosmicMeshComponent::ReScaleLevel(int64 NewGridSpacing)
         {
             for (int32 x = 0; x < VertRes; ++x)
             {
-                float WorldX = (x - HalfRes) * GridSpacing;
-                float WorldY = (y - HalfRes) * GridSpacing;
+                double WorldX = (x - HalfRes) * GridSpacing;
+                double WorldY = (y - HalfRes) * GridSpacing;
 
                 // Calcular posición en esfera
                 FVector SphereCenter = FVector(0, 0, -PlanetRadius);
-                float Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
-                FVector BasePosition;
+                double Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
+                FVector Position;
 
                 if (Distance2D <= PlanetRadius && Distance2D > 0.001f) // Evitar división por 0
                 {
-                    float ZOffset = FMath::Sqrt(PlanetRadius * PlanetRadius - Distance2D * Distance2D);
-                    BasePosition = FVector(WorldX, WorldY, -PlanetRadius + ZOffset);
+                    double ZOffset = FMath::Sqrt(PlanetRadius * PlanetRadius - Distance2D * Distance2D);
+                    Position = FVector(WorldX, WorldY, -PlanetRadius + ZOffset);
                 }
                 else if (Distance2D <= 0.001f)
                 {
                     // Centro - evitar NaN
-                    BasePosition = FVector(0, 0, 0);
+                    Position = FVector(0, 0, 0);
                 }
                 else
                 {
-                    float Scale = PlanetRadius / Distance2D;
-                    BasePosition = FVector(WorldX * Scale, WorldY * Scale, -PlanetRadius);
+                    double Scale = PlanetRadius / Distance2D;
+                    Position = FVector(WorldX * Scale, WorldY * Scale, -PlanetRadius);
                 }
 
-                BaseVertices.Add(BasePosition);
+                BaseVertices[x + y * VertRes] = Position;
             }
         }
     }
@@ -768,14 +758,11 @@ void UCosmicMeshComponent::ReScaleLevel(int64 NewGridSpacing)
 
 void UCosmicMeshComponent::SetPositionAndRotation(const FVector& SurfacePos, const FRotator& PatchRotation)
 {
-
     PatchTransform = FTransform(
         PatchRotation,
         SurfacePos, // lo colocas sobre la superficie
         FVector(1, 1, 1)
     );
-
-    
 }
 
 FVector UCosmicMeshComponent::ProjectToPlanet(const FVector& WorldPos, const FVector& PlanetCenter) const
