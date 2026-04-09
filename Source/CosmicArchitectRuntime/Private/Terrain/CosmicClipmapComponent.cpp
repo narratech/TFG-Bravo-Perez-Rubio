@@ -293,15 +293,7 @@ void UCosmicClipmapComponent::CreateLevels()
         if (DynamicPlanetMat)
         {
             Mesh->SetMaterial(0, DynamicPlanetMat);
-            
-            
         }
-
-        //else
-        //{
-        //    // Material por defecto
-        //    Mesh->SetMaterial(0, UMaterial::GetDefaultMaterial(MD_Surface));
-        //}
 
         // Guardar referencia
         Levels[L] = Mesh;
@@ -309,14 +301,7 @@ void UCosmicClipmapComponent::CreateLevels()
         //UE_LOG(LogTemp, Warning, TEXT("  Nivel %d creado: GridSpacing=%.2f, bIsRing=%s"),
         //    L, Mesh->GridSpacing, Mesh->bIsRing ? TEXT("true") : TEXT("false"));
     }
-
-    /*FVector SurfacePos = FVector();
-    FVector N = FVector();
-
-    float DistanceToSurface = GetDistanceToSurface(SurfacePos, N);
-    UpdatePatchTransform(SurfacePos, N);*/
-
-        
+   
     bInit = true;
     //UE_LOG(LogTemp, Warning, TEXT("CreateLevels completado. Niveles totales: %d"), Levels.Num());
 }
