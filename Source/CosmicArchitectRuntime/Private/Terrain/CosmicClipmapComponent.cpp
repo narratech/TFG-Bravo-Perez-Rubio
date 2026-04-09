@@ -250,6 +250,19 @@ void UCosmicClipmapComponent::CreateLevels()
      
     //UE_LOG(LogTemp, Error, TEXT("BaseGridSpacing %.4f"), BaseGridSpacing);
 
+    FVector SurfacePos;
+    FVector N;
+    FVector ViewerPos;
+
+    if (IsPlanet) {
+        GetDistanceToSurface(ViewerPos, SurfacePos, N);
+    }
+    else {
+        GetDistanceToPlainSurface(ViewerPos, SurfacePos, N);
+    }
+
+    FRotator PatchRotation = GetPatchRotation(N);
+
     // 4. Crear cada nivel
     for (int32 L = 0; L < NumLevels; ++L)
     {
@@ -287,8 +300,13 @@ void UCosmicClipmapComponent::CreateLevels()
         Mesh->NoiseSettings = NoiseSettings;
         Mesh->bIsPlanet = IsPlanet;
 
+        if (IsPlanet) {
+            Mesh->SetPositionAndRotation(SurfacePos, PatchRotation);
+        }
+
         // Construir malla
         Mesh->BuildBaseMesh();
+        Mesh->RequestMeshUpdate();
 
         // Asignar material
         if (DynamicPlanetMat)
