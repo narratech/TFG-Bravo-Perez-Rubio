@@ -758,6 +758,9 @@ void UCosmicMeshComponent::ReScaleLevel(int64 NewGridSpacing)
 
 void UCosmicMeshComponent::SetPositionAndRotation(const FVector& SurfacePos, const FRotator& PatchRotation)
 {
+    // Centro del planeta 
+    FVector PlanetCenter = GetOwner()->GetActorLocation();
+
     PatchTransform = FTransform(
         PatchRotation,
         SurfacePos, // lo colocas sobre la superficie
