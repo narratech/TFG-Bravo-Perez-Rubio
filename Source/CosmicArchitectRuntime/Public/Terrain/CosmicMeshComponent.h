@@ -60,6 +60,7 @@ public:
     FVector CachedPlayerPos;
 
     void BuildBaseMesh();
+    void BuildBaseProjectedMesh();
     void BuildBasePlainMesh();
     void BuildSphereMesh();
     void ReScaleLevel(int64 GridSpacing);

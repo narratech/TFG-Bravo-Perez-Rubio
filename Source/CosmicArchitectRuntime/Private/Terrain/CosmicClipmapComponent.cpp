@@ -112,7 +112,6 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         if (!bInit && !bPerformaceMode) {
             CreateLevels();
-            UpdatePlanetBasis(SurfacePos, N);
         }
 
         if (FarLevel->bActiveMesh && !bPerformaceMode || !FarLevel->bActiveMesh && bPerformaceMode)
@@ -179,27 +178,25 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         TotalShift += Shift;
 
-        bool bUpdateBasis = false;
+        if (!IsPlanet) {
+            if (UpdateClipmapLevels) {
 
-        if (UpdateClipmapLevels) {
-
-            UpdateLevels(TotalShift);
-
+                UpdateLevels(TotalShift);
+                for (size_t i = 0; i < NumLevels; i++)
+                {
+                    Levels[i]->RequestMeshUpdate();
+                }
+            }
+            else if (Shift != FIntPoint::ZeroValue)
+            {
+                UpdateLevels(Shift);
+            }
+        }
+        else if (Shift != FIntPoint::ZeroValue){
             for (size_t i = 0; i < NumLevels; i++)
             {
                 Levels[i]->RequestMeshUpdate();
             }
-            bUpdateBasis = true;
-        }
-        else if (Shift != FIntPoint::ZeroValue)
-        {
-            // actualizar niveles necesarios
-            bUpdateBasis = UpdateLevels(Shift) == NumLevels - 1;
-        }
-
-        if (IsPlanet && bUpdateBasis)
-        {
-            UpdatePlanetBasis(SurfacePos, N);
         }
     }    
 }
