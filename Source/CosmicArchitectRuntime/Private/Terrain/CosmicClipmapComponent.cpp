@@ -30,13 +30,15 @@ UCosmicClipmapComponent::UCosmicClipmapComponent()
 }
 
 
-void UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePos, const FVector& SurfaceNormal, const float DistanceToSurface)
+void UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePos, const FVector& SurfaceNormal, const FRotator& PatchRotation, const float DistanceToSurface)
 {
     if (!CollisionComponent || !NoiseSettings) return;
 
     // Solo generar colisión si el jugador está cerca de la superficie
     if (DistanceToSurface < CollisionComponent->MaxCollisionDistance)
     {
+
+        CollisionComponent->SetWorldLocationAndRotation(SurfacePos, PatchRotation);       
         CollisionComponent->UpdateCollisionMesh(NoiseSettings);
     }
     else
@@ -85,9 +87,9 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         ElapsedTime = 0;
 
-        FVector SurfacePos = FVector();
-        FVector N = FVector();
-        FVector ViewerPos = FVector();
+        FVector SurfacePos;
+        FVector N;
+        FVector ViewerPos;
         float DistanceToSurface;
 
         if (IsPlanet) {
@@ -97,7 +99,9 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             DistanceToSurface = GetDistanceToPlainSurface(ViewerPos, SurfacePos, N);
         }
 
-        //UpdateCollisionNearPlayer(SurfacePos, N, DistanceToSurface);
+        FRotator Rotation = GetPatchRotation(N);
+
+        UpdateCollisionNearPlayer(SurfacePos, N, Rotation, DistanceToSurface);
 
         if (!FarLevel)
             return;
@@ -194,7 +198,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         }
         else if (Shift != FIntPoint::ZeroValue){
 
-            FRotator Rotation = GetPatchRotation(N);
+            
 
             for (size_t i = 0; i < NumLevels; i++)
             {

@@ -51,17 +51,17 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(float Radius)
     {
         for (int32 x = 0; x < VertRes; ++x)
         {
-            float WorldX = (x - HalfRes) * CollisionTriangleSize;
-            float WorldY = (y - HalfRes) * CollisionTriangleSize;
+            double WorldX = (x - HalfRes) * CollisionTriangleSize;
+            double WorldY = (y - HalfRes) * CollisionTriangleSize;
 
             // Calcular posición en esfera
             FVector SphereCenter = FVector(0, 0, -Radius);
-            float Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
+            double Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
             FVector BasePosition;
 
             if (Distance2D <= Radius && Distance2D > 0.001f) // Evitar división por 0
             {
-                float ZOffset = FMath::Sqrt(Radius * Radius - Distance2D * Distance2D);
+                double ZOffset = FMath::Sqrt(Radius * Radius - Distance2D * Distance2D);
                 BasePosition = FVector(WorldX, WorldY, -Radius + ZOffset);
             }
             else if (Distance2D <= 0.001f)
@@ -71,7 +71,7 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(float Radius)
             }
             else
             {
-                float Scale = Radius / Distance2D;
+                double Scale = Radius / Distance2D;
                 BasePosition = FVector(WorldX * Scale, WorldY * Scale, -Radius);
             }
 
