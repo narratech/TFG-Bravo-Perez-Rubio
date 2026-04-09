@@ -6,14 +6,7 @@
 
 UCosmicNoiseSettings::UCosmicNoiseSettings()
 {
-    /*Seed = 1337;
-    MaxMountainHeight = 3000.f;
-    Mountainous = 0.6f;
-    Roughness = 0.4f;
-    Detail = 0.7f;
-    Smoothness = 0.5f;
-
-    UpdateAdvancedFromSimple();*/
+    UpdateAdvancedFromSimple();
 }
 
 void UCosmicNoiseSettings::UpdateAdvancedFromSimple()
