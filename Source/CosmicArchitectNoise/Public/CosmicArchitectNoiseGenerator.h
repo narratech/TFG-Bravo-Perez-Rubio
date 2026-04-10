@@ -66,8 +66,6 @@ public:
         
         FCosmicNoiseEvaluator Evaluator(NoiseSettings->Params);
 
-        const int32 VertexCount = BaseVertices.Num();
-
         // Loop de vértices
         for (int32 i = 0; i < VertexCount; i++)
         {
