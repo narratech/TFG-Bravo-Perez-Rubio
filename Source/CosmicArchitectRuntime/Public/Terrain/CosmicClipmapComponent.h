@@ -74,6 +74,7 @@ protected:
     bool bPerformaceMode = false;
     bool bInit = false;
     bool bPerformanceBuild = false;
+    bool bPendingTasksRemaining = false;
     int64 BaseSpacing = 200;
 
     FColor PlanetMainColor1 = FColor::Green;
