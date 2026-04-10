@@ -148,7 +148,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
                     Levels[i]->CheckAndApplyMeshUpdate();
                 }
                 bPendingTasksRemaining = false;
-                UE_LOG(LogTemp, Warning, TEXT("Tareas pendientes eliminadas"));
+                //UE_LOG(LogTemp, Warning, TEXT("Tareas pendientes eliminadas"));
             }
         }
 
