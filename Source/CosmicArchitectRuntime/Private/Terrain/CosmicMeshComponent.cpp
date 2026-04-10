@@ -477,6 +477,8 @@ void UCosmicMeshComponent::BuildSphereMesh()
 
     TArray<int32> Triangles;
 
+    bIsSphereMesh = true;
+
     // Aseguramos múltiplo de 2
     Resolution = FMath::Max(4, Resolution & ~1);
 
@@ -786,6 +788,7 @@ void UCosmicMeshComponent::RequestMeshUpdate()
         PlanetRadius,
         GridSpacing,
         bIsPlanet,
+        bIsSphereMesh,
         Params
     );
     // Lanzar la tarea asincrona

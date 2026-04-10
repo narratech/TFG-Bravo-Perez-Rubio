@@ -24,6 +24,7 @@ public:
     double GridSpacing;
 
     bool IsPlanet;
+    bool IsSphere;
     FCosmicNoiseGenerationParameters NoiseSettings;
 
     FCosmicArchitectNoiseGenerator(
@@ -33,14 +34,16 @@ public:
         double InPlanetRadius,
         double InGridSpacing,
         bool InPlanet,
+        bool InIsSphere,
         FCosmicNoiseGenerationParameters NoiseSettings)
         : BaseVertices(InBaseVerts)
         , ComponentTransform(InTransform)
         , PlanetCenter(InPlanetCenter)
         ,PlanetRadius(InPlanetRadius)
         ,GridSpacing(InGridSpacing)
-        ,IsPlanet(InPlanet),
-        NoiseSettings(NoiseSettings)
+        ,IsPlanet(InPlanet)
+        ,IsSphere(InIsSphere)
+        ,NoiseSettings(NoiseSettings)
     {
         CalculatedVertices.SetNumUninitialized(BaseVertices.Num());
         CalculatedColors.SetNumUninitialized(BaseVertices.Num());
@@ -78,7 +81,11 @@ public:
         for (int32 i = 0; i < VertexCount; i++)
         {
             FVector WorldPos = IsPlanet ? CalculatedVertices[i] : BaseVertices[i];
-            FVector NoiseDir = IsPlanet ? WorldPos.GetSafeNormal() : FVector(WorldPos.X, WorldPos.Y, 0);
+            FVector NoiseDir = IsPlanet || IsSphere ? WorldPos.GetSafeNormal() : FVector(WorldPos.X, WorldPos.Y, 0);
+
+            if (IsSphere) {
+                CalculatedVertices[i] = WorldPos;
+            }
 
             float FinalHeight;
             FLinearColor FinalColor;
@@ -87,7 +94,7 @@ public:
 
             FVector Normal;
 
-            if (IsPlanet) {
+            if (IsPlanet || IsSphere) {
                 // Crear dos vectores perpendiculares a la dirección
                 FVector Tangent1, Tangent2;
                 NoiseDir.FindBestAxisVectors(Tangent1, Tangent2);
@@ -120,7 +127,7 @@ public:
             Evaluator.EvaluatePoint(NoiseDir, FinalHeight, FinalColor);
 
             // Calcular posición final del vértice
-            if (IsPlanet) {
+            if (IsPlanet || IsSphere) {
                 CalculatedNormals[i] = Normal;
                 CalculatedVertices[i] += (NoiseDir * FinalHeight);
             }

@@ -34,6 +34,7 @@ public:
     bool bIsRing;
     bool bIsPlanet;
     bool bMeshCreated = false;
+    bool bIsSphereMesh = false;
     bool bActiveMesh;
 
     FTransform PatchTransform;
