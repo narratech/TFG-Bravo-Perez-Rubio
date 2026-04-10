@@ -477,6 +477,8 @@ void UCosmicMeshComponent::BuildSphereMesh()
 
     TArray<int32> Triangles;
 
+    bIsSphereMesh = true;
+
     // Aseguramos múltiplo de 2
     Resolution = FMath::Max(4, Resolution & ~1);
 
@@ -779,13 +781,14 @@ void UCosmicMeshComponent::RequestMeshUpdate()
         Params = NoiseSettings->Params;
     }
 
-    NoiseTask = new FAsyncTask<FCosmicArchitectNoiseGenerator>(
+    NoiseTask = MakeUnique<FAsyncTask<FCosmicArchitectNoiseGenerator>>(
         BaseVertices,
         PatchTransform,
         PlanetCenter,
         PlanetRadius,
         GridSpacing,
         bIsPlanet,
+        bIsSphereMesh,
         Params
     );
     // Lanzar la tarea asincrona
@@ -800,6 +803,8 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
     if (!NoiseTask) return true;
     // Si no ha terminado, devolvemos false
     if (!NoiseTask->IsDone()) return false;
+
+    NoiseTask->EnsureCompletion();
   
     TArray<FVector> CurrentVertices = NoiseTask->GetTask().CalculatedVertices;
     TArray<FLinearColor> CurrentColors = NoiseTask->GetTask().CalculatedColors;
@@ -809,8 +814,8 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
     }
     
     // Limpiamos la memoria de la tarea
-    delete NoiseTask;
-    NoiseTask = nullptr;
+    NoiseTask.Reset();
+
     bIsGeneratingNoise = false;
 
     // Actualizamos la sección de la malla (Esto ocurre instantáneamente en el Game Thread)

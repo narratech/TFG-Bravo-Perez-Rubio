@@ -34,6 +34,7 @@ public:
     bool bIsRing;
     bool bIsPlanet;
     bool bMeshCreated = false;
+    bool bIsSphereMesh = false;
     bool bActiveMesh;
 
     FTransform PatchTransform;
@@ -65,7 +66,7 @@ public:
     int32 GetQuadrantIndex(EClipmapQuadrant Q) const;
     void SetHoleQuadrant(EClipmapQuadrant NewQuadrant);
 
-    FAsyncTask<FCosmicArchitectNoiseGenerator>* NoiseTask = nullptr;
+    TUniquePtr<FAsyncTask<FCosmicArchitectNoiseGenerator>> NoiseTask;
     bool bIsGeneratingNoise = false;
 };
 

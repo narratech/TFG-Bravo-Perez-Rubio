@@ -131,7 +131,7 @@ void ACosmicSpaceShip::AplicarTraslacion(const FInputActionValue& Value)
 
 void ACosmicSpaceShip::AplicarOrientacion(const FInputActionValue& Value)
 {
-	FVector2D LookAxisVector = -Value.Get<FVector2D>();
+	FVector2D LookAxisVector = Value.Get<FVector2D>();
 
 	if (!LookAxisVector.IsNearlyZero() && ShipMesh)
 	{

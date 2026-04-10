@@ -125,6 +125,31 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             {
                 Levels[i]->SetMeshActive(!bPerformaceMode);
             }
+
+            bPendingTasksRemaining = bPerformaceMode;
+        }
+
+        //Acabar tareas pendientes
+        if (bPerformaceMode && bPendingTasksRemaining) {
+            bool remainingTasks = false;
+
+            //Ver si han acabado todas las tareas
+            for (size_t i = 0; i < Levels.Num(); i++)
+            {
+                if (Levels[i]->IsTaskActive()) {
+                    remainingTasks = true;
+                    break;
+                }
+            }
+
+            if (!remainingTasks) {
+                for (size_t i = 0; i < Levels.Num(); i++)
+                {
+                    Levels[i]->CheckAndApplyMeshUpdate();
+                }
+                bPendingTasksRemaining = false;
+                //UE_LOG(LogTemp, Warning, TEXT("Tareas pendientes eliminadas"));
+            }
         }
 
         if (bPerformaceMode || FreezeGeneration) return;
