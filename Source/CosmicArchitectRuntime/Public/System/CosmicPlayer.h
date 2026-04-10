@@ -7,9 +7,12 @@
 #include "InputActionValue.h"
 #include "CosmicPlayer.generated.h"
 
+class UCosmicGravityComponent;
+
 // E: Peón principal para la exploración a pie en superficies planetarias (6DOF / Gravedad Esférica).
 // I: Main pawn for on-foot exploration on planetary surfaces (6DOF / Spherical Gravity).
 UCLASS(Blueprintable, BlueprintType)
+
 class COSMICARCHITECTRUNTIME_API ACosmicPlayer : public APawn
 {
 	GENERATED_BODY()
@@ -45,6 +48,11 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Componentes")
 	class UCameraComponent* CameraComp;
 
+	// E: Componente de gravedad que calculará las fuerzas del planeta.
+	// I: Gravity component that will calculate the planet's forces.
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Componentes")
+	UCosmicGravityComponent* GravityComp;
+
 	// =========================================================================
 	// VARIABLES CONFIGURABLES DESDE EL EDITOR / CONFIGURABLE VARIABLES FROM EDITOR
 	// =========================================================================
@@ -58,6 +66,15 @@ protected:
 	// I: Upward jump impulse power (relative to the planet).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Fisicas")
 	double JumpForce = 500000.0;
+
+	// [E: Almacena la dirección del input para que el Tick rote la cápsula hacia el movimiento]
+	// [I: Stores the input direction so the Tick can rotate the capsule towards movement]
+	FVector TargetFacingDirection = FVector::ZeroVector;
+
+	// [E: Variables para almacenar la rotación local de la cámara y evitar conflictos con el CameraLag]
+	// [I: Variables to store local camera rotation and avoid conflicts with CameraLag]
+	float CameraPitch = 0.0f;
+	float CameraYaw = 0.0f;
 
 	// E: Multiplicador de sensibilidad para la cámara (Ratón).
 	// I: Sensitivity multiplier for the camera (Mouse).

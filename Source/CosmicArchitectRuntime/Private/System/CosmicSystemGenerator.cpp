@@ -6,8 +6,10 @@
 #include "Engine/EngineTypes.h"        
 #include "GameFramework/Actor.h"
 #include "CosmicArchitectRuntime/Public/Planet/CosmicPlanet.h"
-#include "CosmicArchitectRuntime/Public/Simulation/OrbitComponent.h"
-#include "CosmicArchitectRuntime/Public/Simulation/GravityComponent.h"
+#include "CosmicArchitectRuntime/Public/Simulation/CosmicOrbitComponent.h"
+#include "CosmicArchitectRuntime/Public/Simulation/CosmicGravityComponent.h"
+#include "Components/DirectionalLightComponent.h"
+#include "Engine/DirectionalLight.h"
 
 ACosmicSystemGenerator::ACosmicSystemGenerator()
 {
@@ -151,7 +153,7 @@ void ACosmicSystemGenerator::GenerateBodies()
 
     Star->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
 
-    UGravityComponent* StarGravity = NewObject<UGravityComponent>(Star);
+    UCosmicGravityComponent* StarGravity = NewObject<UCosmicGravityComponent>(Star);
     StarGravity->RegisterComponent();
     StarGravity->SetIsPlanet(true);
     StarGravity->RadiusKm = StarRadiusKm;
@@ -160,6 +162,21 @@ void ACosmicSystemGenerator::GenerateBodies()
     Star->AddInstanceComponent(StarGravity);
     
     GeneratedBodies.Add(Star);
+
+    //Crear luz para la estrella
+    ADirectionalLight* NuevaLuz = GetWorld()->SpawnActor<ADirectionalLight>(
+        ADirectionalLight::StaticClass(),
+        Star->GetActorLocation(),
+        Star->GetActorRotation(),
+        SpawnParams
+    );
+    NuevaLuz->AttachToActor(Star, FAttachmentTransformRules::KeepWorldTransform);
+    ULightComponent* LightComp = NuevaLuz->GetLightComponent();
+    UDirectionalLightComponent* DirectionalLightComp = Cast<UDirectionalLightComponent>(LightComp);
+    DirectionalLightComp->AtmosphereSunLightIndex = 0; // Importante para el cielo
+    DirectionalLightComp->Intensity = 50.0f;
+
+
 
     FColor color;
 
@@ -207,7 +224,7 @@ void ACosmicSystemGenerator::GenerateBodies()
 
         /* Gravity */
 
-        UGravityComponent* Gravity = NewObject<UGravityComponent>(Planet);
+        UCosmicGravityComponent* Gravity = NewObject<UCosmicGravityComponent>(Planet);
         Gravity->RegisterComponent();
         Gravity->SetIsPlanet(true);
         Gravity->RadiusKm = PlanetRadiusKm;
@@ -218,7 +235,7 @@ void ACosmicSystemGenerator::GenerateBodies()
 
         /* Orbit */
 
-        UOrbitComponent* Orbit = NewObject<UOrbitComponent>(Planet);
+        UCosmicOrbitComponent* Orbit = NewObject<UCosmicOrbitComponent>(Planet);
         Orbit->RegisterComponent();
 
         Orbit->ParentBody = Star;
@@ -282,7 +299,7 @@ void ACosmicSystemGenerator::GenerateBodies()
                 nullptr
             );
 
-            UGravityComponent* MoonGravity = NewObject<UGravityComponent>(Moon);
+            UCosmicGravityComponent* MoonGravity = NewObject<UCosmicGravityComponent>(Moon);
 
             MoonGravity->RegisterComponent();
             MoonGravity->SetIsPlanet(true);
@@ -292,7 +309,7 @@ void ACosmicSystemGenerator::GenerateBodies()
 
             Moon->AddInstanceComponent(MoonGravity);
 
-            UOrbitComponent* MoonOrbit = NewObject<UOrbitComponent>(Moon);
+            UCosmicOrbitComponent* MoonOrbit = NewObject<UCosmicOrbitComponent>(Moon);
 
             MoonOrbit->RegisterComponent();
             MoonOrbit->ParentBody = Planet;

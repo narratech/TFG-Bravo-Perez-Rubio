@@ -271,7 +271,7 @@ void UCosmicClipmapComponent::CreateLevels()
     for (int32 L = 0; L < NumLevels; ++L)
     {
         // Crear nombre único para el componente
-        FName ComponentName = *FString::Printf(TEXT("ClipmapMesh_Level_%d"), L);
+        FName ComponentName = *FString::Printf(TEXT("TerrainClipmapMesh_Level_%d"), L);
 
         // Crear componente
         UCosmicMeshComponent* Mesh = NewObject<UCosmicMeshComponent>(
@@ -354,7 +354,7 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
         }
     }
 
-    FName ComponentName = *FString::Printf(TEXT("ClipmapMesh_Performance_%d"), 0);
+    FName ComponentName = *FString::Printf(TEXT("TerrainClipmapMesh_Performance_%d"), 0);
 
     UCosmicMeshComponent* Mesh = NewObject<UCosmicMeshComponent>(
         GetOwner(),
@@ -439,28 +439,6 @@ void UCosmicClipmapComponent::ClearLevels()
     // 3. Limpiar arrays
     Levels.Empty();
 
-    if (ParentRoot)
-    {
-        
-        // Obtenemos una copia de los hijos para evitar problemas al modificar el array mientras iteramos
-        TArray<USceneComponent*> Children = ParentRoot->GetAttachChildren();
-
-        for (USceneComponent* Child : Children)
-        {
-            if (UCosmicMeshComponent* TargetMesh = Cast<UCosmicMeshComponent>(Child))
-            {
-                // 1. Lo desadjuntamos del padre
-                TargetMesh->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
-
-                // 2. Lo marcamos para destrucción definitiva
-                TargetMesh->DestroyComponent();
-
-                LevelsCleared++;
-            }
-        }
-
-    }
-
     if (DynamicPlanetMat)
     {
         DynamicPlanetMat = nullptr;
@@ -486,13 +464,10 @@ void UCosmicClipmapComponent::ReasignLevels()
         {
             if (UCosmicMeshComponent* TargetMesh = Cast<UCosmicMeshComponent>(Child))
             {
-                if (!FarLevel)
+                if (TargetMesh->GetName().Contains("TerrainClipmapMesh"))
                 {
-                    FarLevel = TargetMesh;  // Primer mesh = FarLevel
-                }
-                else
-                {
-                    Levels.Add(TargetMesh); // Resto = Levels
+                    if (!FarLevel) { FarLevel = TargetMesh; }
+                    else { Levels.Add(TargetMesh); }
                 }
             }
         }

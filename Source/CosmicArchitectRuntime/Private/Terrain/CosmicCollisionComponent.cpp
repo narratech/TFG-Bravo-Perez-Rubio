@@ -130,12 +130,12 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(float Radius)
     BuildCollision();
 }
 
-void UCosmicCollisionComponent::UpdateCollisionMesh(const UCosmicNoiseSettings* NoiseSettings)
+void UCosmicCollisionComponent::UpdateCollisionMesh(UCosmicNoiseSettings* NoiseSettings)
 {
 
     //double CreateStartTime = FPlatformTime::Seconds();
 
-    TArray<float> Heights = CosmicNoise::CalculateHeights(BaseVertices, GetOwner()->GetActorLocation(), GetComponentTransform(), NoiseSettings->Params);
+    TArray<float> Heights = CosmicNoise::CalculateHeights(BaseVertices, GetOwner()->GetActorLocation(), GetComponentTransform(), NoiseSettings);
 
     for (size_t i = 0; i < Heights.Num(); i++)
     {

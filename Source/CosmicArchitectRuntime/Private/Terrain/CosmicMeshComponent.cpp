@@ -784,7 +784,7 @@ void UCosmicMeshComponent::RequestMeshUpdate()
         PatchTransform,
         PlanetCenter,
         bIsPlanet,
-        Params
+        NoiseSettings
     );
     // Lanzar la tarea asincrona
     NoiseTask->StartBackgroundTask();

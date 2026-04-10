@@ -104,21 +104,29 @@ void FFoliageGenerationTask::EvaluateEnvironmentalConditions(FRandomStream& Rand
     FastNoiseLite HumidityNoise;
     FastNoiseLite TempNoise;
 
-    HumidityNoise.SetSeed(NoiseSettings.Seed);
+    HumidityNoise.SetSeed(NoiseSettings->Params.Seed);
     HumidityNoise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
     HumidityNoise.SetFractalType(FastNoiseLite::FractalType_FBm);
-    HumidityNoise.SetFrequency(NoiseSettings.HumidityFrequency * 100.0f);
-    HumidityNoise.SetFractalOctaves(NoiseSettings.HumidityOctaves);
+    HumidityNoise.SetFrequency(NoiseSettings->Params.HumidityFrequency * 100.0f);
+    HumidityNoise.SetFractalOctaves(NoiseSettings->Params.HumidityOctaves);
 
-    TempNoise.SetSeed(NoiseSettings.Seed);
-    TempNoise.SetFrequency(NoiseSettings.TemperatureFrequency * 100.0f);
+    TempNoise.SetSeed(NoiseSettings->Params.Seed);
+    TempNoise.SetFrequency(NoiseSettings->Params.TemperatureFrequency * 100.0f);
 
     float MaxPossibleHeight = 0.0f;
-    for (const FCosmicNoiseTypes& Layer : NoiseSettings.NoiseLayers)
-    {
-        MaxPossibleHeight += Layer.Amplitude;
+
+    for (int i = 0; i < NoiseSettings->Params.Biomes.Num(); i++){
+        float BiomeMaxHeight = 0.0f;
+        const FCosmicBiomeData& BiomeData = NoiseSettings->Params.Biomes[i];
+
+        for (int j = 0; j < BiomeData.NoiseLayers.Num(); j++) {
+            const FCosmicNoiseTypes& Layer = BiomeData.NoiseLayers[j];
+            BiomeMaxHeight += Layer.Amplitude;
+        }
+        MaxPossibleHeight = FMath::Max(MaxPossibleHeight, BiomeMaxHeight);
     }
-    if (MaxPossibleHeight == 0.0f) MaxPossibleHeight = 1000.0f; // Seguridad
+    if (MaxPossibleHeight == 0.0f) MaxPossibleHeight = 1000.0f;
+
 
     for (int32 i = 0; i < SeedPoints.Num(); i++)
     {
@@ -132,7 +140,7 @@ void FFoliageGenerationTask::EvaluateEnvironmentalConditions(FRandomStream& Rand
 
         // CALCULAR TEMPERATURA 
         float Latitude = FMath::Abs(Z);
-        float BaseTemp = 1.0f - (Latitude * NoiseSettings.LatitudeEffect);
+        float BaseTemp = 1.0f - (Latitude * NoiseSettings->Params.LatitudeEffect);
 
         // Penalización por altitud (a mayor altura, menor temperatura)
         float AltitudePenalty = FMath::Clamp(Point.Height / MaxPossibleHeight, 0.0f, 0.5f);
@@ -144,7 +152,7 @@ void FFoliageGenerationTask::EvaluateEnvironmentalConditions(FRandomStream& Rand
 
         // CALCULAR HUMEDAD
         float RawHum = HumidityNoise.GetNoise(X, Y, Z);
-        float BaseHum = (RawHum + 1.0f) * 0.5f + NoiseSettings.HumidityOffset;
+        float BaseHum = (RawHum + 1.0f) * 0.5f + NoiseSettings->Params.HumidityOffset;
 
         // Las zonas bajas y cerca del ecuador son más húmedas
         float ElevationFactor = 1.0f - FMath::Clamp(Point.Height / 3000.0f, 0.0f, 0.7f);
@@ -152,7 +160,7 @@ void FFoliageGenerationTask::EvaluateEnvironmentalConditions(FRandomStream& Rand
 
         Point.Humidity = FMath::Clamp(
             (BaseHum * 0.6f + ElevationFactor * 0.2f + LatitudeHumidity * 0.2f) *
-            NoiseSettings.HumidityContrast + (1.0f - NoiseSettings.HumidityContrast) * 0.5f,
+            NoiseSettings->Params.HumidityContrast + (1.0f - NoiseSettings->Params.HumidityContrast) * 0.5f,
             0.0f, 1.0f
         );
 

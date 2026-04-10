@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "CubeMapCell.h"
+#include "CosmicCubeMapCell.h"
 
 /**
  * Gestor del octree esferico usando CubeMap projection

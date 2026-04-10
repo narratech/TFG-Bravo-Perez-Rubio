@@ -8,12 +8,22 @@
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
 #include "GameFramework/PlayerController.h"
+#include "Simulation/CosmicGravityComponent.h"
+
+// E: Librería necesaria para dibujar formas de depuración (Líneas, flechas, colisionadores).
+// I: Library needed to draw debug shapes (Lines, arrows, colliders).
+#include "DrawDebugHelpers.h"
 
 ACosmicPlayer::ACosmicPlayer()
 {
-	// E: Activamos el Tick para aplicar la gravedad esférica frame a frame.
-	// I: We enable Tick to apply spherical gravity frame by frame.
+	// E: Activamos el Tick para aplicar la alineación gravitacional frame a frame.
+	// I: We enable Tick to apply gravitational alignment frame by frame.
 	PrimaryActorTick.bCanEverTick = true;
+
+	// [E: El Tick DEBE ocurrir ANTES de las físicas (PrePhysics) para que Chaos use nuestra rotación correcta al movernos]
+	// [I: Tick MUST happen BEFORE physics (PrePhysics) so Chaos uses our correct rotation when moving us]
+	PrimaryActorTick.TickGroup = TG_PrePhysics;
+
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
 
 	// E: Configuración de la cápsula física (Raíz).
@@ -22,51 +32,150 @@ ACosmicPlayer::ACosmicPlayer()
 	RootComponent = CapsuleComp;
 	CapsuleComp->InitCapsuleSize(40.0f, 90.0f);
 
-	// E: Habilitamos las físicas y deshabilitamos la gravedad por defecto (Z-).
-	// I: Enable physics and disable default gravity (Z-).
+	// E: Habilitamos las físicas y deshabilitamos la gravedad por defecto de Unreal (Z- constante).
+	// I: Enable physics and disable Unreal's default gravity (constant Z-).
 	CapsuleComp->SetSimulatePhysics(true);
 	CapsuleComp->SetEnableGravity(false);
 
-	// E: Bloqueamos la rotación física para que la cápsula no vuelque, nosotros controlaremos el "Arriba" por código.
-	// I: We lock physical rotation so the capsule doesn't roll, we will control "Up" via code.
-	CapsuleComp->BodyInstance.bLockXRotation = true;
-	CapsuleComp->BodyInstance.bLockYRotation = true;
-	CapsuleComp->BodyInstance.bLockZRotation = true;
+	// E: Bloqueamos la rotación física (X, Y, Z). Nosotros controlaremos la orientación por código en el Tick.
+	// Si no se bloquea, la cápsula volcaría al colisionar.
+	// I: We lock physical rotation (X, Y, Z). We will control orientation via code in Tick.
+	// If not locked, the capsule would tip over on collision.
+	CapsuleComp->BodyInstance.bLockXRotation = false;
+	CapsuleComp->BodyInstance.bLockYRotation = false;
+	CapsuleComp->BodyInstance.bLockZRotation = false;
 
-	// E: Amortiguación lineal alta para simular fricción con el suelo y que no resbale como hielo.
-	// I: High linear damping to simulate ground friction so it doesn't slide like ice.
-	CapsuleComp->SetLinearDamping(4.0f);
+	// [E: EL TRUCO: Escalamos el Tensor de Inercia a un valor colosal. Esto hace que chocar contra 
+	// paredes o el suelo no tenga fuerza suficiente para volcarte, pero SetWorldRotation sí pueda girarte]
+	// [I: THE TRICK: Scale Inertia Tensor to a colossal value. This makes hitting walls or ground 
+	// lack the force to tip you over, but SetWorldRotation can still turn you]
+	CapsuleComp->BodyInstance.InertiaTensorScale = FVector(10000.0f, 10000.0f, 10000.0f);
 
-	// E: Configuración de la cámara y su brazo elástico.
-	// I: Setup for camera and its spring arm.
+	// [E: Aplicamos una amortiguación angular altísima para estabilizar cualquier bamboleo]
+	// [I: Apply extremely high angular damping to stabilize any wobbling]
+	CapsuleComp->SetAngularDamping(10.0f);
+
+	// E: Amortiguación lineal alta (Fricción) para que el jugador se detenga al soltar las teclas.
+	// I: High linear damping (Friction) so the player stops when releasing keys.
+	CapsuleComp->SetLinearDamping(1.0f);
+
+	// E: Configuración del brazo elástico (SpringArm).
+	// I: Setup for spring arm.
 	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp"));
 	SpringArmComp->SetupAttachment(CapsuleComp);
-	SpringArmComp->TargetArmLength = 0.0f; // E: 0.0f para primera persona o 300.0f para tercera persona. / I: 0.0f for first person or 300.0f for third.
-	SpringArmComp->bUsePawnControlRotation = true;
+	SpringArmComp->TargetArmLength = 0.0f; // E: 0.0f para cámara en primera persona. / I: 0.0f for first person camera.
 
+	// E: Desactivamos la rotación del controlador. Rotaremos el brazo manualmente de forma local en Look() 
+	// para evitar que los controles se inviertan al caminar boca abajo (Gravedad 6DOF).
+	// I: Disable controller rotation. We will rotate the arm manually in local space in Look() 
+	// to prevent controls from inverting when walking upside down (6DOF Gravity).
+	SpringArmComp->bUsePawnControlRotation = false;
+
+	// E: Activamos el "Lag" de cámara para suavizar tirones físicos y absorber vibraciones del terreno.
+	// I: Enable Camera "Lag" to smooth physical jerks and absorb terrain vibrations.
+	SpringArmComp->bEnableCameraLag = true;
+	SpringArmComp->bEnableCameraRotationLag = true;
+	SpringArmComp->CameraLagSpeed = 15.0f;
+	SpringArmComp->CameraRotationLagSpeed = 20.0f;
+
+	// E: Configuración de la cámara.
+	// I: Camera setup.
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->SetupAttachment(SpringArmComp, USpringArmComponent::SocketName);
+
+	// E: Desactivamos bUsePawnControlRotation en la cámara directamente para que herede la rotación suave del SpringArm.
+	// I: Disable bUsePawnControlRotation on camera directly so it inherits SpringArm's smooth rotation.
 	CameraComp->bUsePawnControlRotation = false;
+
+	// E: Instanciamos el componente gravitacional de tu plugin.
+	// I: Instantiate your plugin's gravitational component.
+	GravityComp = CreateDefaultSubobject<UCosmicGravityComponent>(TEXT("GravityComp"));
+	GravityComp->IsPlanet = false; // E: Somos un objeto afectado por gravedad, no un planeta generador. / I: We are an object affected by gravity, not a generating planet.
+
 }
 
 void ACosmicPlayer::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// =========================================================================
+	// REQUERIMIENTO: RENDERIZAR EL COLLIDER DE LA CÁPSULA
+	// REQUERIMENT: RENDER THE CAPSULE COLLIDER
+	// =========================================================================
+	if (CapsuleComp)
+	{
+		// E: Por defecto, los colisionadores están ocultos en el juego. Forzamos su visibilidad para depuración.
+		// I: By default, colliders are hidden in game. We force visibility for debugging.
+		CapsuleComp->SetHiddenInGame(false);
+	}
 }
 
 void ACosmicPlayer::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// E: AQUÍ IRÁ LA LÓGICA DE GRAVEDAD ESFÉRICA.
-	// I: SPHERICAL GRAVITY LOGIC GOES HERE.
-	// TODO: Calcular dirección hacia CurrentPlanetCenter, aplicar fuerza, y hacer Slerp de rotación.
+	// E: 1. Asegurarnos de que tenemos el componente de gravedad y datos válidos.
+	// I: 1. Make sure we have the gravity component and valid data.
+	if (!GravityComp) return;
+
+	// E: 2. Obtenemos la última dirección de gravedad calculada por el subsistema (Hacia abajo).
+	// I: 2. Get the last gravity direction calculated by the subsystem (Downwards).
+	FVector GravityDown = GravityComp->CurrentGravityDirection;
+
+	// E: Si no hay fuerza de gravedad, no alteramos la rotación para evitar errores matemáticos.
+	// I: If there is no gravity force, we don't alter rotation to avoid mathematical errors.
+	if (GravityDown.IsNearlyZero()) return;
+
+	// E: 3. El vector "Arriba" (donde apuntará la cabeza) es exactamente opuesto a la gravedad.
+	// I: 3. The "Up" vector (where the head points) is exactly opposite to gravity.
+	FVector TargetUp = -GravityDown;
+
+	// E: 4. Proyectamos el vector frontal actual (donde mira el pecho) sobre el plano inclinado del suelo actual.
+	// Esto es crucial para mantener la estabilidad y que el ratón (Yaw local) siga funcionando bien.
+	// I: 4. Project the current forward vector (where the chest looks) onto the current ground's tilted plane.
+	// This is crucial for maintaining stability and ensuring the mouse (local Yaw) keeps working correctly.
+	FVector CurrentForward = CapsuleComp->GetForwardVector();
+	FVector NewForward = FVector::VectorPlaneProject(CurrentForward, TargetUp).GetSafeNormal();
+
+	// E: 5. Creamos una matriz de rotación perfecta definiendo cuál es nuestro Frente (X) y nuestro Arriba (Z).
+	// I: 5. Create a perfect rotation matrix by defining our Forward (X) and Up (Z).
+	FQuat TargetQuat = FRotationMatrix::MakeFromXZ(NewForward, TargetUp).ToQuat();
+	FQuat CurrentQuat = CapsuleComp->GetComponentQuat();
+
+	// E: 6. Interpolación Esférica (Slerp) para que la cápsula se alinee suavemente a la curvatura en vez de dar tirones.
+	// I: 6. Spherical Interpolation (Slerp) so the capsule aligns smoothly to the curvature instead of snapping.
+	FQuat NewQuat = FMath::QInterpTo(CurrentQuat, TargetQuat, DeltaTime, 5.0f);
+
+	// =========================================================================
+	// DEBUG VISUAL: PINTAR VECTORES DE ROTACIÓN (Rojo, Verde, Azul)
+	// I: VISUAL DEBUG: DRAW ROTATION VECTORS (Red, Green, Blue)
+	// =========================================================================
+	FVector StartLoc = CapsuleComp->GetComponentLocation(); // E: Origen / I: Origin
+	float LineLength = 150.0f; // E: Longitud flechas / I: Arrow length
+	float ArrowSize = 10.0f;   // E: Tamaño punta / I: Tip size
+	float Thickness = 2.0f;    // E: Grosor / I: Thickness
+
+	// E: Flecha ROJA -> Vector "TargetUp" (Contrario a gravedad, hacia donde queremos ir).
+	DrawDebugDirectionalArrow(GetWorld(), StartLoc, StartLoc + (TargetUp * LineLength), ArrowSize, FColor::Red, false, -1.0f, 0, Thickness);
+
+	// E: Flecha VERDE -> Vector "CurrentForward" (Hacia dónde miramos realmente ahora).
+	DrawDebugDirectionalArrow(GetWorld(), StartLoc, StartLoc + (CurrentForward * LineLength), ArrowSize, FColor::Green, false, -1.0f, 0, Thickness);
+
+	// E: Flecha AZUL -> Vector "NewForward" (La dirección frontal estabilizada paralela al suelo local).
+	DrawDebugDirectionalArrow(GetWorld(), StartLoc, StartLoc + (NewForward * LineLength), ArrowSize, FColor::Blue, false, -1.0f, 0, Thickness);
+	// =========================================================================
+
+	// [E: Usamos ETeleportType::None para no destruir el caché de velocidad del motor Chaos cada frame]
+	// [I: Use ETeleportType::None to avoid destroying the Chaos engine's velocity cache every frame]
+	CapsuleComp->SetWorldRotation(NewQuat, false, nullptr, ETeleportType::None);
 }
 
 void ACosmicPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
+	// E: Registro del contexto de mapeo (Enhanced Input).
+	// I: Mapping context registration (Enhanced Input).
 	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
 	{
 		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
@@ -78,6 +187,8 @@ void ACosmicPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 		}
 	}
 
+	// E: Vinculación de las Input Actions con los métodos de C++.
+	// I: Binding Input Actions with C++ methods.
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
 		if (IA_PlayerMove) { EnhancedInputComponent->BindAction(IA_PlayerMove, ETriggerEvent::Triggered, this, &ACosmicPlayer::Move); }
@@ -88,49 +199,72 @@ void ACosmicPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 
 void ACosmicPlayer::Move(const FInputActionValue& Value)
 {
+	// E: Obtenemos el vector 2D de input (W/S -> Y, A/D -> X).
 	FVector2D MovementVector = Value.Get<FVector2D>();
 
-
-
-	if (Controller && CapsuleComp)
+	if (Controller && CapsuleComp && CameraComp)
 	{
-		// E: Obtenemos las direcciones relativas ignorando la inclinación (Pitch/Roll) para no volar ni enterrarnos.
-		// I: We get relative directions ignoring pitch/roll so we don't fly or dig into the ground.
-		const FRotator Rotation = Controller->GetControlRotation();
-		const FRotator YawRotation(0, Rotation.Yaw, 0);
 
-		const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+		// 1. Obtenemos cuál es nuestro "Arriba" local (ya estabilizado por el Tick)
+		FVector UpDirection = CapsuleComp->GetUpVector();
 
-		// E: Calculamos la fuerza física basada en los inputs y la variable configurable MovementForce. Sin DeltaTime.
-		// I: Calculate physical force based on inputs and the configurable MovementForce variable. No DeltaTime.
+		// 2. Tomamos los vectores puros de la cámara
+		FVector CameraForward = CameraComp->GetForwardVector();
+		FVector CameraRight = CameraComp->GetRightVector();
+
+		// 3. Proyectamos la visión de la cámara sobre el plano del suelo actual
+		// Esto asegura que caminar hacia adelante nunca nos empuje hacia el cielo o hacia el núcleo del planeta
+		FVector ForwardDirection = FVector::VectorPlaneProject(CameraForward, UpDirection).GetSafeNormal();
+		FVector RightDirection = FVector::VectorPlaneProject(CameraRight, UpDirection).GetSafeNormal();
+
+		// =========================================================================
+
+		// E: Calculamos la fuerza física final
 		FVector ForceToApply = (ForwardDirection * MovementVector.Y + RightDirection * MovementVector.X) * MovementForce;
 
-		// E: LÍNEA DE DEBUG - Imprime los valores X e Y del teclado en color verde.
-		// I: DEBUG LINE - Prints the X and Y keyboard values in green.
-		if (GEngine)
+		// E: Si hay algún input...
+		if (!ForceToApply.IsNearlyZero())
 		{
-			GEngine->AddOnScreenDebugMessage(1, 0.0f, FColor::Green, FString::Printf(TEXT("x: %f, y: %f"), ForceToApply.X,ForceToApply.Y));
+			// [NUEVO] Guardamos la dirección para que el código del Tick rote la cápsula hacia allí
+			TargetFacingDirection = ForceToApply.GetSafeNormal();
+
+			FVector DebugStart = CapsuleComp->GetComponentLocation();
+			FVector ForceDirection = ForceToApply.GetSafeNormal();
+			float DebugArrowLength = 100.0f;
+
+			// Flecha BLANCA de depuración
+			DrawDebugDirectionalArrow(GetWorld(), DebugStart, DebugStart + (ForceDirection * DebugArrowLength), 20.0f, FColor::White, false, -1.0f, 0, 4.0f);
 		}
 
-		// E: Aplicamos la fuerza. bAccelChange = false para que respete la masa del jugador.
-		// I: Apply force. bAccelChange = false so it respects the player's mass.
+		// E: Aplicamos la fuerza física al colisionador.
 		CapsuleComp->AddForce(ForceToApply, NAME_None, false);
 	}
 }
 
 void ACosmicPlayer::Look(const FInputActionValue& Value)
 {
-	// E: Obtenemos el input del ratón y le aplicamos el multiplicador configurable desde el Editor.
-	// I: Get mouse input and apply the configurable multiplier from the Editor.
+	// E: Obtenemos el movimiento del ratón escalado por la sensibilidad.
+	// I: Get mouse movement scaled by sensitivity.
 	FVector2D LookAxisVector = Value.Get<FVector2D>() * MouseSensitivity;
 
-	if (Controller)
+	if (Controller && SpringArmComp)
 	{
-		// E: Inyectamos el movimiento escalado en el controlador de cámara.
-		// I: Inject the scaled movement into the camera controller.
-		AddControllerYawInput(LookAxisVector.X);
-		AddControllerPitchInput(LookAxisVector.Y);
+		// E: Actualizamos nuestras variables internas puras con el movimiento del ratón.
+		// Nota: Si quieres invertir el eje Y (Arriba/Abajo), cambia el "+=" por un "-=".
+		// I: Update our pure internal variables with mouse movement.
+		// Note: If you want to invert the Y axis (Up/Down), change "+=" to "-=".
+		CameraYaw += LookAxisVector.X;
+		CameraPitch += LookAxisVector.Y;
+
+		// E: Limitamos el Pitch para que la cámara no dé vueltas completas sobre sí misma.
+		// I: Clamp the Pitch so the camera doesn't do full loops on itself.
+		CameraPitch = FMath::Clamp(CameraPitch, -85.0f, 85.0f);
+
+		// E: Aplicamos la nueva rotación usando FRotator(Pitch, Yaw, Roll).
+		// Al hacer esto, el CameraRotationLag funcionará perfectamente sin congelar el input.
+		// I: Apply the new rotation using FRotator(Pitch, Yaw, Roll).
+		// By doing this, CameraRotationLag will work perfectly without freezing the input.
+		SpringArmComp->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.0f));
 	}
 }
 
@@ -138,12 +272,12 @@ void ACosmicPlayer::Jump(const FInputActionValue& Value)
 {
 	if (CapsuleComp)
 	{
-		// E: El salto es un impulso instantáneo hacia el "Arriba" local del actor, escalado por JumpForce.
-		// I: Jump is an instant impulse towards the actor's local "Up", scaled by JumpForce.
+		// E: LÓGICA EXISTENTE: El salto es un impulso hacia el "Arriba" local del actor actual.
+		// I: EXISTING LOGIC: Jump is an impulse towards the current actor's local "Up".
 		FVector UpDirection = GetActorUpVector();
 
-		// E: bVelChange = true para el impulso, ignora la masa y asegura un salto consistente independientemente del peso.
-		// I: bVelChange = true for the impulse, ignores mass and ensures a consistent jump regardless of weight.
+		// E: LÓGICA EXISTENTE: bVelChange = true para ignorar la masa e impartir velocidad instantánea.
+		// I: EXISTING LOGIC: bVelChange = true to ignore mass and impart instant velocity.
 		CapsuleComp->AddImpulse(UpDirection * JumpForce, NAME_None, true);
 	}
 }
