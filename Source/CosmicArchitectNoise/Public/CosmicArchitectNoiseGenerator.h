@@ -22,14 +22,14 @@ public:
 	FVector PlanetCenter;
 
     bool IsPlanet;
-    UCosmicNoiseSettings* NoiseSettings;
+    FCosmicNoiseGenerationParameters NoiseSettings;
 
     FCosmicArchitectNoiseGenerator(
         const TArray<FVector>& InBaseVerts,
         FTransform InTransform,
         FVector InPlanetCenter,
         bool InPlanet,
-        UCosmicNoiseSettings* NoiseSettings)
+        FCosmicNoiseGenerationParameters NoiseSettings)
         : BaseVertices(InBaseVerts)
         , ComponentTransform(InTransform)
         , PlanetCenter(InPlanetCenter)
@@ -64,7 +64,7 @@ public:
             }
         }
         
-        FCosmicNoiseEvaluator Evaluator(NoiseSettings->Params);
+        FCosmicNoiseEvaluator Evaluator(NoiseSettings);
 
         // Loop de vértices
         for (int32 i = 0; i < VertexCount; i++)
