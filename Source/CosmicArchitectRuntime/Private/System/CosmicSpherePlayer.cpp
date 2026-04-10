@@ -10,6 +10,7 @@
 #include "Engine/LocalPlayer.h"
 #include "GameFramework/PlayerController.h"
 #include "Simulation/CosmicGravityComponent.h"
+#include "DrawDebugHelpers.h"
 
 ACosmicSpherePlayer::ACosmicSpherePlayer()
 {
@@ -17,7 +18,7 @@ ACosmicSpherePlayer::ACosmicSpherePlayer()
 
 	// E: Como ya no forzamos rotaciones físicas, el Tick puede ir en el grupo por defecto.
 	// I: Since we no longer force physics rotations, Tick can stay in the default group.
-	PrimaryActorTick.TickGroup = TG_PostPhysics;
+	PrimaryActorTick.TickGroup = TG_PrePhysics;
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
 
 	// =========================================================================
@@ -129,11 +130,9 @@ void ACosmicSpherePlayer::Tick(float DeltaTime)
 		DesiredForward = FVector::VectorPlaneProject(VisualRoot->GetForwardVector(), TargetUp).GetSafeNormal();
 	}
 
-	// E: Protección contra Gimbal Lock en los polos del planeta.
-	// I: Gimbal Lock protection at the poles of the planet.
 	if (DesiredForward.IsNearlyZero())
 	{
-		DesiredForward = FVector::CrossProduct(VisualRoot->GetRightVector(), TargetUp).GetSafeNormal();
+		DesiredForward = VisualRoot->GetForwardVector();
 	}
 
 	// E: EL TRUCO DE LA ESFERA: Rotamos el VisualRoot, NO la esfera física.
@@ -158,7 +157,7 @@ void ACosmicSpherePlayer::Move(const FInputActionValue& Value)
 		return;
 	}
 
-	if (Controller && VisualRoot && CameraComp)
+	if (Controller && VisualRoot && CameraComp && SphereComp)
 	{
 		// E: El movimiento siempre es relativo a la orientación actual de la cámara.
 		// I: Movement is always relative to the current camera orientation.
@@ -166,8 +165,8 @@ void ACosmicSpherePlayer::Move(const FInputActionValue& Value)
 		FVector CameraRight = CameraComp->GetRightVector();
 		FVector UpVector = VisualRoot->GetUpVector();
 
-		// E: Proyectamos los vectores de la cámara sobre el plano del suelo.
-		// I: Project camera vectors onto the ground plane.
+		// E: Proyectamos los vectores de la cámara sobre el plano del suelo local.
+		// I: Project camera vectors onto the local ground plane.
 		FVector ForwardOnGround = FVector::VectorPlaneProject(CameraForward, UpVector).GetSafeNormal();
 		FVector RightOnGround = FVector::VectorPlaneProject(CameraRight, UpVector).GetSafeNormal();
 
@@ -176,10 +175,33 @@ void ACosmicSpherePlayer::Move(const FInputActionValue& Value)
 		FVector MoveDirection = (ForwardOnGround * MovementVector.Y) + (RightOnGround * MovementVector.X);
 		TargetFacingDirection = MoveDirection.GetSafeNormal();
 
+		// E: Calculamos la fuerza final a aplicar usando nuestra variable parametrizada.
+		// I: Calculate the final force to apply using our parameterized variable.
+		FVector ForceToApply = TargetFacingDirection * MovementForce;
+
 		// E: Aplicamos fuerza a la ESFERA RAÍZ.
 		// I: Apply force to the ROOT SPHERE.
-		float MoveForce = 1000.0f; // Ajusta este número según la masa de la esfera.
-		SphereComp->AddForce(TargetFacingDirection * MoveForce, NAME_None, false);
+		SphereComp->AddForce(ForceToApply, NAME_None, false);
+
+		// =========================================================================
+		// DEBUG VISUAL DE LA FUERZA
+		// =========================================================================
+
+		// E: Obtenemos el punto de origen (El centro de nuestra esfera física).
+		// I: Get the starting point (The center of our physical sphere).
+		FVector StartLoc = SphereComp->GetComponentLocation();
+
+		// E: Para que la flecha no sea gigantesca (350.000 unidades de larga), 
+		// usamos la dirección pura y la multiplicamos por una longitud visual fija (ej. 200).
+		// I: So the arrow isn't gigantic (350,000 units long), 
+		// we use the pure direction and multiply it by a fixed visual length (e.g. 200).
+		float VisualArrowLength = 200.0f;
+		FVector EndLoc = StartLoc + (TargetFacingDirection * VisualArrowLength);
+
+		// E: Dibujamos la flecha direccional.
+		// Parámetros: Mundo, Inicio, Fin, Tamaño Flecha, Color, Persistente, Tiempo de vida, Profundidad, Grosor.
+		// I: Draw the directional arrow.
+		DrawDebugDirectionalArrow(GetWorld(), StartLoc, EndLoc, 20.0f, FColor::White, false, -1.0f, 0, 4.0f);
 	}
 }
 
