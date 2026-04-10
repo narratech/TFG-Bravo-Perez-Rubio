@@ -176,7 +176,7 @@ void ACosmicSystemGenerator::GenerateBodies()
     DirectionalLightComp->AtmosphereSunLightIndex = 0; // Importante para el cielo
     DirectionalLightComp->Intensity = 50.0f;
 
-
+    GeneratedBodies.Add(NuevaLuz);
 
     FColor color;
 
