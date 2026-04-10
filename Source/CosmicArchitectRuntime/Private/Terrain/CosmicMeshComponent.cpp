@@ -783,6 +783,8 @@ void UCosmicMeshComponent::RequestMeshUpdate()
         BaseVertices,
         PatchTransform,
         PlanetCenter,
+        PlanetRadius,
+        GridSpacing,
         bIsPlanet,
         Params
     );

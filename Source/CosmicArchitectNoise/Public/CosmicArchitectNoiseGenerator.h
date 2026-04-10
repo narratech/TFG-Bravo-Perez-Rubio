@@ -20,6 +20,8 @@ public:
 	// Datos de transformación
 	FTransform ComponentTransform;
 	FVector PlanetCenter;
+    double PlanetRadius;
+    double GridSpacing;
 
     bool IsPlanet;
     FCosmicNoiseGenerationParameters NoiseSettings;
@@ -28,11 +30,15 @@ public:
         const TArray<FVector>& InBaseVerts,
         FTransform InTransform,
         FVector InPlanetCenter,
+        double InPlanetRadius,
+        double InGridSpacing,
         bool InPlanet,
         FCosmicNoiseGenerationParameters NoiseSettings)
         : BaseVertices(InBaseVerts)
         , ComponentTransform(InTransform)
         , PlanetCenter(InPlanetCenter)
+        ,PlanetRadius(InPlanetRadius)
+        ,GridSpacing(InGridSpacing)
         ,IsPlanet(InPlanet),
         NoiseSettings(NoiseSettings)
     {
@@ -53,6 +59,8 @@ public:
 
 
         const int32 VertexCount = BaseVertices.Num();
+
+        if (VertexCount <= 0) return;
 
         if (IsPlanet) {
             
@@ -75,11 +83,45 @@ public:
             float FinalHeight;
             FLinearColor FinalColor;
 
+            const double SampleDistance = GridSpacing;
+
+            FVector Normal;
+
+            if (IsPlanet) {
+                // Crear dos vectores perpendiculares a la dirección
+                FVector Tangent1, Tangent2;
+                NoiseDir.FindBestAxisVectors(Tangent1, Tangent2);
+
+                // Generar puntos de muestra alrededor
+                FVector SampleDirs[] = {
+                    (NoiseDir + Tangent1 * (SampleDistance / PlanetRadius)).GetSafeNormal(),
+                    (NoiseDir - Tangent1 * (SampleDistance / PlanetRadius)).GetSafeNormal(),
+                    (NoiseDir + Tangent2 * (SampleDistance / PlanetRadius)).GetSafeNormal(),
+                    (NoiseDir - Tangent2 * (SampleDistance / PlanetRadius)).GetSafeNormal()
+                };
+
+                float Heights[4];
+                FLinearColor Dummy;
+
+                for (int j = 0; j < 4; j++)
+                {
+                    Evaluator.EvaluatePoint(SampleDirs[j], Heights[j], Dummy);
+                }
+
+                float dH_dT1 = (Heights[0] - Heights[1]) / (2.0f * SampleDistance);
+                float dH_dT2 = (Heights[2] - Heights[3]) / (2.0f * SampleDistance);
+
+                FVector dP_dT1 = Tangent1 + NoiseDir * dH_dT1;
+                FVector dP_dT2 = Tangent2 + NoiseDir * dH_dT2;
+
+                Normal = FVector::CrossProduct(dP_dT2, dP_dT1).GetSafeNormal();
+            }
+            
             Evaluator.EvaluatePoint(NoiseDir, FinalHeight, FinalColor);
 
             // Calcular posición final del vértice
             if (IsPlanet) {
-                CalculatedNormals[i] = NoiseDir;
+                CalculatedNormals[i] = Normal;
                 CalculatedVertices[i] += (NoiseDir * FinalHeight);
             }
             else {
