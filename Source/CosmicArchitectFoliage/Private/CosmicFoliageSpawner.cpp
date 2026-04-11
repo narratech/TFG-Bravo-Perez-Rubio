@@ -28,6 +28,24 @@ void UCosmicFoliageSpawner::BeginPlay()
     Octree.Initialize(PlanetRadiusCm, 8); // 8 niveles de profundidad
 }
 
+void UCosmicFoliageSpawner::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    for (auto& Task : ActiveTasks)
+    {
+        if (Task.IsValid())
+        {
+            Task->GetTask().bCancel = true;
+            Task->EnsureCompletion();
+        }
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("Eliminando tareas de celda: %d"), ActiveTasks.Num());
+
+    ActiveTasks.Empty();
+
+    Super::EndPlay(EndPlayReason);
+}
+
 void UCosmicFoliageSpawner::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
@@ -155,50 +173,61 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
     }
 }
 
-void UCosmicFoliageSpawner::GenerateCellFoliage(const FCubeMapCell& Cell, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings)
+void UCosmicFoliageSpawner::GenerateCellFoliage(
+    const FCubeMapCell& Cell,
+    const FVector& PlanetCenter,
+    float PlanetRadius,
+    UCosmicNoiseSettings* NoiseSettings)
 {
     if (!FoliageCollection)
         return;
 
+    FCosmicNoiseGenerationParameters Params;
+    if (NoiseSettings) {
+        Params = NoiseSettings->Params;
+    }
+
     float CellAreaKm2 = Octree.GetNodeAreaKm2(Cell);
 
-    FAsyncTask<FFoliageGenerationTask>* Task =
-        new FAsyncTask<FFoliageGenerationTask>(
+    TUniquePtr<FAsyncTask<FFoliageGenerationTask>> Task =
+        MakeUnique<FAsyncTask<FFoliageGenerationTask>>(
             Cell,
             FoliageCollection,
             PlanetCenter,
             PlanetRadius,
-            NoiseSettings,
+            Params,
             CellAreaKm2
         );
 
     Task->StartBackgroundTask();
-    ActiveTasks.Add(Task);
+
+    ActiveTasks.Add(MoveTemp(Task));
 
     UE_LOG(LogTemp, Verbose, TEXT("Generando foliage para celda: %s"), *Cell.ToString());
 }
 
-void UCosmicFoliageSpawner::UpdateFoliageGeneration(float DeltaTime, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings)
+void UCosmicFoliageSpawner::UpdateFoliageGeneration(
+    float DeltaTime,
+    const FVector& PlanetCenter,
+    float PlanetRadius,
+    UCosmicNoiseSettings* NoiseSettings)
 {
-    
-    // Procesar tareas completadas
     for (int32 i = ActiveTasks.Num() - 1; i >= 0; i--)
     {
-        FAsyncTask<FFoliageGenerationTask>* Task = ActiveTasks[i];
+        TUniquePtr<FAsyncTask<FFoliageGenerationTask>>& Task = ActiveTasks[i];
 
         if (Task->IsDone())
         {
             FFoliageGenerationTask& CompletedTask = Task->GetTask();
             const FCubeMapCell& Cell = CompletedTask.Cell;
 
-            // Eevitar aplicar si ya no interesa
             if (PendingCells.Contains(Cell))
             {
                 ApplyGeneratedInstances(Cell, CompletedTask.ResultInstances);
                 PendingCells.Remove(Cell);
             }
 
-            delete Task;
+            // remove
             ActiveTasks.RemoveAt(i);
         }
     }

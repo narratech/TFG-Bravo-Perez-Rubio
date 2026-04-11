@@ -8,6 +8,7 @@
 // TAREA ASINCRONA 
 void FFoliageGenerationTask::DoWork()
 {
+    if (bCancel) return;
     if (!Collection) return;
 
     //Crear siempre la misma semilla para la misma celsa
@@ -22,12 +23,16 @@ void FFoliageGenerationTask::DoWork()
 
     // Generar puntos de semilla en la esfera
     GenerateSeedPoints(LocalRandom);
+    if (bCancel) return;
 
+    FCosmicNoiseEvaluator Evaluator(NoiseSettings);
     // Evaluar condiciones ambientales para cada punto
-    EvaluateEnvironmentalConditions(LocalRandom);
+    EvaluateEnvironmentalConditions(LocalRandom, Evaluator);
+    if (bCancel) return;
 
     // Seleccionar y crear instancias basadas en las condiciones
-    CreateFoliageInstances(LocalRandom);
+    CreateFoliageInstances(LocalRandom, Evaluator);
+    if (bCancel) return;
 }
 
 void FFoliageGenerationTask::GenerateSeedPoints(FRandomStream& Random)
@@ -51,6 +56,9 @@ void FFoliageGenerationTask::GenerateSeedPoints(FRandomStream& Random)
 
     for (int32 i = 0; i < NumSeeds; i++)
     {
+        if ((i % 32) == 0 && bCancel)
+            return;
+
         // Sample uniforme dentro de la celda
         float U = Random.FRandRange(MinU, MaxU);
         float V = Random.FRandRange(MinV, MaxV);
@@ -83,139 +91,77 @@ void FFoliageGenerationTask::GenerateSeedPoints(FRandomStream& Random)
     }
 }
 
-void FFoliageGenerationTask::EvaluateEnvironmentalConditions(FRandomStream& Random)
+void FFoliageGenerationTask::EvaluateEnvironmentalConditions(FRandomStream& Random, FCosmicNoiseEvaluator& NoiseEvaluator)
 {
     if (SeedPoints.Num() == 0) return;
 
-    TArray<FVector> NoisePoints;
-    NoisePoints.Reserve(SeedPoints.Num());
-
+    uint32 i = 0;
+    
     // Convertir direcciones a puntos de ruido (coordenadas normalizadas)
-    for (const FSeedPoint& Point : SeedPoints)
+    for (FSeedPoint& Point : SeedPoints)
     {
-        // Usamos la dirección como coordenada de ruido (esfera unitaria)
-        NoisePoints.Add(Point.Direction);
-    }
+        if ((i % 32) == 0 && bCancel)
+            return;
 
-    // Calcular todas las alturas 
-    TArray<float> Heights = CosmicNoise::CalculateHeightsDirect(NoisePoints, NoiseSettings);
-
-    // Inicializar ruidos para temperatura y humedad
-    FastNoiseLite HumidityNoise;
-    FastNoiseLite TempNoise;
-
-    HumidityNoise.SetSeed(NoiseSettings->Params.Seed);
-    HumidityNoise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
-    HumidityNoise.SetFractalType(FastNoiseLite::FractalType_FBm);
-    HumidityNoise.SetFrequency(NoiseSettings->Params.HumidityFrequency * 100.0f);
-    HumidityNoise.SetFractalOctaves(NoiseSettings->Params.HumidityOctaves);
-
-    TempNoise.SetSeed(NoiseSettings->Params.Seed);
-    TempNoise.SetFrequency(NoiseSettings->Params.TemperatureFrequency * 100.0f);
-
-    float MaxPossibleHeight = 0.0f;
-
-    for (int i = 0; i < NoiseSettings->Params.Biomes.Num(); i++){
-        float BiomeMaxHeight = 0.0f;
-        const FCosmicBiomeData& BiomeData = NoiseSettings->Params.Biomes[i];
-
-        for (int j = 0; j < BiomeData.NoiseLayers.Num(); j++) {
-            const FCosmicNoiseTypes& Layer = BiomeData.NoiseLayers[j];
-            BiomeMaxHeight += Layer.Amplitude;
-        }
-        MaxPossibleHeight = FMath::Max(MaxPossibleHeight, BiomeMaxHeight);
-    }
-    if (MaxPossibleHeight == 0.0f) MaxPossibleHeight = 1000.0f;
-
-
-    for (int32 i = 0; i < SeedPoints.Num(); i++)
-    {
-        FSeedPoint& Point = SeedPoints[i];
         float X = Point.Direction.X;
         float Y = Point.Direction.Y;
         float Z = Point.Direction.Z;
 
-        // Asignar altura calculada
-        Point.Height = Heights[i];
+        FLinearColor BiomeData;
 
-        // CALCULAR TEMPERATURA 
-        float Latitude = FMath::Abs(Z);
-        float BaseTemp = 1.0f - (Latitude * NoiseSettings->Params.LatitudeEffect);
+        NoiseEvaluator.EvaluatePoint(Point.Direction, Point.Height, BiomeData);
 
-        // Penalización por altitud (a mayor altura, menor temperatura)
-        float AltitudePenalty = FMath::Clamp(Point.Height / MaxPossibleHeight, 0.0f, 0.5f);
-        BaseTemp -= AltitudePenalty;
+        Point.Temperature = BiomeData.G;
+        Point.Humidity = BiomeData.B;
 
-        // Variación por ruido
-        float TempVariance = TempNoise.GetNoise(X, Y, Z) * 0.2f;
-        Point.Temperature = FMath::Clamp(BaseTemp + TempVariance, 0.0f, 1.0f);
+        Point.Slope = CalculateSlope(Point.Direction, i, NoiseEvaluator);
 
-        // CALCULAR HUMEDAD
-        float RawHum = HumidityNoise.GetNoise(X, Y, Z);
-        float BaseHum = (RawHum + 1.0f) * 0.5f + NoiseSettings->Params.HumidityOffset;
-
-        // Las zonas bajas y cerca del ecuador son más húmedas
-        float ElevationFactor = 1.0f - FMath::Clamp(Point.Height / 3000.0f, 0.0f, 0.7f);
-        float LatitudeHumidity = 1.0f - Latitude * 0.5f;
-
-        Point.Humidity = FMath::Clamp(
-            (BaseHum * 0.6f + ElevationFactor * 0.2f + LatitudeHumidity * 0.2f) *
-            NoiseSettings->Params.HumidityContrast + (1.0f - NoiseSettings->Params.HumidityContrast) * 0.5f,
-            0.0f, 1.0f
-        );
-
-        // --- CALCULAR PENDIENTE (necesita alturas de puntos vecinos) ---
-        // Para la pendiente necesitamos muestrear puntos cercanos
-        // Esto es más complejo de hacer por lotes, lo dejamos como método separado
-        Point.Slope = CalculateSlope(Point.Direction, i, Heights, Random);
-
-        // Actualizar posición final con la altura del terreno
         Point.WorldPosition = Point.Direction * (PlanetRadius + Point.Height);
+
+        i++;
     }
 }
 
 
-float FFoliageGenerationTask::CalculateSlope(const FVector& Direction, int32 PointIndex, const TArray<float>& AllHeights, FRandomStream& Random)
+float FFoliageGenerationTask::CalculateSlope(
+    const FVector& Direction,
+    int32 PointIndex,
+    FCosmicNoiseEvaluator& NoiseEvaluator)
 {
-    // La pendiente se calcula muestreando la altura en puntos cercanos
-    const float SampleDistance = 500.0f; // 5 metros
+    const float SampleDistance = 500.0f;
 
-    // Crear dos vectores perpendiculares a la dirección
     FVector Tangent1, Tangent2;
     Direction.FindBestAxisVectors(Tangent1, Tangent2);
 
-    // Generar puntos de muestra alrededor
-    FVector SampleDirs[] = {
+    FVector SampleDirs[4] = {
         (Direction + Tangent1 * (SampleDistance / PlanetRadius)).GetSafeNormal(),
         (Direction - Tangent1 * (SampleDistance / PlanetRadius)).GetSafeNormal(),
         (Direction + Tangent2 * (SampleDistance / PlanetRadius)).GetSafeNormal(),
         (Direction - Tangent2 * (SampleDistance / PlanetRadius)).GetSafeNormal()
     };
 
-    // Convertir direcciones a puntos de ruido
-    TArray<FVector> NoisePoints;
-    for (int32 i = 0; i < 4; i++)
-    {
-        NoisePoints.Add(SampleDirs[i]);
-    }
+    float CenterHeight = 0.0f;
+    FLinearColor Dummy;
 
-    // Calcular alturas de los puntos de muestra
-    TArray<float> SampleHeights = CosmicNoise::CalculateHeightsDirect(NoisePoints, NoiseSettings);
+    NoiseEvaluator.EvaluatePoint(Direction, CenterHeight, Dummy);
 
-    float CenterHeight = AllHeights[PointIndex];
     float MaxSlope = 0.0f;
 
     for (int32 i = 0; i < 4; i++)
     {
-        float HeightDiff = FMath::Abs(SampleHeights[i] - CenterHeight);
+        float SampleHeight = 0.0f;
+        NoiseEvaluator.EvaluatePoint(SampleDirs[i], SampleHeight, Dummy);
+
+        float HeightDiff = FMath::Abs(SampleHeight - CenterHeight);
         float SlopeAngle = FMath::Atan(HeightDiff / SampleDistance) * (180.0f / PI);
+
         MaxSlope = FMath::Max(MaxSlope, SlopeAngle);
     }
 
     return MaxSlope;
 }
 
-void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
+void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random, FCosmicNoiseEvaluator& NoiseEvaluator)
 {
     ResultInstances.Empty();
     ResultInstances.Reserve(SeedPoints.Num() / 2); // Aproximadamente la mitad serán válidos
@@ -274,7 +220,7 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
         if (SelectedMesh.bAlignToGround)
         {
             // Obtener normal del terreno (también podría optimizarse con cálculo por lotes)
-            FVector TerrainNormal = OffsetNormal = GetTerrainNormal(Point.Direction, Random);
+            FVector TerrainNormal = OffsetNormal = GetTerrainNormal(Point.Direction, NoiseEvaluator);
 
             // Rotacion que alinea el up vector del mesh con la normal
             FQuat AlignRotation = FQuat::FindBetweenNormals(FVector::UpVector, TerrainNormal);
@@ -391,45 +337,47 @@ const FCosmicFoliageCollectionEntry* FFoliageGenerationTask::FindClosestMatching
     return BestEntry;
 }
 
-FVector FFoliageGenerationTask::GetTerrainNormal(const FVector& Direction, FRandomStream& Random)
+FVector FFoliageGenerationTask::GetTerrainNormal(
+    const FVector& Direction,
+    FCosmicNoiseEvaluator& NoiseEvaluator)
 {
-    // Para la normal también podemos usar cálculo por lotes
     const float SampleDistance = 500.0f;
 
     FVector Tangent1, Tangent2;
     Direction.FindBestAxisVectors(Tangent1, Tangent2);
 
-    // Generar puntos para muestrear
-    FVector SampleDirs[4] = {
+    FVector SampleDirs[4] =
+    {
         (Direction + Tangent1 * (SampleDistance / PlanetRadius)).GetSafeNormal(),
         (Direction - Tangent1 * (SampleDistance / PlanetRadius)).GetSafeNormal(),
         (Direction + Tangent2 * (SampleDistance / PlanetRadius)).GetSafeNormal(),
         (Direction - Tangent2 * (SampleDistance / PlanetRadius)).GetSafeNormal()
     };
 
-    // Preparar puntos de ruido
-    TArray<FVector> NoisePoints;
-    for (int32 i = 0; i < 4; i++)
-    {
-        NoisePoints.Add(SampleDirs[i]);
-    }
+    float CenterHeight = 0.0f;
+    FLinearColor Dummy;
 
-    // Calcular alturas por lotes
-    TArray<float> Heights = CosmicNoise::CalculateHeightsDirect(NoisePoints, NoiseSettings);
+    // height central desde evaluator
+    NoiseEvaluator.EvaluatePoint(Direction, CenterHeight, Dummy);
 
-    // Calcular posiciones en el mundo
     FVector Positions[4];
+
     for (int32 i = 0; i < 4; i++)
     {
-        Positions[i] = PlanetCenter + SampleDirs[i] * (PlanetRadius + Heights[i]);
+        float SampleHeight = 0.0f;
+
+        // height consistente con el sistema global
+        NoiseEvaluator.EvaluatePoint(SampleDirs[i], SampleHeight, Dummy);
+
+        Positions[i] = PlanetCenter + SampleDirs[i] * (PlanetRadius + SampleHeight);
     }
 
-    // Calcular normal aproximada
     FVector V1 = Positions[0] - Positions[1];
     FVector V2 = Positions[2] - Positions[3];
+
     FVector Normal = FVector::CrossProduct(V1, V2).GetSafeNormal();
 
-    // Asegurar que la normal apunta hacia afuera
+    // asegurar orientación hacia fuera del planeta
     if (FVector::DotProduct(Normal, Direction) < 0)
     {
         Normal = -Normal;

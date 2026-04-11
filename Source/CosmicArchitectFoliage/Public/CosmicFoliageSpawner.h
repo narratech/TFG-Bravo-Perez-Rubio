@@ -70,7 +70,7 @@ public:
 
 protected:
     virtual void BeginPlay() override;
-
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction);
 
     // Octree manager
@@ -93,7 +93,7 @@ private:
     float ElapsedTime = 0.0f;
     FRandomStream RandomStream;
     TSet<FCubeMapCell> PendingCells;
-    TArray<FAsyncTask<FFoliageGenerationTask>*> ActiveTasks;
+    TArray<TUniquePtr<FAsyncTask<FFoliageGenerationTask>>> ActiveTasks;
     UCosmicNoiseSettings* CurrentNoiseSettings;
 
 

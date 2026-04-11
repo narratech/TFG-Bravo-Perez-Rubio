@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "CosmicFoliageCollection.h"
 #include "CosmicArchitectNoise/Public/CosmicNoiseSettings.h"
+#include "CosmicArchitectNoise/Public/CosmicNoiseEvaluator.h"
 #include "CosmicArchitectCommon/Public/CosmicCubeMapCell.h"
 #include "CosmicFoliageGenerationTask.generated.h"
 
@@ -34,8 +35,10 @@ public:
     UCosmicFoliageCollection* Collection;
     FVector PlanetCenter;
     float PlanetRadius;
-    UCosmicNoiseSettings* NoiseSettings;
+    FCosmicNoiseGenerationParameters NoiseSettings;
     float CellAreaKm2;
+
+    std::atomic<bool> bCancel = false;
 
     // Almacenamos los puntos de generación con su información ambiental
     struct FSeedPoint
@@ -55,7 +58,7 @@ public:
         UCosmicFoliageCollection* InCollection,
         const FVector& InPlanetCenter,
         float InPlanetRadius,
-        UCosmicNoiseSettings* InNoiseSettings,
+        FCosmicNoiseGenerationParameters InNoiseSettings,
         float InCellAreaKm2)
         : Cell(InCell)
         , Collection(InCollection)
@@ -76,10 +79,10 @@ public:
 
 private:
     void GenerateSeedPoints(FRandomStream& Random);
-    void EvaluateEnvironmentalConditions(FRandomStream& Random);
-    float CalculateSlope(const FVector& Direction, int32 PointIndex, const TArray<float>& AllHeights, FRandomStream& Random);
-    void CreateFoliageInstances(FRandomStream& Random);
+    void EvaluateEnvironmentalConditions(FRandomStream& Random, FCosmicNoiseEvaluator& NoiseEvaluator);
+    float CalculateSlope(const FVector& Direction, int32 PointIndex, FCosmicNoiseEvaluator& NoiseEvaluator);
+    void CreateFoliageInstances(FRandomStream& Random, FCosmicNoiseEvaluator& NoiseEvaluator);
     const FCosmicFoliageCollectionEntry* FindBestMatchingEntry(float Temperature, float Humidity, float Slope, float Height);
     const FCosmicFoliageCollectionEntry* FindClosestMatchingEntry( float Temperature, float Humidity, float Slope, float Height);
-    FVector GetTerrainNormal(const FVector& Direction, FRandomStream& Random);
+    FVector GetTerrainNormal(const FVector& Direction, FCosmicNoiseEvaluator& NoiseEvaluator);
 };
