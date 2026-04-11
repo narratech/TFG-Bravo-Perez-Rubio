@@ -4,6 +4,14 @@
 #include "Terrain/CosmicMeshComponent.h"
 #include "CosmicNoiseSettings.h"
 
+
+void UCosmicMeshComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {
+
+    CancelAsyncWork();
+
+    Super::EndPlay(EndPlayReason);
+}
+
 void UCosmicMeshComponent::BuildBasePlainMesh()
 {
     // 1. NUEVA RESOLUCIÓN (Resolution - 1)
@@ -836,4 +844,14 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
 bool UCosmicMeshComponent::IsTaskActive()
 {
     return NoiseTask && !NoiseTask->IsDone();
+}
+
+void UCosmicMeshComponent::CancelAsyncWork()
+{
+    if (NoiseTask.IsValid())
+    {
+        NoiseTask->GetTask().bCancel = true;
+        NoiseTask->EnsureCompletion();
+        NoiseTask.Reset();
+    }
 }

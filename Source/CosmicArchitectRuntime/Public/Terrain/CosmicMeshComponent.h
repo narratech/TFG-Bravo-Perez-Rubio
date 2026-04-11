@@ -47,6 +47,8 @@ public:
     TArray<FVector2D> UVs;
     TArray<FProcMeshTangent> BaseTangents;
 
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
+
     void BuildBaseMesh();
     void BuildBaseProjectedMesh();
     void BuildBasePlainMesh();
@@ -62,6 +64,7 @@ public:
     // Comprueba si la tarea termino y aplica la malla
     bool CheckAndApplyMeshUpdate();
     bool IsTaskActive();
+    void CancelAsyncWork();
     void ShiftLevel(FIntPoint Shift);
     int32 GetQuadrantIndex(EClipmapQuadrant Q) const;
     void SetHoleQuadrant(EClipmapQuadrant NewQuadrant);

@@ -87,6 +87,7 @@ protected:
     FIntPoint TotalShift = FIntPoint::ZeroValue;
 
     virtual void BeginPlay() override;
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
     /** Actualizar colisión cerca del jugador */

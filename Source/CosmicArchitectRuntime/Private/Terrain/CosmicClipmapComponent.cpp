@@ -71,6 +71,12 @@ void UCosmicClipmapComponent::BeginPlay()
     }
 }
 
+void UCosmicClipmapComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {
+
+    ClearLevels();
+    Super::EndPlay(EndPlayReason);
+}
+
 
 // Called every frame
 void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -441,9 +447,8 @@ void UCosmicClipmapComponent::ClearLevels()
         //UE_LOG(LogTemp, Warning, TEXT("  Destruyendo nivel %d"), Mesh->LevelIndex);
 
         // Desactivar y limpiar la malla
-        Mesh->SetMeshActive(false);
         Mesh->ClearAllMeshSections();
-
+        Mesh->CancelAsyncWork();
         // Destruir el componente
         Mesh->DestroyComponent();
         Mesh = nullptr;
@@ -454,9 +459,8 @@ void UCosmicClipmapComponent::ClearLevels()
     if (FarLevel)
     {
         //UE_LOG(LogTemp, Warning, TEXT("  Destruyendo nivel exterior"));
-
-        FarLevel->SetMeshActive(false);
         FarLevel->ClearAllMeshSections();
+        FarLevel->CancelAsyncWork();
         FarLevel->DestroyComponent();
         FarLevel = nullptr;
     }

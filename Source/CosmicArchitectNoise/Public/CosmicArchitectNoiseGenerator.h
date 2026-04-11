@@ -23,6 +23,8 @@ public:
     double PlanetRadius;
     double GridSpacing;
 
+    std::atomic<bool> bCancel = false;
+
     bool IsPlanet;
     bool IsSphere;
     FCosmicNoiseGenerationParameters NoiseSettings;
@@ -59,8 +61,6 @@ public:
 
     void DoWork()
     {
-
-
         const int32 VertexCount = BaseVertices.Num();
 
         if (VertexCount <= 0) return;
@@ -71,6 +71,7 @@ public:
 
             for (size_t i = 0; i < VertexCount; i++)
             {
+                if (bCancel) return;
                 CalculatedVertices[i] = TransformMatrix.TransformPosition(BaseVertices[i]);
             }
         }
@@ -80,6 +81,8 @@ public:
         // Loop de vértices
         for (int32 i = 0; i < VertexCount; i++)
         {
+            if (bCancel) return;
+
             FVector WorldPos = IsPlanet ? CalculatedVertices[i] : BaseVertices[i];
             FVector NoiseDir = IsPlanet || IsSphere ? WorldPos.GetSafeNormal() : FVector(WorldPos.X, WorldPos.Y, 0);
 
