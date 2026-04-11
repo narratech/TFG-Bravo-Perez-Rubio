@@ -457,6 +457,11 @@ void UCosmicClipmapComponent::ClearLevels()
     // 3. Limpiar arrays
     Levels.Empty();
 
+    if (CollisionComponent && CollisionComponent->IsBuilt())
+    {
+        CollisionComponent->ClearCollision();
+    }
+
     if (DynamicPlanetMat)
     {
         DynamicPlanetMat = nullptr;

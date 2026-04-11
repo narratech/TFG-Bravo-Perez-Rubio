@@ -53,7 +53,7 @@ public:
     UFUNCTION(CallInEditor, Category = "Collision")
     void RebuildCollision();
 
-    void GenerateCollisionMesh(float Radius);
+    void GenerateCollisionMesh(double Radius);
 
     void UpdateCollisionMesh(UCosmicNoiseSettings* NoiseSettings);
 
@@ -61,6 +61,12 @@ public:
 
     bool IsBuilt() const;
 
+protected:
+
+#if WITH_EDITOR
+    // Se llama automáticamente cuando cambias algo en el panel de Detalles
+    virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
     /** Collision provider interface */
     virtual bool GetPhysicsTriMeshData(FTriMeshCollisionData* CollisionData, bool InUseAllTriData) override;
     virtual bool ContainsPhysicsTriMeshData(bool InUseAllTriData) const override;
@@ -83,6 +89,7 @@ private:
 
     FVector CurrentCollisionCenter;
     float CurrentCollisionRadius = 0;
+    double PlanetRadius = 0;
     bool bNeedsRebuild = false;
     bool bIsActive = false;
 

@@ -32,19 +32,58 @@ void UCosmicCollisionComponent::TickComponent(float DeltaTime, ELevelTick TickTy
     }
 }
 
+#if WITH_EDITOR
+void UCosmicCollisionComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+    Super::PostEditChangeProperty(PropertyChangedEvent);
+
+    const FName PropertyName = PropertyChangedEvent.Property
+        ? PropertyChangedEvent.Property->GetFName()
+        : NAME_None;
+
+    // CAMBIOS QUE ROMPEN LA GEOMETRIA (REBUILD COMPLETO)
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicCollisionComponent, CollisionTriangleSize) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicCollisionComponent, CollisionResolution))
+    {
+        ClearCollision();
+
+        if (AActor* Owner = GetOwner())
+        {
+            GenerateCollisionMesh(PlanetRadius);
+        }
+
+        return;
+    }
+
+    // CAMBIOS EN CONFIG DE FISICA (RECOOK)
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicCollisionComponent, bUseComplexAsSimpleCollision) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicCollisionComponent, bUseAsyncCooking))
+    {
+        if (IsBuilt())
+        {
+            BuildCollision();
+        }
+        return;
+    }
+
+}
+#endif
+
 
 void UCosmicCollisionComponent::RebuildCollision()
 {
     bNeedsRebuild = true;
 }
 
-void UCosmicCollisionComponent::GenerateCollisionMesh(float Radius)
+void UCosmicCollisionComponent::GenerateCollisionMesh(double Radius)
 {
     if (bIsActive) return;
 
     const int32 VertRes = CollisionResolution + 1;
     const int32 TotalVertices = VertRes * VertRes;
     const int32 HalfRes = CollisionResolution / 2;
+
+    PlanetRadius = Radius;
 
     BaseVertices.Empty();
     BaseNormals.Empty();

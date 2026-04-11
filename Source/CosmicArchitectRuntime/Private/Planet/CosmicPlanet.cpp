@@ -204,7 +204,6 @@ void ACosmicPlanet::PostEditChangeProperty(FPropertyChangedEvent& PropertyChange
         PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, RadiusKm))
     {
         UpdateOcean();
-        return;
     }
 
     if (PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, PlanetMainColor1) ||
