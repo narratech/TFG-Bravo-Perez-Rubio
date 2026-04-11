@@ -41,6 +41,10 @@ public:
         RETURN_QUICK_DECLARE_CYCLE_STAT(UGravitySubsystem, STATGROUP_Tickables);
     }
 
+    // E: Devuelve la lista optimizada de planetas registrados para lectura.
+    // I: Returns the optimized list of registered planets for reading.
+    const TArray<UCosmicGravityComponent*>& GetPlanets() const { return Planets; }
+
     // E: Registra un nuevo cuerpo en la simulación (lo añade a las listas internas).
     // I: Registers a new body into the simulation (adds it to the internal lists).
     void RegisterBody(UCosmicGravityComponent* Body);

@@ -10,61 +10,68 @@
 #include "Engine/LocalPlayer.h"
 #include "GameFramework/PlayerController.h"
 #include "Simulation/CosmicGravityComponent.h"
+#include "Simulation/CosmicGravitySubsystem.h" 
+#include "Planet/CosmicPlanet.h"
 #include "DrawDebugHelpers.h"
 
 ACosmicSpherePlayer::ACosmicSpherePlayer()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	// E: Como ya no forzamos rotaciones físicas, el Tick puede ir en el grupo por defecto.
-	// I: Since we no longer force physics rotations, Tick can stay in the default group.
-	PrimaryActorTick.TickGroup = TG_PrePhysics;
+	// E: Usamos PostPhysics para que la cámara y el modelo se alineen después de que Chaos calcule la colisión.
+	// I: We use PostPhysics so the camera and model align after Chaos calculates the collision.
+	PrimaryActorTick.TickGroup = TG_PostPhysics;
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
 
 	// =========================================================================
 	// CREACIÓN DE COMPONENTES
 	// =========================================================================
 
-	// E: 1. La esfera es la raíz. Se encarga de las colisiones y las físicas.
-	// I: 1. Sphere is the root. It handles collisions and physics.
+	// E: 1. Esfera de Colisión y Físicas.
+	// I: 1. Collision and Physics Sphere.
 	SphereComp = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComp"));
 	SphereComp->InitSphereRadius(40.0f);
 	SphereComp->SetCollisionProfileName(TEXT("Pawn"));
 	SphereComp->SetSimulatePhysics(true);
+	SphereComp->SetEnableGravity(false); // E: Desactivamos gravedad nativa para usar la del plugin. I: Disable native gravity to use the plugin's.
 	RootComponent = SphereComp;
 
-	// E: 2. El VisualRoot es hijo de la esfera. Este es el que giraremos por código.
-	// I: 2. VisualRoot is child of the sphere. This is the one we will rotate via code.
+	// E: 2. Raíz visual estabilizada (Alineada estrictamente con el planeta).
+	// I: 2. Stabilized visual root (Strictly aligned with the planet).
 	VisualRoot = CreateDefaultSubobject<USceneComponent>(TEXT("VisualRoot"));
 	VisualRoot->SetupAttachment(RootComponent);
 
-	// E: 3. Malla del personaje acoplada al VisualRoot.
-	// I: 3. Character mesh attached to VisualRoot.
-	PlayerMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("PlayerMesh"));
-	PlayerMesh->SetupAttachment(VisualRoot);
-	// Bajamos la malla para que sus pies toquen el fondo de la esfera de 40 unidades de radio.
-	PlayerMesh->SetRelativeLocation(FVector(0.0f, 0.0f, -40.0f));
-
-	// E: 4. El brazo de cámara acoplado al VisualRoot para heredar la orientación del planeta.
-	// I: 4. Camera boom attached to VisualRoot to inherit planet orientation.
+	// E: 3. Brazo de Cámara.
+	// I: 3. Camera Spring Arm.
 	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp"));
 	SpringArmComp->SetupAttachment(VisualRoot);
 	SpringArmComp->TargetArmLength = 400.0f;
-	SpringArmComp->bUsePawnControlRotation = false; // Usamos nuestra lógica local.
+	SpringArmComp->bUsePawnControlRotation = false;
 	SpringArmComp->bEnableCameraLag = true;
-	SpringArmComp->bEnableCameraRotationLag = true;
 
-	// E: 5. Cámara principal.
-	// I: 5. Main camera.
+	// E: 4. Cámara del Jugador.
+	// I: 4. Player Camera.
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->SetupAttachment(SpringArmComp, USpringArmComponent::SocketName);
 	CameraComp->bUsePawnControlRotation = false;
 
-	// E: 6. Componente de Gravedad.
-	// I: 6. Gravity Component.
+	// E: 5. Pivote para rotar al personaje hacia la dirección de movimiento.
+	// I: 5. Pivot to rotate the character towards the movement direction.
+	MeshRoot = CreateDefaultSubobject<USceneComponent>(TEXT("MeshRoot"));
+	MeshRoot->SetupAttachment(VisualRoot);
+
+	// E: 6. Malla 3D del Jugador.
+	// I: 6. Player's 3D Mesh.
+	PlayerMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("PlayerMesh"));
+	PlayerMesh->SetupAttachment(MeshRoot);
+	PlayerMesh->SetRelativeLocation(FVector(0.0f, 0.0f, -40.0f)); // E: Compensa el radio de la esfera. I: Compensates for the sphere's radius.
+
+	// E: 7. Componente Gravitatorio del Plugin Cosmic Architect.
+	// I: 7. Cosmic Architect Plugin's Gravity Component.
 	GravityComp = CreateDefaultSubobject<UCosmicGravityComponent>(TEXT("GravityComp"));
 
-	// Inicialización de variables
+	// E: Valores iniciales de cámara.
+	// I: Initial camera values.
 	CameraYaw = 0.0f;
 	CameraPitch = -20.0f;
 }
@@ -73,8 +80,8 @@ void ACosmicSpherePlayer::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// E: Añadir el contexto de mapeo inicial para Enhanced Input.
-	// I: Add the initial mapping context for Enhanced Input.
+	// E: Inicialización del sistema de inputs moderno de Unreal 5.
+	// I: Initialization of Unreal 5's modern input system.
 	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
 	{
 		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
@@ -84,13 +91,6 @@ void ACosmicSpherePlayer::BeginPlay()
 				Subsystem->AddMappingContext(DefaultMappingContext, 0);
 			}
 		}
-	}
-
-	// E: Aplicamos la rotación inicial de la cámara.
-	// I: Apply initial camera rotation.
-	if (SpringArmComp)
-	{
-		SpringArmComp->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.0f));
 	}
 }
 
@@ -107,101 +107,229 @@ void ACosmicSpherePlayer::SetupPlayerInputComponent(UInputComponent* PlayerInput
 	}
 }
 
+//void ACosmicSpherePlayer::Tick(float DeltaTime)
+//{
+//	Super::Tick(DeltaTime);
+//
+//	// E: Prevención de errores si faltan componentes clave.
+//	// I: Error prevention if key components are missing.
+//	if (!GravityComp || !VisualRoot || !MeshRoot) return;
+//
+//	// =========================================================================
+//	// 1. OBTENCIÓN DE GRAVEDAD (GRAVITY FETCHING)
+//	// =========================================================================
+//
+//	FVector GravityDown = GravityComp->CurrentGravityDirection;
+//	if (GravityDown.IsNearlyZero()) return;
+//
+//	FVector TargetUp = -GravityDown;
+//
+//	// =========================================================================
+//	// 2. ALINEACIÓN INSTANTÁNEA (INSTANT ALIGNMENT)
+//	// =========================================================================
+//
+//	// E: Proyectamos el vector frontal en el plano de la gravedad para evitar que el personaje se ladee ("Efecto Torre de Pisa").
+//	// I: We project the forward vector on the gravity plane to prevent the character from tilting ("Leaning Tower effect").
+//	FVector StableForward = FVector::VectorPlaneProject(VisualRoot->GetForwardVector(), TargetUp).GetSafeNormal();
+//	if (StableForward.IsNearlyZero()) {
+//		StableForward = FVector::CrossProduct(VisualRoot->GetRightVector(), TargetUp).GetSafeNormal();
+//	}
+//
+//	// E: Aplicamos la rotación estable al VisualRoot (Cámara y contenedor general).
+//	// I: Apply the stable rotation to the VisualRoot (Camera and general container).
+//	FQuat TargetVisualQuat = FRotationMatrix::MakeFromXZ(StableForward, TargetUp).ToQuat();
+//	VisualRoot->SetWorldRotation(TargetVisualQuat);
+//
+//	// =========================================================================
+//	// 3. PARENTESCO DINÁMICO (DYNAMIC PARENTING)
+//	// =========================================================================
+//
+//	HandleDynamicParenting();
+//
+//	// =========================================================================
+//	// 4. ROTACIÓN SUAVE DEL MODELO 3D (SMOOTH MESH ROTATION)
+//	// =========================================================================
+//
+//	FVector MeshDesiredForward;
+//	if (!TargetFacingDirection.IsNearlyZero())
+//	{
+//		// E: Si nos estamos moviendo, queremos mirar hacia esa dirección de forma segura.
+//		// I: If we are moving, we want to face that direction safely.
+//		MeshDesiredForward = FVector::VectorPlaneProject(TargetFacingDirection, TargetUp).GetSafeNormal();
+//	}
+//	else
+//	{
+//		// E: Si estamos quietos, mantenemos la orientación actual proyectada correctamente.
+//		// I: If standing still, we keep the current correctly projected orientation.
+//		MeshDesiredForward = FVector::VectorPlaneProject(MeshRoot->GetForwardVector(), TargetUp).GetSafeNormal();
+//	}
+//
+//	if (!MeshDesiredForward.IsNearlyZero())
+//	{
+//		// E: Interpolación suave (QInterpTo) para que el personaje gire la cintura con naturalidad.
+//		// I: Smooth interpolation (QInterpTo) so the character twists its waist naturally.
+//		FQuat TargetMeshQuat = FRotationMatrix::MakeFromXZ(MeshDesiredForward, TargetUp).ToQuat();
+//		MeshRoot->SetWorldRotation(FMath::QInterpTo(MeshRoot->GetComponentQuat(), TargetMeshQuat, DeltaTime, 15.0f));
+//	}
+//}
 void ACosmicSpherePlayer::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (!GravityComp || !VisualRoot) return;
+	if (!VisualRoot || !MeshRoot || !SphereComp) return;
 
-	FVector GravityDown = GravityComp->CurrentGravityDirection;
-	if (GravityDown.IsNearlyZero()) return;
+	// =========================================================================
+	// 1. CÁLCULO DE GRAVEDAD LOCAL (LOCAL GRAVITY CALCULATION)
+	// =========================================================================
+
+	FVector GravityDown = FVector::DownVector; // Gravedad por defecto
+	AActor* NearestPlanet = nullptr;
+	float MinDist = TNumericLimits<float>::Max();
+
+	// E: Buscamos el planeta más cercano para saber hacia dónde caer.
+	// I: Find the nearest planet to know which way to fall.
+	if (UCosmicGravitySubsystem* Subsystem = GetWorld()->GetSubsystem<UCosmicGravitySubsystem>())
+	{
+		for (UCosmicGravityComponent* PlanetComp : Subsystem->GetPlanets())
+		{
+			if (ACosmicPlanet* PlanetActor = Cast<ACosmicPlanet>(PlanetComp->GetOwner()))
+			{
+				float DistToSurface = FVector::Dist(GetActorLocation(), PlanetActor->GetActorLocation()) - (PlanetActor->RadiusKm * 100000.0f);
+				if (DistToSurface < MinDist)
+				{
+					MinDist = DistToSurface;
+					NearestPlanet = PlanetActor;
+				}
+			}
+		}
+	}
+
+	// E: Si hay un planeta cerca, definimos la gravedad hacia su núcleo y la aplicamos.
+	// I: If there is a nearby planet, we define gravity towards its core and apply it.
+	if (NearestPlanet)
+	{
+		GravityDown = (NearestPlanet->GetActorLocation() - GetActorLocation()).GetSafeNormal();
+
+		// E: Aplicamos una fuerza de gravedad terrestre constante (980 cm/s^2).
+		// I: We apply a constant Earth-like gravity force (980 cm/s^2).
+		SphereComp->AddForce(GravityDown * 980.0f, NAME_None, true);
+	}
 
 	FVector TargetUp = -GravityDown;
 
-	// E: Calculamos el frente deseado basado en el input o en la cámara.
-	// I: Calculate desired forward based on input or camera.
-	FVector DesiredForward;
-	if (!TargetFacingDirection.IsNearlyZero())
-	{
-		DesiredForward = FVector::VectorPlaneProject(TargetFacingDirection, TargetUp).GetSafeNormal();
-	}
-	else
-	{
-		DesiredForward = FVector::VectorPlaneProject(VisualRoot->GetForwardVector(), TargetUp).GetSafeNormal();
+	// =========================================================================
+	// 2. ALINEACIÓN INSTANTÁNEA (INSTANT ALIGNMENT)
+	// =========================================================================
+
+	FVector StableForward = FVector::VectorPlaneProject(VisualRoot->GetForwardVector(), TargetUp).GetSafeNormal();
+	if (StableForward.IsNearlyZero()) {
+		StableForward = FVector::CrossProduct(VisualRoot->GetRightVector(), TargetUp).GetSafeNormal();
 	}
 
-	if (DesiredForward.IsNearlyZero())
+	FQuat TargetVisualQuat = FRotationMatrix::MakeFromXZ(StableForward, TargetUp).ToQuat();
+	VisualRoot->SetWorldRotation(TargetVisualQuat);
+
+	// =========================================================================
+	// 3. PARENTESCO DINÁMICO (DYNAMIC PARENTING)
+	// =========================================================================
+
+	// E: Opcional: Descoméntalo si tus planetas se mueven por el espacio.
+	// HandleDynamicParenting();
+
+	// =========================================================================
+	// 4. ROTACIÓN SUAVE DEL MODELO 3D (SMOOTH MESH ROTATION)
+	// =========================================================================
+
+	FVector MeshDesiredForward = TargetFacingDirection.IsNearlyZero() ?
+		FVector::VectorPlaneProject(MeshRoot->GetForwardVector(), TargetUp).GetSafeNormal() :
+		FVector::VectorPlaneProject(TargetFacingDirection, TargetUp).GetSafeNormal();
+
+	if (!MeshDesiredForward.IsNearlyZero())
 	{
-		DesiredForward = VisualRoot->GetForwardVector();
+		FQuat TargetMeshQuat = FRotationMatrix::MakeFromXZ(MeshDesiredForward, TargetUp).ToQuat();
+		MeshRoot->SetWorldRotation(FMath::QInterpTo(MeshRoot->GetComponentQuat(), TargetMeshQuat, DeltaTime, 15.0f));
+	}
+}
+
+void ACosmicSpherePlayer::HandleDynamicParenting()
+{
+	AActor* NearestPlanet = nullptr;
+	float MinDist = TNumericLimits<float>::Max();
+
+	// E: Accedemos al subsistema de gravedad para encontrar planetas cercanos de forma optimizada.
+	// I: We access the gravity subsystem to find nearby planets in an optimized way.
+	if (UCosmicGravitySubsystem* Subsystem = GetWorld()->GetSubsystem<UCosmicGravitySubsystem>())
+	{
+		for (UCosmicGravityComponent* PlanetComp : Subsystem->GetPlanets())
+		{
+			if (PlanetComp && PlanetComp->GetOwner() && PlanetComp->GetOwner() != this)
+			{
+				// E: Verificamos si el dueño de la gravedad es realmente un ACosmicPlanet.
+				// I: We verify if the gravity owner is actually an ACosmicPlanet.
+				if (ACosmicPlanet* PlanetActor = Cast<ACosmicPlanet>(PlanetComp->GetOwner()))
+				{
+					float Dist = FVector::Dist(GetActorLocation(), PlanetActor->GetActorLocation());
+
+					// E: Convertimos los Km a Centímetros (Unidades de Unreal) multiplicando por 100,000.
+					// I: We convert Km to Centimeters (Unreal Units) by multiplying by 100,000.
+					float RealRadiusCm = PlanetActor->RadiusKm * 100000.0f;
+
+					// E: Calculamos la distancia exacta a la superficie matemática del planeta.
+					// I: Calculate the exact distance to the mathematical surface of the planet.
+					float DistToSurface = Dist - RealRadiusCm;
+
+					if (DistToSurface < MinDist)
+					{
+						MinDist = DistToSurface;
+						NearestPlanet = PlanetActor;
+					}
+				}
+			}
+		}
 	}
 
-	// E: EL TRUCO DE LA ESFERA: Rotamos el VisualRoot, NO la esfera física.
-	// I: THE SPHERE TRICK: We rotate the VisualRoot, NOT the physical sphere.
-	FQuat TargetQuat = FRotationMatrix::MakeFromXZ(DesiredForward, TargetUp).ToQuat();
-
-	// E: Podemos usar interpolación para hacerlo aún más suave, o setearlo directo.
-	// I: We can use interpolation to make it even smoother, or set it directly.
-	FQuat NewVisualQuat = FMath::QInterpTo(VisualRoot->GetComponentQuat(), TargetQuat, DeltaTime, 15.0f);
-	VisualRoot->SetWorldRotation(NewVisualQuat);
+	// E: Si estamos cerca de la superficie, nos "pegamos" al planeta para heredar su movimiento en el espacio.
+	// I: If close to the surface, we "stick" to the planet to inherit its movement in space.
+	if (NearestPlanet && MinDist <= ParentingDistanceThreshold)
+	{
+		if (CurrentParentPlanet != NearestPlanet)
+		{
+			CurrentParentPlanet = NearestPlanet;
+			FAttachmentTransformRules AttachRules(EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, false);
+			AttachToActor(NearestPlanet, AttachRules);
+		}
+	}
+	else if (CurrentParentPlanet != nullptr)
+	{
+		// E: Si saltamos o volamos lejos, nos desvinculamos para volver a ser independientes.
+		// I: If we jump or fly away, we detach to become independent again.
+		FDetachmentTransformRules DetachRules(EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, false);
+		DetachFromActor(DetachRules);
+		CurrentParentPlanet = nullptr;
+	}
 }
 
 void ACosmicSpherePlayer::Move(const FInputActionValue& Value)
 {
 	FVector2D MovementVector = Value.Get<FVector2D>();
 
-	// E: Reseteamos la dirección objetivo si el input es nulo.
-	// I: Reset target direction if input is null.
-	if (MovementVector.IsNearlyZero())
-	{
-		TargetFacingDirection = FVector::ZeroVector;
-		return;
-	}
+	// E: Si no hay input, reseteamos la dirección objetivo para que el modelo deje de intentar rotar.
+	// I: If no input, reset the target direction so the model stops trying to rotate.
+	if (MovementVector.IsNearlyZero()) { TargetFacingDirection = FVector::ZeroVector; return; }
 
-	if (Controller && VisualRoot && CameraComp && SphereComp)
+	if (VisualRoot && CameraComp && SphereComp)
 	{
-		// E: El movimiento siempre es relativo a la orientación actual de la cámara.
-		// I: Movement is always relative to the current camera orientation.
-		FVector CameraForward = CameraComp->GetForwardVector();
-		FVector CameraRight = CameraComp->GetRightVector();
 		FVector UpVector = VisualRoot->GetUpVector();
 
-		// E: Proyectamos los vectores de la cámara sobre el plano del suelo local.
-		// I: Project camera vectors onto the local ground plane.
-		FVector ForwardOnGround = FVector::VectorPlaneProject(CameraForward, UpVector).GetSafeNormal();
-		FVector RightOnGround = FVector::VectorPlaneProject(CameraRight, UpVector).GetSafeNormal();
+		// E: Calculamos hacia dónde mira la cámara, ignorando si miramos hacia el cielo o el suelo.
+		// I: Calculate where the camera is looking, ignoring if we look at the sky or the ground.
+		FVector ForwardOnGround = FVector::VectorPlaneProject(CameraComp->GetForwardVector(), UpVector).GetSafeNormal();
+		FVector RightOnGround = FVector::VectorPlaneProject(CameraComp->GetRightVector(), UpVector).GetSafeNormal();
 
-		// E: Calculamos la dirección final en el espacio del mundo.
-		// I: Calculate final direction in world space.
-		FVector MoveDirection = (ForwardOnGround * MovementVector.Y) + (RightOnGround * MovementVector.X);
-		TargetFacingDirection = MoveDirection.GetSafeNormal();
-
-		// E: Calculamos la fuerza final a aplicar usando nuestra variable parametrizada.
-		// I: Calculate the final force to apply using our parameterized variable.
-		FVector ForceToApply = TargetFacingDirection * MovementForce;
-
-		// E: Aplicamos fuerza a la ESFERA RAÍZ.
-		// I: Apply force to the ROOT SPHERE.
-		SphereComp->AddForce(ForceToApply, NAME_None, false);
-
-		// =========================================================================
-		// DEBUG VISUAL DE LA FUERZA
-		// =========================================================================
-
-		// E: Obtenemos el punto de origen (El centro de nuestra esfera física).
-		// I: Get the starting point (The center of our physical sphere).
-		FVector StartLoc = SphereComp->GetComponentLocation();
-
-		// E: Para que la flecha no sea gigantesca (350.000 unidades de larga), 
-		// usamos la dirección pura y la multiplicamos por una longitud visual fija (ej. 200).
-		// I: So the arrow isn't gigantic (350,000 units long), 
-		// we use the pure direction and multiply it by a fixed visual length (e.g. 200).
-		float VisualArrowLength = 200.0f;
-		FVector EndLoc = StartLoc + (TargetFacingDirection * VisualArrowLength);
-
-		// E: Dibujamos la flecha direccional.
-		// Parámetros: Mundo, Inicio, Fin, Tamaño Flecha, Color, Persistente, Tiempo de vida, Profundidad, Grosor.
-		// I: Draw the directional arrow.
-		DrawDebugDirectionalArrow(GetWorld(), StartLoc, EndLoc, 20.0f, FColor::White, false, -1.0f, 0, 4.0f);
+		// E: Creamos el vector direccional y aplicamos fuerza a la esfera para rodar.
+		// I: Create the directional vector and apply force to the sphere to roll.
+		TargetFacingDirection = (ForwardOnGround * MovementVector.Y) + (RightOnGround * MovementVector.X);
+		SphereComp->AddForce(TargetFacingDirection * MovementForce);
 	}
 }
 
@@ -211,9 +339,10 @@ void ACosmicSpherePlayer::Look(const FInputActionValue& Value)
 
 	if (SpringArmComp)
 	{
+		// E: Actualizamos las rotaciones puras del brazo de la cámara.
+		// I: Update the pure rotations of the camera spring arm.
 		CameraYaw += LookAxisVector.X;
-		CameraPitch += LookAxisVector.Y; // Cambia a -= si quieres invertir.
-		CameraPitch = FMath::Clamp(CameraPitch, -85.0f, 85.0f);
+		CameraPitch = FMath::Clamp(CameraPitch + LookAxisVector.Y, -85.0f, 85.0f); // Evitamos dar volteretas. I: Prevent somersaults.
 
 		SpringArmComp->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.0f));
 	}
@@ -223,9 +352,8 @@ void ACosmicSpherePlayer::Jump(const FInputActionValue& Value)
 {
 	if (SphereComp && VisualRoot)
 	{
-		// E: El impulso de salto se basa en la orientación visual ("Arriba" local).
-		// I: Jump impulse is based on visual orientation (local "Up").
-		FVector JumpImpulse = VisualRoot->GetUpVector() * 800.0f;
-		SphereComp->AddImpulse(JumpImpulse, NAME_None, true); // true = ignorar masa
+		// E: Impulso seco en el eje Z local (que gracias a nuestro Tick, siempre es contrario a la gravedad).
+		// I: Sharp impulse on the local Z axis (which thanks to our Tick, is always opposite to gravity).
+		SphereComp->AddImpulse(VisualRoot->GetUpVector() * 800.0f, NAME_None, true);
 	}
 }
