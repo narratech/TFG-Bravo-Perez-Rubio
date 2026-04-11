@@ -33,6 +33,10 @@ void ACosmicPlanet::PostInitializeComponents()
     if (FoliageSpawnerComponent) {
         FoliageSpawnerComponent->InitFoliageSpawner(RadiusKm, NoiseSettings);
     }
+
+    InitClipmap();
+    UpdateMaterialOnly();
+    UpdateOcean();
 }
 
 
@@ -50,10 +54,10 @@ void ACosmicPlanet::BeginPlay()
         else {
             ClipmapComponent->ParentRoot = Root;
             ClipmapComponent->PlanetRadius = RadiusKm * 100000;
-            ClipmapComponent->NoiseSettings = NoiseSettings;
-            ClipmapComponent->SetMaterialData(PlanetMainColor1, PlanetMainColor2, PlanetAltitudeColor, MaterialNoiseScale);
+            ClipmapComponent->NoiseSettings = NoiseSettings; 
             ClipmapComponent->CollisionComponent = CollisionComponent;
             ClipmapComponent->CreatePerformanceLevel(true);   
+            ClipmapComponent->SetMaterialData(PlanetMainColor1, PlanetMainColor2, PlanetAltitudeColor, MaterialNoiseScale);
         }
     }
 }
@@ -77,7 +81,6 @@ void ACosmicPlanet::InitClipmap()
         ClipmapComponent->PlanetRadius = RadiusKm * 100000;
         ClipmapComponent->ClearLevels();
         ClipmapComponent->NoiseSettings = NoiseSettings;
-        ClipmapComponent->SetMaterialData(PlanetMainColor1, PlanetMainColor2, PlanetAltitudeColor, MaterialNoiseScale);
         ClipmapComponent->CollisionComponent = CollisionComponent;
         ClipmapComponent->CreatePerformanceLevel(true);
         ClipmapComponent->bInitializedInEditor = true;

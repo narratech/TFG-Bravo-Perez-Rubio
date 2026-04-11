@@ -90,9 +90,15 @@ protected:
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+#if WITH_EDITOR
+    // Se llama automáticamente cuando cambias algo en el panel de Detalles
+    virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
+
     /** Actualizar colisión cerca del jugador */
     void UpdateCollisionNearPlayer(const FVector& SurfacePos, const FVector& SurfaceNormal, const FRotator& PatchRotation, const float DistanceToSurface);
     void UpdatePatchTransform(const FVector& SurfacePos, const FVector& N);
+    void BuildDynamicMaterial();
     FRotator GetPatchRotation(const FVector& SurfacePos) const;
     float GetDistanceToSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N);
     float GetDistanceToPlainSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N);

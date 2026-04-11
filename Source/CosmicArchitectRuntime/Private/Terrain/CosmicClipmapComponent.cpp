@@ -250,6 +250,60 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
     }    
 }
 
+#if WITH_EDITOR
+void UCosmicClipmapComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+    Super::PostEditChangeProperty(PropertyChangedEvent);
+
+    const FName PropertyName = PropertyChangedEvent.Property
+        ? PropertyChangedEvent.Property->GetFName()
+        : NAME_None;
+
+    // REBUILD COMPLETO (estructura)
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, BaseResolution) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, NumLevels) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, MinTriangleSize) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, IsPlanet))
+    {
+        ClearLevels();
+
+        CreatePerformanceLevel(true);
+
+        if (!bPerformaceMode)
+        {
+            CreateLevels();
+        }
+
+        return;
+    }
+
+    //  MATERIAL BASE / TEXTURA
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, BaseMaterial) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, DefaultTexture))
+    {
+        BuildDynamicMaterial();
+        return;
+    }
+
+    //  DEPENDENCIAS IMPORTANTES
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, NoiseSettings))
+    {
+        /*ClearLevels();
+
+        if (bPerformaceMode)
+        {
+            CreatePerformanceLevel(true);
+        }
+        else
+        {
+            CreateLevels();
+        }*/
+
+        return;
+    }
+}
+#endif
+
 void UCosmicClipmapComponent::CreateLevels()
 {
     if (bInit)
@@ -403,19 +457,7 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
 
         FarLevel = Mesh;
 
-       
-
-        if (DynamicPlanetMat)
-        {
-            Mesh->SetMaterial(0, DynamicPlanetMat);
-        }
-        //else
-        //{
-        //    // Material por defecto
-        //    Mesh->SetMaterial(0, UMaterial::GetDefaultMaterial(MD_Surface));
-        //}
-
-        //UE_LOG(LogTemp, Warning, TEXT("  Nivel Extra creado"));
+        BuildDynamicMaterial();
     }
 
     bInit = false;
@@ -511,26 +553,41 @@ void UCosmicClipmapComponent::SetMaterialData(FColor color1, FColor color2, FCol
     PlanetAltitudeColor = colorHeight;
     MaterialNoiseScale = scale;
 
+    if (DynamicPlanetMat)
+    {
+        DynamicPlanetMat->SetScalarParameterValue(FName("PlanetRadius"), PlanetRadius);
+
+        if (NoiseSettings) {
+            DynamicPlanetMat->SetScalarParameterValue(FName("MaxHeight"), NoiseSettings->Params.MaxMountainHeight);
+        }
+
+        DynamicPlanetMat->SetVectorParameterValue(FName("BaseColor"), color1);
+        DynamicPlanetMat->SetVectorParameterValue(FName("MidColor"), color2);
+        DynamicPlanetMat->SetVectorParameterValue(FName("ColdColor"), colorHeight);
+        DynamicPlanetMat->SetScalarParameterValue(FName("NoiseScale"), scale);
+        DynamicPlanetMat->SetTextureParameterValue(FName("PlanetTexture"), DefaultTexture);
+    }
+}
+
+void UCosmicClipmapComponent::BuildDynamicMaterial() 
+{
     if (BaseMaterial) {
 
-        if(DynamicPlanetMat == nullptr)
-            DynamicPlanetMat = UMaterialInstanceDynamic::Create(BaseMaterial, this);
+        DynamicPlanetMat = UMaterialInstanceDynamic::Create(BaseMaterial, this);
 
-        if (DynamicPlanetMat)
-        {
-            DynamicPlanetMat->SetScalarParameterValue(FName("PlanetRadius"), PlanetRadius);
-
-            if (NoiseSettings) {
-                DynamicPlanetMat->SetScalarParameterValue(FName("MaxHeight"), NoiseSettings->Params.MaxMountainHeight);
-            }
-
-            DynamicPlanetMat->SetVectorParameterValue(FName("BaseColor"), PlanetMainColor1);
-            DynamicPlanetMat->SetVectorParameterValue(FName("MidColor"), PlanetMainColor2);
-            DynamicPlanetMat->SetVectorParameterValue(FName("ColdColor"), PlanetAltitudeColor);
-            DynamicPlanetMat->SetScalarParameterValue(FName("NoiseScale"), MaterialNoiseScale);
-            DynamicPlanetMat->SetTextureParameterValue(FName("PlanetTexture"), DefaultTexture);
-        }
+        SetMaterialData(PlanetMainColor1, PlanetMainColor2, PlanetAltitudeColor, MaterialNoiseScale);
+    } 
+    else {
+        DynamicPlanetMat = nullptr;
     }
+
+    for (size_t i = 0; i < Levels.Num(); i++)
+    {
+        Levels[i]->SetMaterial(0, DynamicPlanetMat);
+    }
+
+    if (FarLevel)
+        FarLevel->SetMaterial(0, DynamicPlanetMat);
 }
 
 
