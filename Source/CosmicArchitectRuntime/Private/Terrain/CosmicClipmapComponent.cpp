@@ -533,6 +533,8 @@ void UCosmicClipmapComponent::ReasignLevels()
                 {
                     if (!FarLevel) { FarLevel = TargetMesh; }
                     else { Levels.Add(TargetMesh); }
+
+                    //if() TargetMesh
                 }
             }
         }
