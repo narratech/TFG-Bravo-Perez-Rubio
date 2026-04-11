@@ -215,6 +215,16 @@ void UCosmicFoliageSpawner::ApplyGeneratedInstances(
 
     TMap<UStaticMesh*, TArray<FTransform>> Batch;
 
+    TMap<UStaticMesh*, bool> MeshCollisionCache;
+
+    for (const auto& Entry : FoliageCollection->FoliageEntries)
+    {
+        for (const auto& FoliageInst : Entry.Foliage)
+        {
+            MeshCollisionCache.Add(FoliageInst.Mesh, FoliageInst.bHasCollision);
+        }
+    }
+
     for (const FCosmicFoliageInstance& Inst : Instances)
     {
         if (!Inst.Mesh)
@@ -233,6 +243,14 @@ void UCosmicFoliageSpawner::ApplyGeneratedInstances(
 
         if (!Comp)
             continue;
+
+        const bool HasCollision = MeshCollisionCache.FindRef(Mesh);
+
+        Comp->SetCollisionEnabled(
+            HasCollision
+            ? ECollisionEnabled::QueryAndPhysics
+            : ECollisionEnabled::NoCollision
+        );
 
         Comp->AddInstances(Transforms, false);
     }

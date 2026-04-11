@@ -49,6 +49,9 @@ struct COSMICARCHITECTFOLIAGE_API FCosmicFoliageMesh
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings")
     bool bCanSpawnInWater = false;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings")
+    bool bHasCollision = true;
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings", meta = (ClampMin = "0", ClampMax = "1"))
     float DensityMultiplier = 1.0f;
 };
