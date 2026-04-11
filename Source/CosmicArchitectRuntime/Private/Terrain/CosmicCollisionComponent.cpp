@@ -29,7 +29,6 @@ void UCosmicCollisionComponent::TickComponent(float DeltaTime, ELevelTick TickTy
 
     if (bShowCollisionMesh) {
         DrawDebugCollisionMesh();
-        //UE_LOG(LogTemp, Warning, TEXT("Pintando malla"));
     }
 }
 
@@ -41,6 +40,8 @@ void UCosmicCollisionComponent::RebuildCollision()
 
 void UCosmicCollisionComponent::GenerateCollisionMesh(float Radius)
 {
+    if (bIsActive) return;
+
     const int32 VertRes = CollisionResolution + 1;
     const int32 TotalVertices = VertRes * VertRes;
     const int32 HalfRes = CollisionResolution / 2;
@@ -99,7 +100,7 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(float Radius)
         }
     }
 
-    //UE_LOG(LogTemp, Warning, TEXT("  Vértices calculados: %d"), ActualVerticesCalculated);
+    //UE_LOG(LogTemp, Warning, TEXT("Creando colision"));
 
     // 4. CALCULAR TRIÁNGULOS (CORREGIDO)
     Tris.Empty();
@@ -139,7 +140,7 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(float Radius)
 
 void UCosmicCollisionComponent::UpdateCollisionMesh(UCosmicNoiseSettings* NoiseSettings)
 {
-
+    if (!bIsActive) return;
     //double CreateStartTime = FPlatformTime::Seconds();
 
     TArray<float> Heights = CosmicNoise::CalculateHeights(BaseVertices, GetOwner()->GetActorLocation(), GetComponentTransform(), NoiseSettings);
@@ -184,7 +185,13 @@ void UCosmicCollisionComponent::ClearCollision()
     BaseVertices.Empty();
     BaseNormals.Empty();
 
+    bIsActive = false;
     bNeedsRebuild = false;
+}
+
+bool UCosmicCollisionComponent::IsBuilt() const 
+{
+    return bIsActive;
 }
 
 void UCosmicCollisionComponent::DrawDebugCollisionMesh()
@@ -243,12 +250,13 @@ UBodySetup* UCosmicCollisionComponent::GetBodySetup()
 
 void UCosmicCollisionComponent::BuildCollision()
 {
-
     if (Verts.Num() == 0 || Tris.Num() == 0)
     {
         UE_LOG(LogTemp, Warning, TEXT("Collision mesh empty"));
         return;
     }
+
+    bIsActive = true;
 
     UWorld* World = GetWorld();
 

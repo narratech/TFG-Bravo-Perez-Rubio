@@ -59,6 +59,8 @@ public:
 
     void ClearCollision();
 
+    bool IsBuilt() const;
+
     /** Collision provider interface */
     virtual bool GetPhysicsTriMeshData(FTriMeshCollisionData* CollisionData, bool InUseAllTriData) override;
     virtual bool ContainsPhysicsTriMeshData(bool InUseAllTriData) const override;
@@ -82,6 +84,7 @@ private:
     FVector CurrentCollisionCenter;
     float CurrentCollisionRadius = 0;
     bool bNeedsRebuild = false;
+    bool bIsActive = false;
 
     TArray<FVector> BaseVertices;
     TArray<FVector> BaseNormals;

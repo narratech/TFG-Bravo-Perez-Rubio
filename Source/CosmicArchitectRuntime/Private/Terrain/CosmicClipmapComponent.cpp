@@ -37,14 +37,17 @@ void UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePo
     // Solo generar colisión si el jugador está cerca de la superficie
     if (DistanceToSurface < CollisionComponent->MaxCollisionDistance)
     {
-
+        if (!CollisionComponent->IsBuilt()) 
+        {
+            CollisionComponent->GenerateCollisionMesh(PlanetRadius);
+        }
         CollisionComponent->SetWorldLocationAndRotation(SurfacePos, PatchRotation);       
         CollisionComponent->UpdateCollisionMesh(NoiseSettings);
     }
-    else
+    else if(CollisionComponent->IsBuilt())
     {
         // Limpiar colisión si está lejos
-        //CollisionComponent->ClearCollisionMesh();
+        CollisionComponent->ClearCollision();
     }
 }
 
