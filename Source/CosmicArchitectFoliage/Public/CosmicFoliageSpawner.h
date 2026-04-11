@@ -6,11 +6,10 @@
 #include "Components/ActorComponent.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "CosmicOctree.h"
-#include "CosmicFoliageTypes.h"
 #include "CosmicFoliageGenerationTask.h"
-#include "CosmicFoliageCollection.h"
 #include "CosmicFoliageSpawner.generated.h"
 
+class UCosmicFoliageCollection;
 class UCosmicNoiseSettings;
 
 

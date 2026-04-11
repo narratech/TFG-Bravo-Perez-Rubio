@@ -1,6 +1,7 @@
 #include "CosmicFoliageSpawner.h"
 #include "Engine/World.h"
 #include "CosmicNoiseSettings.h"
+#include "CosmicFoliageCollection.h"
 #include "Kismet/GameplayStatics.h"
 #include "Async/Async.h"
 
