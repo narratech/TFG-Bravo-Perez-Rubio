@@ -12,6 +12,12 @@ void UCosmicMeshComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {
     Super::EndPlay(EndPlayReason);
 }
 
+void UCosmicMeshComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
+{
+    CancelAsyncWork();
+    Super::OnComponentDestroyed(bDestroyingHierarchy);
+}
+
 void UCosmicMeshComponent::BuildBasePlainMesh()
 {
     // 1. NUEVA RESOLUCIÓN (Resolution - 1)
@@ -853,5 +859,6 @@ void UCosmicMeshComponent::CancelAsyncWork()
         NoiseTask->GetTask().bCancel = true;
         NoiseTask->EnsureCompletion();
         NoiseTask.Reset();
+        bIsGeneratingNoise = false;
     }
 }

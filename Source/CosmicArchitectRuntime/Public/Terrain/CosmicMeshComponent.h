@@ -48,6 +48,7 @@ public:
     TArray<FProcMeshTangent> BaseTangents;
 
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
+    virtual void OnComponentDestroyed(bool bDestroyingHierarchy);
 
     void BuildBaseMesh();
     void BuildBaseProjectedMesh();
