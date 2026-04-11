@@ -65,7 +65,9 @@ public:
 
 	virtual void PostInitializeComponents() override;
 
+#if WITH_EDITOR
 	virtual void OnConstruction(const FTransform& Transform) override;
+#endif
 
 	void InitPlanet(float InRadiusKm, UCosmicNoiseSettings* NewNoiseSettings, FColor color1, FColor color2, FColor colorHeight, float scale, UMaterialInterface* BaseMaterial, UTexture2D* DefaultTexture);
 
@@ -84,6 +86,8 @@ protected:
 	void UpdateOcean();
 
 	void UpdateMaterialOnly();
+
+	bool bInitializedInEditor = false;
 
 #if WITH_EDITOR
 	// Se llama automáticamente cuando cambias algo en el panel de Detalles

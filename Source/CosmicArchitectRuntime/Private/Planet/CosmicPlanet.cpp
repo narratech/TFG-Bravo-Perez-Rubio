@@ -33,10 +33,6 @@ void ACosmicPlanet::PostInitializeComponents()
     if (FoliageSpawnerComponent) {
         FoliageSpawnerComponent->InitFoliageSpawner(RadiusKm, NoiseSettings);
     }
-
-    InitClipmap();
-    UpdateMaterialOnly();
-    UpdateOcean();
 }
 
 
@@ -48,7 +44,7 @@ void ACosmicPlanet::BeginPlay()
 
     //InitClipmap();
     if (ClipmapComponent) {
-        if (ClipmapComponent->bInitializedInEditor) {
+        if (bInitializedInEditor) {
             ClipmapComponent->ReasignLevels();
         }
         else {
@@ -83,7 +79,7 @@ void ACosmicPlanet::InitClipmap()
         ClipmapComponent->NoiseSettings = NoiseSettings;
         ClipmapComponent->CollisionComponent = CollisionComponent;
         ClipmapComponent->CreatePerformanceLevel(true);
-        ClipmapComponent->bInitializedInEditor = true;
+        bInitializedInEditor = true;
         
     }
     else {
@@ -129,18 +125,19 @@ void ACosmicPlanet::UpdateOcean()
     }
 }
 
-
+#if WITH_EDITOR
 void ACosmicPlanet::OnConstruction(const FTransform& Transform)
 {
     Super::OnConstruction(Transform);
 
-//#if WITH_EDITOR
-   /* if (!GetWorld()->IsGameWorld())
+    if (!GetWorld()->IsGameWorld() && !bInitializedInEditor)
     {
+        UpdateMaterialOnly();
         InitClipmap();
-    }*/
-//#endif
+        UpdateOcean();
+    }
 }
+#endif
 
 void ACosmicPlanet::InitPlanet(float InRadiusKm, UCosmicNoiseSettings* NewNoiseSettings, FColor color1, FColor color2, FColor colorHeight, float scale, UMaterialInterface* BaseMaterial, UTexture2D* DefaultTexture)
 {
