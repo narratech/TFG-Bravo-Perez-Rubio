@@ -73,6 +73,13 @@ void UCosmicClipmapComponent::BeginPlay()
 
 void UCosmicClipmapComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {
 
+    if (CollisionComponent)
+    {
+        CollisionComponent->ClearCollision();
+        CollisionComponent->DestroyComponent();
+        CollisionComponent = nullptr;
+    }
+
     ClearLevels();
     Super::EndPlay(EndPlayReason);
 }

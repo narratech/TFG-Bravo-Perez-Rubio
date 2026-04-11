@@ -19,6 +19,8 @@ public:
 
     UCosmicCollisionComponent();
 
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
+
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
     UPROPERTY(EditAnywhere, Category = "Collision")
@@ -55,7 +57,7 @@ public:
 
     void UpdateCollisionMesh(UCosmicNoiseSettings* NoiseSettings);
 
-    
+    void ClearCollision();
 
     /** Collision provider interface */
     virtual bool GetPhysicsTriMeshData(FTriMeshCollisionData* CollisionData, bool InUseAllTriData) override;

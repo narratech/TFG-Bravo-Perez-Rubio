@@ -16,6 +16,13 @@ UCosmicCollisionComponent::UCosmicCollisionComponent()
     PrimaryComponentTick.bCanEverTick = true;
 }
 
+void UCosmicCollisionComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    ClearCollision();
+
+    Super::EndPlay(EndPlayReason);
+}
+
 void UCosmicCollisionComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
@@ -147,6 +154,37 @@ void UCosmicCollisionComponent::UpdateCollisionMesh(UCosmicNoiseSettings* NoiseS
     //double CreateEndTime = FPlatformTime::Seconds();
 
     //UE_LOG(LogTemp, Warning, TEXT("Actualizar malla de colision tomo: %.4f ms"), (CreateEndTime - CreateStartTime) * 1000.0);
+}
+
+void UCosmicCollisionComponent::ClearCollision() 
+{   
+    // Cancelar async cooking
+    for (UBodySetup* Setup : AsyncBodySetupQueue)
+    {
+        if (Setup)
+        {
+            Setup->AbortPhysicsMeshAsyncCreation();
+        }
+    }
+    AsyncBodySetupQueue.Empty();
+
+    // Limpiar BodySetup actual
+    if (BodySetup)
+    {
+        BodySetup->ClearPhysicsMeshes();
+        BodySetup = nullptr;
+    }
+
+    // Quitar del sistema de físicas
+    DestroyPhysicsState();
+
+    // Limpiar datos
+    Verts.Empty();
+    Tris.Empty();
+    BaseVertices.Empty();
+    BaseNormals.Empty();
+
+    bNeedsRebuild = false;
 }
 
 void UCosmicCollisionComponent::DrawDebugCollisionMesh()
