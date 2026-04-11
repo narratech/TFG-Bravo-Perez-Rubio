@@ -42,19 +42,19 @@ void ACosmicPlanet::BeginPlay()
 {
 	Super::BeginPlay();
 
-    //InitClipmap();
     if (ClipmapComponent) {
-        if (bInitializedInEditor) {
-            ClipmapComponent->ReasignLevels();
-        }
-        else {
-            ClipmapComponent->ParentRoot = Root;
-            ClipmapComponent->PlanetRadius = RadiusKm * 100000;
-            ClipmapComponent->NoiseSettings = NoiseSettings; 
-            ClipmapComponent->CollisionComponent = CollisionComponent;
-            ClipmapComponent->CreatePerformanceLevel(true);   
-            ClipmapComponent->SetMaterialData(PlanetMainColor1, PlanetMainColor2, PlanetAltitudeColor, MaterialNoiseScale);
-        }
+#if WITH_EDITOR
+        ClipmapComponent->ParentRoot = Root;
+        ClipmapComponent->PlanetRadius = RadiusKm * 100000;
+        ClipmapComponent->NoiseSettings = NoiseSettings;
+        ClipmapComponent->CollisionComponent = CollisionComponent;
+        ClipmapComponent->SetMaterialData(PlanetMainColor1, PlanetMainColor2, PlanetAltitudeColor, MaterialNoiseScale);
+        ClipmapComponent->ReasignLevels();
+#else
+        UpdateMaterialOnly();
+        InitClipmap();
+        UpdateOcean();
+#endif
     }
 }
 
