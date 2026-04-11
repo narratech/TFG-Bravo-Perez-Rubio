@@ -858,12 +858,11 @@ void UCosmicMeshComponent::CancelAsyncWork()
     if (NoiseTask->Cancel() || NoiseTask->IsDone())
     {
         delete NoiseTask;
-        NoiseTask = nullptr;
     }
     else
     {
         NoiseTask->EnsureCompletion();
-        delete NoiseTask;
-        NoiseTask = nullptr;
+        delete NoiseTask;        
     }
+    NoiseTask = nullptr;
 }

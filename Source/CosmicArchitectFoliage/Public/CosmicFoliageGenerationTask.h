@@ -38,8 +38,6 @@ public:
     FCosmicNoiseGenerationParameters NoiseSettings;
     float CellAreaKm2;
 
-    std::atomic<bool> bCancel = false;
-
     // Almacenamos los puntos de generación con su información ambiental
     struct FSeedPoint
     {

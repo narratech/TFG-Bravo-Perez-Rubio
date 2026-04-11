@@ -32,10 +32,14 @@ void UCosmicFoliageSpawner::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     for (auto& Task : ActiveTasks)
     {
-        if (Task.IsValid())
+        if (Task->Cancel() || Task->IsDone())
         {
-            Task->GetTask().bCancel = true;
+            delete Task;
+        }
+        else
+        {
             Task->EnsureCompletion();
+            delete Task;
         }
     }
 
@@ -189,8 +193,8 @@ void UCosmicFoliageSpawner::GenerateCellFoliage(
 
     float CellAreaKm2 = Octree.GetNodeAreaKm2(Cell);
 
-    TUniquePtr<FAsyncTask<FFoliageGenerationTask>> Task =
-        MakeUnique<FAsyncTask<FFoliageGenerationTask>>(
+    FAsyncTask<FFoliageGenerationTask>* Task =
+        new FAsyncTask<FFoliageGenerationTask>(
             Cell,
             FoliageCollection,
             PlanetCenter,
@@ -214,7 +218,7 @@ void UCosmicFoliageSpawner::UpdateFoliageGeneration(
 {
     for (int32 i = ActiveTasks.Num() - 1; i >= 0; i--)
     {
-        TUniquePtr<FAsyncTask<FFoliageGenerationTask>>& Task = ActiveTasks[i];
+        FAsyncTask<FFoliageGenerationTask>* Task = ActiveTasks[i];
 
         if (Task->IsDone())
         {

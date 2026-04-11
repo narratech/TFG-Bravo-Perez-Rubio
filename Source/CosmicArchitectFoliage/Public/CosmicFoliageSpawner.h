@@ -93,7 +93,7 @@ private:
     float ElapsedTime = 0.0f;
     FRandomStream RandomStream;
     TSet<FCubeMapCell> PendingCells;
-    TArray<TUniquePtr<FAsyncTask<FFoliageGenerationTask>>> ActiveTasks;
+    TArray<FAsyncTask<FFoliageGenerationTask>*> ActiveTasks;
     UCosmicNoiseSettings* CurrentNoiseSettings;
 
 

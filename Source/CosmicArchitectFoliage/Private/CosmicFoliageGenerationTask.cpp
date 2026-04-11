@@ -8,7 +8,6 @@
 // TAREA ASINCRONA 
 void FFoliageGenerationTask::DoWork()
 {
-    if (bCancel) return;
     if (!Collection) return;
 
     //Crear siempre la misma semilla para la misma celsa
@@ -23,16 +22,13 @@ void FFoliageGenerationTask::DoWork()
 
     // Generar puntos de semilla en la esfera
     GenerateSeedPoints(LocalRandom);
-    if (bCancel) return;
 
     FCosmicNoiseEvaluator Evaluator(NoiseSettings);
     // Evaluar condiciones ambientales para cada punto
     EvaluateEnvironmentalConditions(LocalRandom, Evaluator);
-    if (bCancel) return;
 
     // Seleccionar y crear instancias basadas en las condiciones
     CreateFoliageInstances(LocalRandom, Evaluator);
-    if (bCancel) return;
 }
 
 void FFoliageGenerationTask::GenerateSeedPoints(FRandomStream& Random)
@@ -56,9 +52,6 @@ void FFoliageGenerationTask::GenerateSeedPoints(FRandomStream& Random)
 
     for (int32 i = 0; i < NumSeeds; i++)
     {
-        if ((i % 32) == 0 && bCancel)
-            return;
-
         // Sample uniforme dentro de la celda
         float U = Random.FRandRange(MinU, MaxU);
         float V = Random.FRandRange(MinV, MaxV);
@@ -100,9 +93,6 @@ void FFoliageGenerationTask::EvaluateEnvironmentalConditions(FRandomStream& Rand
     // Convertir direcciones a puntos de ruido (coordenadas normalizadas)
     for (FSeedPoint& Point : SeedPoints)
     {
-        if ((i % 32) == 0 && bCancel)
-            return;
-
         float X = Point.Direction.X;
         float Y = Point.Direction.Y;
         float Z = Point.Direction.Z;
