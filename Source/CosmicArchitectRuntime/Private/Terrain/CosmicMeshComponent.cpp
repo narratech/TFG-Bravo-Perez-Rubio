@@ -795,7 +795,7 @@ void UCosmicMeshComponent::RequestMeshUpdate()
         Params = NoiseSettings->Params;
     }
 
-    NoiseTask = MakeUnique<FAsyncTask<FCosmicArchitectNoiseGenerator>>(
+    NoiseTask = new FAsyncTask<FCosmicArchitectNoiseGenerator>(
         BaseVertices,
         PatchTransform,
         PlanetCenter,
@@ -817,8 +817,6 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
     if (!NoiseTask) return true;
     // Si no ha terminado, devolvemos false
     if (!NoiseTask->IsDone()) return false;
-
-    NoiseTask->EnsureCompletion();
   
     TArray<FVector> CurrentVertices = NoiseTask->GetTask().CalculatedVertices;
     TArray<FLinearColor> CurrentColors = NoiseTask->GetTask().CalculatedColors;
@@ -828,7 +826,8 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
     }
     
     // Limpiamos la memoria de la tarea
-    NoiseTask.Reset();
+    delete NoiseTask;
+    NoiseTask = nullptr;
 
     bIsGeneratingNoise = false;
 
@@ -854,11 +853,17 @@ bool UCosmicMeshComponent::IsTaskActive()
 
 void UCosmicMeshComponent::CancelAsyncWork()
 {
-    if (NoiseTask.IsValid())
+    if (NoiseTask == nullptr) return;
+
+    if (NoiseTask->Cancel() || NoiseTask->IsDone())
     {
-        NoiseTask->GetTask().bCancel = true;
+        delete NoiseTask;
+        NoiseTask = nullptr;
+    }
+    else
+    {
         NoiseTask->EnsureCompletion();
-        NoiseTask.Reset();
-        bIsGeneratingNoise = false;
+        delete NoiseTask;
+        NoiseTask = nullptr;
     }
 }

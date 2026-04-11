@@ -70,7 +70,7 @@ public:
     int32 GetQuadrantIndex(EClipmapQuadrant Q) const;
     void SetHoleQuadrant(EClipmapQuadrant NewQuadrant);
 
-    TUniquePtr<FAsyncTask<FCosmicArchitectNoiseGenerator>> NoiseTask;
+    FAsyncTask<FCosmicArchitectNoiseGenerator>* NoiseTask = nullptr;
     bool bIsGeneratingNoise = false;
 };
 
