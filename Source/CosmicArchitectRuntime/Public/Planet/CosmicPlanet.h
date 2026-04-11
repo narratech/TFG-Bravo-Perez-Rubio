@@ -79,6 +79,12 @@ protected:
 
 	void InitClipmap();
 
+	void RebuildPlanet();
+
+	void UpdateOcean();
+
+	void UpdateMaterialOnly();
+
 #if WITH_EDITOR
 	// Se llama automáticamente cuando cambias algo en el panel de Detalles
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;

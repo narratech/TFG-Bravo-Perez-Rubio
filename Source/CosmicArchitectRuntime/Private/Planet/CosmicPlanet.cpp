@@ -72,6 +72,7 @@ void ACosmicPlanet::InitClipmap()
 {
     if (ClipmapComponent) {
 
+        UE_LOG(LogTemp, Warning, TEXT("Regenerando planeta"));
         ClipmapComponent->ParentRoot = Root;
         ClipmapComponent->PlanetRadius = RadiusKm * 100000;
         ClipmapComponent->ClearLevels();
@@ -85,22 +86,43 @@ void ACosmicPlanet::InitClipmap()
     else {
         UE_LOG(LogTemp, Error, TEXT("No existe el clipmap"));
     }
+}
 
-    if (OceanMesh)
+void ACosmicPlanet::RebuildPlanet()
+{
+    InitClipmap(); // heavy
+}
+
+void ACosmicPlanet::UpdateMaterialOnly()
+{
+    if (ClipmapComponent)
     {
-        OceanMesh->SetVisibility(bHasOcean);
+        UE_LOG(LogTemp, Warning, TEXT("Actualizando material"));
 
-        if (bHasOcean) {
-            // Calculamos el radio total en unidades de Unreal
-            float PlanetRadiusUnreal = RadiusKm * 100000.0f;
-            float TotalOceanRadius = PlanetRadiusUnreal + SeaLevel;
+        ClipmapComponent->SetMaterialData(
+            PlanetMainColor1,
+            PlanetMainColor2,
+            PlanetAltitudeColor,
+            MaterialNoiseScale
+        );
+    }
+}
 
-            // Dividimos entre 50 porque el radio base de SM_Sphere es 50
-            float SphereScale = TotalOceanRadius / 50.0f;
+void ACosmicPlanet::UpdateOcean()
+{
+    if (!OceanMesh) return;
 
-            // Aplicamos la escala uniforme en X, Y, Z
-            OceanMesh->SetWorldScale3D(FVector(SphereScale));
-        }  
+    OceanMesh->SetVisibility(bHasOcean);
+
+    if (bHasOcean)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Actualizando oceano"));
+
+        float PlanetRadiusUnreal = RadiusKm * 100000.0f;
+        float TotalOceanRadius = PlanetRadiusUnreal + SeaLevel;
+        float SphereScale = TotalOceanRadius / 50.0f;
+
+        OceanMesh->SetWorldScale3D(FVector(SphereScale));
     }
 }
 
@@ -110,10 +132,10 @@ void ACosmicPlanet::OnConstruction(const FTransform& Transform)
     Super::OnConstruction(Transform);
 
 //#if WITH_EDITOR
-    if (!GetWorld()->IsGameWorld())
+   /* if (!GetWorld()->IsGameWorld())
     {
         InitClipmap();
-    }
+    }*/
 //#endif
 }
 
@@ -170,32 +192,36 @@ void ACosmicPlanet::CleanupNoiseSettings()
 #if WITH_EDITOR
 void ACosmicPlanet::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
-    // Llamar a la clase padre por seguridad
     Super::PostEditChangeProperty(PropertyChangedEvent);
 
-    // Averiguar exactamente qué variable acabamos de modificar
-    FName PropertyName = (PropertyChangedEvent.Property != nullptr) ? PropertyChangedEvent.Property->GetFName() : NAME_None;
+    FName PropertyName = PropertyChangedEvent.Property
+        ? PropertyChangedEvent.Property->GetFName()
+        : NAME_None;
 
-    // Si hemos tocado el checkbox del océano, el nivel del mar, o el radio del planeta...
+    // CAMBIOS LIGEROS (no rebuild)
     if (PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, bHasOcean) ||
         PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, SeaLevel) ||
         PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, RadiusKm))
     {
-        if (OceanMesh)
-        {
-            // Actualizamos la visibilidad al instante
-            OceanMesh->SetVisibility(bHasOcean);
+        UpdateOcean();
+        return;
+    }
 
-            // Si está visible, reajustamos su tamaño al instante
-            if (bHasOcean)
-            {
-                float PlanetRadiusUnreal = RadiusKm * 100000.0f;
-                float TotalOceanRadius = PlanetRadiusUnreal + SeaLevel;
-                float SphereScale = TotalOceanRadius / 50.0f; // Asumiendo SM_Sphere de radio 50
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, PlanetMainColor1) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, PlanetMainColor2) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, PlanetAltitudeColor) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, MaterialNoiseScale))
+    {
+        UpdateMaterialOnly();
+        return;
+    }
 
-                OceanMesh->SetWorldScale3D(FVector(SphereScale));
-            }
-        }
+    // CAMBIOS PESADOS (rebuild)
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, RadiusKm) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, NoiseSettings))
+    {
+        RebuildPlanet();
+        return;
     }
 }
 #endif

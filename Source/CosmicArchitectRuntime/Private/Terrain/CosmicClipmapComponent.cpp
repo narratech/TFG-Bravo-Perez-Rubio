@@ -374,27 +374,6 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
 {
     if (FarLevel) return;
 
-    if (BaseMaterial) {
-
-        DynamicPlanetMat = UMaterialInstanceDynamic::Create(BaseMaterial, this);
-
-        if (DynamicPlanetMat)
-        {
-            DynamicPlanetMat->SetScalarParameterValue(FName("PlanetRadius"), PlanetRadius);
-
-            if (NoiseSettings) {
-                DynamicPlanetMat->SetScalarParameterValue(FName("MaxHeight"), NoiseSettings->Params.MaxMountainHeight);
-            }
-
-            DynamicPlanetMat->SetVectorParameterValue(FName("BaseColor"), PlanetMainColor1);
-            DynamicPlanetMat->SetVectorParameterValue(FName("MidColor"), PlanetMainColor2);
-            DynamicPlanetMat->SetVectorParameterValue(FName("ColdColor"), PlanetAltitudeColor);
-            DynamicPlanetMat->SetScalarParameterValue(FName("NoiseScale"), MaterialNoiseScale);
-            DynamicPlanetMat->SetTextureParameterValue(FName("PlanetTexture"), DefaultTexture);
-             
-        }
-    }
-
     FName ComponentName = *FString::Printf(TEXT("TerrainClipmapMesh_Performance_%d"), 0);
 
     UCosmicMeshComponent* Mesh = NewObject<UCosmicMeshComponent>(
@@ -526,6 +505,27 @@ void UCosmicClipmapComponent::SetMaterialData(FColor color1, FColor color2, FCol
     PlanetMainColor2 = color2;
     PlanetAltitudeColor = colorHeight;
     MaterialNoiseScale = scale;
+
+    if (BaseMaterial) {
+
+        if(DynamicPlanetMat == nullptr)
+            DynamicPlanetMat = UMaterialInstanceDynamic::Create(BaseMaterial, this);
+
+        if (DynamicPlanetMat)
+        {
+            DynamicPlanetMat->SetScalarParameterValue(FName("PlanetRadius"), PlanetRadius);
+
+            if (NoiseSettings) {
+                DynamicPlanetMat->SetScalarParameterValue(FName("MaxHeight"), NoiseSettings->Params.MaxMountainHeight);
+            }
+
+            DynamicPlanetMat->SetVectorParameterValue(FName("BaseColor"), PlanetMainColor1);
+            DynamicPlanetMat->SetVectorParameterValue(FName("MidColor"), PlanetMainColor2);
+            DynamicPlanetMat->SetVectorParameterValue(FName("ColdColor"), PlanetAltitudeColor);
+            DynamicPlanetMat->SetScalarParameterValue(FName("NoiseScale"), MaterialNoiseScale);
+            DynamicPlanetMat->SetTextureParameterValue(FName("PlanetTexture"), DefaultTexture);
+        }
+    }
 }
 
 
