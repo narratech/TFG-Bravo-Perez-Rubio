@@ -120,19 +120,37 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             bPerformanceBuild = FarLevel->CheckAndApplyMeshUpdate();
         }
 
+        // Detectar cambio de modo
+        bool bPrevPerformanceMode = bPerformaceMode;
+
         //Activar/desactivar modo rendimiento al alejarte lo suficiente
         bPerformaceMode = DistanceToSurface > PlanetRadius * HeightVisibility;
+
+        // Si salimos de performance, esperar actualizacion antes de activar
+        if (bPrevPerformanceMode && !bPerformaceMode)
+        {
+            bWaitingForFirstUpdateAfterPerformance = true;
+        }
 
         if (!bInit && !bPerformaceMode) {
             CreateLevels();
         }
 
-        if (FarLevel->bActiveMesh && !bPerformaceMode || !FarLevel->bActiveMesh && bPerformaceMode)
+        bool bShouldSwitch =
+            (FarLevel->bActiveMesh && !bPerformaceMode) ||
+            (!FarLevel->bActiveMesh && bPerformaceMode);
+
+        
+        if (bShouldSwitch)
         {
-            FarLevel->SetMeshActive(bPerformaceMode);
-            for (size_t i = 0; i < Levels.Num(); i++)
+            if (!bWaitingForFirstUpdateAfterPerformance)
             {
-                Levels[i]->SetMeshActive(!bPerformaceMode);
+                FarLevel->SetMeshActive(bPerformaceMode);
+
+                for (size_t i = 0; i < Levels.Num(); i++)
+                {
+                    Levels[i]->SetMeshActive(!bPerformaceMode);
+                }
             }
 
             bPendingTasksRemaining = bPerformaceMode;
@@ -181,6 +199,10 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             {
                 Levels[i]->CheckAndApplyMeshUpdate();
             }
+            if (bBuildingLevels) {
+                bWaitingForFirstUpdateAfterPerformance = false;
+                bBuildingLevels = false;
+            }
         }
 
         
@@ -210,10 +232,6 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         //Calcular numero de celdas que hay que desplazar
         FIntPoint Shift = ComputeGridShift(ViewerPos, BaseGridSpacing * 2);
 
-        /*if (Shift != FIntPoint::ZeroValue) {
-            UE_LOG(LogTemp, Warning, TEXT("SHIFT: %s"), *Shift.ToString());
-        }*/
-
         TotalShift += Shift;
 
         if (!IsPlanet) {
@@ -230,10 +248,13 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
                 UpdateLevels(Shift);
             }
         }
-        else if (Shift != FIntPoint::ZeroValue){
+        else if (Shift != FIntPoint::ZeroValue || bWaitingForFirstUpdateAfterPerformance){
 
-            
-
+            if (bWaitingForFirstUpdateAfterPerformance) 
+            {
+                bBuildingLevels = true;
+            }
+                
             for (size_t i = 0; i < NumLevels; i++)
             {
                 Levels[i]->SetPositionAndRotation(SurfacePos - CurrentActorPosition, Rotation);
