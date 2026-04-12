@@ -52,10 +52,28 @@ void ACosmicPlanet::BeginPlay()
         ClipmapComponent->ReasignLevels();
 #else
         UpdateMaterialOnly();
+        UpdateNoiseSettings();
         InitClipmap();
         UpdateOcean();
 #endif
     }
+}
+
+void ACosmicPlanet::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    if (CollisionComponent)
+    {
+        CollisionComponent->ClearCollision();
+        CollisionComponent->DestroyComponent();
+        CollisionComponent = nullptr;
+    }
+
+    if (NoiseSettings && ClipmapComponent)
+    {
+        NoiseSettings->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
+    }
+
+    Super::EndPlay(EndPlayReason);
 }
 
 void ACosmicPlanet::Tick(float DeltaTime)
@@ -75,8 +93,7 @@ void ACosmicPlanet::InitClipmap()
         UE_LOG(LogTemp, Warning, TEXT("Regenerando planeta"));
         ClipmapComponent->ParentRoot = Root;
         ClipmapComponent->PlanetRadius = RadiusKm * 100000;
-        ClipmapComponent->ClearLevels();
-        ClipmapComponent->NoiseSettings = NoiseSettings;
+        ClipmapComponent->ClearLevels();       
         ClipmapComponent->CollisionComponent = CollisionComponent;
         ClipmapComponent->CreatePerformanceLevel(true);
         bInitializedInEditor = true;
@@ -107,6 +124,25 @@ void ACosmicPlanet::UpdateMaterialOnly()
     }
 }
 
+void ACosmicPlanet::UpdateNoiseSettings()
+{
+    if (ClipmapComponent && NoiseSettings)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Actualizando delegates"));
+
+        NoiseSettings->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
+
+        ClipmapComponent->NoiseSettings = NoiseSettings;
+
+        NoiseSettings->OnNoiseSettingsChanged.AddUObject(
+            ClipmapComponent,
+            &UCosmicClipmapComponent::RequestCompleteMeshUpdate
+        );
+
+        ClipmapComponent->RequestCompleteMeshUpdate();
+    }
+}
+
 void ACosmicPlanet::UpdateOcean()
 {
     if (!OceanMesh) return;
@@ -133,7 +169,8 @@ void ACosmicPlanet::OnConstruction(const FTransform& Transform)
     if (!GetWorld()->IsGameWorld() && !bInitializedInEditor)
     {
         UpdateMaterialOnly();
-        InitClipmap();
+        UpdateNoiseSettings();
+        InitClipmap();      
         UpdateOcean();
     }
 }
@@ -215,9 +252,15 @@ void ACosmicPlanet::PostEditChangeProperty(FPropertyChangedEvent& PropertyChange
         return;
     }
 
+    // CAMBIOS RUIDO
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, NoiseSettings))
+    {
+        UpdateNoiseSettings();
+        return;
+    }
+
     // CAMBIOS PESADOS (rebuild)
-    if (PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, RadiusKm) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, NoiseSettings))
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, RadiusKm))
     {
         RebuildPlanet();
         return;

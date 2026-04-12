@@ -76,13 +76,6 @@ void UCosmicClipmapComponent::BeginPlay()
 
 void UCosmicClipmapComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {
 
-    if (CollisionComponent)
-    {
-        CollisionComponent->ClearCollision();
-        CollisionComponent->DestroyComponent();
-        CollisionComponent = nullptr;
-    }
-
     ClearLevels();
     Super::EndPlay(EndPlayReason);
 }
@@ -590,6 +583,25 @@ void UCosmicClipmapComponent::BuildDynamicMaterial()
 
     if (FarLevel)
         FarLevel->SetMaterial(0, DynamicPlanetMat);
+}
+
+void UCosmicClipmapComponent::RequestCompleteMeshUpdate()
+{
+    UE_LOG(LogTemp, Warning, TEXT("Aplicando ruido nuevo"));
+
+    bPerformanceBuild = false;
+
+    if (FarLevel)
+        FarLevel->NoiseSettings = NoiseSettings;
+
+    if(!bPerformaceMode)
+    {
+        for (size_t i = 0; i < Levels.Num(); i++)
+        {
+            Levels[i]->NoiseSettings = NoiseSettings;
+            Levels[i]->RequestMeshUpdate();
+        }
+    }
 }
 
 

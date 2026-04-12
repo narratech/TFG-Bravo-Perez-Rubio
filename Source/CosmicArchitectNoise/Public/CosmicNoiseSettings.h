@@ -7,6 +7,8 @@
 #include "CosmicNoiseTypes.h"
 #include "CosmicNoiseSettings.generated.h"
 
+DECLARE_MULTICAST_DELEGATE(FOnNoiseSettingsChanged);
+
 UENUM()
 enum class ECosmicBiomeType : uint8
 {
@@ -173,6 +175,8 @@ public:
 
     UPROPERTY(EditAnywhere, Category = "Noise Configuration")
     FCosmicNoiseGenerationParameters Params;
+
+    FOnNoiseSettingsChanged OnNoiseSettingsChanged;
 
     /* PUBLIC METHODS */
     /** Convierte los parámetros simples a capas avanzadas */

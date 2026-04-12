@@ -25,6 +25,7 @@ public:
     void ClearLevels();
     void ReasignLevels();
     void SetMaterialData(FColor color1, FColor color2, FColor colorHeight, float scale);
+    void RequestCompleteMeshUpdate();
 
     USceneComponent* ParentRoot = nullptr;
     UCosmicNoiseSettings* NoiseSettings;
