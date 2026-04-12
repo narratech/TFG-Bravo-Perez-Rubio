@@ -130,7 +130,8 @@ void ACosmicPlanet::UpdateNoiseSettings()
     {
         UE_LOG(LogTemp, Warning, TEXT("Actualizando delegates"));
 
-        NoiseSettings->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
+        if(ClipmapComponent->NoiseSettings)
+            ClipmapComponent->NoiseSettings->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
 
         ClipmapComponent->NoiseSettings = NoiseSettings;
 
