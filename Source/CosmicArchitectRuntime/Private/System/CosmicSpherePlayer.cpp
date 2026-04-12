@@ -233,8 +233,7 @@ void ACosmicSpherePlayer::Tick(float DeltaTime)
 	// 3. PARENTESCO DINÁMICO (DYNAMIC PARENTING)
 	// =========================================================================
 
-	// E: Opcional: Descoméntalo si tus planetas se mueven por el espacio.
-	// HandleDynamicParenting();
+	HandleDynamicParenting();
 
 	// =========================================================================
 	// 4. ROTACIÓN SUAVE DEL MODELO 3D (SMOOTH MESH ROTATION)
@@ -255,27 +254,20 @@ void ACosmicSpherePlayer::HandleDynamicParenting()
 {
 	AActor* NearestPlanet = nullptr;
 	float MinDist = TNumericLimits<float>::Max();
+	int32 CheckedPlanetsCount = 0; // E: Variable temporal para Debug. I: Temporary variable for Debug.
 
-	// E: Accedemos al subsistema de gravedad para encontrar planetas cercanos de forma optimizada.
-	// I: We access the gravity subsystem to find nearby planets in an optimized way.
 	if (UCosmicGravitySubsystem* Subsystem = GetWorld()->GetSubsystem<UCosmicGravitySubsystem>())
 	{
 		for (UCosmicGravityComponent* PlanetComp : Subsystem->GetPlanets())
 		{
 			if (PlanetComp && PlanetComp->GetOwner() && PlanetComp->GetOwner() != this)
 			{
-				// E: Verificamos si el dueño de la gravedad es realmente un ACosmicPlanet.
-				// I: We verify if the gravity owner is actually an ACosmicPlanet.
 				if (ACosmicPlanet* PlanetActor = Cast<ACosmicPlanet>(PlanetComp->GetOwner()))
 				{
+					CheckedPlanetsCount++; // Contamos cuántos planetas reales estamos evaluando
+
 					float Dist = FVector::Dist(GetActorLocation(), PlanetActor->GetActorLocation());
-
-					// E: Convertimos los Km a Centímetros (Unidades de Unreal) multiplicando por 100,000.
-					// I: We convert Km to Centimeters (Unreal Units) by multiplying by 100,000.
 					float RealRadiusCm = PlanetActor->RadiusKm * 100000.0f;
-
-					// E: Calculamos la distancia exacta a la superficie matemática del planeta.
-					// I: Calculate the exact distance to the mathematical surface of the planet.
 					float DistToSurface = Dist - RealRadiusCm;
 
 					if (DistToSurface < MinDist)
@@ -288,24 +280,51 @@ void ACosmicSpherePlayer::HandleDynamicParenting()
 		}
 	}
 
-	// E: Si estamos cerca de la superficie, nos "pegamos" al planeta para heredar su movimiento en el espacio.
-	// I: If close to the surface, we "stick" to the planet to inherit its movement in space.
+	// =========================================================================
+	// ZONA DE DEBUG (MUESTRA LA INFORMACIÓN EN PANTALLA CADA FRAME)
+	// =========================================================================
+	if (GEngine)
+	{
+		// 1. Ver cuántos planetas hay registrados en tu mapa
+		GEngine->AddOnScreenDebugMessage(10, 0.0f, FColor::Cyan, FString::Printf(TEXT("Planetas evaluados: %d"), CheckedPlanetsCount));
+
+		if (NearestPlanet)
+		{
+			// 2. Ver a qué planeta estamos apuntando
+			GEngine->AddOnScreenDebugMessage(11, 0.0f, FColor::Yellow, FString::Printf(TEXT("Planeta más cercano: %s"), *NearestPlanet->GetName()));
+
+			// 3. Ver la distancia matemática vs el Threshold (Si es menor, se pone verde. Si es mayor, naranja)
+			FColor DistColor = (MinDist <= ParentingDistanceThreshold) ? FColor::Green : FColor::Orange;
+			GEngine->AddOnScreenDebugMessage(12, 0.0f, DistColor, FString::Printf(TEXT("Distancia a Superficie: %.2f cm | Límite: %.2f cm"), MinDist, ParentingDistanceThreshold));
+		}
+		else
+		{
+			GEngine->AddOnScreenDebugMessage(11, 0.0f, FColor::Red, TEXT("No se encontró ningún planeta cercano."));
+		}
+	}
+	// =========================================================================
+
 	if (NearestPlanet && MinDist <= ParentingDistanceThreshold)
 	{
 		if (CurrentParentPlanet != NearestPlanet)
 		{
 			CurrentParentPlanet = NearestPlanet;
 			FAttachmentTransformRules AttachRules(EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, false);
+			//SphereComp->SetSimulatePhysics(false);
 			AttachToActor(NearestPlanet, AttachRules);
+
+			// DEBUG: Aviso de que nos hemos pegado (Dura 3 segundos en pantalla)
+			if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Emerald, FString::Printf(TEXT(">>> ATTACHED AL PLANETA %s <<<"), *NearestPlanet->GetName()));
 		}
 	}
 	else if (CurrentParentPlanet != nullptr)
 	{
-		// E: Si saltamos o volamos lejos, nos desvinculamos para volver a ser independientes.
-		// I: If we jump or fly away, we detach to become independent again.
 		FDetachmentTransformRules DetachRules(EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, false);
 		DetachFromActor(DetachRules);
 		CurrentParentPlanet = nullptr;
+
+		// DEBUG: Aviso de que nos hemos soltado (Dura 3 segundos en pantalla)
+		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red, TEXT(">>> DETACHED (LIBRE EN EL ESPACIO) <<<"));
 	}
 }
 
