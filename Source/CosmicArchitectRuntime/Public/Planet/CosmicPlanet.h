@@ -63,8 +63,6 @@ public:
 	// Sets default values for this actor's properties
 	ACosmicPlanet();
 
-	virtual void PostInitializeComponents() override;
-
 #if WITH_EDITOR
 	virtual void OnConstruction(const FTransform& Transform) override;
 #endif
@@ -76,6 +74,10 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
+	virtual void BeginDestroy() override;
+
+	virtual void PostInitializeComponents() override;
 
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
 

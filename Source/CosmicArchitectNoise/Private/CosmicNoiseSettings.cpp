@@ -207,8 +207,6 @@ void UCosmicNoiseSettings::PostEditChangeProperty(FPropertyChangedEvent& Propert
 
     if (!Property || !MemberProperty) return;
 
-    OnNoiseSettingsChanged.Broadcast();
-
     FName PropertyName = Property->GetFName();
     FName MemberPropertyName = MemberProperty->GetFName();
 
@@ -234,6 +232,8 @@ void UCosmicNoiseSettings::PostEditChangeProperty(FPropertyChangedEvent& Propert
             }
         }
     }
+
+    OnNoiseSettingsChanged.Broadcast();
 
 }
 #endif

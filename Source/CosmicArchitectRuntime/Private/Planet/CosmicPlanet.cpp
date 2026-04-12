@@ -59,6 +59,25 @@ void ACosmicPlanet::BeginPlay()
     }
 }
 
+void ACosmicPlanet::BeginDestroy()
+{
+    UE_LOG(LogTemp, Warning, TEXT("Destruyendo planeta"));
+
+    if (CollisionComponent)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Eliminando colisiones"));
+        CollisionComponent->ClearCollision();
+    }
+
+    if (NoiseSettings && ClipmapComponent)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Eliminando referencias restantes"));
+        NoiseSettings->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
+    }
+
+    Super::BeginDestroy();
+}
+
 void ACosmicPlanet::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     if (CollisionComponent)
@@ -126,21 +145,25 @@ void ACosmicPlanet::UpdateMaterialOnly()
 
 void ACosmicPlanet::UpdateNoiseSettings()
 {
-    if (ClipmapComponent && NoiseSettings)
+    if (ClipmapComponent)
     {
-        UE_LOG(LogTemp, Warning, TEXT("Actualizando delegates"));
-
-        if(ClipmapComponent->NoiseSettings)
+        if (ClipmapComponent->NoiseSettings)
             ClipmapComponent->NoiseSettings->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
 
+        UE_LOG(LogTemp, Warning, TEXT("Actualizando delegates"));
+
+        
         ClipmapComponent->NoiseSettings = NoiseSettings;
 
-        NoiseSettings->OnNoiseSettingsChanged.AddUObject(
-            ClipmapComponent,
-            &UCosmicClipmapComponent::RequestCompleteMeshUpdate
-        );
+        if (NoiseSettings) 
+        {
+            NoiseSettings->OnNoiseSettingsChanged.AddUObject(
+                ClipmapComponent,
+                &UCosmicClipmapComponent::RequestCompleteMeshUpdate
+            );
 
-        ClipmapComponent->RequestCompleteMeshUpdate();
+            ClipmapComponent->RequestCompleteMeshUpdate();
+        }  
     }
 }
 
