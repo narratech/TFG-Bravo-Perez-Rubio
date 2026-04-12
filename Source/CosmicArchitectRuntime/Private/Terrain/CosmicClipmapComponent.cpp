@@ -101,9 +101,8 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         FVector ViewerPos;
         float DistanceToSurface;
 
-        if (IsPlanet) {
-            DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
-        }
+        DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
+
         /*else {
             DistanceToSurface = GetDistanceToPlainSurface(ViewerPos, SurfacePos, N);
         }*/
@@ -111,6 +110,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         FRotator Rotation = GetPatchRotation(N);
 
         UpdateCollisionNearPlayer(SurfacePos, N, Rotation, DistanceToSurface);
+
 
         if (!FarLevel)
             return;
