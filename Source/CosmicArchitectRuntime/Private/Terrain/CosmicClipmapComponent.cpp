@@ -104,9 +104,9 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         if (IsPlanet) {
             DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
         }
-        else {
+        /*else {
             DistanceToSurface = GetDistanceToPlainSurface(ViewerPos, SurfacePos, N);
-        }
+        }*/
 
         FRotator Rotation = GetPatchRotation(N);
 
@@ -230,11 +230,11 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         }
 
         //Calcular numero de celdas que hay que desplazar
-        FIntPoint Shift = ComputeGridShift(ViewerPos, BaseGridSpacing * 2);
+        FIntPoint Shift = ComputeGridShiftSpherical(ViewerPos, BaseGridSpacing * 2);
 
         TotalShift += Shift;
 
-        if (!IsPlanet) {
+        /*if (!IsPlanet) {
             if (UpdateClipmapLevels) {
 
                 UpdateLevels(TotalShift);
@@ -248,7 +248,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
                 UpdateLevels(Shift);
             }
         }
-        else if (Shift != FIntPoint::ZeroValue || bWaitingForFirstUpdateAfterPerformance){
+        else*/ if (Shift != FIntPoint::ZeroValue || bWaitingForFirstUpdateAfterPerformance){
 
             if (bWaitingForFirstUpdateAfterPerformance) 
             {
@@ -275,9 +275,8 @@ void UCosmicClipmapComponent::PostEditChangeProperty(FPropertyChangedEvent& Prop
 
     // REBUILD COMPLETO (estructura)
     if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, BaseResolution) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, NumLevels) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, MinTriangleSize) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, IsPlanet))
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, NumLevels) /*||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, IsPlanet)*/)
     {
         ClearLevels();
 
@@ -299,22 +298,6 @@ void UCosmicClipmapComponent::PostEditChangeProperty(FPropertyChangedEvent& Prop
         return;
     }
 
-    //  DEPENDENCIAS IMPORTANTES
-    if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, NoiseSettings))
-    {
-        /*ClearLevels();
-
-        if (bPerformaceMode)
-        {
-            CreatePerformanceLevel(true);
-        }
-        else
-        {
-            CreateLevels();
-        }*/
-
-        return;
-    }
 }
 #endif
 
@@ -370,9 +353,9 @@ void UCosmicClipmapComponent::CreateLevels()
     if (IsPlanet) {
         GetDistanceToSurface(ViewerPos, SurfacePos, N);
     }
-    else {
+    /*else {
         GetDistanceToPlainSurface(ViewerPos, SurfacePos, N);
-    }
+    }*/
 
     FRotator PatchRotation = GetPatchRotation(N);
 
@@ -411,11 +394,13 @@ void UCosmicClipmapComponent::CreateLevels()
         Mesh->PlanetRadius = PlanetRadius;
         Mesh->bActiveMesh = true;
         Mesh->NoiseSettings = NoiseSettings;
-        Mesh->bIsPlanet = IsPlanet;
+        Mesh->bIsPlanet = true;
 
-        if (IsPlanet) {
+        /*if (IsPlanet) {
             Mesh->SetPositionAndRotation(SurfacePos, PatchRotation);
-        }
+        }*/
+
+        Mesh->SetPositionAndRotation(SurfacePos, PatchRotation);
 
         // Construir malla
         Mesh->BuildBaseMesh();

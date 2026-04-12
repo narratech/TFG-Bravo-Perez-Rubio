@@ -57,9 +57,6 @@ public:
     float TimeToRefresh = 0.033f;
 
     UPROPERTY(EditAnywhere, Category = "Clipmap")
-    bool IsPlanet = true;
-
-    UPROPERTY(EditAnywhere, Category = "Clipmap")
     bool FreezeGeneration = false;
 
     UCosmicCollisionComponent* CollisionComponent;
@@ -76,6 +73,7 @@ protected:
     bool bPendingTasksRemaining = false;
     bool bWaitingForFirstUpdateAfterPerformance = false;
     bool bBuildingLevels = false;
+    bool IsPlanet = true;
     int64 BaseSpacing = 200;
 
     FColor PlanetMainColor1 = FColor::Green;
