@@ -604,11 +604,15 @@ void UCosmicClipmapComponent::RequestCompleteMeshUpdate()
     if (FarLevel)
         FarLevel->NoiseSettings = NoiseSettings;
 
+    for (size_t i = 0; i < Levels.Num(); i++)
+    {
+        Levels[i]->NoiseSettings = NoiseSettings;
+    }
+    
     if(!bPerformaceMode)
     {
         for (size_t i = 0; i < Levels.Num(); i++)
-        {
-            Levels[i]->NoiseSettings = NoiseSettings;
+        {        
             Levels[i]->RequestMeshUpdate();
         }
     }
