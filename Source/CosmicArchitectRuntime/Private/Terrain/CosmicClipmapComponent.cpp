@@ -234,6 +234,8 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         TotalShift += Shift;
 
+        
+
         /*if (!IsPlanet) {
             if (UpdateClipmapLevels) {
 
@@ -254,6 +256,8 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             {
                 bBuildingLevels = true;
             }
+
+            //UE_LOG(LogTemp, Warning, TEXT("SHIFT: %s"), *Shift.ToString());
                 
             for (size_t i = 0; i < NumLevels; i++)
             {
