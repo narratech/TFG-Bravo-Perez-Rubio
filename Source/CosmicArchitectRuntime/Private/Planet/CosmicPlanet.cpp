@@ -59,9 +59,31 @@ void ACosmicPlanet::BeginPlay()
     }
 }
 
+void ACosmicPlanet::Destroyed()
+{
+
+    UE_LOG(LogTemp, Warning, TEXT("Destruyendo planeta"));
+
+    if (CollisionComponent)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Eliminando colisiones"));
+        CollisionComponent->ClearCollision();
+    }
+
+    if (NoiseSettings && ClipmapComponent)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Eliminando referencias restantes"));
+        NoiseSettings->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
+    }
+
+    bInitializedInEditor = false;
+
+    Super::Destroyed();
+}
+
 void ACosmicPlanet::BeginDestroy()
 {
-    UE_LOG(LogTemp, Warning, TEXT("Destruyendo planeta"));
+    UE_LOG(LogTemp, Warning, TEXT("Recolector destruyendo planeta"));
 
     if (CollisionComponent)
     {
@@ -189,6 +211,8 @@ void ACosmicPlanet::UpdateOcean()
 void ACosmicPlanet::OnConstruction(const FTransform& Transform)
 {
     Super::OnConstruction(Transform);
+
+    UE_LOG(LogTemp, Warning, TEXT("Construyendo"));
 
     if (!GetWorld()->IsGameWorld() && !bInitializedInEditor)
     {
