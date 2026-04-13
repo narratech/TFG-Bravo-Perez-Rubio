@@ -55,10 +55,7 @@ public:
     void BuildBasePlainMesh();
     void BuildSphereMesh();
     void ReScaleLevel(int64 GridSpacing);
-
     void SetPositionAndRotation(const FVector& SurfacePos, const FRotator& PatchRotation);
-
-    FVector ProjectToPlanet(const FVector& WorldPos, const FVector& PlanetCenter) const;
     void SetMeshActive(bool active);
     // Lanza la tarea de ruido
     void RequestMeshUpdate();

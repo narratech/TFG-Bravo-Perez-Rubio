@@ -441,9 +441,19 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
         }
     }
 
+    TArray<FVector> RotatedVertices;
+    RotatedVertices.Reserve(TotalVertices);
+
+    FMatrix TransformMatrix = PatchTransform.ToMatrixWithScale();
+
+    for (size_t i = 0; i < TotalVertices; i++)
+    {
+        RotatedVertices.Add(TransformMatrix.TransformPosition(BaseVertices[i]));
+    }
+
     CreateMeshSection_LinearColor(
         0,                    // SectionIndex
-        BaseVertices,      // Vértices
+        RotatedVertices,      // Vértices
         Triangles,           // Triángulos
         BaseNormals,      // Normales
         UVs,                 // UVs
@@ -590,8 +600,6 @@ void UCosmicMeshComponent::BuildSphereMesh()
 
 
     SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-    bMeshCreated = true;
 }
 
 void UCosmicMeshComponent::ShiftLevel(FIntPoint Shift)
@@ -766,19 +774,11 @@ void UCosmicMeshComponent::SetPositionAndRotation(const FVector& SurfacePos, con
     );
 }
 
-FVector UCosmicMeshComponent::ProjectToPlanet(const FVector& WorldPos, const FVector& PlanetCenter) const
-{
-    FVector Dir = (WorldPos - PlanetCenter).GetSafeNormal();
-    return PlanetCenter + Dir * PlanetRadius;
-}
-
 void UCosmicMeshComponent::SetMeshActive(bool active)
 {
     bActiveMesh = active;
     SetMeshSectionVisible(0, active);
 }
-
-
 
 void UCosmicMeshComponent::RequestMeshUpdate()
 {
