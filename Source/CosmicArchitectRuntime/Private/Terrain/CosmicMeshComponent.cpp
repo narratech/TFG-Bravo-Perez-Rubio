@@ -782,7 +782,7 @@ void UCosmicMeshComponent::SetMeshActive(bool active)
 
 void UCosmicMeshComponent::RequestMeshUpdate()
 {
-    if (!bMeshCreated || bIsGeneratingNoise || !NoiseSettings) return;
+    if (!bMeshCreated || bIsGeneratingNoise) return;
 
     bIsGeneratingNoise = true;
 
