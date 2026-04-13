@@ -41,7 +41,13 @@ void UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePo
         {
             CollisionComponent->GenerateCollisionMesh(PlanetRadius);
         }
-        CollisionComponent->SetWorldLocationAndRotation(SurfacePos, PatchRotation);       
+        CollisionComponent->SetWorldLocationAndRotation(
+            SurfacePos,
+            PatchRotation,
+            false, // 
+            nullptr,
+            ETeleportType::TeleportPhysics // teleport limpio
+        );
         CollisionComponent->UpdateCollisionMesh(NoiseSettings);
     }
     else if(CollisionComponent->IsBuilt())
@@ -66,11 +72,19 @@ void UCosmicClipmapComponent::BeginPlay()
     AActor* Owner = GetOwner();
     if (Owner)
     {
-        FVector PlayerPos = GetPlayerLocation();
-        FVector PlanetCenter = Owner->GetActorLocation();
-        FVector SurfacePos = (PlayerPos - PlanetCenter).GetSafeNormal() * PlanetRadius;
+        FVector SurfacePos;
+        FVector N;
+        FVector ViewerPos;
+        float DistanceToSurface;
+
+        DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
+        FRotator Rotation = GetPatchRotation(N);
+
+        UpdateCollisionNearPlayer(SurfacePos, N, Rotation, DistanceToSurface);
+
         LastSurfaceAngles = GetSurfaceAngles(SurfacePos);
-        LastPlayerPos = PlayerPos;
+        LastPlayerPos = ViewerPos;
+        LastMeshPlayerPos = ViewerPos;
     }
 }
 
@@ -101,6 +115,8 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         FVector ViewerPos;
         float DistanceToSurface;
 
+        /*bool UpdateCollision*/
+
         DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
 
         /*else {
@@ -109,9 +125,12 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         FRotator Rotation = GetPatchRotation(N);
 
-        UpdateCollisionNearPlayer(SurfacePos, N, Rotation, DistanceToSurface);
-
-
+        //Actualizar colision si se ha movido el player un minimo
+        if (!LastMeshPlayerPos.Equals(ViewerPos, BaseGridSpacing * 2)) {
+            UpdateCollisionNearPlayer(SurfacePos, N, Rotation, DistanceToSurface);
+            LastMeshPlayerPos = ViewerPos;
+        }
+        
         if (!FarLevel)
             return;
 
@@ -875,9 +894,13 @@ FVector UCosmicClipmapComponent::GetPlayerLocation()
     if (GetWorld()->IsGameWorld())
     {
         APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-        if (PC && PC->PlayerCameraManager)
+        if (PC)
         {
-            PlayerLocation = PC->PlayerCameraManager->GetCameraLocation();
+            APawn* Pawn = PC->GetPawn();
+            if (Pawn)
+            {
+                PlayerLocation = Pawn->GetActorLocation();
+            }
         }
     }
 

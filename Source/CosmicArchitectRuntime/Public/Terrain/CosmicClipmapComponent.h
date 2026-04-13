@@ -81,6 +81,7 @@ protected:
     FColor PlanetAltitudeColor = FColor::Yellow;
     float MaterialNoiseScale = 1.f;
     FVector LastPlayerPos;
+    FVector LastMeshPlayerPos;
     FVector CurrentActorPosition;
     FVector AccumulatedDelta = FVector::ZeroVector;
     FIntPoint TotalShift = FIntPoint::ZeroValue;
