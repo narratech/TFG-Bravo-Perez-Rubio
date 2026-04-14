@@ -65,9 +65,9 @@ void ACosmicPlanet::PostDuplicate(EDuplicateMode::Type Mode)
 
     UE_LOG(LogTemp, Warning, TEXT("Duplicando planeta"));
 
-    UpdateMaterialOnly();
+    /*UpdateMaterialOnly();
     UpdateNoiseSettings();
-    RebuildPlanet();
+    RebuildPlanet();*/
 }
 
 
