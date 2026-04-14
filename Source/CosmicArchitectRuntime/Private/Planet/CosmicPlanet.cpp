@@ -59,6 +59,18 @@ void ACosmicPlanet::BeginPlay()
     }
 }
 
+void ACosmicPlanet::PostDuplicate(EDuplicateMode::Type Mode)
+{
+    Super::PostDuplicate(Mode);
+
+    UE_LOG(LogTemp, Warning, TEXT("Duplicando planeta"));
+
+    UpdateMaterialOnly();
+    UpdateNoiseSettings();
+    RebuildPlanet();
+}
+
+
 void ACosmicPlanet::Destroyed()
 {
 
