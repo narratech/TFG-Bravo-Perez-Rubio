@@ -3,11 +3,12 @@
 #include "CosmicArchitectEditor.h"
 #include "CameraViewportDataUpdater.h"
 #include "CosmicNoiseSettingsActions.h"
-#include "Modules/ModuleManager.h"
 
 #define LOCTEXT_NAMESPACE "FCosmicArchitectEditorModule"
 
 TUniquePtr<FCameraViewportDataUpdater> CameraUpdater;
+EAssetTypeCategories::Type FCosmicArchitectEditorModule::CosmicCategory = EAssetTypeCategories::None;
+
 
 void FCosmicArchitectEditorModule::StartupModule()
 {
@@ -17,7 +18,7 @@ void FCosmicArchitectEditorModule::StartupModule()
     IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
 
     // Categoría nueva en el menú de clic derecho
-    EAssetTypeCategories::Type CosmicCategory = AssetTools.RegisterAdvancedAssetCategory(
+    CosmicCategory = AssetTools.RegisterAdvancedAssetCategory(
         FName(TEXT("CosmicArchitect")),
         FText::FromString("Cosmic Architect")
     );
