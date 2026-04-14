@@ -3,6 +3,7 @@
 #include "CosmicArchitectEditor.h"
 #include "CameraViewportDataUpdater.h"
 #include "CosmicNoiseSettingsActions.h"
+#include "CosmicFoliageCollectionActions.h"
 
 #define LOCTEXT_NAMESPACE "FCosmicArchitectEditorModule"
 
@@ -27,7 +28,11 @@ void FCosmicArchitectEditorModule::StartupModule()
     TSharedPtr<FCosmicNoiseSettingsActions> NoiseActions = MakeShareable(new FCosmicNoiseSettingsActions());
     NoiseActions->MyAssetCategory = CosmicCategory;
 
+    TSharedPtr<FCosmicFoliageCollectionActions> FoliageActions = MakeShareable(new FCosmicFoliageCollectionActions());
+    FoliageActions->MyAssetCategory = CosmicCategory;
+
     AssetTools.RegisterAssetTypeActions(NoiseActions.ToSharedRef());
+    AssetTools.RegisterAssetTypeActions(FoliageActions.ToSharedRef());
 }
 
 void FCosmicArchitectEditorModule::ShutdownModule()
