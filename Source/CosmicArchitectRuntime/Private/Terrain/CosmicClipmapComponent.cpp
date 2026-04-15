@@ -278,7 +278,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
             //UE_LOG(LogTemp, Warning, TEXT("SHIFT: %s"), *Shift.ToString());
                 
-            for (size_t i = 0; i < NumLevels; i++)
+            for (size_t i = 0; i < Levels.Num(); i++)
             {
                 Levels[i]->SetPositionAndRotation(SurfacePos - CurrentActorPosition, Rotation);
                 Levels[i]->RequestMeshUpdate();
@@ -415,7 +415,6 @@ void UCosmicClipmapComponent::CreateLevels()
         Mesh->GridSpacing = BaseGridSpacing * FMath::Pow(2.0f, L); // (1 << L) para ints
         Mesh->bIsRing = (L > 0);
         Mesh->PlanetRadius = PlanetRadius;
-        Mesh->bActiveMesh = true;
         Mesh->NoiseSettings = NoiseSettings;
         Mesh->bIsPlanet = true;
 
@@ -428,6 +427,7 @@ void UCosmicClipmapComponent::CreateLevels()
         // Construir malla
         Mesh->BuildBaseMesh();
         Mesh->RequestMeshUpdate();
+        Mesh->SetMeshActive(false);
 
         // Asignar material
         if (DynamicPlanetMat)
