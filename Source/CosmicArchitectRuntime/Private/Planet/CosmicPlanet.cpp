@@ -63,10 +63,12 @@ void ACosmicPlanet::PostDuplicate(EDuplicateMode::Type Mode)
 {
     Super::PostDuplicate(Mode);
 
+    ClipmapComponent->PlanetRadius = RadiusKm * 100000;
+
     if (!GetWorld()->IsGameWorld())
     {
         UE_LOG(LogTemp, Warning, TEXT("Duplicando planeta"));
-
+      
         UpdateNoiseSettings();
     }
 }

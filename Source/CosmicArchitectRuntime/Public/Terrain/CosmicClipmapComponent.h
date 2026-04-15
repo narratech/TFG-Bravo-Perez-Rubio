@@ -27,10 +27,10 @@ public:
     void SetMaterialData(FColor color1, FColor color2, FColor colorHeight, float scale);
     void RequestCompleteMeshUpdate();
 
-    USceneComponent* ParentRoot = nullptr;
+    USceneComponent* ParentRoot;
     UCosmicNoiseSettings* NoiseSettings;
 
-    float PlanetRadius = 100.f;
+    float PlanetRadius;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UMaterialInterface* BaseMaterial;
@@ -44,8 +44,8 @@ public:
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "1", ClampMax = "20"))
     int32 NumLevels = 4;
 
-    UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "50"))
-    int32 MinTriangleSize = 200;
+    UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "10"))
+    int32 MinTriangleSize = 100;
 
     UPROPERTY(VisibleAnywhere, Category = "Clipmap")
     int64 BaseGridSpacing = 200;

@@ -60,6 +60,9 @@ void UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePo
 // Called when the game starts
 void UCosmicClipmapComponent::BeginPlay()
 {
+
+    //UE_LOG(LogTemp, Error, TEXT("Mierda"));
+
     Super::BeginPlay();
 
     TimeToRefreshActive = TimeToRefresh;
@@ -68,24 +71,36 @@ void UCosmicClipmapComponent::BeginPlay()
     LastSurfaceAngles = FVector2D::ZeroVector;
     AccumulatedLinearDelta = FVector2D::ZeroVector;
 
-    // Obtener posición inicial del jugador
-    AActor* Owner = GetOwner();
-    if (Owner)
+    FVector SurfacePos;
+    FVector N;
+    FVector ViewerPos;
+    float DistanceToSurface;
+
+    DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
+    FRotator Rotation = GetPatchRotation(N);
+
+    UpdateCollisionNearPlayer(SurfacePos, N, Rotation, DistanceToSurface);
+
+   /* bool PerformaceMode = DistanceToSurface > PlanetRadius * HeightVisibility;
+
+    UE_LOG(LogTemp, Error, TEXT("Distancia %.4f, PerformanceRange %.4f"), DistanceToSurface, PlanetRadius * HeightVisibility);
+
+    if (!PerformaceMode)
     {
-        FVector SurfacePos;
-        FVector N;
-        FVector ViewerPos;
-        float DistanceToSurface;
+        UE_LOG(LogTemp, Error, TEXT("Activando mallas %d"), Levels.Num());
 
-        DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
-        FRotator Rotation = GetPatchRotation(N);
+        for (size_t i = 0; i < Levels.Num(); i++)
+        {
+            Levels[i]->SetMeshActive(true);
+        }
+    }*/
 
-        UpdateCollisionNearPlayer(SurfacePos, N, Rotation, DistanceToSurface);
+    /*bPerformaceMode = true;
+    if (FarLevel) FarLevel->bActiveMesh = true;*/
 
-        LastSurfaceAngles = GetSurfaceAngles(SurfacePos);
-        LastPlayerPos = ViewerPos;
-        LastMeshPlayerPos = ViewerPos;
-    }
+    LastSurfaceAngles = GetSurfaceAngles(SurfacePos);
+    LastPlayerPos = ViewerPos;
+    LastMeshPlayerPos = ViewerPos;
 }
 
 void UCosmicClipmapComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {
@@ -126,7 +141,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         FRotator Rotation = GetPatchRotation(N);
 
         //Actualizar colision si se ha movido el player un minimo
-        if (!LastMeshPlayerPos.Equals(ViewerPos, BaseGridSpacing * 2)) {
+        if (!LastMeshPlayerPos.Equals(ViewerPos, CollisionComponent ? CollisionComponent->CollisionTriangleSize : BaseGridSpacing * 2)) {
             UpdateCollisionNearPlayer(SurfacePos, N, Rotation, DistanceToSurface);
             LastMeshPlayerPos = ViewerPos;
         }
@@ -326,6 +341,7 @@ void UCosmicClipmapComponent::PostEditChangeProperty(FPropertyChangedEvent& Prop
 
 void UCosmicClipmapComponent::CreateLevels()
 {
+
     if (bInit)
     {
         ClearLevels();
@@ -426,9 +442,9 @@ void UCosmicClipmapComponent::CreateLevels()
 
         // Construir malla
         Mesh->BuildBaseMesh();
+        Mesh->SetMeshActive(true);
         Mesh->RequestMeshUpdate();
-        Mesh->SetMeshActive(false);
-
+        
         // Asignar material
         if (DynamicPlanetMat)
         {
