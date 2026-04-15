@@ -63,11 +63,12 @@ void ACosmicPlanet::PostDuplicate(EDuplicateMode::Type Mode)
 {
     Super::PostDuplicate(Mode);
 
-    UE_LOG(LogTemp, Warning, TEXT("Duplicando planeta"));
+    if (!GetWorld()->IsGameWorld())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Duplicando planeta"));
 
-    /*UpdateMaterialOnly();
-    UpdateNoiseSettings();
-    RebuildPlanet();*/
+        UpdateNoiseSettings();
+    }
 }
 
 
