@@ -198,10 +198,10 @@ void ACosmicPlanet::UpdateNoiseSettings()
             NoiseSettings->OnNoiseSettingsChanged.AddUObject(
                 ClipmapComponent,
                 &UCosmicClipmapComponent::RequestCompleteMeshUpdate
-            );
-
-            ClipmapComponent->RequestCompleteMeshUpdate();
+            );      
         }  
+
+        ClipmapComponent->RequestCompleteMeshUpdate();
     }
 }
 
