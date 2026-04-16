@@ -2,8 +2,10 @@
 #include "Kismet/GameplayStatics.h"
 #include "Async/Async.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "UObject/ConstructorHelpers.h"
+#include "Engine/StaticMesh.h"
 
-// [E: Constructor: Inicializamos la arquitectura de componentes / I: Constructor: We initialize the component architecture]
+// [E: Constructor: Inicializamos la arquitectura y la malla automática / I: Constructor: We initialize the architecture and automatic mesh]
 UCosmicRingComponent::UCosmicRingComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
@@ -13,7 +15,14 @@ UCosmicRingComponent::UCosmicRingComponent()
 	MacroDiskComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MacroDiskComponent"));
 	MacroDiskComponent->SetupAttachment(this);
 	MacroDiskComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	MacroDiskComponent->SetCastShadow(false); // [E: Sombras planetarias desactivadas por rendimiento / I: Planetary shadows disabled for performance]
+	MacroDiskComponent->SetCastShadow(false);
+
+	// --- [E: ASIGNACIÓN AUTOMÁTICA DEL PLANO / I: AUTOMATIC PLANE ASSIGNMENT] ---
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> PlaneMeshAsset(TEXT("StaticMesh'/Engine/BasicShapes/Plane.Plane'"));
+	if (PlaneMeshAsset.Succeeded())
+	{
+		MacroDiskComponent->SetStaticMesh(PlaneMeshAsset.Object);
+	}
 
 	// [E: Crear gestor HISM para instanciar miles de rocas de forma barata / I: Create HISM manager to instantiate thousands of rocks cheaply]
 	AsteroidHISM = CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(TEXT("AsteroidHISM"));
@@ -34,23 +43,49 @@ void UCosmicRingComponent::BeginPlay()
 	// [E: Instanciar el material del shader para controlarlo en C++ / I: Instantiate the shader material to control it in C++]
 	if (MacroRingMaterial && MacroDiskComponent)
 	{
-		MacroDiskComponent->SetMaterial(0, MacroRingMaterial);
-		DynamicRingMat = MacroDiskComponent->CreateAndSetMaterialInstanceDynamic(0);
+		// [E: Forzamos la creación del dinámico desde nuestra variable, no desde el slot vacío / I: Force dynamic creation from our variable, not from empty slot]
+		DynamicRingMat = UMaterialInstanceDynamic::Create(MacroRingMaterial, this);
+		MacroDiskComponent->SetMaterial(0, DynamicRingMat);
 
-		if (DynamicRingMat)
+		UpdateShaderParameters();
+	}
+}
+
+// [E: Esta función permite que los cambios se vean en el Editor al mover sliders / I: This function allows changes to be seen in Editor when moving sliders]
+#if WITH_EDITOR
+void UCosmicRingComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+	if (MacroRingMaterial && MacroDiskComponent)
+	{
+		// [E: Si el material dinámico no existe aún en el editor, lo creamos / I: If dynamic material doesn't exist yet in editor, create it]
+		if (!DynamicRingMat)
 		{
-			// [E: Inyectar variables visuales al shader / I: Inject visual variables to the shader]
-			DynamicRingMat->SetVectorParameterValue(FName("RingColor"), RingColor);
-			DynamicRingMat->SetScalarParameterValue(FName("BandFrequency"), BandFrequency);
-
-			// [E: Usamos las variables UV para el Shader, ya que los KM romperían la escala 0-1 del TextureCoordinate / I: We use UV variables for the Shader, since KM would break the 0-1 TextureCoordinate scale]
-			DynamicRingMat->SetScalarParameterValue(FName("InnerRadius"), InnerRadiusUV);
-			DynamicRingMat->SetScalarParameterValue(FName("OuterRadius"), OuterRadiusUV);
-
-			// [E: Inyectamos distancias de cámara en Centímetros (Unidades de Unreal) / I: Inject camera distances in Centimeters (Unreal Units)]
-			DynamicRingMat->SetScalarParameterValue(FName("FadeMinDistance"), FadeMinDistanceKM * 100000.0);
-			DynamicRingMat->SetScalarParameterValue(FName("FadeMaxDistance"), FadeMaxDistanceKM * 100000.0);
+			DynamicRingMat = UMaterialInstanceDynamic::Create(MacroRingMaterial, this);
 		}
+
+		// [E: Aseguramos que el Element 0 use nuestro material dinámico / I: Ensure Element 0 uses our dynamic material]
+		MacroDiskComponent->SetMaterial(0, DynamicRingMat);
+
+		UpdateShaderParameters();
+	}
+}
+#endif
+
+void UCosmicRingComponent::UpdateShaderParameters()
+{
+	if (DynamicRingMat)
+	{
+		// [E: Inyectar parámetros respetando los nombres de tu Shader / I: Inject parameters respecting your Shader names]
+		DynamicRingMat->SetVectorParameterValue(FName("RingColor"), RingColor);
+		DynamicRingMat->SetScalarParameterValue(FName("BandFrequency"), (float)BandFrequency);
+		DynamicRingMat->SetScalarParameterValue(FName("InnerRadius"), (float)InnerRadiusUV);
+		DynamicRingMat->SetScalarParameterValue(FName("OuterRadius"), (float)OuterRadiusUV);
+
+		// [E: Conversión de KM a Unidades Unreal (cm) para el desvanecimiento / I: KM to Unreal Units (cm) conversion for fading]
+		DynamicRingMat->SetScalarParameterValue(FName("FadeMinDistance"), (float)(FadeMinDistanceKM * 100000.0));
+		DynamicRingMat->SetScalarParameterValue(FName("FadeMaxDistance"), (float)(FadeMaxDistanceKM * 100000.0));
 	}
 }
 
@@ -71,7 +106,6 @@ void UCosmicRingComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 	// [E: Lógica de la "Ventana Local": Si estamos cerca y no estamos generando, poblamos / I: "Local Window" logic: If close and not generating, populate]
 	if (DistanceToRingCenter <= (OuterRadiusKM * 100000.0) && !bIsGeneratingAsteroids)
 	{
-		// [E: Aquí añadiríamos lógica para ver si el jugador se ha movido lo suficiente para requerir nuevos asteroides / I: Here we would add logic to see if player moved enough to require new asteroids]
 		// GenerateAsteroidsAsync(CameraLocation);
 	}
 }
@@ -79,41 +113,29 @@ void UCosmicRingComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 void UCosmicRingComponent::GenerateAsteroidsAsync(const FVector3d& PlayerLocation)
 {
 	bIsGeneratingAsteroids = true;
-
-	// [E: Limpiar las rocas viejas en el hilo principal antes de calcular nuevas / I: Clear old rocks on main thread before calculating new ones]
 	AsteroidHISM->ClearInstances();
 
-	// [E: Lanzar hilo asíncrono para cálculos matemáticos pesados / I: Fire async thread for heavy mathematical calculations]
 	AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [this, PlayerLocation]()
 		{
-			// [E: Array local para almacenar transformaciones (No toca el motor gráfico) / I: Local array to store transforms (Does not touch rendering engine)]
 			TArray<FTransform> LocalTransforms;
 
 			for (int32 i = 0; i < LocalAsteroidDensity; ++i)
 			{
-				// [E: Aquí irá nuestra matemática de distribución toroidal procedural / I: Here goes our procedural toroidal distribution math]
 				FVector3d RandomOffset = FVector3d(FMath::RandRange(-50000.0, 50000.0), FMath::RandRange(-50000.0, 50000.0), FMath::RandRange(-2000.0, 2000.0));
 				FVector3d AsteroidPos = PlayerLocation + RandomOffset;
 
 				FTransform NewTransform;
 				NewTransform.SetLocation(AsteroidPos);
-				// [E: Generamos ángulos aleatorios de 0 a 360 para Pitch, Yaw y Roll / I: We generate random angles from 0 to 360 for Pitch, Yaw and Roll]
 				FRotator RandomRot(FMath::RandRange(0.0, 360.0), FMath::RandRange(0.0, 360.0), FMath::RandRange(0.0, 360.0));
-
-				// [E: Lo convertimos a cuaternión de doble precisión para la matriz LWC / I: Convert to double precision quaternion for the LWC matrix]
 				NewTransform.SetRotation(RandomRot.Quaternion());
 				NewTransform.SetScale3D(FVector3d(FMath::RandRange(1.0, 5.0)));
 
 				LocalTransforms.Add(NewTransform);
 			}
 
-			// [E: Volver al hilo principal para inyectar las mallas al HISM / I: Return to main thread to inject meshes to HISM]
 			AsyncTask(ENamedThreads::GameThread, [this, LocalTransforms]()
 				{
-					// [E: Inserción en lote (Batch) por rendimiento / I: Batch insertion for performance]
 					AsteroidHISM->AddInstances(LocalTransforms, false);
-
-					// [E: Liberar el candado asíncrono / I: Release async lock]
 					bIsGeneratingAsteroids = false;
 				});
 		});

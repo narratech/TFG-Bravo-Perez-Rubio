@@ -1,4 +1,5 @@
 #pragma once
+
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
@@ -17,6 +18,11 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+
+	// [E: Lógica para actualizar el material en tiempo real dentro del Editor / I: Logic to update material in real-time inside the Editor]
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
 
 public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
@@ -41,19 +47,19 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Visuals")
 	double BandFrequency = 50.0;
 
-	// [E: Radio interno en UV (0.0 a 0.5) para dibujar el Shader / I: Inner radius in UV (0.0 to 0.5) to draw the Shader]
+	// [E: Radio interno en UV (0.0 a 0.5) / I: Inner radius in UV (0.0 to 0.5)]
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
 	double InnerRadiusUV = 0.2;
 
-	// [E: Radio externo en UV (0.0 a 0.5) para dibujar el Shader / I: Outer radius in UV (0.0 to 0.5) to draw the Shader]
+	// [E: Radio externo en UV (0.0 a 0.5) / I: Outer radius in UV (0.0 to 0.5)]
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
 	double OuterRadiusUV = 0.45;
 
-	// [E: Radio interno en Kilómetros (LWC) para físicas / I: Inner radius in Kilometers (LWC) for physics]
+	// [E: Radio interno en Kilómetros (LWC) / I: Inner radius in Kilometers (LWC)]
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
 	double InnerRadiusKM = 70000.0;
 
-	// [E: Radio externo en Kilómetros (LWC) para físicas / I: Outer radius in Kilometers (LWC) for physics]
+	// [E: Radio externo en Kilómetros (LWC) / I: Outer radius in Kilometers (LWC)]
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
 	double OuterRadiusKM = 140000.0;
 
@@ -61,7 +67,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Generation")
 	int32 LocalAsteroidDensity = 5000;
 
-	// [E: Distancia límite para desvanecer el shader y generar mallas / I: Threshold distance to fade shader and spawn meshes]
+	// [E: Distancia límite para desvanecer el shader (KM) / I: Threshold distance to fade shader (KM)]
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
 	double FadeMinDistanceKM = 500.0;
 
@@ -86,6 +92,9 @@ private:
 
 	// [E: Bandera para evitar múltiples llamadas asíncronas simultáneas / I: Flag to prevent multiple simultaneous async calls]
 	bool bIsGeneratingAsteroids;
+
+	// [E: Función auxiliar para inyectar datos al Shader / I: Helper function to inject data into Shader]
+	void UpdateShaderParameters();
 
 	// [E: Método interno para gestionar la carga asíncrona / I: Internal method to handle async loading]
 	void GenerateAsteroidsAsync(const FVector3d& PlayerLocation);
