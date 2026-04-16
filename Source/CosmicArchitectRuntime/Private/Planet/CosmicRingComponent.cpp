@@ -39,10 +39,16 @@ void UCosmicRingComponent::BeginPlay()
 
 		if (DynamicRingMat)
 		{
-			// [E: Inyectar variables escalares al shader (Evitando Magic Numbers) / I: Inject scalar variables to shader (Avoiding Magic Numbers)]
-			DynamicRingMat->SetScalarParameterValue(FName("InnerRadius"), InnerRadiusKM);
-			DynamicRingMat->SetScalarParameterValue(FName("OuterRadius"), OuterRadiusKM);
-			DynamicRingMat->SetScalarParameterValue(FName("FadeMinDistance"), FadeMinDistanceKM * 100000.0); // Convertir KM a Unidades Unreal
+			// [E: Inyectar variables visuales al shader / I: Inject visual variables to the shader]
+			DynamicRingMat->SetVectorParameterValue(FName("RingColor"), RingColor);
+			DynamicRingMat->SetScalarParameterValue(FName("BandFrequency"), BandFrequency);
+
+			// [E: Usamos las variables UV para el Shader, ya que los KM romperían la escala 0-1 del TextureCoordinate / I: We use UV variables for the Shader, since KM would break the 0-1 TextureCoordinate scale]
+			DynamicRingMat->SetScalarParameterValue(FName("InnerRadius"), InnerRadiusUV);
+			DynamicRingMat->SetScalarParameterValue(FName("OuterRadius"), OuterRadiusUV);
+
+			// [E: Inyectamos distancias de cámara en Centímetros (Unidades de Unreal) / I: Inject camera distances in Centimeters (Unreal Units)]
+			DynamicRingMat->SetScalarParameterValue(FName("FadeMinDistance"), FadeMinDistanceKM * 100000.0);
 			DynamicRingMat->SetScalarParameterValue(FName("FadeMaxDistance"), FadeMaxDistanceKM * 100000.0);
 		}
 	}
@@ -85,7 +91,7 @@ void UCosmicRingComponent::GenerateAsteroidsAsync(const FVector3d& PlayerLocatio
 
 			for (int32 i = 0; i < LocalAsteroidDensity; ++i)
 			{
-				// TODO: [E: Aquí irá nuestra matemática de distribución toroidal procedural / I: Here goes our procedural toroidal distribution math]
+				// [E: Aquí irá nuestra matemática de distribución toroidal procedural / I: Here goes our procedural toroidal distribution math]
 				FVector3d RandomOffset = FVector3d(FMath::RandRange(-50000.0, 50000.0), FMath::RandRange(-50000.0, 50000.0), FMath::RandRange(-2000.0, 2000.0));
 				FVector3d AsteroidPos = PlayerLocation + RandomOffset;
 

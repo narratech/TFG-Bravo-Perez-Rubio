@@ -33,11 +33,27 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Visuals")
 	class UStaticMesh* AsteroidMesh;
 
-	// [E: Radio interno en Kilómetros (LWC) / I: Inner radius in Kilometers (LWC)]
+	// [E: Color principal del polvo estelar / I: Main color of the stardust]
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Visuals")
+	FLinearColor RingColor = FLinearColor(0.2f, 0.3f, 1.0f, 1.0f);
+
+	// [E: Frecuencia (cantidad) de las bandas del anillo / I: Frequency (amount) of the ring bands]
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Visuals")
+	double BandFrequency = 50.0;
+
+	// [E: Radio interno en UV (0.0 a 0.5) para dibujar el Shader / I: Inner radius in UV (0.0 to 0.5) to draw the Shader]
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
+	double InnerRadiusUV = 0.2;
+
+	// [E: Radio externo en UV (0.0 a 0.5) para dibujar el Shader / I: Outer radius in UV (0.0 to 0.5) to draw the Shader]
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
+	double OuterRadiusUV = 0.45;
+
+	// [E: Radio interno en Kilómetros (LWC) para físicas / I: Inner radius in Kilometers (LWC) for physics]
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
 	double InnerRadiusKM = 70000.0;
 
-	// [E: Radio externo en Kilómetros (LWC) / I: Outer radius in Kilometers (LWC)]
+	// [E: Radio externo en Kilómetros (LWC) para físicas / I: Outer radius in Kilometers (LWC) for physics]
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
 	double OuterRadiusKM = 140000.0;
 
