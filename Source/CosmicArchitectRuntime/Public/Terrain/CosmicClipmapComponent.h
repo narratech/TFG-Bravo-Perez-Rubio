@@ -9,6 +9,7 @@
 #include "CosmicClipmapComponent.generated.h"
 
 class UCosmicMeshComponent;
+class UCosmicFoliageSpawner;
 class UCosmicCollisionComponent;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
@@ -61,6 +62,7 @@ public:
     bool FreezeGeneration = false;
 
     UCosmicCollisionComponent* CollisionComponent;
+    UCosmicFoliageSpawner* FoliageSpawnerComponent;
 
 protected:
     TArray<UCosmicMeshComponent*> Levels;

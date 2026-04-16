@@ -22,7 +22,6 @@ public:
         const FVector& ViewerLocation,
         const FVector& PlanetCenter,
         float ViewDistanceKm,      // Distancia de visión en km
-        float DistanceToSurface,   // Distancia del jugador a la superficie en cm
         TArray<FCubeMapCell>& OutNodes) const;
 
     // Obtener los limites de un nodo

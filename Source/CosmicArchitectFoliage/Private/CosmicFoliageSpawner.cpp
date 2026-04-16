@@ -20,15 +20,21 @@ void UCosmicFoliageSpawner::InitFoliageSpawner(float RadiusKm, UCosmicNoiseSetti
     CurrentNoiseSettings = NoiseSettings;
 }
 
-void UCosmicFoliageSpawner::BeginPlay()
+void UCosmicFoliageSpawner::UpdateFoliageSpawner(float DeltaTime, const FVector& ViewerLocation, const FVector& PlanetCenter, float PlanetRadius, float DistanceToSurface, UCosmicNoiseSettings* NoiseSettings)
 {
-    Super::BeginPlay();
-    RandomStream.Initialize(0);
+    ElapsedTime += DeltaTime;
+    if (ElapsedTime < UpdateInterval) return;
+    ElapsedTime = 0.0f;
 
-    Octree.Initialize(PlanetRadiusCm, 8); // 8 niveles de profundidad
+    // Actualizar octree y generar foliage
+    UpdateOctreeAndGenerate(ViewerLocation, DistanceToSurface, PlanetCenter, PlanetRadius, NoiseSettings);
+    UpdateFoliageGeneration(DeltaTime, PlanetCenter, PlanetRadius, NoiseSettings);
+
+    // Debug: Dibujar celdas
+    DrawDebugCells(PlanetCenter, PlanetRadius);
 }
 
-void UCosmicFoliageSpawner::EndPlay(const EEndPlayReason::Type EndPlayReason)
+void UCosmicFoliageSpawner::CancelAsyncWork()
 {
     for (auto& Task : ActiveTasks)
     {
@@ -46,36 +52,27 @@ void UCosmicFoliageSpawner::EndPlay(const EEndPlayReason::Type EndPlayReason)
     UE_LOG(LogTemp, Warning, TEXT("Eliminando tareas de celda: %d"), ActiveTasks.Num());
 
     ActiveTasks.Empty();
-
-    Super::EndPlay(EndPlayReason);
+    PendingCells.Empty();
 }
 
-void UCosmicFoliageSpawner::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void UCosmicFoliageSpawner::BeginPlay()
 {
-    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+    Super::BeginPlay();
+    RandomStream.Initialize(0);
 
-    ElapsedTime += DeltaTime;
-    if (ElapsedTime < UpdateInterval) return;
-    ElapsedTime = 0.0f;
+    Octree.Initialize(PlanetRadiusCm, 8); // 8 niveles de profundidad
+}
 
-    // Obtener posición del jugador
-    APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-    if (!PC || !PC->PlayerCameraManager)
-        return;
+void UCosmicFoliageSpawner::OnComponentDestroyed(bool bDestroyingHierarchy)
+{
+    CancelAsyncWork();
+    Super::OnComponentDestroyed(bDestroyingHierarchy);
+}
 
-    AActor* PlanetActor = GetOwner();
-    if (!PlanetActor)
-        return;
-
-    FVector ViewerLocation = PC->PlayerCameraManager->GetCameraLocation();
-    FVector PlanetCenter = PlanetActor->GetActorLocation();
-
-    // Actualizar octree y generar foliage
-    UpdateOctreeAndGenerate(ViewerLocation, PlanetCenter, PlanetRadiusCm, CurrentNoiseSettings);
-    UpdateFoliageGeneration(DeltaTime, PlanetCenter, PlanetRadiusCm, CurrentNoiseSettings);
-
-    // Debug: Dibujar celdas
-    DrawDebugCells(PlanetCenter, PlanetRadiusCm);
+void UCosmicFoliageSpawner::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    CancelAsyncWork();
+    Super::EndPlay(EndPlayReason);
 }
 
 void UCosmicFoliageSpawner::DrawDebugCells(const FVector& PlanetCenter, float PlanetRadius)
@@ -129,14 +126,16 @@ void UCosmicFoliageSpawner::DrawDebugCells(const FVector& PlanetCenter, float Pl
     }
 }
 
-void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocation, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings)
+void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocation, float DistanceToSurface, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings)
 {
     if (!FoliageCollection)
         return;
 
     // Obtener nodos dentro del radio de visión
     TArray<FCubeMapCell> VisibleNodes;
-    Octree.GetNodesInRadius(ViewerLocation, PlanetCenter, ViewDistanceKm, FVector::Dist(ViewerLocation, PlanetCenter) - PlanetRadiusCm, VisibleNodes);
+    if (DistanceToSurface < ViewDistanceKm * 100000) {
+        Octree.GetNodesInRadius(ViewerLocation, PlanetCenter, ViewDistanceKm, VisibleNodes);
+    }
 
     TSet<FCubeMapCell> VisibleSet(VisibleNodes);
 

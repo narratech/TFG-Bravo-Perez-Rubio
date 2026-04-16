@@ -49,6 +49,7 @@ void ACosmicPlanet::BeginPlay()
         ClipmapComponent->NoiseSettings = NoiseSettings;
         ClipmapComponent->UpdateNoiseEvaluator();
         ClipmapComponent->CollisionComponent = CollisionComponent;
+        ClipmapComponent->FoliageSpawnerComponent = FoliageSpawnerComponent;
         ClipmapComponent->SetMaterialData(PlanetMainColor1, PlanetMainColor2, PlanetAltitudeColor, MaterialNoiseScale);
         ClipmapComponent->ReasignLevels();
 #else
@@ -121,8 +122,6 @@ void ACosmicPlanet::EndPlay(const EEndPlayReason::Type EndPlayReason)
     if (CollisionComponent)
     {
         CollisionComponent->ClearCollision();
-        CollisionComponent->DestroyComponent();
-        CollisionComponent = nullptr;
     }
 
     if (NoiseSettings && ClipmapComponent)
@@ -152,6 +151,7 @@ void ACosmicPlanet::InitClipmap()
         ClipmapComponent->PlanetRadius = RadiusKm * 100000;
         ClipmapComponent->ClearLevels();       
         ClipmapComponent->CollisionComponent = CollisionComponent;
+        ClipmapComponent->FoliageSpawnerComponent = FoliageSpawnerComponent;
         ClipmapComponent->CreatePerformanceLevel(true);
         bInitializedInEditor = true;
         

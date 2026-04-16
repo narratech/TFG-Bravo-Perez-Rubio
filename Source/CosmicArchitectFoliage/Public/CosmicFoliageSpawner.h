@@ -12,7 +12,6 @@
 class UCosmicFoliageCollection;
 class UCosmicNoiseSettings;
 
-
 USTRUCT()
 struct FCosmicFoliageCellData
 {
@@ -24,8 +23,6 @@ struct FCosmicFoliageCellData
     UPROPERTY()
     float LastUpdateTime = 0.0f;
 };
-
-
 
 /**
  * Componente que gestiona el spawning de foliage cerca del jugador
@@ -39,6 +36,8 @@ public:
     UCosmicFoliageSpawner();
 
     void InitFoliageSpawner(float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
+    void UpdateFoliageSpawner(float DeltaTime, const FVector& ViewerLocation, const FVector& PlanetCenter, float PlanetRadius, float DistanceToSurface, UCosmicNoiseSettings* NoiseSettings);
+    void CancelAsyncWork();
 
     // Configuración principal
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
@@ -65,13 +64,10 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Debug")
     float DebugCellThickness = 20.0f;
 
-    void UpdateFoliageGeneration(float DeltaTime, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
-
-
 protected:
-    virtual void BeginPlay() override;
-    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
-    virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction);
+    virtual void BeginPlay() override; 
+    virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override;
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
     // Octree manager
     FCosmicOctree Octree;
@@ -84,8 +80,8 @@ protected:
     void DrawDebugCells(const FVector& PlanetCenter, float PlanetRadius);
 
     // Actualizar octree y generar celdas
-    void UpdateOctreeAndGenerate(const FVector& ViewerLocation, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
-
+    void UpdateOctreeAndGenerate(const FVector& ViewerLocation, float DistanceToSurface, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
+    void UpdateFoliageGeneration(float DeltaTime, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
     void GenerateCellFoliage(const FCubeMapCell& Cell, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
 
 private:
