@@ -2,8 +2,6 @@
 
 
 #include "CosmicFoliageGenerationTask.h"
-#include "CosmicArchitectNoise/Public/CosmicNoise.h"
-#include "CosmicArchitectNoise/Public/ThirdParty/FastNoiseLite.h"
 
 // TAREA ASINCRONA 
 void FFoliageGenerationTask::DoWork()
@@ -167,7 +165,7 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random, FCosm
         );
 
         // Si no encontramos una perfecta, buscar la más cercana
-        if (!Entry)
+        /*if (!Entry)
         {
             Entry = FindClosestMatchingEntry(
                 Point.Temperature,
@@ -175,7 +173,7 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random, FCosm
                 Point.Slope,
                 Point.Height
             );
-        }
+        }*/
 
         if (!Entry || Entry->Foliage.Num() == 0)
             continue;
@@ -265,7 +263,7 @@ const FCosmicFoliageCollectionEntry* FFoliageGenerationTask::FindBestMatchingEnt
         bValid &= (Slope >= Entry.SlopeMin && Slope <= Entry.SlopeMax);
         bValid &= (Temperature >= Entry.TemperatureMin && Temperature <= Entry.TemperatureMax);
         bValid &= (Humidity >= Entry.HumidityMin && Humidity <= Entry.HumidityMax);
-        bValid &= (Height >= Entry.ElevationMin && Height <= Entry.ElevationMax);
+        bValid &= (Height >= Entry.ElevationMinKm * 100000 && Height <= Entry.ElevationMaxKm * 100000);
 
         if (bValid)
         {
@@ -304,10 +302,10 @@ const FCosmicFoliageCollectionEntry* FFoliageGenerationTask::FindClosestMatching
             SlopeDist = Slope - Entry.SlopeMax;
 
         float HeightDist = 0.0f;
-        if (Height < Entry.ElevationMin)
-            HeightDist = Entry.ElevationMin - Height;
-        else if (Height > Entry.ElevationMax)
-            HeightDist = Height - Entry.ElevationMax;
+        if (Height < Entry.ElevationMinKm * 100000)
+            HeightDist = Entry.ElevationMinKm * 100000 - Height;
+        else if (Height > Entry.ElevationMaxKm * 100000)
+            HeightDist = Height - Entry.ElevationMaxKm * 100000;
 
         // Distancia euclidiana ponderada
         float Distance = FMath::Sqrt(

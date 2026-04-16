@@ -73,11 +73,11 @@ struct COSMICARCHITECTFOLIAGE_API FCosmicFoliageCollectionEntry
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlacementRules", meta = (ClampMin = "-90", ClampMax = "90"))
     float SlopeMax = 30.0f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlacementRules", meta = (ClampMin = "-1000", ClampMax = "10000"))
-    float ElevationMin = -100.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlacementRules", meta = (ClampMin = "-100", ClampMax = "1000"))
+    float ElevationMinKm = -0.1f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlacementRules", meta = (ClampMin = "-1000", ClampMax = "10000"))
-    float ElevationMax = 1000.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlacementRules", meta = (ClampMin = "-100", ClampMax = "1000"))
+    float ElevationMaxKm = 1.f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlacementRules", meta = (ClampMin = "0", ClampMax = "1"))
     float TemperatureMin = 0.0f;
