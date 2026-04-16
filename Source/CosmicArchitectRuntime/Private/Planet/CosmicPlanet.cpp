@@ -47,6 +47,7 @@ void ACosmicPlanet::BeginPlay()
         ClipmapComponent->ParentRoot = Root;
         ClipmapComponent->PlanetRadius = RadiusKm * 100000;
         ClipmapComponent->NoiseSettings = NoiseSettings;
+        ClipmapComponent->UpdateNoiseEvaluator();
         ClipmapComponent->CollisionComponent = CollisionComponent;
         ClipmapComponent->SetMaterialData(PlanetMainColor1, PlanetMainColor2, PlanetAltitudeColor, MaterialNoiseScale);
         ClipmapComponent->ReasignLevels();

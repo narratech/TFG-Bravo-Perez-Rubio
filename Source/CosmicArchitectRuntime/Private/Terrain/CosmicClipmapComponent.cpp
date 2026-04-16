@@ -12,6 +12,7 @@
 #include "Engine/World.h"
 #include "Engine/Texture2D.h"
 #include "Engine/Texture.h"
+#include "DrawDebugHelpers.h"
 #include "CosmicCameraBridge.h"
 
 
@@ -23,12 +24,7 @@ UCosmicClipmapComponent::UCosmicClipmapComponent()
     bTickInEditor = true;
 
 	PrimaryComponentTick.bCanEverTick = true;
-
-    
-    
-	// ...
 }
-
 
 void UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePos, const FVector& SurfaceNormal, const FRotator& PatchRotation, const float DistanceToSurface)
 {
@@ -81,23 +77,6 @@ void UCosmicClipmapComponent::BeginPlay()
 
     UpdateCollisionNearPlayer(SurfacePos, N, Rotation, DistanceToSurface);
 
-   /* bool PerformaceMode = DistanceToSurface > PlanetRadius * HeightVisibility;
-
-    UE_LOG(LogTemp, Error, TEXT("Distancia %.4f, PerformanceRange %.4f"), DistanceToSurface, PlanetRadius * HeightVisibility);
-
-    if (!PerformaceMode)
-    {
-        UE_LOG(LogTemp, Error, TEXT("Activando mallas %d"), Levels.Num());
-
-        for (size_t i = 0; i < Levels.Num(); i++)
-        {
-            Levels[i]->SetMeshActive(true);
-        }
-    }*/
-
-    /*bPerformaceMode = true;
-    if (FarLevel) FarLevel->bActiveMesh = true;*/
-
     LastSurfaceAngles = GetSurfaceAngles(SurfacePos);
     LastPlayerPos = ViewerPos;
     LastMeshPlayerPos = ViewerPos;
@@ -130,13 +109,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         FVector ViewerPos;
         float DistanceToSurface;
 
-        /*bool UpdateCollision*/
-
         DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
-
-        /*else {
-            DistanceToSurface = GetDistanceToPlainSurface(ViewerPos, SurfacePos, N);
-        }*/
 
         FRotator Rotation = GetPatchRotation(N);
 
@@ -498,6 +471,8 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
         BuildDynamicMaterial();
     }
 
+    UpdateNoiseEvaluator();
+
     bInit = false;
 }
 
@@ -630,6 +605,14 @@ void UCosmicClipmapComponent::BuildDynamicMaterial()
         FarLevel->SetMaterial(0, DynamicPlanetMat);
 }
 
+void UCosmicClipmapComponent::UpdateNoiseEvaluator()
+{
+    if (NoiseSettings) 
+    {
+        NoiseEvaluator.UpdateSettings(NoiseSettings->Params);
+    }
+}
+
 void UCosmicClipmapComponent::RequestCompleteMeshUpdate()
 {
     UE_LOG(LogTemp, Warning, TEXT("Aplicando ruido nuevo"));
@@ -651,6 +634,8 @@ void UCosmicClipmapComponent::RequestCompleteMeshUpdate()
             Levels[i]->RequestMeshUpdate();
         }
     }
+
+    UpdateNoiseEvaluator();
 }
 
 
@@ -931,30 +916,39 @@ FVector UCosmicClipmapComponent::GetPlayerLocation()
     return PlayerLocation;
 }
 
-float UCosmicClipmapComponent::GetDistanceToSurface(FVector& OutViewerPos, FVector& OutSurfacePos, FVector& OutN)
+float UCosmicClipmapComponent::GetDistanceToSurface(
+    FVector& OutViewerPos,
+    FVector& OutSurfacePos,
+    FVector& OutN)
 {
     AActor* Owner = GetOwner();
     if (!Owner) return 0.f;
 
     OutViewerPos = GetPlayerLocation();
-
     CurrentActorPosition = Owner->GetActorLocation();
 
     FVector CenterToViewer = OutViewerPos - CurrentActorPosition;
     float DistanceToCenter = CenterToViewer.Length();
 
-    // Normal esferica
-    OutN = (OutViewerPos - CurrentActorPosition).GetSafeNormal();
+    OutN = CenterToViewer.GetSafeNormal();
 
-    // Punto sobre la superficie
+    FLinearColor Dummy;
+    float Height = 0;
+
+    NoiseEvaluator.EvaluatePoint(OutN, Height, Dummy);
+
+    float SurfaceRadius = PlanetRadius + Height;
+
     OutSurfacePos = CurrentActorPosition + OutN * PlanetRadius;
 
-    if (DistanceToCenter <= PlanetRadius)
+    float DistanceToSurface = DistanceToCenter - SurfaceRadius;
+
+    if (DistanceToCenter <= SurfaceRadius)
     {
         return 0.f;
     }
 
-    return FVector::Distance(OutViewerPos, OutSurfacePos);
+    return DistanceToSurface;
 }
 
 float UCosmicClipmapComponent::GetDistanceToPlainSurface(FVector& OutViewerPos, FVector& OutSurfacePos, FVector& OutN)

@@ -8,7 +8,7 @@ struct COSMICARCHITECTNOISE_API FCosmicNoiseEvaluator
 {
 public:
     FCosmicNoiseEvaluator(FCosmicNoiseGenerationParameters InSettings);
-
+    FCosmicNoiseEvaluator();
     // Copia de los ajustes para tenerlos a mano
     FCosmicNoiseGenerationParameters Settings;
 
@@ -24,7 +24,7 @@ public:
     // Altura máxima pre-calculada para la penalización de temperatura
     float MaxPossibleHeight = 0.0f;
 
-
+    void UpdateSettings(FCosmicNoiseGenerationParameters InSettings);
     // Devuelve la Altura y el Color exactos para una dirección dada
     void EvaluatePoint(const FVector& NoiseDir, float& OutHeight, FLinearColor& OutColor);
 };

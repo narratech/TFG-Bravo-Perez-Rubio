@@ -3,6 +3,15 @@
 FCosmicNoiseEvaluator::FCosmicNoiseEvaluator(FCosmicNoiseGenerationParameters InSettings)
     : Settings(InSettings)
 {
+    UpdateSettings(InSettings);
+}
+
+FCosmicNoiseEvaluator::FCosmicNoiseEvaluator() : Settings() {}
+
+void FCosmicNoiseEvaluator::UpdateSettings(FCosmicNoiseGenerationParameters InSettings)
+{
+    Settings = InSettings;
+
     // 1. CONFIGURAR CLIMA Y WARP GLOBALES
     HumidityNoise.SetSeed(Settings.Seed);
     HumidityNoise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
@@ -30,6 +39,7 @@ FCosmicNoiseEvaluator::FCosmicNoiseEvaluator(FCosmicNoiseGenerationParameters In
         CraterNoise.SetCellularReturnType(FastNoiseLite::CellularReturnType_Distance);
     }
 
+    BiomeNoises.Empty();
     // 2. CONFIGURAR MATRIZ DE BIOMAS
     BiomeNoises.SetNum(Settings.Biomes.Num());
     MaxPossibleHeight = 0.0f;

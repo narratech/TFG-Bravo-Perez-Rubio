@@ -4,11 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "CosmicArchitectNoise/Public/CosmicNoiseEvaluator.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "CosmicClipmapComponent.generated.h"
 
 class UCosmicMeshComponent;
-class UCosmicNoiseSettings;
 class UCosmicCollisionComponent;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
@@ -26,6 +26,7 @@ public:
     void ReasignLevels();
     void SetMaterialData(FColor color1, FColor color2, FColor colorHeight, float scale);
     void RequestCompleteMeshUpdate();
+    void UpdateNoiseEvaluator();
 
     USceneComponent* ParentRoot;
     UCosmicNoiseSettings* NoiseSettings;
@@ -85,6 +86,8 @@ protected:
     FVector CurrentActorPosition;
     FVector AccumulatedDelta = FVector::ZeroVector;
     FIntPoint TotalShift = FIntPoint::ZeroValue;
+
+    FCosmicNoiseEvaluator NoiseEvaluator;
 
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
