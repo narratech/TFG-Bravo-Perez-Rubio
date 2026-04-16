@@ -3,7 +3,7 @@
 
 #include "CosmicSystemGeneratorFactory.h"
 #include "System/CosmicSystemGenerator.h"
-#include "CosmicArchitectEditor.h"
+#include "CosmicArchitectFactory.h"
 
 UCosmicSystemGeneratorFactory::UCosmicSystemGeneratorFactory()
 {
@@ -30,7 +30,7 @@ uint32 UCosmicSystemGeneratorFactory::GetMenuCategories() const
     // y saldrá en la categoría por defecto de Blueprints.
 
     // Suponiendo que guardaste tu categoría en algún sitio global o puedes acceder a ella:
-    return FCosmicArchitectEditorModule::CosmicCategory;
+    return FCosmicArchitectFactoryModule::CosmicCategory;
 
     // Para una prueba rápida ahora mismo:
     //return EAssetTypeCategories::Blueprint;

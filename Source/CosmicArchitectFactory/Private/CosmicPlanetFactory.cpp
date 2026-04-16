@@ -3,7 +3,7 @@
 
 #include "CosmicPlanetFactory.h"
 #include "Planet/CosmicPlanet.h"
-#include "CosmicArchitectEditor.h"
+#include "CosmicArchitectFactory.h"
 
 UCosmicPlanetFactory::UCosmicPlanetFactory()
 {
@@ -30,7 +30,7 @@ uint32 UCosmicPlanetFactory::GetMenuCategories() const
     // y saldrá en la categoría por defecto de Blueprints.
 
     // Suponiendo que guardaste tu categoría en algún sitio global o puedes acceder a ella:
-    return FCosmicArchitectEditorModule::CosmicCategory; 
+    return FCosmicArchitectFactoryModule::CosmicCategory; 
 
     // Para una prueba rápida ahora mismo:
     //return EAssetTypeCategories::Blueprint;

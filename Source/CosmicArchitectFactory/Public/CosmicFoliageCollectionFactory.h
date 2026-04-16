@@ -10,7 +10,7 @@
  * 
  */
 UCLASS()
-class COSMICARCHITECTEDITOR_API UCosmicFoliageCollectionFactory : public UFactory
+class COSMICARCHITECTFACTORY_API UCosmicFoliageCollectionFactory : public UFactory
 {
 	GENERATED_BODY()
 public:

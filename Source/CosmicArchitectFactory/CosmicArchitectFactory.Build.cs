@@ -29,7 +29,11 @@ public class CosmicArchitectFactory : ModuleRules
 				"CoreUObject",
 				"Engine",
 				"CosmicArchitectRuntime",
-				"CosmicArchitectNoise"
+				"CosmicArchitectNoise",
+				"AssetTools",
+                "AssetDefinition",
+                "CosmicArchitectNoise",
+                "CosmicArchitectFoliage",
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
@@ -38,6 +42,7 @@ public class CosmicArchitectFactory : ModuleRules
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
+                "UnrealEd"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

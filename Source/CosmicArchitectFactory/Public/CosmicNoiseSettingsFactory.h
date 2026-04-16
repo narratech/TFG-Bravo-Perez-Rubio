@@ -10,7 +10,7 @@
  * 
  */
 UCLASS()
-class COSMICARCHITECTEDITOR_API UCosmicNoiseSettingsFactory : public UFactory
+class COSMICARCHITECTFACTORY_API UCosmicNoiseSettingsFactory : public UFactory
 {
 	GENERATED_BODY()
 	

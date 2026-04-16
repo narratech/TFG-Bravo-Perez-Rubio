@@ -4,19 +4,19 @@
 
 #include "CoreMinimal.h"
 #include "Factories/BlueprintFactory.h"
-#include "CosmicSystemGeneratorFactory.generated.h"
+#include "CosmicPlanetFactory.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class COSMICARCHITECTEDITOR_API UCosmicSystemGeneratorFactory : public UBlueprintFactory
+class COSMICARCHITECTFACTORY_API UCosmicPlanetFactory : public UBlueprintFactory
 {
 	GENERATED_BODY()
-	
+
 public:
 
-	UCosmicSystemGeneratorFactory();
+	UCosmicPlanetFactory();
 
 	// El nombre que aparecerá en el menú del clic derecho
 	virtual FText GetDisplayName() const override;

@@ -32,7 +32,7 @@
 		},
 		{
 			"Name": "CosmicArchitectFactory",
-			"Type": "Runtime",
+			"Type": "Editor",
 			"LoadingPhase": "Default"
 		},
 		{
