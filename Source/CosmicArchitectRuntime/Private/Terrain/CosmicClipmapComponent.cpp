@@ -9,6 +9,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Terrain/CosmicMeshComponent.h"
 #include "Terrain/CosmicCollisionComponent.h"
+#include "CosmicFoliageSpawner.h"
 #include "Engine/World.h"
 #include "Engine/Texture2D.h"
 #include "Engine/Texture.h"
@@ -110,6 +111,14 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         float DistanceToSurface;
 
         DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
+
+        if (GetWorld()->IsGameWorld()) 
+        {
+            if (FoliageSpawnerComponent)
+            {
+                FoliageSpawnerComponent->UpdateFoliageSpawner(TimeToRefreshActive, ViewerPos, CurrentActorPosition, PlanetRadius, DistanceToSurface, NoiseSettings);
+            }
+        }
 
         FRotator Rotation = GetPatchRotation(N);
 

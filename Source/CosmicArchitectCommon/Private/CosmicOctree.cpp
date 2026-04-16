@@ -253,15 +253,11 @@ void FCosmicOctree::GetNodesInRadius(
     const FVector& ViewerLocation,
     const FVector& PlanetCenter,
     float ViewDistanceKm,      // Distancia de visión en km
-    float DistanceToSurfaceCm,   // Distancia del jugador a la superficie en cm
     TArray<FCubeMapCell>& OutNodes) const
 {
     OutNodes.Reset();
 
     float ViewDistanceCm = ViewDistanceKm * 100000.0f;
-
-    // Si estamos más lejos de la superficie que la distancia de visión, no generar nada 
-    if (DistanceToSurfaceCm > ViewDistanceCm) return;
 
     // Dirección del jugador respecto al centro del planeta
     const FVector PlayerDir = (ViewerLocation - PlanetCenter).GetSafeNormal();
