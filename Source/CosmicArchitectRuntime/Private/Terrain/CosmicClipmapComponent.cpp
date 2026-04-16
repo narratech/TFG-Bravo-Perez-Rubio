@@ -45,7 +45,7 @@ void UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePo
             nullptr,
             ETeleportType::TeleportPhysics // teleport limpio
         );
-        CollisionComponent->UpdateCollisionMesh(NoiseSettings);
+        CollisionComponent->UpdateCollisionMesh(NoiseEvaluator, CurrentActorPosition);
     }
     else if(CollisionComponent->IsBuilt())
     {
@@ -123,7 +123,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         FRotator Rotation = GetPatchRotation(N);
 
         //Actualizar colision si se ha movido el player un minimo
-        if (!LastMeshPlayerPos.Equals(ViewerPos, CollisionComponent ? CollisionComponent->CollisionTriangleSize : BaseGridSpacing * 2)) {
+        if (CollisionComponent && !LastMeshPlayerPos.Equals(ViewerPos, CollisionComponent->CollisionTriangleSize)) {
             UpdateCollisionNearPlayer(SurfacePos, N, Rotation, DistanceToSurface);
             LastMeshPlayerPos = ViewerPos;
         }
@@ -246,35 +246,17 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         }
 
         //Calcular numero de celdas que hay que desplazar
-        FIntPoint Shift = ComputeGridShiftSpherical(ViewerPos, BaseGridSpacing * 2);
+        FIntPoint Shift = ComputeGridShiftSpherical(ViewerPos, BaseGridSpacing * BaseResolution / 4);
 
         TotalShift += Shift;
 
-        
-
-        /*if (!IsPlanet) {
-            if (UpdateClipmapLevels) {
-
-                UpdateLevels(TotalShift);
-                for (size_t i = 0; i < NumLevels; i++)
-                {
-                    Levels[i]->RequestMeshUpdate();
-                }
-            }
-            else if (Shift != FIntPoint::ZeroValue)
-            {
-                UpdateLevels(Shift);
-            }
-        }
-        else*/ if (Shift != FIntPoint::ZeroValue || bWaitingForFirstUpdateAfterPerformance){
+        if (Shift != FIntPoint::ZeroValue || bWaitingForFirstUpdateAfterPerformance){
 
             if (bWaitingForFirstUpdateAfterPerformance) 
             {
                 bBuildingLevels = true;
             }
 
-            //UE_LOG(LogTemp, Warning, TEXT("SHIFT: %s"), *Shift.ToString());
-                
             for (size_t i = 0; i < Levels.Num(); i++)
             {
                 Levels[i]->SetPositionAndRotation(SurfacePos - CurrentActorPosition, Rotation);

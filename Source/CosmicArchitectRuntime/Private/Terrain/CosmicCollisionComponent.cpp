@@ -177,16 +177,24 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(double Radius)
     BuildCollision();
 }
 
-void UCosmicCollisionComponent::UpdateCollisionMesh(UCosmicNoiseSettings* NoiseSettings)
+void UCosmicCollisionComponent::UpdateCollisionMesh(FCosmicNoiseEvaluator& NoiseEvaluator, const FVector& PlanetCenter)
 {
     if (!bIsActive) return;
     //double CreateStartTime = FPlatformTime::Seconds();
 
-    TArray<float> Heights = CosmicNoise::CalculateHeights(BaseVertices, GetOwner()->GetActorLocation(), GetComponentTransform(), NoiseSettings);
+    const FTransform& ComponentTransform = GetComponentTransform();
 
-    for (size_t i = 0; i < Heights.Num(); i++)
+    for (size_t i = 0; i < BaseVertices.Num(); i++)
     {
-        Verts[i] = BaseVertices[i] + BaseNormals[i] * Heights[i];
+        FVector WorldPos = ComponentTransform.TransformPosition(BaseVertices[i]);
+        FVector NoiseDir = (WorldPos - PlanetCenter).GetSafeNormal();
+
+        float FinalHeight;
+        FLinearColor FinalColor; // Se calcula pero lo ignoramos para colisiones
+
+        NoiseEvaluator.EvaluatePoint(NoiseDir, FinalHeight, FinalColor);
+
+        Verts[i] = BaseVertices[i] + BaseNormals[i] * FinalHeight;
     }
 
     UpdateCollisionVertices();

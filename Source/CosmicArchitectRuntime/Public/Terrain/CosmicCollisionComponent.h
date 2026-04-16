@@ -4,6 +4,7 @@
 #include "Components/PrimitiveComponent.h"
 #include "Interfaces/Interface_CollisionDataProvider.h"
 #include "PhysicsEngine/BodySetup.h"
+#include "CosmicNoiseEvaluator.h"
 #include "CosmicCollisionComponent.generated.h"
 
 class UCosmicNoiseSettings;
@@ -55,7 +56,7 @@ public:
 
     void GenerateCollisionMesh(double Radius);
 
-    void UpdateCollisionMesh(UCosmicNoiseSettings* NoiseSettings);
+    void UpdateCollisionMesh(FCosmicNoiseEvaluator& NoiseEvaluator, const FVector& PlanetCenter);
 
     void ClearCollision();
 
