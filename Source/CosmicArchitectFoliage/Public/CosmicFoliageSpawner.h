@@ -35,9 +35,10 @@ class COSMICARCHITECTFOLIAGE_API UCosmicFoliageSpawner : public UActorComponent
 public:
     UCosmicFoliageSpawner();
 
-    void InitFoliageSpawner(float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
+    void InitFoliageSpawner(float PlanetRadius);
     void UpdateFoliageSpawner(float DeltaTime, const FVector& ViewerLocation, const FVector& PlanetCenter, float PlanetRadius, float DistanceToSurface, UCosmicNoiseSettings* NoiseSettings);
     void CancelAsyncWork();
+    void ClearFoliage();
 
     // Configuración principal
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
@@ -66,8 +67,12 @@ public:
 
 protected:
     virtual void BeginPlay() override; 
+    virtual void BeginDestroy() override;
     virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+#if WITH_EDITOR
+    virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
 
     // Octree manager
     FCosmicOctree Octree;
@@ -85,13 +90,10 @@ protected:
     void GenerateCellFoliage(const FCubeMapCell& Cell, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
 
 private:
-    float PlanetRadiusCm = 100000.f;
     float ElapsedTime = 0.0f;
     FRandomStream RandomStream;
     TSet<FCubeMapCell> PendingCells;
     TArray<FAsyncTask<FFoliageGenerationTask>*> ActiveTasks;
-    UCosmicNoiseSettings* CurrentNoiseSettings;
-
 
     /** Aplica las instancias generadas al mundo */
     void ApplyGeneratedInstances(const FCubeMapCell& Cell, const TArray<FCosmicFoliageInstance>& Instances);

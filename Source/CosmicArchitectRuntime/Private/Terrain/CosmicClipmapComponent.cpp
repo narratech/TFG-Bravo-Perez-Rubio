@@ -101,7 +101,9 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         DynamicPlanetMat->SetVectorParameterValue("CentroPlaneta", GetOwner()->GetActorLocation());
     }
 
-    if (ElapsedTime > TimeToRefreshActive) {
+    //UE_LOG(LogTemp, Warning, TEXT("Time %.4f"), TimeToRefresh);
+
+    if (ElapsedTime > TimeToRefresh) {
 
         ElapsedTime = 0;
 
@@ -112,13 +114,15 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
 
-        if (GetWorld()->IsGameWorld()) 
+        if (FoliageSpawnerComponent)
         {
-            if (FoliageSpawnerComponent)
-            {
-                FoliageSpawnerComponent->UpdateFoliageSpawner(TimeToRefreshActive, ViewerPos, CurrentActorPosition, PlanetRadius, DistanceToSurface, NoiseSettings);
-            }
+            //UE_LOG(LogTemp, Warning, TEXT("Actualizando foliage"));
+            FoliageSpawnerComponent->UpdateFoliageSpawner(TimeToRefresh, ViewerPos, CurrentActorPosition, PlanetRadius, DistanceToSurface, NoiseSettings);
         }
+        /*if (GetWorld()->IsGameWorld()) 
+        {
+            
+        }*/
 
         FRotator Rotation = GetPatchRotation(N);
 

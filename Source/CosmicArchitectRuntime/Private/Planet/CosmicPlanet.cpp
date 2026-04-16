@@ -31,7 +31,7 @@ void ACosmicPlanet::PostInitializeComponents()
     Super::PostInitializeComponents();
 
     if (FoliageSpawnerComponent) {
-        FoliageSpawnerComponent->InitFoliageSpawner(RadiusKm, NoiseSettings);
+        FoliageSpawnerComponent->InitFoliageSpawner(RadiusKm);
     }
 }
 
@@ -79,17 +79,17 @@ void ACosmicPlanet::PostDuplicate(EDuplicateMode::Type Mode)
 void ACosmicPlanet::Destroyed()
 {
 
-    UE_LOG(LogTemp, Warning, TEXT("Destruyendo planeta"));
+    //UE_LOG(LogTemp, Warning, TEXT("Destruyendo planeta"));
 
     if (CollisionComponent)
     {
-        UE_LOG(LogTemp, Warning, TEXT("Eliminando colisiones"));
+        //UE_LOG(LogTemp, Warning, TEXT("Eliminando colisiones"));
         CollisionComponent->ClearCollision();
     }
 
     if (NoiseSettings && ClipmapComponent)
     {
-        UE_LOG(LogTemp, Warning, TEXT("Eliminando referencias restantes"));
+        //UE_LOG(LogTemp, Warning, TEXT("Eliminando referencias restantes"));
         NoiseSettings->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
     }
 
@@ -100,17 +100,17 @@ void ACosmicPlanet::Destroyed()
 
 void ACosmicPlanet::BeginDestroy()
 {
-    UE_LOG(LogTemp, Warning, TEXT("Recolector destruyendo planeta"));
+    //UE_LOG(LogTemp, Warning, TEXT("Recolector destruyendo planeta"));
 
     if (CollisionComponent)
     {
-        UE_LOG(LogTemp, Warning, TEXT("Eliminando colisiones"));
+        //UE_LOG(LogTemp, Warning, TEXT("Eliminando colisiones"));
         CollisionComponent->ClearCollision();
     }
 
     if (NoiseSettings && ClipmapComponent)
     {
-        UE_LOG(LogTemp, Warning, TEXT("Eliminando referencias restantes"));
+        //UE_LOG(LogTemp, Warning, TEXT("Eliminando referencias restantes"));
         NoiseSettings->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
     }
 
@@ -146,7 +146,7 @@ void ACosmicPlanet::InitClipmap()
 {
     if (ClipmapComponent) {
 
-        UE_LOG(LogTemp, Warning, TEXT("Regenerando planeta"));
+        //UE_LOG(LogTemp, Warning, TEXT("Regenerando planeta"));
         ClipmapComponent->ParentRoot = Root;
         ClipmapComponent->PlanetRadius = RadiusKm * 100000;
         ClipmapComponent->ClearLevels();       
@@ -163,14 +163,15 @@ void ACosmicPlanet::InitClipmap()
 
 void ACosmicPlanet::RebuildPlanet()
 {
-    InitClipmap(); // heavy
+    InitClipmap(); 
+    UpdateFoliage();
 }
 
 void ACosmicPlanet::UpdateMaterialOnly()
 {
     if (ClipmapComponent)
     {
-        UE_LOG(LogTemp, Warning, TEXT("Actualizando material"));
+        //UE_LOG(LogTemp, Warning, TEXT("Actualizando material"));
 
         ClipmapComponent->SetMaterialData(
             PlanetMainColor1,
@@ -188,7 +189,7 @@ void ACosmicPlanet::UpdateNoiseSettings()
         if (ClipmapComponent->NoiseSettings)
             ClipmapComponent->NoiseSettings->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
 
-        UE_LOG(LogTemp, Warning, TEXT("Actualizando delegates"));
+        //UE_LOG(LogTemp, Warning, TEXT("Actualizando delegates"));
 
         
         ClipmapComponent->NoiseSettings = NoiseSettings;
@@ -205,6 +206,15 @@ void ACosmicPlanet::UpdateNoiseSettings()
     }
 }
 
+void ACosmicPlanet::UpdateFoliage()
+{
+    if (FoliageSpawnerComponent)
+    {
+        FoliageSpawnerComponent->ClearFoliage();
+        FoliageSpawnerComponent->InitFoliageSpawner(RadiusKm);
+    }
+}
+
 void ACosmicPlanet::UpdateOcean()
 {
     if (!OceanMesh) return;
@@ -213,7 +223,7 @@ void ACosmicPlanet::UpdateOcean()
 
     if (bHasOcean)
     {
-        UE_LOG(LogTemp, Warning, TEXT("Actualizando oceano"));
+        //UE_LOG(LogTemp, Warning, TEXT("Actualizando oceano"));
 
         float PlanetRadiusUnreal = RadiusKm * 100000.0f;
         float TotalOceanRadius = PlanetRadiusUnreal + SeaLevel;
@@ -228,13 +238,14 @@ void ACosmicPlanet::OnConstruction(const FTransform& Transform)
 {
     Super::OnConstruction(Transform);
 
-    UE_LOG(LogTemp, Warning, TEXT("Construyendo"));
+    //UE_LOG(LogTemp, Warning, TEXT("Construyendo"));
 
     if (!GetWorld()->IsGameWorld() && !bInitializedInEditor)
     {
         UpdateMaterialOnly();
         UpdateNoiseSettings();
-        InitClipmap();      
+        InitClipmap();    
+        UpdateFoliage();
         UpdateOcean();
     }
 }

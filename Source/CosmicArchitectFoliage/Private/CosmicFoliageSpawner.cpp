@@ -14,10 +14,10 @@ UCosmicFoliageSpawner::UCosmicFoliageSpawner()
     PrimaryComponentTick.bCanEverTick = true;
 }
 
-void UCosmicFoliageSpawner::InitFoliageSpawner(float RadiusKm, UCosmicNoiseSettings* NoiseSettings)
+void UCosmicFoliageSpawner::InitFoliageSpawner(float RadiusKm)
 {
-    PlanetRadiusCm = RadiusKm * 100000;
-    CurrentNoiseSettings = NoiseSettings;
+    RandomStream.Initialize(0);
+    Octree.Initialize(RadiusKm * 100000, 8); // 8 niveles de profundidad
 }
 
 void UCosmicFoliageSpawner::UpdateFoliageSpawner(float DeltaTime, const FVector& ViewerLocation, const FVector& PlanetCenter, float PlanetRadius, float DistanceToSurface, UCosmicNoiseSettings* NoiseSettings)
@@ -52,15 +52,49 @@ void UCosmicFoliageSpawner::CancelAsyncWork()
     UE_LOG(LogTemp, Warning, TEXT("Eliminando tareas de celda: %d"), ActiveTasks.Num());
 
     ActiveTasks.Empty();
-    PendingCells.Empty();
 }
+
+void UCosmicFoliageSpawner::ClearFoliage()
+{
+    CancelAsyncWork();
+
+    // Destruir todos los componentes instanciados
+    for (auto& Pair : ActiveCells)
+    {
+        FCosmicFoliageCellData& CellData = Pair.Value;
+
+        for (auto& MeshPair : CellData.MeshComponents)
+        {
+            if (MeshPair.Value)
+            {
+                MeshPair.Value->ClearInstances();   // opcional pero limpio
+                MeshPair.Value->DestroyComponent(); // esto es lo importante
+            }
+        }
+
+        CellData.MeshComponents.Empty();
+    }
+
+    // Limpiar todas las celdas activas
+    ActiveCells.Empty();
+
+    // Limpiar pendientes 
+    PendingCells.Empty();
+
+    UE_LOG(LogTemp, Warning, TEXT("Foliage completamente limpiado"));
+}
+
 
 void UCosmicFoliageSpawner::BeginPlay()
 {
     Super::BeginPlay();
-    RandomStream.Initialize(0);
+    
+}
 
-    Octree.Initialize(PlanetRadiusCm, 8); // 8 niveles de profundidad
+void UCosmicFoliageSpawner::BeginDestroy()
+{
+    CancelAsyncWork();
+    Super::BeginDestroy();
 }
 
 void UCosmicFoliageSpawner::OnComponentDestroyed(bool bDestroyingHierarchy)
@@ -73,6 +107,21 @@ void UCosmicFoliageSpawner::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     CancelAsyncWork();
     Super::EndPlay(EndPlayReason);
+}
+
+void UCosmicFoliageSpawner::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+    Super::PostEditChangeProperty(PropertyChangedEvent);
+
+    FName PropertyName = PropertyChangedEvent.Property
+        ? PropertyChangedEvent.Property->GetFName()
+        : NAME_None;
+
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicFoliageSpawner, FoliageCollection))
+    {
+        ClearFoliage();
+        return;
+    }
 }
 
 void UCosmicFoliageSpawner::DrawDebugCells(const FVector& PlanetCenter, float PlanetRadius)
@@ -231,6 +280,7 @@ void UCosmicFoliageSpawner::UpdateFoliageGeneration(
             }
 
             // remove
+            delete Task;
             ActiveTasks.RemoveAt(i);
         }
     }

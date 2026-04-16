@@ -93,6 +93,8 @@ protected:
 
 	void UpdateNoiseSettings();
 
+	void UpdateFoliage();
+
 	void UpdateOcean();
 
 	void UpdateMaterialOnly();
