@@ -109,6 +109,29 @@ void UCosmicFoliageSpawner::EndPlay(const EEndPlayReason::Type EndPlayReason)
     Super::EndPlay(EndPlayReason);
 }
 
+
+
+void UCosmicFoliageSpawner::PreEditChange(FProperty* PropertyAboutToChange)
+{
+    Super::PreEditChange(PropertyAboutToChange);
+
+    FName PropertyName = PropertyAboutToChange
+        ? PropertyAboutToChange->GetFName()
+        : NAME_None;
+
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicFoliageSpawner, FoliageCollection))
+    {
+        if (FoliageCollection)
+        {
+            FoliageCollection->OnFoliageCollectionChanged.RemoveAll(this);
+            UE_LOG(LogTemp, Warning, TEXT("Eliminando viejas referencias"));
+        }
+        
+        ClearFoliage();
+        return;
+    }
+}
+
 void UCosmicFoliageSpawner::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
     Super::PostEditChangeProperty(PropertyChangedEvent);
@@ -119,7 +142,15 @@ void UCosmicFoliageSpawner::PostEditChangeProperty(FPropertyChangedEvent& Proper
 
     if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicFoliageSpawner, FoliageCollection))
     {
-        ClearFoliage();
+        if (FoliageCollection)
+        {
+            FoliageCollection->OnFoliageCollectionChanged.AddUObject(
+                this,
+                &UCosmicFoliageSpawner::ClearFoliage
+            );
+
+            UE_LOG(LogTemp, Warning, TEXT("Asignando nuevas referencias"));
+        }
         return;
     }
 }

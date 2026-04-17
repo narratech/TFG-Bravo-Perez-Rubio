@@ -7,6 +7,8 @@
 #include "CosmicFoliageTypes.h"
 #include "CosmicFoliageCollection.generated.h"
 
+DECLARE_MULTICAST_DELEGATE(FOnFoliageCollectionChanged);
+
 /**
  * DataAsset que define un conjunto de foliage para un bioma
  */
@@ -26,4 +28,12 @@ public:
 
     /** Obtiene una entrada aleatoria basada en pesos */
     const FCosmicFoliageCollectionEntry* GetRandomEntry(FRandomStream& Random) const;
+
+    FOnFoliageCollectionChanged OnFoliageCollectionChanged;
+
+protected:
+
+#if WITH_EDITOR
+    virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
 };

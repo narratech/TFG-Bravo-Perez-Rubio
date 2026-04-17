@@ -189,6 +189,8 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Noise")
     void UpdateNoiseFromSimple();
 
+protected:
+
 #if WITH_EDITOR
     virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif

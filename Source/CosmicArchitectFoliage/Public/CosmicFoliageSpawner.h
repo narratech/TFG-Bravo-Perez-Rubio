@@ -71,6 +71,7 @@ protected:
     virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 #if WITH_EDITOR
+    virtual void PreEditChange(FProperty* PropertyAboutToChange) override;
     virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 
