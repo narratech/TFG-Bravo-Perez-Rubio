@@ -49,7 +49,7 @@ void UCosmicFoliageSpawner::CancelAsyncWork()
         }
     }
 
-    UE_LOG(LogTemp, Warning, TEXT("Eliminando tareas de celda: %d"), ActiveTasks.Num());
+    //UE_LOG(LogTemp, Warning, TEXT("Eliminando tareas de celda: %d"), ActiveTasks.Num());
 
     ActiveTasks.Empty();
 }
@@ -84,28 +84,24 @@ void UCosmicFoliageSpawner::ClearFoliage()
     UE_LOG(LogTemp, Warning, TEXT("Foliage completamente limpiado"));
 }
 
-
-void UCosmicFoliageSpawner::BeginPlay()
-{
-    Super::BeginPlay();
-    
-}
-
 void UCosmicFoliageSpawner::BeginDestroy()
 {
     CancelAsyncWork();
+    ClearDelegates();
     Super::BeginDestroy();
 }
 
 void UCosmicFoliageSpawner::OnComponentDestroyed(bool bDestroyingHierarchy)
 {
     CancelAsyncWork();
+    ClearDelegates();
     Super::OnComponentDestroyed(bDestroyingHierarchy);
 }
 
 void UCosmicFoliageSpawner::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     CancelAsyncWork();
+    ClearDelegates();
     Super::EndPlay(EndPlayReason);
 }
 
@@ -124,7 +120,6 @@ void UCosmicFoliageSpawner::PreEditChange(FProperty* PropertyAboutToChange)
         if (FoliageCollection)
         {
             FoliageCollection->OnFoliageCollectionChanged.RemoveAll(this);
-            UE_LOG(LogTemp, Warning, TEXT("Eliminando viejas referencias"));
         }
         
         ClearFoliage();
@@ -148,8 +143,6 @@ void UCosmicFoliageSpawner::PostEditChangeProperty(FPropertyChangedEvent& Proper
                 this,
                 &UCosmicFoliageSpawner::ClearFoliage
             );
-
-            UE_LOG(LogTemp, Warning, TEXT("Asignando nuevas referencias"));
         }
         return;
     }
@@ -287,6 +280,14 @@ void UCosmicFoliageSpawner::GenerateCellFoliage(
     ActiveTasks.Add(MoveTemp(Task));
 
     UE_LOG(LogTemp, Verbose, TEXT("Generando foliage para celda: %s"), *Cell.ToString());
+}
+
+void UCosmicFoliageSpawner::ClearDelegates()
+{
+    if (FoliageCollection)
+    {
+        FoliageCollection->OnFoliageCollectionChanged.RemoveAll(this);
+    }
 }
 
 void UCosmicFoliageSpawner::UpdateFoliageGeneration(

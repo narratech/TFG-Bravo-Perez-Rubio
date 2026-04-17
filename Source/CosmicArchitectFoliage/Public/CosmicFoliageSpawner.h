@@ -66,7 +66,6 @@ public:
     float DebugCellThickness = 20.0f;
 
 protected:
-    virtual void BeginPlay() override; 
     virtual void BeginDestroy() override;
     virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -89,6 +88,7 @@ protected:
     void UpdateOctreeAndGenerate(const FVector& ViewerLocation, float DistanceToSurface, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
     void UpdateFoliageGeneration(float DeltaTime, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
     void GenerateCellFoliage(const FCubeMapCell& Cell, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
+    void ClearDelegates();
 
 private:
     float ElapsedTime = 0.0f;

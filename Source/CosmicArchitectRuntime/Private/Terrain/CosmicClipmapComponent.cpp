@@ -58,8 +58,6 @@ void UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePo
 void UCosmicClipmapComponent::BeginPlay()
 {
 
-    //UE_LOG(LogTemp, Error, TEXT("Mierda"));
-
     Super::BeginPlay();
 
     TimeToRefreshActive = TimeToRefresh;
@@ -245,6 +243,11 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         //Calcular numero de celdas que hay que desplazar
         FIntPoint Shift = ComputeGridShiftSpherical(ViewerPos, SurfacePos, BaseGridSpacing * BaseResolution / 4);
+
+        /*if (Shift != FIntPoint::ZeroValue)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Shift: %s"), *Shift.ToString());
+        }*/
 
         TotalShift += Shift;
 
@@ -622,6 +625,11 @@ void UCosmicClipmapComponent::RequestCompleteMeshUpdate()
         {        
             Levels[i]->RequestMeshUpdate();
         }
+    }
+
+    if (FoliageSpawnerComponent)
+    {
+        FoliageSpawnerComponent->ClearFoliage();
     }
 
     UpdateNoiseEvaluator();
