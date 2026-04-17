@@ -17,8 +17,10 @@ UCosmicRingComponent::UCosmicRingComponent()
 	MacroDiskComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	MacroDiskComponent->SetCastShadow(false);
 
-	// [E: Configurar escala masiva inicial (5000x5000x1) / I: Setup initial massive scale (5000x5000x1)]
-	MacroDiskComponent->SetRelativeScale3D(FVector(5000.0f, 5000.0f, 1.0f));
+	// [E: Configurar escala basada en el radio KM: (KM * 100,000 cm) / 50 cm radio base = KM * 2000 / I: Setup scale based on KM radius]
+	double InitialScale = OuterRadiusKM * 2000.0;
+	MacroDiskComponent->SetRelativeScale3D(FVector(InitialScale, InitialScale, 1.0f));
+	MacroDiskComponent->SetRelativeRotation(RingRotation);
 
 	// [E: Asignación automática de la malla de plano del motor / I: Automatic Engine Plane mesh assignment]
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> PlaneMeshAsset(TEXT("StaticMesh'/Engine/BasicShapes/Plane.Plane'"));
@@ -53,6 +55,12 @@ void UCosmicRingComponent::BeginPlay()
 	{
 		DynamicRingMat = UMaterialInstanceDynamic::Create(MacroRingMaterial, this);
 		MacroDiskComponent->SetMaterial(0, DynamicRingMat);
+
+		// [E: Actualizamos físicas visuales (escala y rotación) al empezar / I: Update visual physics (scale and rotation) on play]
+		double CurrentScale = OuterRadiusKM * 2000.0;
+		MacroDiskComponent->SetRelativeScale3D(FVector(CurrentScale, CurrentScale, 1.0f));
+		MacroDiskComponent->SetRelativeRotation(RingRotation);
+
 		UpdateShaderParameters();
 	}
 }
@@ -72,8 +80,10 @@ void UCosmicRingComponent::PostEditChangeProperty(FPropertyChangedEvent& Propert
 
 		MacroDiskComponent->SetMaterial(0, DynamicRingMat);
 
-		// [E: Forzar escala masiva para previsualización correcta / I: Force massive scale for correct preview]
-		MacroDiskComponent->SetRelativeScale3D(FVector(5000.0f, 5000.0f, 1.0f));
+		// [E: Forzar actualización de tamaño en base al slider de OuterRadiusKM / I: Force size update based on OuterRadiusKM slider]
+		double CurrentScale = OuterRadiusKM * 2000.0;
+		MacroDiskComponent->SetRelativeScale3D(FVector(CurrentScale, CurrentScale, 1.0f));
+		MacroDiskComponent->SetRelativeRotation(RingRotation);
 
 		UpdateShaderParameters();
 	}

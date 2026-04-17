@@ -57,11 +57,15 @@ public:
 
 	// [E: Radio interno en Kilómetros (LWC) / I: Inner radius in Kilometers (LWC)]
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
-	double InnerRadiusKM = 70000.0;
+	double InnerRadiusKM = 2.0;
 
 	// [E: Radio externo en Kilómetros (LWC) / I: Outer radius in Kilometers (LWC)]
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
-	double OuterRadiusKM = 140000.0;
+	double OuterRadiusKM = 5.0;
+
+	// [E: Rotación del plano del anillo / I: Ring plane rotation]
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
+	FRotator RingRotation = FRotator::ZeroRotator;
 
 	// [E: Distancia límite para desvanecer el shader (KM) / I: Threshold distance to fade shader (KM)]
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
