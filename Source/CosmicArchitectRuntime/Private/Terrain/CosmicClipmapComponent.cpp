@@ -250,7 +250,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         }
 
         //Calcular numero de celdas que hay que desplazar
-        FIntPoint Shift = ComputeGridShiftSpherical(ViewerPos, BaseGridSpacing * BaseResolution / 4);
+        FIntPoint Shift = ComputeGridShiftSpherical(ViewerPos, SurfacePos, BaseGridSpacing * BaseResolution / 4);
 
         TotalShift += Shift;
 
@@ -677,14 +677,14 @@ FRotator UCosmicClipmapComponent::GetPatchRotation(const FVector& N) const
 {
     const FVector Up = N;
 
-    // Elegimos un vector no colineal (branch barato)
+    // Elegimos un vector no colineal 
     const FVector Tangent = (FMath::Abs(Up.Z) < 0.99f)
         ? FVector(0, 0, 1)
         : FVector(1, 0, 0);
 
     // Right sale normalizado si Up y Tangent son unitarios
     FVector Right = FVector::CrossProduct(Tangent, Up);
-    Right.Normalize(); // solo UNA normalización
+    Right.Normalize(); 
 
     const FVector Forward = FVector::CrossProduct(Up, Right); // ya unitario
 
@@ -712,13 +712,9 @@ FIntPoint UCosmicClipmapComponent::ComputeGridShiftPlanar(
     return FIntPoint(ShiftX, ShiftY);
 }
 
-FIntPoint UCosmicClipmapComponent::ComputeGridShiftSpherical(const FVector& PlayerPos, float GridSpacing)
+FIntPoint UCosmicClipmapComponent::ComputeGridShiftSpherical(const FVector& PlayerPos, const FVector& CurrentSurfacePos, int64 GridSpacing)
 {
-    FVector PlanetCenter = GetOwner()->GetActorLocation();
-
-    // Posición actual y anterior del jugador en la superficie de la esfera
-    FVector CurrentSurfacePos = (PlayerPos - PlanetCenter).GetSafeNormal() * PlanetRadius;
-    FVector PreviousSurfacePos = (LastPlayerPos - PlanetCenter).GetSafeNormal() * PlanetRadius;
+    FVector PlanetCenter = CurrentActorPosition;
 
     // Si es la primera vez, no hay movimiento
     if (LastPlayerPos.IsZero())
@@ -730,7 +726,7 @@ FIntPoint UCosmicClipmapComponent::ComputeGridShiftSpherical(const FVector& Play
 
     // Obtener ángulos esféricos (longitud y latitud) de ambas posiciones
     FVector2D CurrentAngles = GetSurfaceAngles(CurrentSurfacePos);
-    FVector2D PreviousAngles = GetSurfaceAngles(PreviousSurfacePos);
+    FVector2D PreviousAngles = LastSurfaceAngles;
 
     // Calcular el desplazamiento angular (en radianes)
     FVector2D DeltaAngles = CurrentAngles - PreviousAngles;
@@ -757,16 +753,17 @@ FIntPoint UCosmicClipmapComponent::ComputeGridShiftSpherical(const FVector& Play
     // Guardar para el próximo frame
     LastPlayerPos = PlayerPos;
     LastSurfaceAngles = CurrentAngles;
+    PreviousSurfacePos = CurrentSurfacePos;
 
     return FIntPoint(ShiftX, ShiftY);
 }
 
-FIntPoint UCosmicClipmapComponent::ComputeGridShift(const FVector& PlayerPos, float GridSpacing)
+FIntPoint UCosmicClipmapComponent::ComputeGridShift(const FVector& PlayerPos, const FVector& CurrentSurfacePos, float GridSpacing)
 {
     if (IsPlanet)
     {
         // Usar la versión esférica
-        return ComputeGridShiftSpherical(PlayerPos, GridSpacing);
+        return ComputeGridShiftSpherical(PlayerPos, CurrentSurfacePos, GridSpacing);
     }
     else
     {
