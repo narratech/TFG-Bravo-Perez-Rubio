@@ -113,18 +113,13 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         float DistanceToSurface;
 
         DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
+        FRotator Rotation = GetPatchRotation(N);
 
         if (FoliageSpawnerComponent)
         {
             //UE_LOG(LogTemp, Warning, TEXT("Actualizando foliage"));
             FoliageSpawnerComponent->UpdateFoliageSpawner(TimeToRefresh, ViewerPos, CurrentActorPosition, PlanetRadius, DistanceToSurface, NoiseSettings);
         }
-        /*if (GetWorld()->IsGameWorld()) 
-        {
-            
-        }*/
-
-        FRotator Rotation = GetPatchRotation(N);
 
         //Actualizar colision si se ha movido el player un minimo
         if (CollisionComponent && !LastMeshPlayerPos.Equals(ViewerPos, CollisionComponent->CollisionTriangleSize)) {
@@ -192,10 +187,9 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             if (!remainingTasks) {
                 for (size_t i = 0; i < Levels.Num(); i++)
                 {
-                    Levels[i]->CheckAndApplyMeshUpdate();
+                    Levels[i]->CancelAsyncWork();
                 }
                 bPendingTasksRemaining = false;
-                //UE_LOG(LogTemp, Warning, TEXT("Tareas pendientes eliminadas"));
             }
         }
 
