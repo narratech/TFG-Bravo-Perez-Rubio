@@ -63,10 +63,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
 	double OuterRadiusKM = 140000.0;
 
-	// [E: Densidad de asteroides por sector / I: Asteroid density per sector]
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Generation")
-	int32 LocalAsteroidDensity = 5000;
-
 	// [E: Distancia límite para desvanecer el shader (KM) / I: Threshold distance to fade shader (KM)]
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
 	double FadeMinDistanceKM = 500.0;
@@ -95,7 +91,4 @@ private:
 
 	// [E: Función auxiliar para inyectar datos al Shader / I: Helper function to inject data into Shader]
 	void UpdateShaderParameters();
-
-	// [E: Método interno para gestionar la carga asíncrona / I: Internal method to handle async loading]
-	void GenerateAsteroidsAsync(const FVector3d& PlayerLocation);
 };
