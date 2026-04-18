@@ -32,11 +32,7 @@ class FFoliageGenerationTask : public FNonAbandonableTask
 public:
     TArray<FCosmicFoliageInstance> ResultInstances;
     FCubeMapCell Cell;
-    UCosmicFoliageCollection* Collection;
-    FVector PlanetCenter;
-    float PlanetRadius;
-    FCosmicNoiseGenerationParameters NoiseSettings;
-    float CellAreaKm2;
+    ECosmicFoliageLayer Layer;
 
     // Almacenamos los puntos de generación con su información ambiental
     struct FSeedPoint
@@ -49,20 +45,20 @@ public:
         float Slope;
     };
 
-    TArray<FSeedPoint> SeedPoints;
-
     FFoliageGenerationTask(
         const FCubeMapCell& InCell,
+        ECosmicFoliageLayer InLayer,
         UCosmicFoliageCollection* InCollection,
         const FVector& InPlanetCenter,
         float InPlanetRadius,
-        FCosmicNoiseGenerationParameters InNoiseSettings,
+        const FCosmicNoiseGenerationParameters& InNoiseParams,
         float InCellAreaKm2)
         : Cell(InCell)
+        , Layer(InLayer)
         , Collection(InCollection)
         , PlanetCenter(InPlanetCenter)
         , PlanetRadius(InPlanetRadius)
-        , NoiseSettings(InNoiseSettings)
+        , NoiseSettings(InNoiseParams)
         , CellAreaKm2(InCellAreaKm2)
     {
     }
@@ -76,6 +72,14 @@ public:
     void DoWork();
 
 private:
+
+    UCosmicFoliageCollection* Collection;
+    FVector PlanetCenter;
+    float PlanetRadius;
+    FCosmicNoiseGenerationParameters NoiseSettings;
+    float CellAreaKm2;
+    TArray<FSeedPoint> SeedPoints;
+
     void GenerateSeedPoints(FRandomStream& Random);
     void EvaluateEnvironmentalConditions(FRandomStream& Random, FCosmicNoiseEvaluator& NoiseEvaluator);
     float CalculateSlope(const FVector& Direction, int32 PointIndex, FCosmicNoiseEvaluator& NoiseEvaluator);

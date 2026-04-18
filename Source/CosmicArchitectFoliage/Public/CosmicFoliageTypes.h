@@ -36,13 +36,16 @@ struct COSMICARCHITECTFOLIAGE_API FCosmicFoliageMesh
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings")
     ECosmicFoliageLayer FoliageLayer = ECosmicFoliageLayer::Medium;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings", meta = (ClampMin = "1", ClampMax = "10000"))
+    int32 InstancesPerKm2 = 1000;
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings", meta = (ClampMin = "0.1", ClampMax = "150"))
     float ScaleMin = 0.8f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings", meta = (ClampMin = "0.1", ClampMax = "150"))
     float ScaleMax = 1.2f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings", meta = (ClampMin = "-1000", ClampMax = "1000"))
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings")
     FVector HeightOffset = FVector::ZeroVector;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings")
@@ -62,12 +65,6 @@ struct COSMICARCHITECTFOLIAGE_API FCosmicFoliageMesh
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings")
     bool bHasCollision = true;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings", meta = (ClampMin = "0", ClampMax = "1"))
-    float DensityMultiplier = 1.0f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings", meta = (ClampMin = "1", ClampMax = "10000"))
-    int32 InstancesPerKm2 = 100;
 };
 
 USTRUCT(BlueprintType)
@@ -77,9 +74,6 @@ struct COSMICARCHITECTFOLIAGE_API FCosmicFoliageCollectionEntry
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlacementRules")
     TArray<FCosmicFoliageMesh> Foliage;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlacementRules", meta = (ClampMin = "0", ClampMax = "1"))
-    float Weight = 1.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlacementRules", meta = (ClampMin = "-90", ClampMax = "90"))
     float SlopeMin = 0.0f;

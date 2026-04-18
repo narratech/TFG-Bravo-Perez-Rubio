@@ -8,20 +8,21 @@ void FFoliageGenerationTask::DoWork()
 {
     if (!Collection) return;
 
-    //Crear siempre la misma semilla para la misma celsa
+    //Crear siempre la misma semilla para la misma celda
     uint32 Hash = 2166136261u;
 
     Hash = (Hash ^ Cell.Face) * 16777619u;
     Hash = (Hash ^ Cell.X) * 16777619u;
     Hash = (Hash ^ Cell.Y) * 16777619u;
     Hash = (Hash ^ Cell.Depth) * 16777619u;
+    Hash = (Hash ^ static_cast<uint32>(Layer)) * 16777619u;
 
     FRandomStream LocalRandom(Hash);
+    FCosmicNoiseEvaluator Evaluator(NoiseSettings);
 
     // Generar puntos de semilla en la esfera
     GenerateSeedPoints(LocalRandom);
-
-    FCosmicNoiseEvaluator Evaluator(NoiseSettings);
+    
     // Evaluar condiciones ambientales para cada punto
     EvaluateEnvironmentalConditions(LocalRandom, Evaluator);
 
@@ -33,16 +34,31 @@ void FFoliageGenerationTask::GenerateSeedPoints(FRandomStream& Random)
 {
     SeedPoints.Empty();
 
-    float Density = Collection->SeedsPerSquareKm * Collection->GlobalDensity;
+    // Filtrar meshes de esta capa y calcular densidad maxima
+    int32 MaxInstancesPerKm2 = 0;
+    TArray<const FCosmicFoliageMesh*> LayerMeshes;
 
-    int32 NumSeeds = FMath::Max(1, FMath::RoundToInt(CellAreaKm2 * Density));
+    for (const FCosmicFoliageCollectionEntry& Entry : Collection->FoliageEntries)
+    {
+        for (const FCosmicFoliageMesh& Mesh : Entry.Foliage)
+        {
+            if (Mesh.FoliageLayer == Layer)
+            {
+                LayerMeshes.Add(&Mesh);
+                MaxInstancesPerKm2 = FMath::Max(MaxInstancesPerKm2, Mesh.InstancesPerKm2);
+            }
+        }
+    }
 
+    if (LayerMeshes.Num() == 0 || MaxInstancesPerKm2 == 0)
+        return;
+
+    int32 NumSeeds = FMath::Max(1, FMath::RoundToInt(CellAreaKm2 * MaxInstancesPerKm2));
     SeedPoints.Reserve(NumSeeds);
 
-    // Datos de la celda
+    // Datos de la celda para mapeo UV
     int32 CellsPerSide = 1 << Cell.Depth;
     float CellSizeUV = 1.0f / CellsPerSide;
-
     float MinU = Cell.X * CellSizeUV;
     float MaxU = (Cell.X + 1) * CellSizeUV;
     float MinV = Cell.Y * CellSizeUV;
@@ -50,62 +66,42 @@ void FFoliageGenerationTask::GenerateSeedPoints(FRandomStream& Random)
 
     for (int32 i = 0; i < NumSeeds; i++)
     {
-        // Sample uniforme dentro de la celda
         float U = Random.FRandRange(MinU, MaxU);
         float V = Random.FRandRange(MinV, MaxV);
-
-        // Convertir a espacio [-1,1]
         float X = U * 2.0f - 1.0f;
         float Y = V * 2.0f - 1.0f;
 
         FVector CubePoint;
-
-        // Mapear segun la cara
         switch (Cell.Face)
         {
-        case 0: CubePoint = FVector(1.0f, X, Y); break;   // +X
-        case 1: CubePoint = FVector(-1.0f, X, Y); break;  // -X
-        case 2: CubePoint = FVector(X, 1.0f, Y); break;   // +Y
-        case 3: CubePoint = FVector(X, -1.0f, Y); break;  // -Y
-        case 4: CubePoint = FVector(X, Y, 1.0f); break;   // +Z
-        case 5: CubePoint = FVector(X, Y, -1.0f); break;  // -Z
+        case 0: CubePoint = FVector(1.0f, X, Y); break;
+        case 1: CubePoint = FVector(-1.0f, X, Y); break;
+        case 2: CubePoint = FVector(X, 1.0f, Y); break;
+        case 3: CubePoint = FVector(X, -1.0f, Y); break;
+        case 4: CubePoint = FVector(X, Y, 1.0f); break;
+        case 5: CubePoint = FVector(X, Y, -1.0f); break;
         default: CubePoint = FVector::ZeroVector; break;
         }
 
-        // Proyectar a esfera 
-        FVector Direction = CubePoint.GetSafeNormal();
-
         FSeedPoint Point;
-        Point.Direction = Direction;
-
+        Point.Direction = CubePoint.GetSafeNormal();
         SeedPoints.Add(Point);
     }
 }
 
 void FFoliageGenerationTask::EvaluateEnvironmentalConditions(FRandomStream& Random, FCosmicNoiseEvaluator& NoiseEvaluator)
 {
-    if (SeedPoints.Num() == 0) return;
-
     uint32 i = 0;
-    
-    // Convertir direcciones a puntos de ruido (coordenadas normalizadas)
+
     for (FSeedPoint& Point : SeedPoints)
     {
-        float X = Point.Direction.X;
-        float Y = Point.Direction.Y;
-        float Z = Point.Direction.Z;
-
         FLinearColor BiomeData;
-
         NoiseEvaluator.EvaluatePoint(Point.Direction, Point.Height, BiomeData);
 
         Point.Temperature = BiomeData.G;
         Point.Humidity = BiomeData.B;
-
         Point.Slope = CalculateSlope(Point.Direction, i, NoiseEvaluator);
-
         Point.WorldPosition = Point.Direction * (PlanetRadius + Point.Height);
-
         i++;
     }
 }
@@ -152,106 +148,85 @@ float FFoliageGenerationTask::CalculateSlope(
 void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random, FCosmicNoiseEvaluator& NoiseEvaluator)
 {
     ResultInstances.Empty();
-    ResultInstances.Reserve(SeedPoints.Num() / 2); // Aproximadamente la mitad serán válidos
+
+    // Agrupar meshes por capa y entrada
+    TMap<const FCosmicFoliageCollectionEntry*, TArray<const FCosmicFoliageMesh*>> MeshesByEntry;
+    for (const FCosmicFoliageCollectionEntry& Entry : Collection->FoliageEntries)
+    {
+        TArray<const FCosmicFoliageMesh*> ValidMeshes;
+        for (const FCosmicFoliageMesh& Mesh : Entry.Foliage)
+        {
+            if (Mesh.FoliageLayer == Layer && Mesh.Mesh)
+            {
+                ValidMeshes.Add(&Mesh);
+            }
+        }
+        if (ValidMeshes.Num() > 0)
+        {
+            MeshesByEntry.Add(&Entry, ValidMeshes);
+        }
+    }
 
     for (const FSeedPoint& Point : SeedPoints)
     {
-        // Encontrar la entrada que mejor se adapta a las condiciones
         const FCosmicFoliageCollectionEntry* Entry = FindBestMatchingEntry(
-            Point.Temperature,
-            Point.Humidity,
-            Point.Slope,
-            Point.Height
-        );
+            Point.Temperature, Point.Humidity, Point.Slope, Point.Height);
 
-        // Si no encontramos una perfecta, buscar la más cercana
-        /*if (!Entry)
-        {
-            Entry = FindClosestMatchingEntry(
-                Point.Temperature,
-                Point.Humidity,
-                Point.Slope,
-                Point.Height
-            );
-        }*/
-
-        if (!Entry || Entry->Foliage.Num() == 0)
+        if (!Entry || !MeshesByEntry.Contains(Entry))
             continue;
 
-        // Seleccionar mesh aleatorio del array
-        int32 MeshIndex = Random.RandRange(0, Entry->Foliage.Num() - 1);
-        const FCosmicFoliageMesh& SelectedMesh = Entry->Foliage[MeshIndex];
-
-        if (!SelectedMesh.Mesh)
+        const TArray<const FCosmicFoliageMesh*>& ValidMeshes = MeshesByEntry[Entry];
+        if (ValidMeshes.Num() == 0)
             continue;
 
-        // Ajustar densidad según el multiplicador del mesh
-        if (Random.FRand() > SelectedMesh.DensityMultiplier)
+        // Seleccion por peso de entrada 
+        const FCosmicFoliageMesh* SelectedMesh = ValidMeshes[Random.RandRange(0, ValidMeshes.Num() - 1)];
+
+        // Densidad basada EXCLUSIVAMENTE en InstancesPerKm2
+        float SpawnProbability = static_cast<float>(SelectedMesh->InstancesPerKm2) / 1000.0f; // Normalizado
+        if (Random.FRand() > SpawnProbability)
             continue;
 
-        
-
-        // Calcular transformación final
-        float Yaw = Random.FRandRange(
-            SelectedMesh.RandomRotationMin,
-            SelectedMesh.RandomRotationMax
-        );
-
-        float Scale = Random.FRandRange(
-            SelectedMesh.ScaleMin,
-            SelectedMesh.ScaleMax
-        );
-
-        FVector OffsetNormal = FVector::UpVector;
+        // Calcular transformación
+        float Yaw = Random.FRandRange(SelectedMesh->RandomRotationMin, SelectedMesh->RandomRotationMax);
+        float Scale = Random.FRandRange(SelectedMesh->ScaleMin, SelectedMesh->ScaleMax);
 
         FQuat Rotation;
-        if (SelectedMesh.bAlignToGround)
+        FVector OffsetNormal = FVector::UpVector;
+
+        if (SelectedMesh->bAlignToGround)
         {
-            // Obtener normal del terreno (también podría optimizarse con cálculo por lotes)
-            FVector TerrainNormal = OffsetNormal = GetTerrainNormal(Point.Direction, NoiseEvaluator);
-
-            // Rotacion que alinea el up vector del mesh con la normal
+            FVector TerrainNormal = GetTerrainNormal(Point.Direction, NoiseEvaluator);
+            OffsetNormal = TerrainNormal;
             FQuat AlignRotation = FQuat::FindBetweenNormals(FVector::UpVector, TerrainNormal);
-
-            // Anadir rotacion aleatoria alrededor de la normal
             FQuat RandomYawRotation = FQuat(TerrainNormal, FMath::DegreesToRadians(Yaw));
-
             Rotation = RandomYawRotation * AlignRotation;
         }
-        else if(SelectedMesh.bAlignToPlanetNormal)
+        else if (SelectedMesh->bAlignToPlanetNormal)
         {
-            FVector PlanetNormal = OffsetNormal = Point.Direction;
-
-            // Alinear el up del mesh con la normal del planeta
-            FQuat AlignRotation = FQuat::FindBetweenNormals(FVector::UpVector, PlanetNormal);
-
-            // Rotacion aleatoria alrededor de la normal (para variedad)
-            FQuat RandomYawRotation = FQuat(PlanetNormal, FMath::DegreesToRadians(Yaw));
-
-            Rotation = RandomYawRotation * AlignRotation;         
+            OffsetNormal = Point.Direction;
+            FQuat AlignRotation = FQuat::FindBetweenNormals(FVector::UpVector, Point.Direction);
+            FQuat RandomYawRotation = FQuat(Point.Direction, FMath::DegreesToRadians(Yaw));
+            Rotation = RandomYawRotation * AlignRotation;
         }
-        else {
+        else
+        {
             Rotation = FRotator(0, Yaw, 0).Quaternion();
         }
 
         FTransform Transform;
-        FVector FinalPosition = Point.WorldPosition;
-
-        FinalPosition += OffsetNormal * SelectedMesh.HeightOffset;
-
+        FVector FinalPosition = Point.WorldPosition + OffsetNormal * SelectedMesh->HeightOffset;
         Transform.SetLocation(FinalPosition);
         Transform.SetRotation(Rotation);
         Transform.SetScale3D(FVector(Scale));
 
-        //UE_LOG(LogTemp, Warning, TEXT("Generando en X:%.4f, Y:%.4f, Z:%.4f"), Point.WorldPosition.X, Point.WorldPosition.Y, Point.WorldPosition.Z);
-
         FCosmicFoliageInstance Instance;
-        Instance.Mesh = SelectedMesh.Mesh;
+        Instance.Mesh = SelectedMesh->Mesh;
         Instance.Transform = Transform;
-
         ResultInstances.Add(Instance);
     }
 }
+
 
 const FCosmicFoliageCollectionEntry* FFoliageGenerationTask::FindBestMatchingEntry(float Temperature, float Humidity, float Slope, float Height)
 {

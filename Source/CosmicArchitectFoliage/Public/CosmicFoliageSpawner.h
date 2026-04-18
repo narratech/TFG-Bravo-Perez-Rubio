@@ -22,6 +22,17 @@ struct FCosmicFoliageCellData
 
 };
 
+// Estructura para almacenar celdas por capa
+USTRUCT()
+struct FCosmicFoliageLayerCells
+{
+    GENERATED_BODY()
+
+    // Mapa de celda: datos de componentes para esta capa específica
+    UPROPERTY()
+    TMap<FCubeMapCell, FCosmicFoliageCellData> ActiveCells;
+};
+
 /**
  * Componente que gestiona el spawning de foliage cerca del jugador
  */
@@ -61,9 +72,6 @@ public:
     bool bDrawDebugCells = false;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Debug")
-    FColor DebugCellColor = FColor::Green;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Debug")
     float DebugCellThickness = 20.0f;
 
 protected:
@@ -78,9 +86,9 @@ protected:
     // Octree manager
     FCosmicOctree Octree;
 
-    // Celdas activas con sus instancias
+    // Celdas activas independientes para cada capa
     UPROPERTY()
-    TMap<FCubeMapCell, FCosmicFoliageCellData> ActiveCells;
+    FCosmicFoliageLayerCells LayerCells[3];
 
     // Debug: Dibujar celdas activas
     void DrawDebugCells(const FVector& PlanetCenter, float PlanetRadius);
@@ -88,17 +96,19 @@ protected:
     // Actualizar octree y generar celdas
     void UpdateOctreeAndGenerate(const FVector& ViewerLocation, float DistanceToSurface, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
     void UpdateFoliageGeneration(float DeltaTime, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
-    void GenerateCellFoliage(const FCubeMapCell& Cell, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
+    void GenerateCellFoliage(const FCubeMapCell& Cell, const FVector& PlanetCenter, float PlanetRadius, ECosmicFoliageLayer Layer, UCosmicNoiseSettings* NoiseSettings);
     void ClearDelegates();
 
 private:
     float ElapsedTime = 0.0f;
     FRandomStream RandomStream;
-    TSet<FCubeMapCell> PendingCells;
-    TArray<FAsyncTask<FFoliageGenerationTask>*> ActiveTasks;
+    TSet<FCubeMapCell> PendingCells[3];
+    TArray<FAsyncTask<FFoliageGenerationTask>*> ActiveTasks[3];
 
+    float GetLayerRadius(ECosmicFoliageLayer Layer) const;
+    FColor GetLayerColor(ECosmicFoliageLayer Layer) const;
     /** Aplica las instancias generadas al mundo */
-    void ApplyGeneratedInstances(const FCubeMapCell& Cell, const TArray<FCosmicFoliageInstance>& Instances);
+    void ApplyGeneratedInstances(const FCubeMapCell& Cell, ECosmicFoliageLayer Layer, const TArray<FCosmicFoliageInstance>& Instances);
 
     UHierarchicalInstancedStaticMeshComponent* GetOrCreateCellComponent(FCosmicFoliageCellData& CellData,
         UStaticMesh* Mesh);

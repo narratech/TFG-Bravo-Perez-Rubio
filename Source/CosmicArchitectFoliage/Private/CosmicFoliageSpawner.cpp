@@ -6,6 +6,27 @@
 #include "Async/Async.h"
 
 
+FORCEINLINE int32 GetIndexFromLayer(ECosmicFoliageLayer Layer)
+{
+    switch (Layer)
+    {
+    case ECosmicFoliageLayer::Near:   return 0;
+    case ECosmicFoliageLayer::Medium: return 1;
+    case ECosmicFoliageLayer::Far:    return 2;
+    default: return 0;
+    }
+}
+
+FORCEINLINE ECosmicFoliageLayer GetLayerFromIndex(int32 Index)
+{
+    switch (Index)
+    {
+    case 0:   return ECosmicFoliageLayer::Near;
+    case 1:   return ECosmicFoliageLayer::Medium;
+    case 2:   return ECosmicFoliageLayer::Far;
+    default: return ECosmicFoliageLayer::Near;
+    }
+}
 
 // COMPONENTE
 
@@ -38,52 +59,52 @@ void UCosmicFoliageSpawner::UpdateFoliageSpawner(float DeltaTime, const FVector&
 
 void UCosmicFoliageSpawner::CancelAsyncWork()
 {
-    for (auto& Task : ActiveTasks)
+    for (int32 Layer = 0; Layer < 3; Layer++)
     {
-        if (Task->Cancel() || Task->IsDone())
+        for (FAsyncTask<FFoliageGenerationTask>* Task : ActiveTasks[Layer])
         {
-            delete Task;
+            if (!Task) continue;
+
+            if (Task->Cancel() || Task->IsDone())
+            {
+                delete Task;
+            }
+            else
+            {
+                Task->EnsureCompletion();
+                delete Task;
+            }
         }
-        else
-        {
-            Task->EnsureCompletion();
-            delete Task;
-        }
+
+        ActiveTasks[Layer].Empty();
     }
-
-    //UE_LOG(LogTemp, Warning, TEXT("Eliminando tareas de celda: %d"), ActiveTasks.Num());
-
-    ActiveTasks.Empty();
 }
 
 void UCosmicFoliageSpawner::ClearFoliage()
 {
     CancelAsyncWork();
 
-    // Destruir todos los componentes instanciados
-    for (auto& Pair : ActiveCells)
+    for (int32 i = 0; i < 3; i++)
     {
-        FCosmicFoliageCellData& CellData = Pair.Value;
-
-        for (auto& MeshPair : CellData.MeshComponents)
+        // Destroy components
+        for (auto& Pair : LayerCells[i].ActiveCells)
         {
-            if (MeshPair.Value)
+            FCosmicFoliageCellData& CellData = Pair.Value;
+
+            for (auto& MeshPair : CellData.MeshComponents)
             {
-                MeshPair.Value->ClearInstances();   // opcional pero limpio
-                MeshPair.Value->DestroyComponent(); // esto es lo importante
+                if (MeshPair.Value)
+                {
+                    MeshPair.Value->DestroyComponent();
+                }
             }
+
+            CellData.MeshComponents.Empty();
         }
 
-        CellData.MeshComponents.Empty();
+        LayerCells[i].ActiveCells.Empty();
+        PendingCells[i].Empty();
     }
-
-    // Limpiar todas las celdas activas
-    ActiveCells.Empty();
-
-    // Limpiar pendientes 
-    PendingCells.Empty();
-
-    //UE_LOG(LogTemp, Warning, TEXT("Foliage completamente limpiado"));
 }
 
 void UCosmicFoliageSpawner::BeginDestroy()
@@ -156,49 +177,49 @@ void UCosmicFoliageSpawner::DrawDebugCells(const FVector& PlanetCenter, float Pl
         return;
 
     // Dibujar todas las celdas activas
-    for (const auto& Pair : ActiveCells)
-    {
-        const FCubeMapCell& Cell = Pair.Key;
+    //for (const auto& Pair : ActiveCells)
+    //{
+    //    const FCubeMapCell& Cell = Pair.Key;
 
-        // Obtener vértices de la celda
-        TArray<FVector> Vertices = Octree.GetDebugVertices(Cell);
+    //    // Obtener vértices de la celda
+    //    TArray<FVector> Vertices = Octree.GetDebugVertices(Cell);
 
-        // Dibujar líneas
-        for (int32 i = 0; i < Vertices.Num(); i += 2)
-        {
-            DrawDebugLine(
-                GetWorld(),
-                PlanetCenter + Vertices[i],
-                PlanetCenter + Vertices[i + 1],
-                DebugCellColor,
-                false,
-                UpdateInterval,
-                0,
-                DebugCellThickness
-            );
-        }
+    //    // Dibujar líneas
+    //    for (int32 i = 0; i < Vertices.Num(); i += 2)
+    //    {
+    //        DrawDebugLine(
+    //            GetWorld(),
+    //            PlanetCenter + Vertices[i],
+    //            PlanetCenter + Vertices[i + 1],
+    //            FColor::Green,
+    //            false,
+    //            UpdateInterval,
+    //            0,
+    //            DebugCellThickness
+    //        );
+    //    }
 
-        //// Dibujar un punto en el centro de la celda
-        //FVector Center = PlanetCenter + Octree.GetNodeCenter(Cell) * PlanetRadius;
-        //DrawDebugPoint(
-        //    GetWorld(),
-        //    Center,
-        //    10.0f,
-        //    FColor::Red,
-        //    false,
-        //    -1
-        //);
+    //    //// Dibujar un punto en el centro de la celda
+    //    //FVector Center = PlanetCenter + Octree.GetNodeCenter(Cell) * PlanetRadius;
+    //    //DrawDebugPoint(
+    //    //    GetWorld(),
+    //    //    Center,
+    //    //    10.0f,
+    //    //    FColor::Red,
+    //    //    false,
+    //    //    -1
+    //    //);
 
-        //// Dibujar texto con información de la celda
-        //DrawDebugString(
-        //    GetWorld(),
-        //    Center,
-        //    Cell.ToString(),
-        //    nullptr,
-        //    FColor::White,
-        //    -1
-        //);
-    }
+    //    //// Dibujar texto con información de la celda
+    //    //DrawDebugString(
+    //    //    GetWorld(),
+    //    //    Center,
+    //    //    Cell.ToString(),
+    //    //    nullptr,
+    //    //    FColor::White,
+    //    //    -1
+    //    //);
+    //}
 }
 
 void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocation, float DistanceToSurface, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings)
@@ -206,56 +227,60 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
     if (!FoliageCollection)
         return;
 
+    double CreateStartTime = FPlatformTime::Seconds();
+
     // Obtener nodos dentro del radio de visión
-    TArray<FCubeMapCell> VisibleNodes;
-    if (DistanceToSurface < FarLayerRadiusKm * 100000) {
-        double CreateStartTime = FPlatformTime::Seconds();
-
-        Octree.GetNodesInRadius(ViewerLocation, PlanetCenter, FarLayerRadiusKm, VisibleNodes);
-
-        double CreateEndTime = FPlatformTime::Seconds();
-        if (bDrawDebugCells) {
-            UE_LOG(LogTemp, Warning, TEXT("Actualizar octree tomo: %.4f ms"), (CreateEndTime - CreateStartTime) * 1000.0);
-        }
-        
-    }
-
-    TSet<FCubeMapCell> VisibleSet(VisibleNodes);
-
-    // Activar nuevas
-    for (const FCubeMapCell& Node : VisibleNodes)
+    for (size_t i = 0; i < 3; i++)
     {
-        if (!ActiveCells.Contains(Node) && !PendingCells.Contains(Node))
-        {
-            PendingCells.Add(Node);
-            GenerateCellFoliage(Node, PlanetCenter, PlanetRadius, NoiseSettings);
+        ECosmicFoliageLayer CurrentLayer = GetLayerFromIndex(i);
+
+        TArray<FCubeMapCell> VisibleNodes;
+        if (DistanceToSurface < GetLayerRadius(CurrentLayer) * 100000) {         
+            Octree.GetNodesInRadius(ViewerLocation, PlanetCenter, GetLayerRadius(CurrentLayer), VisibleNodes);
         }
-    }
 
-    // Desactivar antiguas
-    TArray<FCubeMapCell> ToRemove;
+        TSet<FCubeMapCell> VisibleSet(VisibleNodes);
 
-    for (const auto& Pair : ActiveCells)
-    {
-        if (!VisibleSet.Contains(Pair.Key))
+        // Activar nuevas
+        for (const FCubeMapCell& Node : VisibleNodes)
         {
-            for (auto& MeshPair : Pair.Value.MeshComponents)
+            if (!LayerCells[i].ActiveCells.Contains(Node) && !PendingCells[i].Contains(Node))
             {
-                if (MeshPair.Value)
-                {
-                    MeshPair.Value->DestroyComponent();
-                }
+                PendingCells[i].Add(Node);
+                GenerateCellFoliage(Node, PlanetCenter, PlanetRadius, CurrentLayer, NoiseSettings);
             }
-
-            ToRemove.Add(Pair.Key);
-
-            UE_LOG(LogTemp, Log, TEXT("Desactivando celda: %s"), *Pair.Key.ToString());
         }
-    }
 
-    for (const FCubeMapCell& Node : ToRemove)
-    {
-        ActiveCells.Remove(Node);
+        // Desactivar antiguas
+        TArray<FCubeMapCell> ToRemove;
+
+        for (const auto& Pair : LayerCells[i].ActiveCells)
+        {
+            if (!VisibleSet.Contains(Pair.Key))
+            {
+                for (auto& MeshPair : Pair.Value.MeshComponents)
+                {
+                    if (MeshPair.Value)
+                    {
+                        MeshPair.Value->DestroyComponent();
+                    }
+                }
+
+                ToRemove.Add(Pair.Key);
+
+                UE_LOG(LogTemp, Log, TEXT("Desactivando celda: %s"), *Pair.Key.ToString());
+            }
+        }
+
+        for (const FCubeMapCell& Node : ToRemove)
+        {
+            LayerCells[i].ActiveCells.Remove(Node);
+        }
+    } 
+
+    double CreateEndTime = FPlatformTime::Seconds();
+    if (bDrawDebugCells) {
+        UE_LOG(LogTemp, Warning, TEXT("Actualizar octree y generar celdas tomo: %.4f ms"), (CreateEndTime - CreateStartTime) * 1000.0);
     }
 }
 
@@ -263,6 +288,7 @@ void UCosmicFoliageSpawner::GenerateCellFoliage(
     const FCubeMapCell& Cell,
     const FVector& PlanetCenter,
     float PlanetRadius,
+    ECosmicFoliageLayer Layer,
     UCosmicNoiseSettings* NoiseSettings)
 {
     if (!FoliageCollection)
@@ -278,6 +304,7 @@ void UCosmicFoliageSpawner::GenerateCellFoliage(
     FAsyncTask<FFoliageGenerationTask>* Task =
         new FAsyncTask<FFoliageGenerationTask>(
             Cell,
+            Layer,
             FoliageCollection,
             PlanetCenter,
             PlanetRadius,
@@ -287,7 +314,7 @@ void UCosmicFoliageSpawner::GenerateCellFoliage(
 
     Task->StartBackgroundTask();
 
-    ActiveTasks.Add(MoveTemp(Task));
+    ActiveTasks[GetIndexFromLayer(Layer)].Add(MoveTemp(Task));
 
     UE_LOG(LogTemp, Verbose, TEXT("Generando foliage para celda: %s"), *Cell.ToString());
 }
@@ -306,55 +333,69 @@ void UCosmicFoliageSpawner::UpdateFoliageGeneration(
     float PlanetRadius,
     UCosmicNoiseSettings* NoiseSettings)
 {
-    for (int32 i = ActiveTasks.Num() - 1; i >= 0; i--)
+    for (int32 Layer = 0; Layer < 3; Layer++)
     {
-        FAsyncTask<FFoliageGenerationTask>* Task = ActiveTasks[i];
-
-        if (Task->IsDone())
+        for (int32 i = ActiveTasks[Layer].Num() - 1; i >= 0; i--)
         {
-            FFoliageGenerationTask& CompletedTask = Task->GetTask();
-            const FCubeMapCell& Cell = CompletedTask.Cell;
+            FAsyncTask<FFoliageGenerationTask>* Task = ActiveTasks[Layer][i];
 
-            if (PendingCells.Contains(Cell))
+            if (Task->IsDone())
             {
-                ApplyGeneratedInstances(Cell, CompletedTask.ResultInstances);
-                PendingCells.Remove(Cell);
-            }
+                FFoliageGenerationTask& CompletedTask = Task->GetTask();
+                const FCubeMapCell& Cell = CompletedTask.Cell;
 
-            // remove
-            delete Task;
-            ActiveTasks.RemoveAt(i);
+                if (PendingCells[Layer].Contains(Cell))
+                {
+                    ApplyGeneratedInstances(Cell, static_cast<ECosmicFoliageLayer>(Layer), CompletedTask.ResultInstances);
+                    PendingCells[Layer].Remove(Cell);
+                }
+
+                delete Task;
+                ActiveTasks[Layer].RemoveAt(i);
+            }
         }
     }
 }
 
 
+float UCosmicFoliageSpawner::GetLayerRadius(ECosmicFoliageLayer Layer) const
+{
+    switch (Layer)
+    {
+    case ECosmicFoliageLayer::Near:   return NearLayerRadiusKm;
+    case ECosmicFoliageLayer::Medium: return MediumLayerRadiusKm;
+    case ECosmicFoliageLayer::Far:    return FarLayerRadiusKm;
+    default: return 0.0f;
+    }
+}
+
+FColor UCosmicFoliageSpawner::GetLayerColor(ECosmicFoliageLayer Layer) const
+{
+    switch (Layer)
+    {
+    case ECosmicFoliageLayer::Near:   return FColor::Red;
+    case ECosmicFoliageLayer::Medium: return FColor::Yellow;
+    case ECosmicFoliageLayer::Far:    return FColor::Green;
+    default: return FColor::White;
+    }
+}
+
 void UCosmicFoliageSpawner::ApplyGeneratedInstances(
     const FCubeMapCell& Cell,
+    ECosmicFoliageLayer Layer,
     const TArray<FCosmicFoliageInstance>& Instances)
 {
     if (Instances.Num() == 0)
         return;
 
-    FCosmicFoliageCellData& CellData = ActiveCells.FindOrAdd(Cell);
+    FCosmicFoliageCellData& CellData =
+        LayerCells[GetIndexFromLayer(Layer)].ActiveCells.FindOrAdd(Cell);
 
     TMap<UStaticMesh*, TArray<FTransform>> Batch;
 
-    TMap<UStaticMesh*, bool> MeshCollisionCache;
-
-    for (const auto& Entry : FoliageCollection->FoliageEntries)
-    {
-        for (const auto& FoliageInst : Entry.Foliage)
-        {
-            MeshCollisionCache.Add(FoliageInst.Mesh, FoliageInst.bHasCollision);
-        }
-    }
-
     for (const FCosmicFoliageInstance& Inst : Instances)
     {
-        if (!Inst.Mesh)
-            continue;
-
+        if (!Inst.Mesh) continue;
         Batch.FindOrAdd(Inst.Mesh).Add(Inst.Transform);
     }
 
@@ -366,16 +407,7 @@ void UCosmicFoliageSpawner::ApplyGeneratedInstances(
         UHierarchicalInstancedStaticMeshComponent* Comp =
             GetOrCreateCellComponent(CellData, Mesh);
 
-        if (!Comp)
-            continue;
-
-        const bool HasCollision = MeshCollisionCache.FindRef(Mesh);
-
-        Comp->SetCollisionEnabled(
-            HasCollision
-            ? ECollisionEnabled::QueryAndPhysics
-            : ECollisionEnabled::NoCollision
-        );
+        if (!Comp) continue;
 
         Comp->AddInstances(Transforms, false);
     }

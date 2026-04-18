@@ -20,15 +20,6 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Foliage")
     TArray<FCosmicFoliageCollectionEntry> FoliageEntries;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Placement", meta = (ClampMin = "0", ClampMax = "1"))
-    float GlobalDensity = 0.5f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Placement", meta = (ClampMin = "1", ClampMax = "1000"))
-    int32 SeedsPerSquareKm = 50;
-
-    /** Obtiene una entrada aleatoria basada en pesos */
-    const FCosmicFoliageCollectionEntry* GetRandomEntry(FRandomStream& Random) const;
-
     FOnFoliageCollectionChanged OnFoliageCollectionChanged;
 
 protected:
