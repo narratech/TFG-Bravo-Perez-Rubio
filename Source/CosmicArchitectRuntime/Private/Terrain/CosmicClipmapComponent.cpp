@@ -607,7 +607,7 @@ void UCosmicClipmapComponent::UpdateNoiseEvaluator()
 
 void UCosmicClipmapComponent::RequestCompleteMeshUpdate()
 {
-    UE_LOG(LogTemp, Warning, TEXT("Aplicando ruido nuevo"));
+    //UE_LOG(LogTemp, Warning, TEXT("Aplicando ruido nuevo"));
 
     bPerformanceBuild = false;
 

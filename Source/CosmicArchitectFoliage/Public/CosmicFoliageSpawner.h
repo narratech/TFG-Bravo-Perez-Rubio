@@ -20,8 +20,6 @@ struct FCosmicFoliageCellData
     UPROPERTY()
     TMap<UStaticMesh*, UHierarchicalInstancedStaticMeshComponent*> MeshComponents;
 
-    UPROPERTY()
-    float LastUpdateTime = 0.0f;
 };
 
 /**
@@ -44,14 +42,17 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
     UCosmicFoliageCollection* FoliageCollection;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
-    float ViewDistanceKm = 2.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage", meta = (ClampMin = "0.02"))
+    float NearLayerRadiusKm = 0.05f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage", meta = (ClampMin = "0.02"))
+    float MediumLayerRadiusKm = 0.2f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage", meta = (ClampMin = "0.02"))
+    float FarLayerRadiusKm = 0.5f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
     float UpdateInterval = 0.5f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage", meta = (ClampMin = "0.05"))
-    float CellSizeKm = 0.5f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
     int32 MaxInstancesPerFrame = 1000;

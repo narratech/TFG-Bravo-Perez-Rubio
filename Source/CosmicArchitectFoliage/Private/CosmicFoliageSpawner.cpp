@@ -17,7 +17,7 @@ UCosmicFoliageSpawner::UCosmicFoliageSpawner()
 void UCosmicFoliageSpawner::InitFoliageSpawner(float RadiusKm)
 {
     RandomStream.Initialize(0);
-    Octree.Initialize(RadiusKm * 100000, 8); // 8 niveles de profundidad
+    Octree.Initialize(RadiusKm * 100000, 16); // 8 niveles de profundidad
 }
 
 void UCosmicFoliageSpawner::UpdateFoliageSpawner(float DeltaTime, const FVector& ViewerLocation, const FVector& PlanetCenter, float PlanetRadius, float DistanceToSurface, UCosmicNoiseSettings* NoiseSettings)
@@ -29,6 +29,8 @@ void UCosmicFoliageSpawner::UpdateFoliageSpawner(float DeltaTime, const FVector&
     // Actualizar octree y generar foliage
     UpdateOctreeAndGenerate(ViewerLocation, DistanceToSurface, PlanetCenter, PlanetRadius, NoiseSettings);
     UpdateFoliageGeneration(DeltaTime, PlanetCenter, PlanetRadius, NoiseSettings);
+
+    //UE_LOG(LogTemp, Warning, TEXT("Tareas Activas: %d, Pendientes: %d"), ActiveCells.Num(), PendingCells.Num());
 
     // Debug: Dibujar celdas
     DrawDebugCells(PlanetCenter, PlanetRadius);
@@ -81,7 +83,7 @@ void UCosmicFoliageSpawner::ClearFoliage()
     // Limpiar pendientes 
     PendingCells.Empty();
 
-    UE_LOG(LogTemp, Warning, TEXT("Foliage completamente limpiado"));
+    //UE_LOG(LogTemp, Warning, TEXT("Foliage completamente limpiado"));
 }
 
 void UCosmicFoliageSpawner::BeginDestroy()
@@ -170,32 +172,32 @@ void UCosmicFoliageSpawner::DrawDebugCells(const FVector& PlanetCenter, float Pl
                 PlanetCenter + Vertices[i + 1],
                 DebugCellColor,
                 false,
-                -1,
+                UpdateInterval,
                 0,
                 DebugCellThickness
             );
         }
 
-        // Dibujar un punto en el centro de la celda
-        FVector Center = PlanetCenter + Octree.GetNodeCenter(Cell) * PlanetRadius;
-        DrawDebugPoint(
-            GetWorld(),
-            Center,
-            10.0f,
-            FColor::Red,
-            false,
-            -1
-        );
+        //// Dibujar un punto en el centro de la celda
+        //FVector Center = PlanetCenter + Octree.GetNodeCenter(Cell) * PlanetRadius;
+        //DrawDebugPoint(
+        //    GetWorld(),
+        //    Center,
+        //    10.0f,
+        //    FColor::Red,
+        //    false,
+        //    -1
+        //);
 
-        // Dibujar texto con información de la celda
-        DrawDebugString(
-            GetWorld(),
-            Center,
-            Cell.ToString(),
-            nullptr,
-            FColor::White,
-            -1
-        );
+        //// Dibujar texto con información de la celda
+        //DrawDebugString(
+        //    GetWorld(),
+        //    Center,
+        //    Cell.ToString(),
+        //    nullptr,
+        //    FColor::White,
+        //    -1
+        //);
     }
 }
 
@@ -206,8 +208,16 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
 
     // Obtener nodos dentro del radio de visión
     TArray<FCubeMapCell> VisibleNodes;
-    if (DistanceToSurface < ViewDistanceKm * 100000) {
-        Octree.GetNodesInRadius(ViewerLocation, PlanetCenter, ViewDistanceKm, VisibleNodes);
+    if (DistanceToSurface < FarLayerRadiusKm * 100000) {
+        double CreateStartTime = FPlatformTime::Seconds();
+
+        Octree.GetNodesInRadius(ViewerLocation, PlanetCenter, FarLayerRadiusKm, VisibleNodes);
+
+        double CreateEndTime = FPlatformTime::Seconds();
+        if (bDrawDebugCells) {
+            UE_LOG(LogTemp, Warning, TEXT("Actualizar octree tomo: %.4f ms"), (CreateEndTime - CreateStartTime) * 1000.0);
+        }
+        
     }
 
     TSet<FCubeMapCell> VisibleSet(VisibleNodes);
@@ -369,8 +379,6 @@ void UCosmicFoliageSpawner::ApplyGeneratedInstances(
 
         Comp->AddInstances(Transforms, false);
     }
-
-    CellData.LastUpdateTime = GetWorld()->GetTimeSeconds();
 }
 
 UHierarchicalInstancedStaticMeshComponent*
