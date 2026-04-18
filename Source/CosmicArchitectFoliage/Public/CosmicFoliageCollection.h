@@ -10,7 +10,7 @@
 DECLARE_MULTICAST_DELEGATE(FOnFoliageCollectionChanged);
 
 /**
- * DataAsset que define un conjunto de foliage para un bioma
+ * DataAsset que define un conjunto de foliage para un planeta
  */
 UCLASS(BlueprintType)
 class COSMICARCHITECTFOLIAGE_API UCosmicFoliageCollection : public UDataAsset

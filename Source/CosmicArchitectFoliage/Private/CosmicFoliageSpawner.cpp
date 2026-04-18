@@ -38,7 +38,16 @@ UCosmicFoliageSpawner::UCosmicFoliageSpawner()
 void UCosmicFoliageSpawner::InitFoliageSpawner(float RadiusKm)
 {
     RandomStream.Initialize(0);
-    Octree.Initialize(RadiusKm * 100000, 16); // 8 niveles de profundidad
+    Octree.Initialize(RadiusKm * 100000, 16); // 16 niveles de profundidad
+
+    if (FoliageCollection)
+    {
+        FoliageCollection->OnFoliageCollectionChanged.RemoveAll(this);
+        FoliageCollection->OnFoliageCollectionChanged.AddUObject(
+            this,
+            &UCosmicFoliageSpawner::ClearFoliage
+        );
+    }
 }
 
 void UCosmicFoliageSpawner::UpdateFoliageSpawner(float DeltaTime, const FVector& ViewerLocation, const FVector& PlanetCenter, float PlanetRadius, float DistanceToSurface, UCosmicNoiseSettings* NoiseSettings)
