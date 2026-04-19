@@ -31,7 +31,7 @@ public:
     int32 LevelIndex;
     int32 Resolution;
     int64 GridSpacing;
-    float PlanetRadius;
+    double PlanetRadius;
     bool bIsRing;
     bool bIsPlanet;
     bool bMeshCreated = false;

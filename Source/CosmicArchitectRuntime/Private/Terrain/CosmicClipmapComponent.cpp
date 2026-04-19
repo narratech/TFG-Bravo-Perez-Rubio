@@ -29,7 +29,7 @@ UCosmicClipmapComponent::UCosmicClipmapComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 }
 
-void UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePos, const FVector& SurfaceNormal, const FRotator& PatchRotation, const float DistanceToSurface)
+void UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePos, const FVector& SurfaceNormal, const FRotator& PatchRotation, const double DistanceToSurface)
 {
     if (!CollisionComponent) return;
 
@@ -43,7 +43,7 @@ void UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePo
         CollisionComponent->SetWorldLocationAndRotation(
             SurfacePos,
             PatchRotation,
-            false, // 
+            false, 
             nullptr,
             ETeleportType::TeleportPhysics // teleport limpio
         );
@@ -910,7 +910,7 @@ FVector UCosmicClipmapComponent::GetPlayerLocation()
     return PlayerLocation;
 }
 
-float UCosmicClipmapComponent::GetDistanceToSurface(
+double UCosmicClipmapComponent::GetDistanceToSurface(
     FVector& OutViewerPos,
     FVector& OutSurfacePos,
     FVector& OutN)
@@ -922,7 +922,7 @@ float UCosmicClipmapComponent::GetDistanceToSurface(
     CurrentActorPosition = Owner->GetActorLocation();
 
     FVector CenterToViewer = OutViewerPos - CurrentActorPosition;
-    float DistanceToCenter = CenterToViewer.Length();
+    double DistanceToCenter = CenterToViewer.Length();
 
     OutN = CenterToViewer.GetSafeNormal();
 
@@ -931,15 +931,15 @@ float UCosmicClipmapComponent::GetDistanceToSurface(
 
     NoiseGenerationStrategy->EvaluatePoint(OutN, Height, Dummy);
 
-    float SurfaceRadius = PlanetRadius + Height;
+    double SurfaceRadius = PlanetRadius + Height;
 
     OutSurfacePos = CurrentActorPosition + OutN * PlanetRadius;
 
-    float DistanceToSurface = DistanceToCenter - SurfaceRadius;
+    double DistanceToSurface = DistanceToCenter - SurfaceRadius;
 
     if (DistanceToCenter <= SurfaceRadius)
     {
-        return 0.f;
+        return 0.0;
     }
 
     return DistanceToSurface;
@@ -973,25 +973,25 @@ float UCosmicClipmapComponent::GetDistanceToPlainSurface(FVector& OutViewerPos, 
 
 
 
-bool UCosmicClipmapComponent::IsClipmapRingVisible(const int32 LevelIndex, const float DistanceToSurface)
+bool UCosmicClipmapComponent::IsClipmapRingVisible(const int32 LevelIndex, const double DistanceToSurface)
 {  
     
     // Calcular el radio del clipmap en la superficie
     int64 ClipmapSurfaceRadius = Levels[LevelIndex]->GridSpacing * (Levels[LevelIndex]->Resolution - 2) / 2;
 
     // Radio maximo visible desde esta altura (proyeccion en la superficie)
-    float VisibleRadius = PlanetRadius * FMath::Sin(FMath::Acos(PlanetRadius / (PlanetRadius + DistanceToSurface)));
+    double VisibleRadius = PlanetRadius * FMath::Sin(FMath::Acos(PlanetRadius / (PlanetRadius + DistanceToSurface)));
 
     // El clipmap es visible si su radio es menor que el radio visible
     return ClipmapSurfaceRadius <= VisibleRadius * 2.f; 
 }
 
-bool UCosmicClipmapComponent::IsClipmapRingVisible(const int64 GridSpacing, const int64 Resolution, const float DistanceToSurface)
+bool UCosmicClipmapComponent::IsClipmapRingVisible(const int64 GridSpacing, const int64 Resolution, const double DistanceToSurface)
 {
     int64 ClipmapSurfaceRadius = GridSpacing * (Resolution - 2) / 2;
 
     // Radio maximo visible desde esta altura (proyeccion en la superficie)
-    float VisibleRadius = PlanetRadius * FMath::Sin(FMath::Acos(PlanetRadius / (PlanetRadius + DistanceToSurface)));
+    double VisibleRadius = PlanetRadius * FMath::Sin(FMath::Acos(PlanetRadius / (PlanetRadius + DistanceToSurface)));
 
     // El clipmap es visible si su radio es menor que el radio visible
     return ClipmapSurfaceRadius <= VisibleRadius * 2.f;

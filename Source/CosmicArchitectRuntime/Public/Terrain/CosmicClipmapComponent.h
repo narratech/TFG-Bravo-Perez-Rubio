@@ -33,7 +33,7 @@ public:
     USceneComponent* ParentRoot;
     UCosmicNoiseClass* NoiseClass;
 
-    float PlanetRadius;
+    double PlanetRadius;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UMaterialInterface* BaseMaterial;
@@ -102,11 +102,11 @@ protected:
 #endif
 
     /** Actualizar colisión cerca del jugador */
-    void UpdateCollisionNearPlayer(const FVector& SurfacePos, const FVector& SurfaceNormal, const FRotator& PatchRotation, const float DistanceToSurface);
+    void UpdateCollisionNearPlayer(const FVector& SurfacePos, const FVector& SurfaceNormal, const FRotator& PatchRotation, const double DistanceToSurface);
     void UpdatePatchTransform(const FVector& SurfacePos, const FVector& N);
     void BuildDynamicMaterial();
     FRotator GetPatchRotation(const FVector& SurfacePos) const;
-    float GetDistanceToSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N);
+    double GetDistanceToSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N);
     float GetDistanceToPlainSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N);
     FVector GetPlayerLocation();
     FIntPoint ComputeGridShiftPlanar(const FVector& PlayerPos, float GridSpacing);
@@ -114,8 +114,8 @@ protected:
     FIntPoint ComputeGridShift(const FVector& PlayerPos, const FVector& CurrentSurfacePos, float GridSpacing);
     FVector2D GetSurfaceAngles(const FVector& SurfacePos);
     uint32 UpdateLevels(const FIntPoint& Shift);
-    bool IsClipmapRingVisible(const int32 LevelIndex, const float DistanceToSurface);
-    bool IsClipmapRingVisible(const int64 GridSpacing, const int64 Resolution, const float DistanceToSurface);
+    bool IsClipmapRingVisible(const int32 LevelIndex, const double DistanceToSurface);
+    bool IsClipmapRingVisible(const int64 GridSpacing, const int64 Resolution, const double DistanceToSurface);
     void DecreaseClipmapLevelFull();
     void IncreaseClipmapLevelFull();
 

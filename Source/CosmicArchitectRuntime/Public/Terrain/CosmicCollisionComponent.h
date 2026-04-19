@@ -30,7 +30,7 @@ public:
     int32 CollisionResolution = 16;
 
     UPROPERTY(EditAnywhere, Category = "Collision")
-    float MaxCollisionDistance = 20000.f;
+    double MaxCollisionDistance = 20000.f;
 
     /** Mostrar malla de colision en el editor (para depuracion) */
     UPROPERTY(EditAnywhere, Category = "Collision")
