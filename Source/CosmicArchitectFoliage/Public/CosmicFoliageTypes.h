@@ -36,7 +36,7 @@ struct COSMICARCHITECTFOLIAGE_API FCosmicFoliageMesh
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings")
     ECosmicFoliageLayer FoliageLayer = ECosmicFoliageLayer::Medium;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings", meta = (ClampMin = "1", ClampMax = "10000"))
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings", meta = (ClampMin = "1", ClampMax = "200000"))
     int32 InstancesPerKm2 = 1000;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings", meta = (ClampMin = "0.1", ClampMax = "150"))

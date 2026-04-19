@@ -90,7 +90,7 @@ void FCosmicEarthLikeNoiseStrategy::EvaluatePoint(
 
     // MONTANAS
     float Mountain = FMath::Max(0.0f, MountainNoise.GetNoise(X, Y, Z));
-    float MountainMask = FMath::SmoothStep(0.5f, 0.8f, Continent);
+    float MountainMask = FMath::SmoothStep(0.4f, 0.6f, Continent);
     float MountainHeight = Mountain * MountainLayer.Amplitude;
 
     // COLINAS
@@ -158,7 +158,7 @@ void FCosmicEarthLikeNoiseStrategy::EvaluatePoint(
     OutColor = FLinearColor(
         AltitudeNormalized,  // R
         VisualTemp,          // G
-        Humidity,            // B
+        Humidity,            // B     
         IceMask              // A 
     );
 }
