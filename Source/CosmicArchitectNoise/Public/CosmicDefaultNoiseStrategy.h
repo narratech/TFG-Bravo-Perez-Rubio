@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "ICosmicNoiseStrategy.h"
+#include "ThirdParty/FastNoiseLite.h"
 
 /**
  * 
@@ -12,11 +13,16 @@ class COSMICARCHITECTNOISE_API FCosmicDefaultNoiseStrategy : public ICosmicNoise
 {
 public:
 
-
+	int32 Seed;
+	FCosmicNoiseLayer LayerParameters;
+	FCosmicNoiseBiomeParameters BiomeParameters;
 	
-	// Heredado vía ICosmicNoiseStrategy
-	void Initialize() override;
+	void Initialize(int32 Seed, FCosmicNoiseLayer LayerParameters, FCosmicNoiseBiomeParameters BiomeParameters);
 
 	void EvaluatePoint(const FVector& NoiseDir, float& OutHeight, FLinearColor& OutColor) const override;
 
+protected:
+	FastNoiseLite HumidityNoise;
+	FastNoiseLite TempNoise;
+	FastNoiseLite Noise;
 };

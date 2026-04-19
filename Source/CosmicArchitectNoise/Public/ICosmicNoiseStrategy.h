@@ -13,7 +13,6 @@ class COSMICARCHITECTNOISE_API ICosmicNoiseStrategy
 public:
     virtual ~ICosmicNoiseStrategy() = default;
 
-    virtual void Initialize() = 0;
     virtual void EvaluatePoint(
         const FVector& NoiseDir,
         float& OutHeight,

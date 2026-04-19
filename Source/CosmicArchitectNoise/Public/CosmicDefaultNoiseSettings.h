@@ -15,6 +15,14 @@ class COSMICARCHITECTNOISE_API UCosmicDefaultNoiseSettings : public UCosmicNoise
 	GENERATED_BODY()
 public:
 
+	UPROPERTY(EditAnywhere, Category = "Noise Settings")
+	int32 Seed;
+
+	UPROPERTY(EditAnywhere, Category = "Noise Settings")
+	FCosmicNoiseLayer LayerParameters;
+
+	UPROPERTY(EditAnywhere, Category = "Noise Settings")
+	FCosmicNoiseBiomeParameters BiomeParameters;
 
 	virtual TSharedPtr<ICosmicNoiseStrategy> CreateStrategy() const override;
 };

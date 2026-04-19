@@ -8,5 +8,7 @@ TSharedPtr<ICosmicNoiseStrategy> UCosmicDefaultNoiseSettings::CreateStrategy() c
 {
     auto Strategy = MakeShared<FCosmicDefaultNoiseStrategy>();
 
+    Strategy->Initialize(Seed, LayerParameters, BiomeParameters);
+
     return Strategy;
 }
