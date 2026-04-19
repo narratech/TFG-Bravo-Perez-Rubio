@@ -53,7 +53,7 @@ void FCosmicNoiseEvaluator::UpdateSettings(FCosmicNoiseGenerationParameters InSe
 
         for (int32 l = 0; l < BiomeData.NoiseLayers.Num(); l++)
         {
-            const FCosmicNoiseTypes& Layer = BiomeData.NoiseLayers[l];
+            const FCosmicNoiseLayer& Layer = BiomeData.NoiseLayers[l];
             FastNoiseLite Noise;
 
             Noise.SetSeed(Settings.Seed + (b * 100) + l);

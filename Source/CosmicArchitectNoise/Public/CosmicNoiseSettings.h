@@ -9,24 +9,6 @@
 
 DECLARE_MULTICAST_DELEGATE(FOnNoiseSettingsChanged);
 
-UENUM()
-enum class ECosmicBiomeType : uint8
-{
-    TemperateForest    UMETA(DisplayName = "Temperate Forest"),
-    Rainforest         UMETA(DisplayName = "Rainforest"),
-    Desert             UMETA(DisplayName = "Desert"),
-    Tundra             UMETA(DisplayName = "Tundra"),
-    Taiga              UMETA(DisplayName = "Taiga"),
-    Savannah           UMETA(DisplayName = "Savannah"),
-    Grassland          UMETA(DisplayName = "Grassland"),
-    Swamp              UMETA(DisplayName = "Swamp"),
-    Volcanic           UMETA(DisplayName = "Volcanic"),
-    Alien              UMETA(DisplayName = "Alien"),
-    Ocean              UMETA(DisplayName = "Ocean"),
-    Ice                UMETA(DisplayName = "Ice"),
-    Cratered           UMETA(DisplayName = "Cratered Moon")
-};
-
 USTRUCT(BlueprintType)
 struct FCosmicBiomeData
 {
@@ -44,7 +26,7 @@ struct FCosmicBiomeData
 
     // El relieve específico de este bioma
     UPROPERTY(EditAnywhere, Category = "Biome")
-    TArray<FCosmicNoiseTypes> NoiseLayers;
+    TArray<FCosmicNoiseLayer> NoiseLayers;
 };
 
 USTRUCT(BlueprintType)

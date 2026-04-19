@@ -2,7 +2,6 @@
 
 
 #include "CosmicNoiseSettings.h"
-#include "CosmicNoiseTypes.h"
 
 UCosmicNoiseSettings::UCosmicNoiseSettings()
 {
@@ -176,7 +175,7 @@ void UCosmicNoiseSettings::UpdateNoiseFromSimple()
     SimpleBiome.TargetTemperature = 0.5f;
     SimpleBiome.TargetHumidity = 0.5f;
 
-    FCosmicNoiseTypes Layer;
+    FCosmicNoiseLayer Layer;
     Layer.NoiseType = ECosmicNoiseType::Simplex;
     Layer.FractalType = ECosmicFractalType::FBM;
     Layer.Frequency = FMath::Lerp(0.01f, 10.f, 1.f - Params.Smoothness);
