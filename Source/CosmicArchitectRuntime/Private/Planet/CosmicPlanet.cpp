@@ -31,18 +31,6 @@ void ACosmicPlanet::PostInitializeComponents()
 {
     Super::PostInitializeComponents();
 
-    if (FoliageSpawnerComponent) {
-        FoliageSpawnerComponent->InitFoliageSpawner(RadiusKm);
-    }
-}
-
-
-
-// Called when the game starts or when spawned
-void ACosmicPlanet::BeginPlay()
-{
-	Super::BeginPlay();
-
     if (ClipmapComponent) {
 #if WITH_EDITOR
         ClipmapComponent->ParentRoot = Root;
@@ -60,6 +48,18 @@ void ACosmicPlanet::BeginPlay()
         UpdateOcean();
 #endif
     }
+
+    if (FoliageSpawnerComponent) {
+        FoliageSpawnerComponent->InitFoliageSpawner(RadiusKm);
+    }
+}
+
+
+
+// Called when the game starts or when spawned
+void ACosmicPlanet::BeginPlay()
+{
+	Super::BeginPlay(); 
 }
 
 void ACosmicPlanet::PostDuplicate(EDuplicateMode::Type Mode)
