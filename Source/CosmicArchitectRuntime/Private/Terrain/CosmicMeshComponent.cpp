@@ -804,6 +804,7 @@ void UCosmicMeshComponent::RequestMeshUpdate(TSharedPtr<ICosmicNoiseStrategy> No
         GridSpacing,
         bIsPlanet,
         bIsSphereMesh,
+        NoiseGenerationStrategy,
         Params
     );
     // Lanzar la tarea asincrona

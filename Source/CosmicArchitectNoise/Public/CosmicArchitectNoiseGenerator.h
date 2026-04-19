@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Async/AsyncWork.h"
 #include "ThirdParty/FastNoiseLite.h"
+#include "ICosmicNoiseStrategy.h"
 #include "CosmicNoiseTypes.h"
 #include "CosmicNoiseSettings.h"
 #include "CosmicNoiseEvaluator.h"
@@ -27,6 +28,8 @@ public:
     bool IsSphere;
     FCosmicNoiseGenerationParameters NoiseSettings;
 
+    TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy;
+
     FCosmicArchitectNoiseGenerator(
         const TArray<FVector>& InBaseVerts,
         FTransform InTransform,
@@ -35,6 +38,7 @@ public:
         double InGridSpacing,
         bool InPlanet,
         bool InIsSphere,
+        TSharedPtr<ICosmicNoiseStrategy> InNoiseGenerationStrategy,
         FCosmicNoiseGenerationParameters NoiseSettings)
         : BaseVertices(InBaseVerts)
         , ComponentTransform(InTransform)
@@ -43,6 +47,7 @@ public:
         ,GridSpacing(InGridSpacing)
         ,IsPlanet(InPlanet)
         ,IsSphere(InIsSphere)
+        ,NoiseGenerationStrategy(InNoiseGenerationStrategy)
         ,NoiseSettings(NoiseSettings)
     {
         CalculatedVertices.SetNumUninitialized(BaseVertices.Num());
@@ -110,7 +115,7 @@ public:
 
                 for (int j = 0; j < 4; j++)
                 {
-                    Evaluator.EvaluatePoint(SampleDirs[j], Heights[j], Dummy);
+                    NoiseGenerationStrategy->EvaluatePoint(SampleDirs[j], Heights[j], Dummy);
                 }
 
                 float dH_dT1 = (Heights[0] - Heights[1]) / (2.0f * SampleDistance);
@@ -122,7 +127,7 @@ public:
                 Normal = FVector::CrossProduct(dP_dT2, dP_dT1).GetSafeNormal();
             }
             
-            Evaluator.EvaluatePoint(NoiseDir, FinalHeight, FinalColor);
+            NoiseGenerationStrategy->EvaluatePoint(NoiseDir, FinalHeight, FinalColor);
 
             // Calcular posición final del vértice
             if (IsPlanet || IsSphere) {
