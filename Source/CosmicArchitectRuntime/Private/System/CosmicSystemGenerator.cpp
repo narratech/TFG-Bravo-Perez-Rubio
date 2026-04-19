@@ -67,7 +67,7 @@ UCosmicNoiseClass* ACosmicSystemGenerator::CreateRandomNoiseSettings(FRandomStre
     // ESCALA BASE
     const float RadiusScale = PlanetRadius / 1000.0f;
 
-    const float FeatureScaleKm = FMath::Clamp(PlanetRadius * 0.02f, 5.0f, 500.0f);
+    const float FeatureScaleKm = FMath::Clamp(PlanetRadius, 5.0f, 500.0f);
 
     // NOISE LAYER
     FCosmicNoiseLayer& Layer = NewSettings->LayerParameters;
@@ -79,7 +79,7 @@ UCosmicNoiseClass* ACosmicSystemGenerator::CreateRandomNoiseSettings(FRandomStre
     Layer.FractalType = static_cast<ECosmicFractalType>(Stream.RandRange(0, 3));
 
     // Frecuencia: inversamente proporcional al tamaño
-    Layer.Frequency = Stream.FRandRange(0.5f, 2.5f) / FeatureScaleKm;
+    Layer.Frequency = Stream.FRandRange(0.5f, 2.5f) * PlanetRadius;
 
     // Octavas
     Layer.Octaves = Stream.RandRange(3, 6);
@@ -91,7 +91,7 @@ UCosmicNoiseClass* ACosmicSystemGenerator::CreateRandomNoiseSettings(FRandomStre
     Layer.Persistence = Stream.FRandRange(0.4f, 0.7f);
 
     // Amplitud: proporcional al radio del planeta
-    Layer.Amplitude = PlanetRadius * Stream.FRandRange(0.02f, 0.15f);
+    Layer.Amplitude = PlanetRadius * 100000 * Stream.FRandRange(0.02f, 0.15f);
 
     // BIOMA / CLIMA
     FCosmicNoiseBiomeParameters& Biome = NewSettings->BiomeParameters;

@@ -253,7 +253,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         TotalShift += Shift;
 
-        if (Shift != FIntPoint::ZeroValue || bWaitingForFirstUpdateAfterPerformance){
+        if (Shift != FIntPoint::ZeroValue || bWaitingForFirstUpdateAfterPerformance || UpdateClipmapLevels){
 
             if (bWaitingForFirstUpdateAfterPerformance) 
             {
