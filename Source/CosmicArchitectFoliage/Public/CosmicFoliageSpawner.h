@@ -10,7 +10,7 @@
 #include "CosmicFoliageSpawner.generated.h"
 
 class UCosmicFoliageCollection;
-class UCosmicNoiseSettings;
+class ICosmicNoiseStrategy;
 
 USTRUCT()
 struct FCosmicFoliageCellData
@@ -45,7 +45,7 @@ public:
     UCosmicFoliageSpawner();
 
     void InitFoliageSpawner(float PlanetRadius);
-    void UpdateFoliageSpawner(float DeltaTime, const FVector& ViewerLocation, const FVector& PlanetCenter, float PlanetRadius, float DistanceToSurface, UCosmicNoiseSettings* NoiseSettings);
+    void UpdateFoliageSpawner(float DeltaTime, const FVector& ViewerLocation, const FVector& PlanetCenter, float PlanetRadius, float DistanceToSurface, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy);
     void CancelAsyncWork();
     void ClearFoliage();
 
@@ -94,9 +94,9 @@ protected:
     void DrawDebugCells(const FVector& PlanetCenter, float PlanetRadius);
 
     // Actualizar octree y generar celdas
-    void UpdateOctreeAndGenerate(const FVector& ViewerLocation, float DistanceToSurface, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
-    void UpdateFoliageGeneration(float DeltaTime, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings);
-    void GenerateCellFoliage(const FCubeMapCell& Cell, const FVector& PlanetCenter, float PlanetRadius, ECosmicFoliageLayer Layer, UCosmicNoiseSettings* NoiseSettings);
+    void UpdateOctreeAndGenerate(const FVector& ViewerLocation, float DistanceToSurface, const FVector& PlanetCenter, float PlanetRadius, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy);
+    void UpdateFoliageGeneration(float DeltaTime, const FVector& PlanetCenter, float PlanetRadius, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy);
+    void GenerateCellFoliage(const FCubeMapCell& Cell, const FVector& PlanetCenter, float PlanetRadius, ECosmicFoliageLayer Layer, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy);
     void ClearDelegates();
 
 private:

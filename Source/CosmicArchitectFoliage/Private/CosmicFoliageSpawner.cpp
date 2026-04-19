@@ -1,6 +1,6 @@
 #include "CosmicFoliageSpawner.h"
 #include "Engine/World.h"
-#include "CosmicNoiseSettings.h"
+#include "ICosmicNoiseStrategy.h"
 #include "CosmicFoliageCollection.h"
 #include "Kismet/GameplayStatics.h"
 #include "Async/Async.h"
@@ -50,15 +50,15 @@ void UCosmicFoliageSpawner::InitFoliageSpawner(float RadiusKm)
     }
 }
 
-void UCosmicFoliageSpawner::UpdateFoliageSpawner(float DeltaTime, const FVector& ViewerLocation, const FVector& PlanetCenter, float PlanetRadius, float DistanceToSurface, UCosmicNoiseSettings* NoiseSettings)
+void UCosmicFoliageSpawner::UpdateFoliageSpawner(float DeltaTime, const FVector& ViewerLocation, const FVector& PlanetCenter, float PlanetRadius, float DistanceToSurface, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy)
 {
     ElapsedTime += DeltaTime;
     if (ElapsedTime < UpdateInterval) return;
     ElapsedTime = 0.0f;
 
     // Actualizar octree y generar foliage
-    UpdateOctreeAndGenerate(ViewerLocation, DistanceToSurface, PlanetCenter, PlanetRadius, NoiseSettings);
-    UpdateFoliageGeneration(DeltaTime, PlanetCenter, PlanetRadius, NoiseSettings);
+    UpdateOctreeAndGenerate(ViewerLocation, DistanceToSurface, PlanetCenter, PlanetRadius, NoiseGenerationStrategy);
+    UpdateFoliageGeneration(DeltaTime, PlanetCenter, PlanetRadius, NoiseGenerationStrategy);
 
     //UE_LOG(LogTemp, Warning, TEXT("Tareas Activas: %d, Pendientes: %d"), ActiveCells.Num(), PendingCells.Num());
 
@@ -231,7 +231,7 @@ void UCosmicFoliageSpawner::DrawDebugCells(const FVector& PlanetCenter, float Pl
     //}
 }
 
-void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocation, float DistanceToSurface, const FVector& PlanetCenter, float PlanetRadius, UCosmicNoiseSettings* NoiseSettings)
+void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocation, float DistanceToSurface, const FVector& PlanetCenter, float PlanetRadius, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy)
 {
     if (!FoliageCollection)
         return;
@@ -256,7 +256,7 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
             if (!LayerCells[i].ActiveCells.Contains(Node) && !PendingCells[i].Contains(Node))
             {
                 PendingCells[i].Add(Node);
-                GenerateCellFoliage(Node, PlanetCenter, PlanetRadius, CurrentLayer, NoiseSettings);
+                GenerateCellFoliage(Node, PlanetCenter, PlanetRadius, CurrentLayer, NoiseGenerationStrategy);
             }
         }
 
@@ -298,15 +298,10 @@ void UCosmicFoliageSpawner::GenerateCellFoliage(
     const FVector& PlanetCenter,
     float PlanetRadius,
     ECosmicFoliageLayer Layer,
-    UCosmicNoiseSettings* NoiseSettings)
+    TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy)
 {
     if (!FoliageCollection)
         return;
-
-    FCosmicNoiseGenerationParameters Params;
-    if (NoiseSettings) {
-        Params = NoiseSettings->Params;
-    }
 
     float CellAreaKm2 = Octree.GetNodeAreaKm2(Cell);
 
@@ -317,7 +312,7 @@ void UCosmicFoliageSpawner::GenerateCellFoliage(
             FoliageCollection,
             PlanetCenter,
             PlanetRadius,
-            Params,
+            NoiseGenerationStrategy,
             CellAreaKm2
         );
 
@@ -340,7 +335,7 @@ void UCosmicFoliageSpawner::UpdateFoliageGeneration(
     float DeltaTime,
     const FVector& PlanetCenter,
     float PlanetRadius,
-    UCosmicNoiseSettings* NoiseSettings)
+    TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy)
 {
     for (int32 Layer = 0; Layer < 3; Layer++)
     {

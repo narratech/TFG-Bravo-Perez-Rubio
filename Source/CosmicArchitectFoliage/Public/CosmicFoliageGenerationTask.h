@@ -9,6 +9,8 @@
 #include "CosmicArchitectCommon/Public/CosmicCubeMapCell.h"
 #include "CosmicFoliageGenerationTask.generated.h"
 
+class ICosmicNoiseStrategy;
+
 /**
  * 
  */
@@ -51,14 +53,14 @@ public:
         UCosmicFoliageCollection* InCollection,
         const FVector& InPlanetCenter,
         float InPlanetRadius,
-        const FCosmicNoiseGenerationParameters& InNoiseParams,
+        TSharedPtr<ICosmicNoiseStrategy> InNoiseGenerationStrategy,
         float InCellAreaKm2)
         : Cell(InCell)
         , Layer(InLayer)
         , Collection(InCollection)
         , PlanetCenter(InPlanetCenter)
         , PlanetRadius(InPlanetRadius)
-        , NoiseSettings(InNoiseParams)
+        , NoiseGenerationStrategy(InNoiseGenerationStrategy)
         , CellAreaKm2(InCellAreaKm2)
     {
     }
@@ -76,15 +78,15 @@ private:
     UCosmicFoliageCollection* Collection;
     FVector PlanetCenter;
     float PlanetRadius;
-    FCosmicNoiseGenerationParameters NoiseSettings;
+    TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy;
     float CellAreaKm2;
     TArray<FSeedPoint> SeedPoints;
 
     void GenerateSeedPoints(FRandomStream& Random);
-    void EvaluateEnvironmentalConditions(FRandomStream& Random, FCosmicNoiseEvaluator& NoiseEvaluator);
-    float CalculateSlope(const FVector& Direction, int32 PointIndex, FCosmicNoiseEvaluator& NoiseEvaluator);
-    void CreateFoliageInstances(FRandomStream& Random, FCosmicNoiseEvaluator& NoiseEvaluator);
+    void EvaluateEnvironmentalConditions(FRandomStream& Random);
+    float CalculateSlope(const FVector& Direction, int32 PointIndex);
+    void CreateFoliageInstances(FRandomStream& Random);
     const FCosmicFoliageCollectionEntry* FindBestMatchingEntry(float Temperature, float Humidity, float Slope, float Height);
     const FCosmicFoliageCollectionEntry* FindClosestMatchingEntry( float Temperature, float Humidity, float Slope, float Height);
-    FVector GetTerrainNormal(const FVector& Direction, FCosmicNoiseEvaluator& NoiseEvaluator);
+    FVector GetTerrainNormal(const FVector& Direction);
 };

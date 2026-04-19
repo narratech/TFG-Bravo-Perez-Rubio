@@ -2,6 +2,7 @@
 
 
 #include "CosmicFoliageGenerationTask.h"
+#include "ICosmicNoiseStrategy.h"
 
 // TAREA ASINCRONA 
 void FFoliageGenerationTask::DoWork()
@@ -18,16 +19,15 @@ void FFoliageGenerationTask::DoWork()
     Hash = (Hash ^ static_cast<uint32>(Layer)) * 16777619u;
 
     FRandomStream LocalRandom(Hash);
-    FCosmicNoiseEvaluator Evaluator(NoiseSettings);
 
     // Generar puntos de semilla en la esfera
     GenerateSeedPoints(LocalRandom);
     
     // Evaluar condiciones ambientales para cada punto
-    EvaluateEnvironmentalConditions(LocalRandom, Evaluator);
+    EvaluateEnvironmentalConditions(LocalRandom);
 
     // Seleccionar y crear instancias basadas en las condiciones
-    CreateFoliageInstances(LocalRandom, Evaluator);
+    CreateFoliageInstances(LocalRandom);
 }
 
 void FFoliageGenerationTask::GenerateSeedPoints(FRandomStream& Random)
@@ -89,18 +89,18 @@ void FFoliageGenerationTask::GenerateSeedPoints(FRandomStream& Random)
     }
 }
 
-void FFoliageGenerationTask::EvaluateEnvironmentalConditions(FRandomStream& Random, FCosmicNoiseEvaluator& NoiseEvaluator)
+void FFoliageGenerationTask::EvaluateEnvironmentalConditions(FRandomStream& Random)
 {
     uint32 i = 0;
 
     for (FSeedPoint& Point : SeedPoints)
     {
         FLinearColor BiomeData;
-        NoiseEvaluator.EvaluatePoint(Point.Direction, Point.Height, BiomeData);
+        NoiseGenerationStrategy->EvaluatePoint(Point.Direction, Point.Height, BiomeData);
 
         Point.Temperature = BiomeData.G;
         Point.Humidity = BiomeData.B;
-        Point.Slope = CalculateSlope(Point.Direction, i, NoiseEvaluator);
+        Point.Slope = CalculateSlope(Point.Direction, i);
         Point.WorldPosition = Point.Direction * (PlanetRadius + Point.Height);
         i++;
     }
@@ -109,8 +109,7 @@ void FFoliageGenerationTask::EvaluateEnvironmentalConditions(FRandomStream& Rand
 
 float FFoliageGenerationTask::CalculateSlope(
     const FVector& Direction,
-    int32 PointIndex,
-    FCosmicNoiseEvaluator& NoiseEvaluator)
+    int32 PointIndex)
 {
     const float SampleDistance = 500.0f;
 
@@ -127,14 +126,14 @@ float FFoliageGenerationTask::CalculateSlope(
     float CenterHeight = 0.0f;
     FLinearColor Dummy;
 
-    NoiseEvaluator.EvaluatePoint(Direction, CenterHeight, Dummy);
+    NoiseGenerationStrategy->EvaluatePoint(Direction, CenterHeight, Dummy);
 
     float MaxSlope = 0.0f;
 
     for (int32 i = 0; i < 4; i++)
     {
         float SampleHeight = 0.0f;
-        NoiseEvaluator.EvaluatePoint(SampleDirs[i], SampleHeight, Dummy);
+        NoiseGenerationStrategy->EvaluatePoint(SampleDirs[i], SampleHeight, Dummy);
 
         float HeightDiff = FMath::Abs(SampleHeight - CenterHeight);
         float SlopeAngle = FMath::Atan(HeightDiff / SampleDistance) * (180.0f / PI);
@@ -145,7 +144,7 @@ float FFoliageGenerationTask::CalculateSlope(
     return MaxSlope;
 }
 
-void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random, FCosmicNoiseEvaluator& NoiseEvaluator)
+void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
 {
     ResultInstances.Empty();
 
@@ -196,7 +195,7 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random, FCosm
 
         if (SelectedMesh->bAlignToGround)
         {
-            FVector TerrainNormal = GetTerrainNormal(Point.Direction, NoiseEvaluator);
+            FVector TerrainNormal = GetTerrainNormal(Point.Direction);
             OffsetNormal = TerrainNormal;
             FQuat AlignRotation = FQuat::FindBetweenNormals(FVector::UpVector, TerrainNormal);
             FQuat RandomYawRotation = FQuat(TerrainNormal, FMath::DegreesToRadians(Yaw));
@@ -301,8 +300,7 @@ const FCosmicFoliageCollectionEntry* FFoliageGenerationTask::FindClosestMatching
 }
 
 FVector FFoliageGenerationTask::GetTerrainNormal(
-    const FVector& Direction,
-    FCosmicNoiseEvaluator& NoiseEvaluator)
+    const FVector& Direction)
 {
     const float SampleDistance = 500.0f;
 
@@ -321,7 +319,7 @@ FVector FFoliageGenerationTask::GetTerrainNormal(
     FLinearColor Dummy;
 
     // height central desde evaluator
-    NoiseEvaluator.EvaluatePoint(Direction, CenterHeight, Dummy);
+    NoiseGenerationStrategy->EvaluatePoint(Direction, CenterHeight, Dummy);
 
     FVector Positions[4];
 
@@ -330,7 +328,7 @@ FVector FFoliageGenerationTask::GetTerrainNormal(
         float SampleHeight = 0.0f;
 
         // height consistente con el sistema global
-        NoiseEvaluator.EvaluatePoint(SampleDirs[i], SampleHeight, Dummy);
+        NoiseGenerationStrategy->EvaluatePoint(SampleDirs[i], SampleHeight, Dummy);
 
         Positions[i] = PlanetCenter + SampleDirs[i] * (PlanetRadius + SampleHeight);
     }

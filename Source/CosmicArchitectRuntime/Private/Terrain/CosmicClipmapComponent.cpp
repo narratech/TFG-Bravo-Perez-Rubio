@@ -118,7 +118,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         if (FoliageSpawnerComponent)
         {
             //UE_LOG(LogTemp, Warning, TEXT("Actualizando foliage"));
-            FoliageSpawnerComponent->UpdateFoliageSpawner(TimeToRefresh, ViewerPos, CurrentActorPosition, PlanetRadius, DistanceToSurface, NoiseSettings);
+            FoliageSpawnerComponent->UpdateFoliageSpawner(TimeToRefresh, ViewerPos, CurrentActorPosition, PlanetRadius, DistanceToSurface, NoiseGenerationStrategy);
         }
 
         //Actualizar colision si se ha movido el player un minimo

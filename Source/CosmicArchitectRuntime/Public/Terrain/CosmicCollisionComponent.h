@@ -6,7 +6,6 @@
 #include "PhysicsEngine/BodySetup.h"
 #include "CosmicCollisionComponent.generated.h"
 
-class UCosmicNoiseSettings;
 class ICosmicNoiseStrategy;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
