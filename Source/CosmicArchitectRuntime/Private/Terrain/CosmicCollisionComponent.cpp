@@ -3,10 +3,9 @@
 #include "PhysicsEngine/BodySetup.h"
 #include "PhysicsEngine/PhysicsSettings.h"
 #include "PhysicsEngine/BodyInstance.h"
-#include "CosmicNoiseSettings.h"
+#include "ICosmicNoiseStrategy.h"
 #include "DrawDebugHelpers.h"
 #include "Materials/MaterialInstanceDynamic.h"
-#include "CosmicNoise.h"
 #include "Engine/World.h"
 
 UCosmicCollisionComponent::UCosmicCollisionComponent()
@@ -177,7 +176,7 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(double Radius)
     BuildCollision();
 }
 
-void UCosmicCollisionComponent::UpdateCollisionMesh(FCosmicNoiseEvaluator& NoiseEvaluator, const FVector& PlanetCenter)
+void UCosmicCollisionComponent::UpdateCollisionMesh(TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy, const FVector& PlanetCenter)
 {
     if (!bIsActive) return;
     //double CreateStartTime = FPlatformTime::Seconds();
@@ -192,7 +191,7 @@ void UCosmicCollisionComponent::UpdateCollisionMesh(FCosmicNoiseEvaluator& Noise
         float FinalHeight;
         FLinearColor FinalColor; // Se calcula pero lo ignoramos para colisiones
 
-        NoiseEvaluator.EvaluatePoint(NoiseDir, FinalHeight, FinalColor);
+        NoiseGenerationStrategy->EvaluatePoint(NoiseDir, FinalHeight, FinalColor);
 
         Verts[i] = BaseVertices[i] + BaseNormals[i] * FinalHeight;
     }

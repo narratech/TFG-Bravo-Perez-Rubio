@@ -26,7 +26,6 @@ public:
 
     bool IsPlanet;
     bool IsSphere;
-    FCosmicNoiseGenerationParameters NoiseSettings;
 
     TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy;
 
@@ -38,8 +37,7 @@ public:
         double InGridSpacing,
         bool InPlanet,
         bool InIsSphere,
-        TSharedPtr<ICosmicNoiseStrategy> InNoiseGenerationStrategy,
-        FCosmicNoiseGenerationParameters NoiseSettings)
+        TSharedPtr<ICosmicNoiseStrategy> InNoiseGenerationStrategy)
         : BaseVertices(InBaseVerts)
         , ComponentTransform(InTransform)
         , PlanetCenter(InPlanetCenter)
@@ -48,7 +46,6 @@ public:
         ,IsPlanet(InPlanet)
         ,IsSphere(InIsSphere)
         ,NoiseGenerationStrategy(InNoiseGenerationStrategy)
-        ,NoiseSettings(NoiseSettings)
     {
         CalculatedVertices.SetNumUninitialized(BaseVertices.Num());
         CalculatedColors.SetNumUninitialized(BaseVertices.Num());
@@ -76,9 +73,7 @@ public:
             {
                 CalculatedVertices[i] = TransformMatrix.TransformPosition(BaseVertices[i]);
             }
-        }
-        
-        FCosmicNoiseEvaluator Evaluator(NoiseSettings);
+        }      
 
         // Loop de vértices
         for (int32 i = 0; i < VertexCount; i++)

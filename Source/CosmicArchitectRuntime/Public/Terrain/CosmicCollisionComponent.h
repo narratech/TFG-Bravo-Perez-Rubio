@@ -4,10 +4,10 @@
 #include "Components/PrimitiveComponent.h"
 #include "Interfaces/Interface_CollisionDataProvider.h"
 #include "PhysicsEngine/BodySetup.h"
-#include "CosmicNoiseEvaluator.h"
 #include "CosmicCollisionComponent.generated.h"
 
 class UCosmicNoiseSettings;
+class ICosmicNoiseStrategy;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class COSMICARCHITECTRUNTIME_API UCosmicCollisionComponent :
@@ -56,7 +56,7 @@ public:
 
     void GenerateCollisionMesh(double Radius);
 
-    void UpdateCollisionMesh(FCosmicNoiseEvaluator& NoiseEvaluator, const FVector& PlanetCenter);
+    void UpdateCollisionMesh(TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy, const FVector& PlanetCenter);
 
     void ClearCollision();
 

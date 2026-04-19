@@ -47,7 +47,7 @@ void UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePo
             nullptr,
             ETeleportType::TeleportPhysics // teleport limpio
         );
-        CollisionComponent->UpdateCollisionMesh(NoiseEvaluator, CurrentActorPosition);
+        CollisionComponent->UpdateCollisionMesh(NoiseGenerationStrategy, CurrentActorPosition);
     }
     else if(CollisionComponent->IsBuilt())
     {

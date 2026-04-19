@@ -790,12 +790,6 @@ void UCosmicMeshComponent::RequestMeshUpdate(TSharedPtr<ICosmicNoiseStrategy> No
     // Centro del planeta 
     FVector PlanetCenter = GetOwner()->GetActorLocation();
 
-    FCosmicNoiseGenerationParameters Params;
-    if (NoiseSettings)
-    {
-        Params = NoiseSettings->Params;
-    }
-
     NoiseTask = new FAsyncTask<FCosmicArchitectNoiseGenerator>(
         BaseVertices,
         PatchTransform,
@@ -804,8 +798,7 @@ void UCosmicMeshComponent::RequestMeshUpdate(TSharedPtr<ICosmicNoiseStrategy> No
         GridSpacing,
         bIsPlanet,
         bIsSphereMesh,
-        NoiseGenerationStrategy,
-        Params
+        NoiseGenerationStrategy
     );
     // Lanzar la tarea asincrona
     NoiseTask->StartBackgroundTask();
