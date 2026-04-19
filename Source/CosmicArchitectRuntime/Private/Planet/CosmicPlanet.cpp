@@ -4,6 +4,7 @@
 #include "Planet/CosmicPlanet.h"
 #include "Terrain/CosmicCollisionComponent.h"
 #include "Terrain/CosmicClipmapComponent.h"
+#include "CosmicNoiseClass.h"
 #include "CosmicFoliageSpawner.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
@@ -47,6 +48,7 @@ void ACosmicPlanet::BeginPlay()
         ClipmapComponent->ParentRoot = Root;
         ClipmapComponent->PlanetRadius = RadiusKm * 100000;
         ClipmapComponent->NoiseSettings = NoiseSettings;
+        ClipmapComponent->NoiseClass = NoiseClass;
         ClipmapComponent->UpdateNoiseEvaluator();
         ClipmapComponent->CollisionComponent = CollisionComponent;
         ClipmapComponent->FoliageSpawnerComponent = FoliageSpawnerComponent;
@@ -93,6 +95,11 @@ void ACosmicPlanet::Destroyed()
         NoiseSettings->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
     }
 
+    if (NoiseClass && ClipmapComponent)
+    {
+        NoiseClass->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
+    }
+
     bInitializedInEditor = false;
 
     Super::Destroyed();
@@ -114,6 +121,11 @@ void ACosmicPlanet::BeginDestroy()
         NoiseSettings->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
     }
 
+    if (NoiseClass && ClipmapComponent)
+    {
+        NoiseClass->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
+    }
+
     Super::BeginDestroy();
 }
 
@@ -127,6 +139,11 @@ void ACosmicPlanet::EndPlay(const EEndPlayReason::Type EndPlayReason)
     if (NoiseSettings && ClipmapComponent)
     {
         NoiseSettings->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
+    }
+
+    if (NoiseClass && ClipmapComponent)
+    {
+        NoiseClass->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
     }
 
     Super::EndPlay(EndPlayReason);
@@ -186,12 +203,15 @@ void ACosmicPlanet::UpdateNoiseSettings()
 {
     if (ClipmapComponent)
     {
+        if (ClipmapComponent->NoiseClass)
+            ClipmapComponent->NoiseClass->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
+
         if (ClipmapComponent->NoiseSettings)
             ClipmapComponent->NoiseSettings->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
 
         //UE_LOG(LogTemp, Warning, TEXT("Actualizando delegates"));
 
-        
+        ClipmapComponent->NoiseClass = NoiseClass;
         ClipmapComponent->NoiseSettings = NoiseSettings;
 
         if (NoiseSettings) 
@@ -201,6 +221,14 @@ void ACosmicPlanet::UpdateNoiseSettings()
                 &UCosmicClipmapComponent::RequestCompleteMeshUpdate
             );      
         }  
+
+        if (NoiseClass)
+        {
+            NoiseClass->OnNoiseSettingsChanged.AddUObject(
+                ClipmapComponent,
+                &UCosmicClipmapComponent::RequestCompleteMeshUpdate
+            );
+        }
 
         ClipmapComponent->RequestCompleteMeshUpdate();
     }
@@ -281,7 +309,7 @@ void ACosmicPlanet::InitPlanet(float InRadiusKm, UCosmicNoiseSettings* NewNoiseS
         ClipmapComponent->BaseMaterial = BaseMaterial;
         ClipmapComponent->DefaultTexture = DefaultTexture;
     }
-
+    
     PlanetMainColor1 = color1;
     PlanetMainColor2 = color2;
     PlanetAltitudeColor = colorHeight;
@@ -328,7 +356,8 @@ void ACosmicPlanet::PostEditChangeProperty(FPropertyChangedEvent& PropertyChange
     }
 
     // CAMBIOS RUIDO
-    if (PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, NoiseSettings))
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, NoiseSettings) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, NoiseClass))
     {
         UpdateNoiseSettings();
         return;

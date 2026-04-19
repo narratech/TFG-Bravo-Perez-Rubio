@@ -9,6 +9,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "Terrain/CosmicMeshComponent.h"
 #include "Terrain/CosmicCollisionComponent.h"
+#include "CosmicNoiseClass.h"
+#include "CosmicDefaultNoiseStrategy.h"
 #include "CosmicFoliageSpawner.h"
 #include "Engine/World.h"
 #include "Engine/Texture2D.h"
@@ -129,7 +131,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             return;
 
         if (!bPerformanceBuild) {
-            FarLevel->RequestMeshUpdate();
+            FarLevel->RequestMeshUpdate(NoiseGenerationStrategy);
             bPerformanceBuild = FarLevel->CheckAndApplyMeshUpdate();
         }
 
@@ -261,7 +263,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             for (size_t i = 0; i < Levels.Num(); i++)
             {
                 Levels[i]->SetPositionAndRotation(SurfacePos - CurrentActorPosition, Rotation);
-                Levels[i]->RequestMeshUpdate();
+                Levels[i]->RequestMeshUpdate(NoiseGenerationStrategy);
             }
         }
     }    
@@ -408,7 +410,7 @@ void UCosmicClipmapComponent::CreateLevels()
         // Construir malla
         Mesh->BuildBaseMesh();
         Mesh->SetMeshActive(true);
-        Mesh->RequestMeshUpdate();
+        Mesh->RequestMeshUpdate(NoiseGenerationStrategy);
         
         // Asignar material
         if (DynamicPlanetMat)
@@ -603,6 +605,24 @@ void UCosmicClipmapComponent::UpdateNoiseEvaluator()
     {
         NoiseEvaluator.UpdateSettings(NoiseSettings->Params);
     }
+
+    if (NoiseClass)
+    {
+        NoiseGenerationStrategy = NoiseClass->CreateStrategy();
+    }
+    else
+    {
+        // fallback default
+        TSharedPtr<FCosmicDefaultNoiseStrategy> Strategy = MakeShared<FCosmicDefaultNoiseStrategy>();
+
+        Strategy->Initialize(
+            1337,
+            FCosmicNoiseLayer(), 
+            FCosmicNoiseBiomeParameters()
+        );
+
+        NoiseGenerationStrategy = Strategy;
+    }
 }
 
 void UCosmicClipmapComponent::RequestCompleteMeshUpdate()
@@ -610,6 +630,8 @@ void UCosmicClipmapComponent::RequestCompleteMeshUpdate()
     //UE_LOG(LogTemp, Warning, TEXT("Aplicando ruido nuevo"));
 
     bPerformanceBuild = false;
+
+    UpdateNoiseEvaluator();
 
     if (FarLevel)
         FarLevel->NoiseSettings = NoiseSettings;
@@ -623,7 +645,7 @@ void UCosmicClipmapComponent::RequestCompleteMeshUpdate()
     {
         for (size_t i = 0; i < Levels.Num(); i++)
         {        
-            Levels[i]->RequestMeshUpdate();
+            Levels[i]->RequestMeshUpdate(NoiseGenerationStrategy);
         }
     }
 
@@ -632,7 +654,7 @@ void UCosmicClipmapComponent::RequestCompleteMeshUpdate()
         FoliageSpawnerComponent->ClearFoliage();
     }
 
-    UpdateNoiseEvaluator();
+    
 }
 
 
@@ -801,7 +823,7 @@ uint32 UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
         {
             // El nivel base siempre se mueve
             Level->ShiftLevel(Shift);
-            Level->RequestMeshUpdate();
+            Level->RequestMeshUpdate(NoiseGenerationStrategy);
             continue;
         }
 
@@ -873,7 +895,7 @@ uint32 UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
             Level->ShiftLevel(Movement);
         }
 
-        Level->RequestMeshUpdate();
+        Level->RequestMeshUpdate(NoiseGenerationStrategy);
 
         // Salida temprana, si ya no hay movimiento que propagar, cortamos el bucle para ahorrar CPU
         if (JumpsX == 0 && JumpsY == 0) return i - 1;

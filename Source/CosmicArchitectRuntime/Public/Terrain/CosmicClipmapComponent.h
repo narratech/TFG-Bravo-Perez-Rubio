@@ -8,9 +8,11 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "CosmicClipmapComponent.generated.h"
 
+class ICosmicNoiseStrategy;
 class UCosmicMeshComponent;
 class UCosmicFoliageSpawner;
 class UCosmicCollisionComponent;
+class UCosmicNoiseClass;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class UCosmicClipmapComponent : public UActorComponent
@@ -31,6 +33,7 @@ public:
 
     USceneComponent* ParentRoot;
     UCosmicNoiseSettings* NoiseSettings;
+    UCosmicNoiseClass* NoiseClass;
 
     float PlanetRadius;
 
@@ -67,6 +70,8 @@ public:
 protected:
     TArray<UCosmicMeshComponent*> Levels;
     UCosmicMeshComponent* FarLevel;
+
+    TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy;
     
     float ElapsedTime = 0;
     float TimeToRefreshActive;

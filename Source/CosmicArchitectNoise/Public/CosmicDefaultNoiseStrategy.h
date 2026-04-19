@@ -13,8 +13,13 @@ class COSMICARCHITECTNOISE_API FCosmicDefaultNoiseStrategy : public ICosmicNoise
 {
 public:
 
+	UPROPERTY(EditAnywhere, Category = "Noise Settings")
 	int32 Seed;
+
+	UPROPERTY(EditAnywhere, Category = "Noise Settings")
 	FCosmicNoiseLayer LayerParameters;
+
+	UPROPERTY(EditAnywhere, Category = "Noise Settings")
 	FCosmicNoiseBiomeParameters BiomeParameters;
 	
 	void Initialize(int32 Seed, FCosmicNoiseLayer LayerParameters, FCosmicNoiseBiomeParameters BiomeParameters);

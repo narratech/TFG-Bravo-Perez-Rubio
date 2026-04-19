@@ -8,6 +8,7 @@
 #include "CosmicPlanet.generated.h"
 
 class UCosmicClipmapComponent;
+class UCosmicNoiseClass;
 class UCosmicFoliageSpawner;
 class UCosmicCollisionComponent;
 
@@ -43,6 +44,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Noise")
 	UCosmicNoiseSettings* NoiseSettings;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Noise")
+	UCosmicNoiseClass* NoiseClass;
 
 	UPROPERTY(VisibleAnywhere, Category = "Planet", BlueprintReadOnly)
 	UCosmicFoliageSpawner* FoliageSpawnerComponent;

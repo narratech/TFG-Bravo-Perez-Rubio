@@ -3,6 +3,7 @@
 
 #include "Terrain/CosmicMeshComponent.h"
 #include "CosmicNoiseSettings.h"
+#include "ICosmicNoiseStrategy.h"
 
 
 void UCosmicMeshComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {
@@ -780,7 +781,7 @@ void UCosmicMeshComponent::SetMeshActive(bool active)
     SetMeshSectionVisible(0, active);
 }
 
-void UCosmicMeshComponent::RequestMeshUpdate()
+void UCosmicMeshComponent::RequestMeshUpdate(TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy)
 {
     if (!bMeshCreated || bIsGeneratingNoise) return;
 

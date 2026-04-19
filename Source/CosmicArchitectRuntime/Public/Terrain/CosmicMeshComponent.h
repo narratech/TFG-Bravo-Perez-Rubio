@@ -7,6 +7,7 @@
 #include "CosmicArchitectNoiseGenerator.h"
 #include "CosmicMeshComponent.generated.h"
 
+class ICosmicNoiseStrategy;
 class UCosmicNoiseSettings;
 
 UENUM(BlueprintType)
@@ -58,7 +59,7 @@ public:
     void SetPositionAndRotation(const FVector& SurfacePos, const FRotator& PatchRotation);
     void SetMeshActive(bool active);
     // Lanza la tarea de ruido
-    void RequestMeshUpdate();
+    void RequestMeshUpdate(TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy);
     // Comprueba si la tarea termino y aplica la malla
     bool CheckAndApplyMeshUpdate();
     bool IsTaskActive();
