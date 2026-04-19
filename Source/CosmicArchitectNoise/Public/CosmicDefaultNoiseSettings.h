@@ -14,5 +14,7 @@ class COSMICARCHITECTNOISE_API UCosmicDefaultNoiseSettings : public UCosmicNoise
 {
 	GENERATED_BODY()
 public:
+
+
 	virtual TSharedPtr<ICosmicNoiseStrategy> CreateStrategy() const override;
 };
