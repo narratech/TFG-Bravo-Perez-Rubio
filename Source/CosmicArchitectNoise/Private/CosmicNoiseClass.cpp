@@ -5,7 +5,7 @@
 
 TSharedPtr<ICosmicNoiseStrategy> UCosmicNoiseClass::CreateStrategy() const
 {
-    return TSharedPtr<ICosmicNoiseStrategy>();
+    return nullptr;
 }
 
 void UCosmicNoiseClass::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)

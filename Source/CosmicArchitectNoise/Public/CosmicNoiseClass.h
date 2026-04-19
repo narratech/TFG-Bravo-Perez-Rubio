@@ -12,7 +12,7 @@ DECLARE_MULTICAST_DELEGATE(FOnNoiseSettingsChanged);
 /**
  * 
  */
-UCLASS(BlueprintType)
+UCLASS(Abstract, BlueprintType)
 class COSMICARCHITECTNOISE_API UCosmicNoiseClass : public UDataAsset
 {
 	GENERATED_BODY()
