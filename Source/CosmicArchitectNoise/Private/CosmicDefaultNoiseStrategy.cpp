@@ -2,6 +2,7 @@
 
 
 #include "CosmicDefaultNoiseStrategy.h"
+#include "CosmicEarthLikeNoiseStrategy.h"
 
 void FCosmicDefaultNoiseStrategy::Initialize(int32 InSeed, FCosmicNoiseLayer InLayerParameters, FCosmicNoiseBiomeParameters InBiomeParameters)
 {
