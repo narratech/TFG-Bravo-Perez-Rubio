@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "CosmicArchitectNoise/Public/CosmicNoiseEvaluator.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "CosmicClipmapComponent.generated.h"
 
@@ -32,7 +31,6 @@ public:
     void UpdateNoiseEvaluator();
 
     USceneComponent* ParentRoot;
-    UCosmicNoiseSettings* NoiseSettings;
     UCosmicNoiseClass* NoiseClass;
 
     float PlanetRadius;
@@ -93,8 +91,6 @@ protected:
     FVector CurrentActorPosition;
     FVector AccumulatedDelta = FVector::ZeroVector;
     FIntPoint TotalShift = FIntPoint::ZeroValue;
-
-    FCosmicNoiseEvaluator NoiseEvaluator;
 
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);

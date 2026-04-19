@@ -4,8 +4,9 @@
 #include "GameFramework/Actor.h"
 #include "Components/BoxComponent.h"
 #include "Engine/StaticMeshActor.h" 
-#include "CosmicNoiseSettings.h"
 #include "CosmicSystemGenerator.generated.h"
+
+class UCosmicNoiseClass;
 
 // E: Configuramos la clase ocultando categorías innecesarias para mantener el editor limpio.
 // I: Configuring the class by hiding unnecessary categories to keep the editor clean.
@@ -92,7 +93,7 @@ protected:
     void GenerateStar();
 
 private:
-    UCosmicNoiseSettings* CreateRandomNoiseSettings(FRandomStream& Stream, const float PlanetRadius);
+    UCosmicNoiseClass* CreateRandomNoiseSettings(FRandomStream& Stream, const float PlanetRadius);
 
     FColor GetRandomColor(FRandomStream& Stream, int min, int max);
 

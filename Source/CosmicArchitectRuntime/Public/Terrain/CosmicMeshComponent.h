@@ -41,7 +41,6 @@ public:
     FTransform PatchTransform;
     EClipmapQuadrant CurrentQuadrant = EClipmapQuadrant::BottomRight;
 
-    UCosmicNoiseSettings* NoiseSettings = nullptr;
     // Malla base (deformada a la esfera, sin alturas adicionales)
     TArray<FVector> BaseVertices;
     TArray<FVector> BaseNormals;

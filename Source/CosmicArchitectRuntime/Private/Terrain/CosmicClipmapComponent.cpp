@@ -31,7 +31,7 @@ UCosmicClipmapComponent::UCosmicClipmapComponent()
 
 void UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePos, const FVector& SurfaceNormal, const FRotator& PatchRotation, const float DistanceToSurface)
 {
-    if (!CollisionComponent || !NoiseSettings) return;
+    if (!CollisionComponent) return;
 
     // Solo generar colisión si el jugador está cerca de la superficie
     if (DistanceToSurface < CollisionComponent->MaxCollisionDistance)
@@ -398,7 +398,6 @@ void UCosmicClipmapComponent::CreateLevels()
         Mesh->GridSpacing = BaseGridSpacing * FMath::Pow(2.0f, L); // (1 << L) para ints
         Mesh->bIsRing = (L > 0);
         Mesh->PlanetRadius = PlanetRadius;
-        Mesh->NoiseSettings = NoiseSettings;
         Mesh->bIsPlanet = true;
 
         /*if (IsPlanet) {
@@ -454,7 +453,6 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
         Mesh->GridSpacing = BaseGridSpacing * FMath::Pow(2.0f, NumLevels - 1);
         Mesh->bIsRing = false;
         Mesh->PlanetRadius = PlanetRadius;
-        Mesh->NoiseSettings = NoiseSettings;
         Mesh->bIsPlanet = false;
 
         Mesh->BuildSphereMesh();
@@ -565,11 +563,6 @@ void UCosmicClipmapComponent::SetMaterialData(FColor color1, FColor color2, FCol
     if (DynamicPlanetMat)
     {
         DynamicPlanetMat->SetScalarParameterValue(FName("PlanetRadius"), PlanetRadius);
-
-        if (NoiseSettings) {
-            DynamicPlanetMat->SetScalarParameterValue(FName("MaxHeight"), NoiseSettings->Params.MaxMountainHeight);
-        }
-
         DynamicPlanetMat->SetVectorParameterValue(FName("BaseColor"), color1);
         DynamicPlanetMat->SetVectorParameterValue(FName("MidColor"), color2);
         DynamicPlanetMat->SetVectorParameterValue(FName("ColdColor"), colorHeight);
@@ -601,11 +594,6 @@ void UCosmicClipmapComponent::BuildDynamicMaterial()
 
 void UCosmicClipmapComponent::UpdateNoiseEvaluator()
 {
-    if (NoiseSettings) 
-    {
-        NoiseEvaluator.UpdateSettings(NoiseSettings->Params);
-    }
-
     if (NoiseClass)
     {
         NoiseGenerationStrategy = NoiseClass->CreateStrategy();
@@ -632,14 +620,6 @@ void UCosmicClipmapComponent::RequestCompleteMeshUpdate()
     bPerformanceBuild = false;
 
     UpdateNoiseEvaluator();
-
-    if (FarLevel)
-        FarLevel->NoiseSettings = NoiseSettings;
-
-    for (size_t i = 0; i < Levels.Num(); i++)
-    {
-        Levels[i]->NoiseSettings = NoiseSettings;
-    }
     
     if(!bPerformaceMode)
     {
@@ -652,9 +632,7 @@ void UCosmicClipmapComponent::RequestCompleteMeshUpdate()
     if (FoliageSpawnerComponent)
     {
         FoliageSpawnerComponent->ClearFoliage();
-    }
-
-    
+    } 
 }
 
 
@@ -951,7 +929,7 @@ float UCosmicClipmapComponent::GetDistanceToSurface(
     FLinearColor Dummy;
     float Height = 0;
 
-    NoiseEvaluator.EvaluatePoint(OutN, Height, Dummy);
+    NoiseGenerationStrategy->EvaluatePoint(OutN, Height, Dummy);
 
     float SurfaceRadius = PlanetRadius + Height;
 

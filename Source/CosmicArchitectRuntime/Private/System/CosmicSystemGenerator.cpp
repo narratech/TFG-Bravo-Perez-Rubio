@@ -5,9 +5,10 @@
 #include "Engine/World.h"              
 #include "Engine/EngineTypes.h"        
 #include "GameFramework/Actor.h"
-#include "CosmicArchitectRuntime/Public/Planet/CosmicPlanet.h"
-#include "CosmicArchitectRuntime/Public/Simulation/CosmicOrbitComponent.h"
-#include "CosmicArchitectRuntime/Public/Simulation/CosmicGravityComponent.h"
+#include "CosmicDefaultNoiseSettings.h"
+#include "Planet/CosmicPlanet.h"
+#include "Simulation/CosmicOrbitComponent.h"
+#include "Simulation/CosmicGravityComponent.h"
 #include "Components/DirectionalLightComponent.h"
 #include "Engine/DirectionalLight.h"
 
@@ -56,48 +57,59 @@ void ACosmicSystemGenerator::GenerateStar()
     
 }
 
-UCosmicNoiseSettings* ACosmicSystemGenerator::CreateRandomNoiseSettings(FRandomStream& Stream, const float PlanetRadius)
+UCosmicNoiseClass* ACosmicSystemGenerator::CreateRandomNoiseSettings(FRandomStream& Stream, const float PlanetRadius)
 {
-    UCosmicNoiseSettings* NewSettings = NewObject<UCosmicNoiseSettings>(GetTransientPackage(),NAME_None, RF_Transient);
+    UCosmicDefaultNoiseSettings* NewSettings = NewObject<UCosmicDefaultNoiseSettings>(GetTransientPackage(),NAME_None, RF_Transient);
 
-    // Planetas y lunas: variedad de tipos
-    NewSettings->Params.Seed = Stream.RandRange(0, 999999);
+    // SEED
+    NewSettings->Seed = Stream.RandRange(0, 999999);
 
-    // Altura máxima según tamaño (planetas más grandes pueden tener montañas más altas)
-    NewSettings->Params.MaxMountainHeight = Stream.FRandRange(1000.0f, 8000.0f) * PlanetRadius * 0.5f;
+    // ESCALA BASE
+    const float RadiusScale = PlanetRadius / 1000.0f;
 
-    // Distribución de tipos de planetas
-    float PlanetType = Stream.FRandRange(0.0f, 1.0f);
+    const float FeatureScaleKm = FMath::Clamp(PlanetRadius * 0.02f, 5.0f, 500.0f);
 
-    if (PlanetType < 0.2f) // 20% - Planetas desérticos/planos
-    {
-        NewSettings->Params.Mountainous = Stream.FRandRange(0.1f, 0.3f);
-        NewSettings->Params.Roughness = Stream.FRandRange(0.2f, 0.4f);
-        NewSettings->Params.Detail = Stream.FRandRange(0.3f, 0.5f);
-        NewSettings->Params.Smoothness = Stream.FRandRange(0.6f, 0.9f);
-    }
-    else if (PlanetType < 0.5f) // 30% - Planetas montañosos
-    {
-        NewSettings->Params.Mountainous = Stream.FRandRange(0.6f, 0.9f);
-        NewSettings->Params.Roughness = Stream.FRandRange(0.5f, 0.8f);
-        NewSettings->Params.Detail = Stream.FRandRange(0.6f, 0.9f);
-        NewSettings->Params.Smoothness = Stream.FRandRange(0.1f, 0.3f);
-    }
-    else if (PlanetType < 0.8f) // 30% - Planetas mixtos
-    {
-        NewSettings->Params.Mountainous = Stream.FRandRange(0.3f, 0.6f);
-        NewSettings->Params.Roughness = Stream.FRandRange(0.4f, 0.6f);
-        NewSettings->Params.Detail = Stream.FRandRange(0.4f, 0.7f);
-        NewSettings->Params.Smoothness = Stream.FRandRange(0.3f, 0.6f);
-    }
-    else {
-        NewSettings->Params.Mountainous = Stream.FRandRange(0.0f, 1.f);
-        NewSettings->Params.Roughness = Stream.FRandRange(0.0f, 1.f);
-        NewSettings->Params.Detail = Stream.FRandRange(0.3f, 1.f);
-        NewSettings->Params.Smoothness = Stream.FRandRange(0.2f, 1.f);
-    }
+    // NOISE LAYER
+    FCosmicNoiseLayer& Layer = NewSettings->LayerParameters;
 
-    NewSettings->UpdateAdvancedFromSimple();
+    // Tipo de ruido aleatorio
+    Layer.NoiseType = static_cast<ECosmicNoiseType>(Stream.RandRange(0, 3));
+
+    // Tipo fractal
+    Layer.FractalType = static_cast<ECosmicFractalType>(Stream.RandRange(0, 3));
+
+    // Frecuencia: inversamente proporcional al tamaño
+    Layer.Frequency = Stream.FRandRange(0.5f, 2.5f) / FeatureScaleKm;
+
+    // Octavas
+    Layer.Octaves = Stream.RandRange(3, 6);
+
+    // Lacunarity 
+    Layer.Lacunarity = Stream.FRandRange(1.8f, 2.5f);
+
+    // Persistencia 
+    Layer.Persistence = Stream.FRandRange(0.4f, 0.7f);
+
+    // Amplitud: proporcional al radio del planeta
+    Layer.Amplitude = PlanetRadius * Stream.FRandRange(0.02f, 0.15f);
+
+    // BIOMA / CLIMA
+    FCosmicNoiseBiomeParameters& Biome = NewSettings->BiomeParameters;
+
+    // Humedad
+    Biome.HumidityFrequency = Stream.FRandRange(0.3f, 1.5f) / FeatureScaleKm;
+    Biome.HumidityOctaves = Stream.RandRange(2, 5);
+    Biome.HumidityOffset = Stream.FRandRange(-0.2f, 0.2f);
+    Biome.HumidityContrast = Stream.FRandRange(0.8f, 1.5f);
+
+    // Temperatura
+    Biome.TemperatureFrequency = Stream.FRandRange(0.3f, 1.5f) / FeatureScaleKm;
+
+    // Latitud
+    Biome.LatitudeEffect = Stream.FRandRange(0.5f, 1.5f);
+
+    // Penalizacion por altura
+    Biome.AltitudeTemperaturePenalty = Stream.FRandRange(0.2f, 0.6f);
 
     return NewSettings;
 }

@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "CosmicNoiseSettings.h"
 #include "GameFramework/Actor.h"
 #include "CosmicPlanet.generated.h"
 
@@ -43,9 +42,6 @@ public:
 	UCosmicCollisionComponent* CollisionComponent;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Noise")
-	UCosmicNoiseSettings* NoiseSettings;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Noise")
 	UCosmicNoiseClass* NoiseClass;
 
 	UPROPERTY(VisibleAnywhere, Category = "Planet", BlueprintReadOnly)
@@ -71,7 +67,7 @@ public:
 	virtual void OnConstruction(const FTransform& Transform) override;
 #endif
 
-	void InitPlanet(float InRadiusKm, UCosmicNoiseSettings* NewNoiseSettings, FColor color1, FColor color2, FColor colorHeight, float scale, UMaterialInterface* BaseMaterial, UTexture2D* DefaultTexture);
+	void InitPlanet(float InRadiusKm, UCosmicNoiseClass* NewNoiseClass, FColor color1, FColor color2, FColor colorHeight, float scale, UMaterialInterface* BaseMaterial, UTexture2D* DefaultTexture);
 
 	void CleanupNoiseSettings();
 

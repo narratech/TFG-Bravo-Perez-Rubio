@@ -47,7 +47,6 @@ void ACosmicPlanet::BeginPlay()
 #if WITH_EDITOR
         ClipmapComponent->ParentRoot = Root;
         ClipmapComponent->PlanetRadius = RadiusKm * 100000;
-        ClipmapComponent->NoiseSettings = NoiseSettings;
         ClipmapComponent->NoiseClass = NoiseClass;
         ClipmapComponent->UpdateNoiseEvaluator();
         ClipmapComponent->CollisionComponent = CollisionComponent;
@@ -89,12 +88,6 @@ void ACosmicPlanet::Destroyed()
         CollisionComponent->ClearCollision();
     }
 
-    if (NoiseSettings && ClipmapComponent)
-    {
-        //UE_LOG(LogTemp, Warning, TEXT("Eliminando referencias restantes"));
-        NoiseSettings->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
-    }
-
     if (NoiseClass && ClipmapComponent)
     {
         NoiseClass->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
@@ -115,12 +108,6 @@ void ACosmicPlanet::BeginDestroy()
         CollisionComponent->ClearCollision();
     }
 
-    if (NoiseSettings && ClipmapComponent)
-    {
-        //UE_LOG(LogTemp, Warning, TEXT("Eliminando referencias restantes"));
-        NoiseSettings->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
-    }
-
     if (NoiseClass && ClipmapComponent)
     {
         NoiseClass->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
@@ -134,11 +121,6 @@ void ACosmicPlanet::EndPlay(const EEndPlayReason::Type EndPlayReason)
     if (CollisionComponent)
     {
         CollisionComponent->ClearCollision();
-    }
-
-    if (NoiseSettings && ClipmapComponent)
-    {
-        NoiseSettings->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
     }
 
     if (NoiseClass && ClipmapComponent)
@@ -206,21 +188,9 @@ void ACosmicPlanet::UpdateNoiseSettings()
         if (ClipmapComponent->NoiseClass)
             ClipmapComponent->NoiseClass->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
 
-        if (ClipmapComponent->NoiseSettings)
-            ClipmapComponent->NoiseSettings->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
-
         //UE_LOG(LogTemp, Warning, TEXT("Actualizando delegates"));
 
         ClipmapComponent->NoiseClass = NoiseClass;
-        ClipmapComponent->NoiseSettings = NoiseSettings;
-
-        if (NoiseSettings) 
-        {
-            NoiseSettings->OnNoiseSettingsChanged.AddUObject(
-                ClipmapComponent,
-                &UCosmicClipmapComponent::RequestCompleteMeshUpdate
-            );      
-        }  
 
         if (NoiseClass)
         {
@@ -279,24 +249,24 @@ void ACosmicPlanet::OnConstruction(const FTransform& Transform)
 }
 #endif
 
-void ACosmicPlanet::InitPlanet(float InRadiusKm, UCosmicNoiseSettings* NewNoiseSettings, FColor color1, FColor color2, FColor colorHeight, float scale, UMaterialInterface* BaseMaterial, UTexture2D* DefaultTexture)
+void ACosmicPlanet::InitPlanet(float InRadiusKm, UCosmicNoiseClass* NewNoiseClass, FColor color1, FColor color2, FColor colorHeight, float scale, UMaterialInterface* BaseMaterial, UTexture2D* DefaultTexture)
 {
     RadiusKm = InRadiusKm;
 
     // Limpiar NoiseSettings anterior si existe y es transitorio
-    if (NoiseSettings && (!NoiseSettings->IsAsset() || NoiseSettings->GetOutermost()->HasAnyPackageFlags(PKG_DisallowExport)))
+    if (NoiseClass && (!NoiseClass->IsAsset() || NoiseClass->GetOutermost()->HasAnyPackageFlags(PKG_DisallowExport)))
     {
-        NoiseSettings->ConditionalBeginDestroy();
-        NoiseSettings = nullptr;
+        NoiseClass->ConditionalBeginDestroy();
+        NoiseClass = nullptr;
     }
 
-    // Determinar qué NoiseSettings usar
-    if (NewNoiseSettings)
+    // Determinar que NoiseSettings usar
+    if (NewNoiseClass)
     {
         // Usar el que nos pasaron
-        NoiseSettings = NewNoiseSettings;
+        NoiseClass = NewNoiseClass;
     }
-    else if (!NoiseSettings)
+    else if (!NoiseClass)
     {
         // Crear uno por defecto si no tenemos ninguno
         //NoiseSettings = NewObject<UCosmicNoiseSettings>(this, TEXT("CustomNoiseSettings"));
@@ -320,12 +290,12 @@ void ACosmicPlanet::InitPlanet(float InRadiusKm, UCosmicNoiseSettings* NewNoiseS
 
 void ACosmicPlanet::CleanupNoiseSettings()
 {
-    if (NoiseSettings && !NoiseSettings->IsAsset())
+    if (NoiseClass && !NoiseClass->IsAsset())
     {
         // Marcar para garbage collection
         UE_LOG(LogTemp, Warning, TEXT("Planet %s cleaning up NoiseSettings"), *GetName());
-        NoiseSettings->ConditionalBeginDestroy();
-        NoiseSettings = nullptr;
+        NoiseClass->ConditionalBeginDestroy();
+        NoiseClass = nullptr;
     }
 }
 
@@ -356,8 +326,7 @@ void ACosmicPlanet::PostEditChangeProperty(FPropertyChangedEvent& PropertyChange
     }
 
     // CAMBIOS RUIDO
-    if (PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, NoiseSettings) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, NoiseClass))
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, NoiseClass))
     {
         UpdateNoiseSettings();
         return;
