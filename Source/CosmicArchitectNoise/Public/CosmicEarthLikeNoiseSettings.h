@@ -18,6 +18,21 @@ public:
 	int32 Seed;
 
 	UPROPERTY(EditAnywhere, Category = "Noise Settings")
+	FCosmicNoiseDataLayer ContinentalLayer;
+
+	UPROPERTY(EditAnywhere, Category = "Noise Settings")
+	FCosmicNoiseDataLayer MountainLayer;
+
+	UPROPERTY(EditAnywhere, Category = "Noise Settings")
+	FCosmicNoiseDataLayer HillLayer;
+
+	UPROPERTY(EditAnywhere, Category = "Noise Settings")
+	FCosmicNoiseDataLayer DetailLayer;
+
+	UPROPERTY(EditAnywhere, Category = "Noise Settings")
+	FCosmicNoiseDataLayer RiverLayer;
+
+	UPROPERTY(EditAnywhere, Category = "Noise Settings")
 	FCosmicNoiseBiomeParameters BiomeParameters;
 
 	virtual TSharedPtr<ICosmicNoiseStrategy> CreateStrategy() const override;

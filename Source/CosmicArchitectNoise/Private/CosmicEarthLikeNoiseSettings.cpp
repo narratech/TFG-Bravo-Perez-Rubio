@@ -9,7 +9,7 @@ TSharedPtr<ICosmicNoiseStrategy> UCosmicEarthLikeNoiseSettings::CreateStrategy()
 
     auto Strategy = MakeShared<FCosmicEarthLikeNoiseStrategy>();
 
-    Strategy->Initialize(Seed, BiomeParameters);
+    Strategy->Initialize(Seed, BiomeParameters, ContinentalLayer, MountainLayer, HillLayer, DetailLayer, RiverLayer);
 
     return Strategy;
 }

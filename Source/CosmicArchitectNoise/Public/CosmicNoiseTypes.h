@@ -57,6 +57,28 @@ public:
 
 };
 
+USTRUCT(Blueprintable, BlueprintType)
+struct COSMICARCHITECTNOISE_API FCosmicNoiseDataLayer
+{
+    GENERATED_BODY()
+
+public:
+    UPROPERTY(EditAnywhere, Category = "NoiseLayer", BlueprintReadWrite, meta = (ClampMin = "0"))
+    float Frequency = 0.001f;
+
+    UPROPERTY(EditAnywhere, Category = "NoiseLayer", BlueprintReadWrite, meta = (ClampMin = "1", ClampMax = "12"))
+    int32 Octaves = 5;
+
+    UPROPERTY(EditAnywhere, Category = "NoiseLayer", BlueprintReadWrite, meta = (ClampMin = "0"))
+    float Lacunarity = 2.0f;
+
+    UPROPERTY(EditAnywhere, Category = "NoiseLayer", BlueprintReadWrite, meta = (ClampMin = "0"))
+    float Persistence = 0.5f;
+
+    UPROPERTY(EditAnywhere, Category = "NoiseLayer", BlueprintReadWrite, meta = (ClampMin = "0"))
+    float Amplitude = 1.0f;
+};
+
 UENUM()
 enum class ECosmicBiomeType : uint8
 {

@@ -16,13 +16,40 @@ public:
 	int32 Seed;
 
 	UPROPERTY(EditAnywhere, Category = "Noise Settings")
+	FCosmicNoiseDataLayer ContinentalLayer;
+
+	UPROPERTY(EditAnywhere, Category = "Noise Settings")
+	FCosmicNoiseDataLayer MountainLayer;
+
+	UPROPERTY(EditAnywhere, Category = "Noise Settings")
+	FCosmicNoiseDataLayer HillLayer;
+
+	UPROPERTY(EditAnywhere, Category = "Noise Settings")
+	FCosmicNoiseDataLayer DetailLayer;
+
+	UPROPERTY(EditAnywhere, Category = "Noise Settings")
+	FCosmicNoiseDataLayer RiverLayer;
+
+	UPROPERTY(EditAnywhere, Category = "Noise Settings")
 	FCosmicNoiseBiomeParameters BiomeParameters;
 
-	void Initialize(int32 Seed, FCosmicNoiseBiomeParameters BiomeParameters);
+	void Initialize(int32 InSeed,
+		FCosmicNoiseBiomeParameters InBiomeParameters,
+		FCosmicNoiseDataLayer InContinental,
+		FCosmicNoiseDataLayer InMountain,
+		FCosmicNoiseDataLayer InHill,
+		FCosmicNoiseDataLayer InDetail,
+		FCosmicNoiseDataLayer InRiver);
 
 	void EvaluatePoint(const FVector& NoiseDir, float& OutHeight, FLinearColor& OutColor) const override;
 
 protected:
+	FastNoiseLite ContinentalNoise;
+	FastNoiseLite MountainNoise;
+	FastNoiseLite HillNoise;
+	FastNoiseLite DetailNoise;
+	FastNoiseLite RiverNoise;
+
 	FastNoiseLite HumidityNoise;
 	FastNoiseLite TempNoise;
 };
