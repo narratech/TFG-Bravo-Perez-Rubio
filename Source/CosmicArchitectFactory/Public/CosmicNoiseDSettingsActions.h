@@ -6,11 +6,11 @@
 #include "AssetTypeActions_Base.h"
 
 
-class  FCosmicNoiseSettingsActions : public FAssetTypeActions_Base
+class  FCosmicNoiseDefaultSettingsActions : public FAssetTypeActions_Base
 {
 public:
     // El nombre que aparecerá en el menú
-    virtual FText GetName() const override { return FText::FromString("Noise Settings"); }
+    virtual FText GetName() const override { return FText::FromString("Default Noise Settings"); }
 
     // El color de la franja en la parte inferior del Asset
     virtual FColor GetTypeColor() const override { return FColor(45, 175, 255); } // Azul

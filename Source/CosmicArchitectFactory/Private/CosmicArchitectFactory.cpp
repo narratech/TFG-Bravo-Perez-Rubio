@@ -1,7 +1,8 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "CosmicArchitectFactory.h"
-#include "CosmicNoiseSettingsActions.h"
+#include "CosmicNoiseDSettingsActions.h"
+#include "CosmicNoiseESettingsActions.h"
 #include "CosmicFoliageCollectionActions.h"
 
 #define LOCTEXT_NAMESPACE "FCosmicArchitectFactoryModule"
@@ -23,13 +24,17 @@ void FCosmicArchitectFactoryModule::StartupModule()
     );
 
     // Registramos nuestras acciones y le pasamos la categoría
-    TSharedPtr<FCosmicNoiseSettingsActions> NoiseActions = MakeShareable(new FCosmicNoiseSettingsActions());
+    TSharedPtr<FCosmicNoiseDefaultSettingsActions> NoiseActions = MakeShareable(new FCosmicNoiseDefaultSettingsActions());
     NoiseActions->MyAssetCategory = CosmicCategory;
+
+    TSharedPtr<FCosmicNoiseEarthSettingsActions> EarthNoiseActions = MakeShareable(new FCosmicNoiseEarthSettingsActions());
+    EarthNoiseActions->MyAssetCategory = CosmicCategory;
 
     TSharedPtr<FCosmicFoliageCollectionActions> FoliageActions = MakeShareable(new FCosmicFoliageCollectionActions());
     FoliageActions->MyAssetCategory = CosmicCategory;
 
     AssetTools.RegisterAssetTypeActions(NoiseActions.ToSharedRef());
+    AssetTools.RegisterAssetTypeActions(EarthNoiseActions.ToSharedRef());
     AssetTools.RegisterAssetTypeActions(FoliageActions.ToSharedRef());
 }
 
