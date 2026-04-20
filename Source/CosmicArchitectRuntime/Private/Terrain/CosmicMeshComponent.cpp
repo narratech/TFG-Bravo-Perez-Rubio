@@ -809,6 +809,7 @@ void UCosmicMeshComponent::RequestMeshUpdate(TSharedPtr<ICosmicNoiseStrategy> No
 bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
 {
     //Si no hay tarea devolvemos true para saber que esta libre
+    
     if (!NoiseTask) return true;
     // Si no ha terminado, devolvemos false
     if (!NoiseTask->IsDone()) return false;
@@ -848,6 +849,9 @@ bool UCosmicMeshComponent::IsTaskActive()
 
 void UCosmicMeshComponent::CancelAsyncWork()
 {
+
+    bIsGeneratingNoise = false;
+
     if (NoiseTask == nullptr) return;
 
     if (NoiseTask->Cancel() || NoiseTask->IsDone())
@@ -859,5 +863,6 @@ void UCosmicMeshComponent::CancelAsyncWork()
         NoiseTask->EnsureCompletion();
         delete NoiseTask;        
     }
+
     NoiseTask = nullptr;
 }
