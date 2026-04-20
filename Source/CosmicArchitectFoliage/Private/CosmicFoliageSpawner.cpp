@@ -277,7 +277,7 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
 
                 ToRemove.Add(Pair.Key);
 
-                UE_LOG(LogTemp, Log, TEXT("Desactivando celda: %s"), *Pair.Key.ToString());
+                //UE_LOG(LogTemp, Log, TEXT("Desactivando celda: %s"), *Pair.Key.ToString());
             }
         }
 
