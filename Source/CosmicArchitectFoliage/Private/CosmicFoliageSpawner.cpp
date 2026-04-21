@@ -238,10 +238,22 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
 
     double CreateStartTime = FPlatformTime::Seconds();
 
+    TSet<ECosmicFoliageLayer> UniqueLayers;
+
+    for (const auto& FoliageEntry : FoliageCollection->FoliageEntries)
+    {
+        for (const auto& FoliageInstance : FoliageEntry.Foliage)
+        {
+            UniqueLayers.Add(FoliageInstance.FoliageLayer);
+        }
+    }
+
     // Obtener nodos dentro del radio de visión
     for (size_t i = 0; i < 3; i++)
     {
         ECosmicFoliageLayer CurrentLayer = GetLayerFromIndex(i);
+
+        if (!UniqueLayers.Find(CurrentLayer)) break;
 
         TArray<FCubeMapCell> VisibleNodes;
         if (DistanceToSurface < GetLayerRadius(CurrentLayer) * 100000) {         
