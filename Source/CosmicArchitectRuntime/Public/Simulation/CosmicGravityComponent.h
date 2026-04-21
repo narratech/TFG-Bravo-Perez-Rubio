@@ -35,7 +35,8 @@ enum class ECosmicGravityMode : uint8
 
 // E: Componente que maneja físicas gravitacionales personalizadas.
 // I: Component handling custom gravitational physics.
-UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
+UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent),
+    HideCategories = (Activation, AssetUserData, Cooking, Tags, Navigation))
 class COSMICARCHITECTRUNTIME_API UCosmicGravityComponent : public UActorComponent
 {
     GENERATED_BODY()

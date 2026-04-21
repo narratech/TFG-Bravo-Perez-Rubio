@@ -8,7 +8,9 @@
 
 class ICosmicNoiseStrategy;
 
-UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
+UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent),
+    HideCategories = (Rendering, Lighting, Navigation, Replication, Physics, LOD, TextureStreaming,
+    Activation, AssetUserData, HLOD, Cooking, Tags, ComponentReplication, Mobile, RayTracing))
 class COSMICARCHITECTRUNTIME_API UCosmicCollisionComponent :
     public UPrimitiveComponent,
     public IInterface_CollisionDataProvider
@@ -18,10 +20,6 @@ class COSMICARCHITECTRUNTIME_API UCosmicCollisionComponent :
 public:
 
     UCosmicCollisionComponent();
-
-    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
-
-    virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
     UPROPERTY(EditAnywhere, Category = "Collision")
     float CollisionTriangleSize = 300.f;
@@ -62,6 +60,10 @@ public:
     bool IsBuilt() const;
 
 protected:
+
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
+
+    virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 #if WITH_EDITOR
     // Se llama automáticamente cuando cambias algo en el panel de Detalles

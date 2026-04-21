@@ -13,7 +13,8 @@ class UCosmicFoliageSpawner;
 class UCosmicCollisionComponent;
 class UCosmicNoiseClass;
 
-UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
+UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent),
+    HideCategories = (Activation, Tags, AssetUserData, Navigation, Rendering, Replication, Input, Actor, Collision, Cooking))
 class UCosmicClipmapComponent : public UActorComponent
 {
     GENERATED_BODY()
@@ -120,7 +121,7 @@ protected:
     void IncreaseClipmapLevelFull();
 
 private:
-    UPROPERTY(EditAnywhere, Category = "Materials")
+    UPROPERTY()
     UMaterialInstanceDynamic* DynamicPlanetMat;
 
     FVector PreviousSurfacePos = FVector::ZeroVector;

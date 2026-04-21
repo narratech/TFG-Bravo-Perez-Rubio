@@ -36,7 +36,9 @@ struct FCosmicFoliageLayerCells
 /**
  * Componente que gestiona el spawning de foliage cerca del jugador
  */
-UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent), 
+    HideCategories = (Rendering, Lighting, Navigation, Replication, Physics,Collision,
+        Activation, AssetUserData, HLOD, Cooking, Tags, ComponentReplication))
 class COSMICARCHITECTFOLIAGE_API UCosmicFoliageSpawner : public UActorComponent
 {
 	GENERATED_BODY()
