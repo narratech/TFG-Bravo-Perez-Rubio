@@ -10,6 +10,7 @@ class UCosmicClipmapComponent;
 class UCosmicNoiseClass;
 class UCosmicFoliageSpawner;
 class UCosmicCollisionComponent;
+class UCosmicOceanComponent;
 
 UCLASS(HideCategories = (
 	Replication, Input, Actor, LOD, Activation, Cooking, Networking,
@@ -29,17 +30,11 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Planet", BlueprintReadOnly)
 	TObjectPtr<UCosmicClipmapComponent> ClipmapComponent;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Ocean")
-	bool bHasOcean = true;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Planet|Ocean")
-	UStaticMeshComponent* OceanMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Ocean", meta = (EditCondition = "bHasOcean"))
-	float SeaLevel = 500.0f;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Planet", meta = (ShowOnlyInnerProperties))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Planet")
 	UCosmicCollisionComponent* CollisionComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Planet")
+	UCosmicOceanComponent* OceanComponent;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Noise")
 	UCosmicNoiseClass* NoiseClass;

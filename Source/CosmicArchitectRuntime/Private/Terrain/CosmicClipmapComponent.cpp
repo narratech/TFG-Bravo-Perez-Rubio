@@ -98,7 +98,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
     ElapsedTime += DeltaTime;
 
     if (DynamicPlanetMat) {
-        DynamicPlanetMat->SetVectorParameterValue("CentroPlaneta", GetOwner()->GetActorLocation());
+        DynamicPlanetMat->SetVectorParameterValue("PlanetCenter", GetOwner()->GetActorLocation());
     }
 
     //UE_LOG(LogTemp, Warning, TEXT("Time %.4f"), TimeToRefresh);

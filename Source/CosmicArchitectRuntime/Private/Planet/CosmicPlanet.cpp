@@ -4,6 +4,7 @@
 #include "Planet/CosmicPlanet.h"
 #include "Terrain/CosmicCollisionComponent.h"
 #include "Terrain/CosmicClipmapComponent.h"
+#include "Terrain/CosmicOceanComponent.h"
 #include "CosmicNoiseClass.h"
 #include "CosmicFoliageSpawner.h"
 #include "Components/StaticMeshComponent.h"
@@ -20,10 +21,7 @@ ACosmicPlanet::ACosmicPlanet()
 
     CollisionComponent = CreateDefaultSubobject<UCosmicCollisionComponent>(TEXT("CollisionComponent"));
     ClipmapComponent = CreateDefaultSubobject<UCosmicClipmapComponent>(TEXT("ClipmapComponent"));
-    OceanMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("OceanMesh"));
-    OceanMesh->SetupAttachment(Root);
-    OceanMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    OceanMesh->SetCastShadow(false);
+    OceanComponent = CreateDefaultSubobject<UCosmicOceanComponent>(TEXT("OceanComponent"));
     FoliageSpawnerComponent = CreateDefaultSubobject<UCosmicFoliageSpawner>(TEXT("FoliageSpawnerComponent"));
 }
 
@@ -49,7 +47,8 @@ void ACosmicPlanet::PostInitializeComponents()
 #endif
     }
 
-    if (FoliageSpawnerComponent) {
+    if (FoliageSpawnerComponent) 
+    {
         FoliageSpawnerComponent->InitFoliageSpawner(RadiusKm);
     }
 }
@@ -164,6 +163,7 @@ void ACosmicPlanet::RebuildPlanet()
 {
     InitClipmap(); 
     UpdateFoliage();
+    UpdateOcean();
 }
 
 void ACosmicPlanet::UpdateMaterialOnly()
@@ -215,19 +215,10 @@ void ACosmicPlanet::UpdateFoliage()
 
 void ACosmicPlanet::UpdateOcean()
 {
-    if (!OceanMesh) return;
-
-    OceanMesh->SetVisibility(bHasOcean);
-
-    if (bHasOcean)
+    if (OceanComponent)
     {
-        //UE_LOG(LogTemp, Warning, TEXT("Actualizando oceano"));
-
-        float PlanetRadiusUnreal = RadiusKm * 100000.0f;
-        float TotalOceanRadius = PlanetRadiusUnreal + SeaLevel;
-        float SphereScale = TotalOceanRadius / 50.0f;
-
-        OceanMesh->SetWorldScale3D(FVector(SphereScale));
+        OceanComponent->InitOcean(RadiusKm, Root);
+        OceanComponent->RegenerateOcean();
     }
 }
 
@@ -307,14 +298,6 @@ void ACosmicPlanet::PostEditChangeProperty(FPropertyChangedEvent& PropertyChange
     FName PropertyName = PropertyChangedEvent.Property
         ? PropertyChangedEvent.Property->GetFName()
         : NAME_None;
-
-    // CAMBIOS LIGEROS (no rebuild)
-    if (PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, bHasOcean) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, SeaLevel) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, RadiusKm))
-    {
-        UpdateOcean();
-    }
 
     if (PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, PlanetMainColor1) ||
         PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, PlanetMainColor2) ||
