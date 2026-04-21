@@ -109,4 +109,71 @@ void UCosmicRingComponent::UpdateShaderParameters()
 void UCosmicRingComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	// [E: Solo ejecutar en tiempo de juego real y si hay malla asignada / I: Only execute in real game time and if a mesh is assigned]
+	if (!GetWorld() || !GetWorld()->IsGameWorld() || !AsteroidMesh) return;
+
+	// [E: Obtener al jugador para calcular la distancia / I: Get player to calculate distance]
+	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
+	if (!PlayerPawn) return;
+
+	// [E: Distancia absoluta desde la cámara al centro del anillo / I: Absolute distance from camera to ring center]
+	double DistanceToPlayer = FVector::Distance(PlayerPawn->GetActorLocation(), GetComponentLocation());
+
+	// [E: Convertimos el umbral KM a Unidades Unreal (cm) / I: Convert KM threshold to Unreal Units (cm)]
+	// Nota: Usamos FadeMaxDistanceKM para que los asteroides aparezcan justo cuando el shader macro empieza a desaparecer.
+	double GenerationThreshold = FadeMaxDistanceKM * 100000.0;
+
+	// [E: Si entramos en la zona, el HISM está vacío y no está procesando / I: If we enter the zone, HISM is empty and not processing]
+	if (DistanceToPlayer <= GenerationThreshold && AsteroidHISM->GetInstanceCount() == 0 && !bIsGeneratingAsteroids)
+	{
+		bIsGeneratingAsteroids = true;
+
+		// [E: Variables locales seguras para inyectar en el hilo secundario / I: Safe local variables to inject into the background thread]
+		double InnerCm = InnerRadiusKM * 100000.0;
+		double OuterCm = OuterRadiusKM * 100000.0;
+		int32 NumAsteroids = 10000; // [E: Cantidad de asteroides por sector / I: Asteroids per sector amount]
+
+		// [E: Lanzar hilo asíncrono para cálculos pesados / I: Launch async thread for heavy calculations]
+		AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [this, InnerCm, OuterCm, NumAsteroids]()
+			{
+				TArray<FTransform> AsteroidTransforms;
+				AsteroidTransforms.Reserve(NumAsteroids);
+
+				for (int32 i = 0; i < NumAsteroids; i++)
+				{
+					// [E: Distribución circular aleatoria dentro de los límites LWC / I: Random circular distribution within LWC limits]
+					float Angle = FMath::RandRange(0.0f, PI * 2.0f);
+					float Distance = FMath::RandRange((float)InnerCm, (float)OuterCm);
+
+					float X = FMath::Cos(Angle) * Distance;
+					float Y = FMath::Sin(Angle) * Distance;
+
+					// [E: Grosor del anillo (Eje Z). Ajustable según necesidad / I: Ring thickness (Z Axis). Adjustable as needed]
+					float Z = FMath::RandRange(-20000.0f, 20000.0f);
+
+					FVector Location = FVector(X, Y, Z);
+					FRotator Rotation = FRotator(FMath::RandRange(0.0f, 360.0f), FMath::RandRange(0.0f, 360.0f), FMath::RandRange(0.0f, 360.0f));
+					FVector Scale = FVector(FMath::RandRange(0.2f, 2.5f)); // Tamaños variables
+
+					AsteroidTransforms.Add(FTransform(Rotation, Location, Scale));
+				}
+
+				// [E: Volver al hilo principal para renderizar la malla (Obligatorio) / I: Return to main thread to render mesh (Mandatory)]
+				AsyncTask(ENamedThreads::GameThread, [this, AsteroidTransforms]()
+					{
+						// [E: Doble comprobación de seguridad por si el actor se destruyó durante el cálculo / I: Double safety check in case actor was destroyed during math]
+						if (IsValid(this) && AsteroidHISM)
+						{
+							AsteroidHISM->AddInstances(AsteroidTransforms, false);
+						}
+						bIsGeneratingAsteroids = false;
+					});
+			});
+	}
+	// [E: Si nos alejamos lo suficiente, destruir instancias para ahorrar RAM / I: If we move far enough, destroy instances to save RAM]
+	else if (DistanceToPlayer > GenerationThreshold && AsteroidHISM->GetInstanceCount() > 0 && !bIsGeneratingAsteroids)
+	{
+		AsteroidHISM->ClearInstances();
+	}
 }

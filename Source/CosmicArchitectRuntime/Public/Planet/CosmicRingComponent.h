@@ -69,10 +69,10 @@ public:
 
 	// [E: Distancia límite para desvanecer el shader (KM) / I: Threshold distance to fade shader (KM)]
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
-	double FadeMinDistanceKM = 500.0;
+	double FadeMinDistanceKM = 1.0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
-	double FadeMaxDistanceKM = 1000.0;
+	double FadeMaxDistanceKM = 15.0;
 
 	// -------------------------------------------------------------------------
 	// [E: COMPONENTES INTERNOS / I: INTERNAL COMPONENTS]
