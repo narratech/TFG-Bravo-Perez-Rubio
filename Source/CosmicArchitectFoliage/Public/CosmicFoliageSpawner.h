@@ -95,8 +95,8 @@ protected:
     // Debug: Dibujar celdas activas
     void DrawDebugCells(const FVector& PlanetCenter, double PlanetRadius);
 
-    // Actualizar octree y generar celdas
     void ProcessApplyQueue();
+    void ProcessDeactivationQueue();
     void UpdateOctreeAndGenerate(const FVector& ViewerLocation, double DistanceToSurface, const FVector& PlanetCenter, double PlanetRadius, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy);
     void UpdateFoliageGeneration();
     void GenerateCellFoliage(const FCubeMapCell& Cell, const FVector& PlanetCenter, double PlanetRadius, ECosmicFoliageLayer Layer, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy);
@@ -112,6 +112,7 @@ private:
     };
 
     TArray<FPendingApplyCell> ApplyQueues[3];
+    TArray<FCubeMapCell> PendingDeactivation[3];
 
     TSet<FCubeMapCell> CurrentVisibleCells[3];
 

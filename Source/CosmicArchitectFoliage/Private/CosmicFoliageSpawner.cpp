@@ -82,16 +82,23 @@ void UCosmicFoliageSpawner::UpdateFoliageSpawner(float DeltaTime, const FVector&
     double ApplyEndTime = FPlatformTime::Seconds();
 
 
+    double DeleteStartTime = FPlatformTime::Seconds();
+
+    ProcessDeactivationQueue();
+
+    double DeleteEndTime = FPlatformTime::Seconds();
+
     // --- TOTAL ---
     double TotalEndTime = FPlatformTime::Seconds();
 
 
     // LOG
-    /*UE_LOG(LogTemp, Warning, TEXT("FOLIAGE TIMING: Total=%.4f ms | Octree=%.4f | Tasks=%.4f | Apply=%.4f"),
+   /* UE_LOG(LogTemp, Warning, TEXT("FOLIAGE TIMING: Total=%.4f ms | Octree=%.4f | Tasks=%.4f | Apply=%.4f | Deactivate=%.4f"),
         (TotalEndTime - TotalStartTime) * 1000.0,
         (OctreeEndTime - OctreeStartTime) * 1000.0,
         (TasksEndTime - TasksStartTime) * 1000.0,
-        (ApplyEndTime - ApplyStartTime) * 1000.0
+        (ApplyEndTime - ApplyStartTime) * 1000.0,
+        (DeleteStartTime - DeleteEndTime) * 1000.0
     );*/
     
 
@@ -149,7 +156,10 @@ void UCosmicFoliageSpawner::ClearFoliage()
         LayerCells[i].ActiveCells.Empty();
         PendingCells[i].Empty();
         ApplyQueues[i].Empty();
+        PendingDeactivation[i].Empty();
+        CurrentVisibleCells[i].Empty();
     }
+    
 }
 
 void UCosmicFoliageSpawner::BeginDestroy()
@@ -343,21 +353,14 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
         {
             if (!VisibleSet.Contains(Pair.Key))
             {
-                for (auto& MeshPair : Pair.Value.MeshComponents)
-                {
-                    if (MeshPair.Value)
-                    {
-                        MeshPair.Value->DestroyComponent();
-                    }
-                }
-
+                PendingDeactivation[i].Add(Pair.Key);
                 ToRemove.Add(Pair.Key);
             }
         }
 
         for (const FCubeMapCell& Node : ToRemove)
         {
-            LayerCells[i].ActiveCells.Remove(Node);
+            //LayerCells[i].ActiveCells.Remove(Node);
             PendingCells[i].Remove(Node);
         }
 
@@ -494,6 +497,53 @@ void UCosmicFoliageSpawner::ProcessApplyQueue()
             RemainingBudget -= NumInstances;
 
             Queue.RemoveAt(i);
+        }
+    }
+}
+
+void UCosmicFoliageSpawner::ProcessDeactivationQueue()
+{
+    int32 Budget = MaxInstancesPerFrame; // puedes usar otro si quieres
+
+    for (int32 Layer = 0; Layer < 3; Layer++)
+    {
+        auto& Queue = PendingDeactivation[Layer];
+
+        for (int32 i = 0; i < Queue.Num(); )
+        {
+            const FCubeMapCell& Cell = Queue[i];
+
+            if (!LayerCells[Layer].ActiveCells.Contains(Cell))
+            {
+                Queue.RemoveAt(i);
+                continue;
+            }
+
+            FCosmicFoliageCellData& CellData =
+                LayerCells[Layer].ActiveCells[Cell];
+
+            int32 InstanceCount = 0;
+
+            for (auto& MeshPair : CellData.MeshComponents)
+            {
+                if (MeshPair.Value)
+                {
+                    InstanceCount += MeshPair.Value->GetInstanceCount();
+
+                    MeshPair.Value->DestroyComponent();
+                }
+            }
+
+            LayerCells[Layer].ActiveCells.Remove(Cell);
+
+            Budget -= InstanceCount;
+
+            Queue.RemoveAt(i);
+
+            if (Budget <= 0)
+            {
+                return; 
+            }
         }
     }
 }
