@@ -56,9 +56,44 @@ void UCosmicFoliageSpawner::UpdateFoliageSpawner(float DeltaTime, const FVector&
     if (ElapsedTime < UpdateInterval) return;
     ElapsedTime = 0.0f;
 
-    // Actualizar octree y generar foliage
+    double TotalStartTime = FPlatformTime::Seconds();
+
+    // --- OCTREE + GENERACIÓN ---
+    double OctreeStartTime = FPlatformTime::Seconds();
+
     UpdateOctreeAndGenerate(ViewerLocation, DistanceToSurface, PlanetCenter, PlanetRadius, NoiseGenerationStrategy);
+
+    double OctreeEndTime = FPlatformTime::Seconds();
+
+
+    // --- COMPLETAR TASKS ---
+    double TasksStartTime = FPlatformTime::Seconds();
+
     UpdateFoliageGeneration();
+
+    double TasksEndTime = FPlatformTime::Seconds();
+
+
+    // --- APLICAR INSTANCIAS ---
+    double ApplyStartTime = FPlatformTime::Seconds();
+
+    ProcessApplyQueue();
+
+    double ApplyEndTime = FPlatformTime::Seconds();
+
+
+    // --- TOTAL ---
+    double TotalEndTime = FPlatformTime::Seconds();
+
+
+    // LOG
+    /*UE_LOG(LogTemp, Warning, TEXT("FOLIAGE TIMING: Total=%.4f ms | Octree=%.4f | Tasks=%.4f | Apply=%.4f"),
+        (TotalEndTime - TotalStartTime) * 1000.0,
+        (OctreeEndTime - OctreeStartTime) * 1000.0,
+        (TasksEndTime - TasksStartTime) * 1000.0,
+        (ApplyEndTime - ApplyStartTime) * 1000.0
+    );*/
+    
 
     //UE_LOG(LogTemp, Warning, TEXT("Tareas Activas: %d, Pendientes: %d"), ActiveCells.Num(), PendingCells.Num());
 
@@ -113,6 +148,7 @@ void UCosmicFoliageSpawner::ClearFoliage()
 
         LayerCells[i].ActiveCells.Empty();
         PendingCells[i].Empty();
+        ApplyQueues[i].Empty();
     }
 }
 
@@ -233,10 +269,13 @@ void UCosmicFoliageSpawner::DrawDebugCells(const FVector& PlanetCenter, double P
 
 void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocation, double DistanceToSurface, const FVector& PlanetCenter, double PlanetRadius, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy)
 {
+    double TotalStart = FPlatformTime::Seconds();
+
     if (!FoliageCollection)
         return;
 
-    double CreateStartTime = FPlatformTime::Seconds();
+    // ------------------ UNIQUE LAYERS ------------------
+    double UniqueStart = FPlatformTime::Seconds();
 
     TSet<ECosmicFoliageLayer> UniqueLayers;
 
@@ -248,21 +287,42 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
         }
     }
 
-    // Obtener nodos dentro del radio de visión
+    double UniqueEnd = FPlatformTime::Seconds();
+
+
+    // ------------------ POR LAYER ------------------
+    double LayersTotalTime = 0.0;
+
     for (size_t i = 0; i < 3; i++)
     {
+        double LayerStart = FPlatformTime::Seconds();
+
         ECosmicFoliageLayer CurrentLayer = GetLayerFromIndex(i);
 
         if (!UniqueLayers.Find(CurrentLayer)) break;
 
+        // -------- OCTREE QUERY --------
+        double OctreeStart = FPlatformTime::Seconds();
+
         TArray<FCubeMapCell> VisibleNodes;
-        if (DistanceToSurface < GetLayerRadius(CurrentLayer) * 100000) {         
+        if (DistanceToSurface < GetLayerRadius(CurrentLayer) * 100000)
+        {
             Octree.GetNodesInRadius(ViewerLocation, PlanetCenter, GetLayerRadius(CurrentLayer), VisibleNodes);
         }
 
-        TSet<FCubeMapCell> VisibleSet(VisibleNodes);
+        double OctreeEnd = FPlatformTime::Seconds();
 
-        // Activar nuevas
+        // -------- SET BUILD --------
+        double SetStart = FPlatformTime::Seconds();
+
+        TSet<FCubeMapCell> VisibleSet(VisibleNodes);
+        CurrentVisibleCells[i] = VisibleSet;
+
+        double SetEnd = FPlatformTime::Seconds();
+
+        // -------- ACTIVATE --------
+        double ActivateStart = FPlatformTime::Seconds();
+
         for (const FCubeMapCell& Node : VisibleNodes)
         {
             if (!LayerCells[i].ActiveCells.Contains(Node) && !PendingCells[i].Contains(Node))
@@ -272,7 +332,11 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
             }
         }
 
-        // Desactivar antiguas
+        double ActivateEnd = FPlatformTime::Seconds();
+
+        // -------- DEACTIVATE --------
+        double DeactivateStart = FPlatformTime::Seconds();
+
         TArray<FCubeMapCell> ToRemove;
 
         for (const auto& Pair : LayerCells[i].ActiveCells)
@@ -288,21 +352,42 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
                 }
 
                 ToRemove.Add(Pair.Key);
-
-                //UE_LOG(LogTemp, Log, TEXT("Desactivando celda: %s"), *Pair.Key.ToString());
             }
         }
 
         for (const FCubeMapCell& Node : ToRemove)
         {
             LayerCells[i].ActiveCells.Remove(Node);
+            PendingCells[i].Remove(Node);
         }
-    } 
 
-    double CreateEndTime = FPlatformTime::Seconds();
-    if (bDrawDebugCells) {
-        UE_LOG(LogTemp, Warning, TEXT("Actualizar octree y generar celdas tomo: %.4f ms"), (CreateEndTime - CreateStartTime) * 1000.0);
+        double DeactivateEnd = FPlatformTime::Seconds();
+
+        double LayerEnd = FPlatformTime::Seconds();
+
+        LayersTotalTime += (LayerEnd - LayerStart);
+
+        /*UE_LOG(LogTemp, Warning, TEXT(
+            "Layer %d | Total=%.3f ms | Octree=%.3f | Set=%.3f | Activate=%.3f | Deactivate=%.3f | Visible=%d"),
+            i,
+            (LayerEnd - LayerStart) * 1000.0,
+            (OctreeEnd - OctreeStart) * 1000.0,
+            (SetEnd - SetStart) * 1000.0,
+            (ActivateEnd - ActivateStart) * 1000.0,
+            (DeactivateEnd - DeactivateStart) * 1000.0,
+            VisibleNodes.Num()
+        );*/
     }
+
+    // ------------------ TOTAL ------------------
+    double TotalEnd = FPlatformTime::Seconds();
+
+    /*UE_LOG(LogTemp, Warning, TEXT(
+        "UpdateOctree TOTAL=%.3f ms | UniqueLayers=%.3f | Layers=%.3f"),
+        (TotalEnd - TotalStart) * 1000.0,
+        (UniqueEnd - UniqueStart) * 1000.0,
+        LayersTotalTime * 1000.0
+    );*/
 }
 
 void UCosmicFoliageSpawner::GenerateCellFoliage(
@@ -358,13 +443,57 @@ void UCosmicFoliageSpawner::UpdateFoliageGeneration()
 
                 if (PendingCells[Layer].Contains(Cell))
                 {
-                    ApplyGeneratedInstances(Cell, static_cast<ECosmicFoliageLayer>(Layer), CompletedTask.ResultInstances);
-                    PendingCells[Layer].Remove(Cell);
+                    FPendingApplyCell Pending;
+                    Pending.Cell = Cell;
+                    Pending.Layer = static_cast<ECosmicFoliageLayer>(Layer);
+                    Pending.Instances = MoveTemp(CompletedTask.ResultInstances);
+
+                    ApplyQueues[Layer].Add(MoveTemp(Pending));
                 }
 
                 delete Task;
                 ActiveTasks[Layer].RemoveAt(i);
             }
+        }
+    }
+}
+
+void UCosmicFoliageSpawner::ProcessApplyQueue()
+{
+    int32 RemainingBudget = MaxInstancesPerFrame;
+
+    // PRIORIDAD: Near Medium Far
+    for (int32 Layer = 0; Layer < 3; Layer++)
+    {
+        auto& Queue = ApplyQueues[Layer];
+
+        for (int32 i = 0; i < Queue.Num(); )
+        {
+            FPendingApplyCell& Pending = Queue[i];
+
+            // Si ya no es necesaria descartar
+            if (!CurrentVisibleCells[Layer].Contains(Pending.Cell))
+            {
+                PendingCells[Layer].Remove(Pending.Cell); // limpieza extra
+                Queue.RemoveAt(i);
+                continue;
+            }
+
+            int32 NumInstances = Pending.Instances.Num();
+
+            // Si no hay presupuesto y no hemos empezado salir
+            if (RemainingBudget <= 0)
+            {
+                return;
+            }
+
+            ApplyGeneratedInstances(Pending.Cell, Pending.Layer, Pending.Instances);
+
+            PendingCells[Layer].Remove(Pending.Cell);
+
+            RemainingBudget -= NumInstances;
+
+            Queue.RemoveAt(i);
         }
     }
 }

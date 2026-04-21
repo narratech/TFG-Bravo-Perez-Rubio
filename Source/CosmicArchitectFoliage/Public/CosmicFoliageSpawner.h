@@ -68,7 +68,7 @@ public:
     float UpdateInterval = 0.5f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
-    int32 MaxInstancesPerFrame = 1000;
+    int32 MaxInstancesPerFrame = 100;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Debug")
     bool bDrawDebugCells = false;
@@ -96,12 +96,25 @@ protected:
     void DrawDebugCells(const FVector& PlanetCenter, double PlanetRadius);
 
     // Actualizar octree y generar celdas
+    void ProcessApplyQueue();
     void UpdateOctreeAndGenerate(const FVector& ViewerLocation, double DistanceToSurface, const FVector& PlanetCenter, double PlanetRadius, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy);
     void UpdateFoliageGeneration();
     void GenerateCellFoliage(const FCubeMapCell& Cell, const FVector& PlanetCenter, double PlanetRadius, ECosmicFoliageLayer Layer, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy);
     void ClearDelegates();
 
 private:
+
+    struct FPendingApplyCell
+    {
+        FCubeMapCell Cell;
+        ECosmicFoliageLayer Layer;
+        TArray<FCosmicFoliageInstance> Instances;
+    };
+
+    TArray<FPendingApplyCell> ApplyQueues[3];
+
+    TSet<FCubeMapCell> CurrentVisibleCells[3];
+
     float ElapsedTime = 0.0f;
     FRandomStream RandomStream;
     TSet<FCubeMapCell> PendingCells[3];
