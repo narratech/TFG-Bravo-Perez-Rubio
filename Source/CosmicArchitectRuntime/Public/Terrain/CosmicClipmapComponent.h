@@ -36,7 +36,7 @@ public:
     double PlanetRadius;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
-    UMaterialInterface* BaseMaterial;
+    UMaterialInstance* BaseMaterial;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UTexture2D* DefaultTexture;
 

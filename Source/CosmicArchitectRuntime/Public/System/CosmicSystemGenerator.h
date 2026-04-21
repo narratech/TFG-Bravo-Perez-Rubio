@@ -32,10 +32,10 @@ public:
     TArray<UTexture2D*> PosiblesTexturas;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
-    UMaterialInterface* BaseMaterial;
+    UMaterialInstance* BaseMaterial;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
-    UMaterialInterface* StarMaterial;
+    UMaterialInstance* StarMaterial;
 
 protected:
     // E: Componente visual para definir el área de generación.

@@ -67,7 +67,7 @@ public:
 	virtual void OnConstruction(const FTransform& Transform) override;
 #endif
 
-	void InitPlanet(float InRadiusKm, UCosmicNoiseClass* NewNoiseClass, FColor color1, FColor color2, FColor colorHeight, float scale, UMaterialInterface* BaseMaterial, UTexture2D* DefaultTexture);
+	void InitPlanet(float InRadiusKm, UCosmicNoiseClass* NewNoiseClass, FColor color1, FColor color2, FColor colorHeight, float scale, UMaterialInstance* BaseMaterial, UTexture2D* DefaultTexture);
 
 	void CleanupNoiseSettings();
 

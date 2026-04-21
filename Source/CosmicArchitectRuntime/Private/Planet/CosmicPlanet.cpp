@@ -249,7 +249,7 @@ void ACosmicPlanet::OnConstruction(const FTransform& Transform)
 }
 #endif
 
-void ACosmicPlanet::InitPlanet(float InRadiusKm, UCosmicNoiseClass* NewNoiseClass, FColor color1, FColor color2, FColor colorHeight, float scale, UMaterialInterface* BaseMaterial, UTexture2D* DefaultTexture)
+void ACosmicPlanet::InitPlanet(float InRadiusKm, UCosmicNoiseClass* NewNoiseClass, FColor color1, FColor color2, FColor colorHeight, float scale, UMaterialInstance* BaseMaterial, UTexture2D* DefaultTexture)
 {
     RadiusKm = InRadiusKm;
 
