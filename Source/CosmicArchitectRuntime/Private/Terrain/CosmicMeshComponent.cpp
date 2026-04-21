@@ -827,15 +827,30 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
 
     bIsGeneratingNoise = false;
 
-    // Actualizamos la sección de la malla (Esto ocurre instantáneamente en el Game Thread)
+    //double CreateStartTime = FPlatformTime::Seconds();
+
+    // Actualizamos la sección de la malla (No subimos informacion irrelevante)
     UpdateMeshSection_LinearColor(
+        0,
+        CurrentVertices,
+        BaseNormals,
+        TArray<FVector2D>(),
+        CurrentColors,
+        TArray<FProcMeshTangent>()
+    );
+
+    /*UpdateMeshSection_LinearColor(
         0,
         CurrentVertices,
         BaseNormals,
         UVs,
         CurrentColors,
         BaseTangents
-    );
+    );*/
+
+    //double CreateEndTime = FPlatformTime::Seconds();
+    //UE_LOG(LogTemp, Warning, TEXT("UpdateMeshSelection: %.4f ms"), (CreateEndTime - CreateStartTime) * 1000.0);
+    
 
     SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
