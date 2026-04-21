@@ -33,6 +33,31 @@ struct FCosmicFoliageLayerCells
     TMap<FCubeMapCell, FCosmicFoliageCellData> ActiveCells;
 };
 
+USTRUCT()
+struct FCosmicHISMPoolList
+{
+    GENERATED_BODY()
+
+    UPROPERTY()
+    TArray<UHierarchicalInstancedStaticMeshComponent*> Components;
+};
+
+struct FCosmicHISMPoolKey
+{
+    UStaticMesh* Mesh;
+    ECosmicFoliageLayer Layer;
+
+    bool operator==(const FCosmicHISMPoolKey& Other) const
+    {
+        return Mesh == Other.Mesh && Layer == Other.Layer;
+    }
+};
+
+FORCEINLINE uint32 GetTypeHash(const FCosmicHISMPoolKey& Key)
+{
+    return HashCombine(GetTypeHash(Key.Mesh), (uint32)Key.Layer);
+}
+
 /**
  * Componente que gestiona el spawning de foliage cerca del jugador
  */
@@ -116,6 +141,9 @@ private:
 
     TSet<FCubeMapCell> CurrentVisibleCells[3];
 
+    UPROPERTY()
+    TMap<UStaticMesh*, FCosmicHISMPoolList> FreeHISMPool;
+
     float ElapsedTime = 0.0f;
     FRandomStream RandomStream;
     TSet<FCubeMapCell> PendingCells[3];
@@ -126,7 +154,7 @@ private:
     /** Aplica las instancias generadas al mundo */
     void ApplyGeneratedInstances(const FCubeMapCell& Cell, ECosmicFoliageLayer Layer, const TArray<FCosmicFoliageInstance>& Instances);
 
-    UHierarchicalInstancedStaticMeshComponent* GetOrCreateCellComponent(FCosmicFoliageCellData& CellData,
-        UStaticMesh* Mesh);
+    UHierarchicalInstancedStaticMeshComponent* AcquireHISM(UStaticMesh* Mesh);
+    void ReleaseHISM(UStaticMesh* Mesh, UHierarchicalInstancedStaticMeshComponent* Comp);
 
 };
