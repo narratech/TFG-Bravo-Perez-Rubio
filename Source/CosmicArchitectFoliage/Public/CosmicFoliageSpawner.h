@@ -90,7 +90,7 @@ public:
     float FarLayerRadiusKm = 0.5f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
-    float UpdateInterval = 0.5f;
+    float UpdateInterval = 0.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
     int32 MaxInstancesPerFrame = 100;

@@ -56,40 +56,40 @@ void UCosmicFoliageSpawner::UpdateFoliageSpawner(float DeltaTime, const FVector&
     if (ElapsedTime < UpdateInterval) return;
     ElapsedTime = 0.0f;
 
-    double TotalStartTime = FPlatformTime::Seconds();
+    //double TotalStartTime = FPlatformTime::Seconds();
 
     // --- OCTREE + GENERACIÓN ---
-    double OctreeStartTime = FPlatformTime::Seconds();
+    //double OctreeStartTime = FPlatformTime::Seconds();
 
     UpdateOctreeAndGenerate(ViewerLocation, DistanceToSurface, PlanetCenter, PlanetRadius, NoiseGenerationStrategy);
 
-    double OctreeEndTime = FPlatformTime::Seconds();
+    //double OctreeEndTime = FPlatformTime::Seconds();
 
 
     // --- COMPLETAR TASKS ---
-    double TasksStartTime = FPlatformTime::Seconds();
+    //double TasksStartTime = FPlatformTime::Seconds();
 
     UpdateFoliageGeneration();
 
-    double TasksEndTime = FPlatformTime::Seconds();
+    //double TasksEndTime = FPlatformTime::Seconds();
 
 
     // --- APLICAR INSTANCIAS ---
-    double ApplyStartTime = FPlatformTime::Seconds();
+    //double ApplyStartTime = FPlatformTime::Seconds();
 
     ProcessApplyQueue();
 
-    double ApplyEndTime = FPlatformTime::Seconds();
+    //double ApplyEndTime = FPlatformTime::Seconds();
 
 
-    double DeleteStartTime = FPlatformTime::Seconds();
+    //double DeleteStartTime = FPlatformTime::Seconds();
 
     ProcessDeactivationQueue();
 
-    double DeleteEndTime = FPlatformTime::Seconds();
+    //double DeleteEndTime = FPlatformTime::Seconds();
 
     // --- TOTAL ---
-    double TotalEndTime = FPlatformTime::Seconds();
+    //double TotalEndTime = FPlatformTime::Seconds();
 
     /*if ((TotalEndTime - TotalStartTime) * 1000.0 > 1.0f) {
         UE_LOG(LogTemp, Warning, TEXT("FOLIAGE TIMING: Total=%.4f ms | Octree=%.4f | Tasks=%.4f | Apply=%.4f | Deactivate=%.4f"),
@@ -308,14 +308,14 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
 
     for (size_t i = 0; i < 3; i++)
     {
-        double LayerStart = FPlatformTime::Seconds();
+        //double LayerStart = FPlatformTime::Seconds();
 
         ECosmicFoliageLayer CurrentLayer = GetLayerFromIndex(i);
 
         if (!UniqueLayers.Find(CurrentLayer)) break;
 
         // -------- OCTREE QUERY --------
-        double OctreeStart = FPlatformTime::Seconds();
+        //double OctreeStart = FPlatformTime::Seconds();
 
         TArray<FCubeMapCell> VisibleNodes;
         if (DistanceToSurface < GetLayerRadius(CurrentLayer) * 100000)
@@ -323,18 +323,18 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
             Octree.GetNodesInRadius(ViewerLocation, PlanetCenter, GetLayerRadius(CurrentLayer), VisibleNodes);
         }
 
-        double OctreeEnd = FPlatformTime::Seconds();
+        //double OctreeEnd = FPlatformTime::Seconds();
 
         // -------- SET BUILD --------
-        double SetStart = FPlatformTime::Seconds();
+        //double SetStart = FPlatformTime::Seconds();
 
         TSet<FCubeMapCell> VisibleSet(VisibleNodes);
         CurrentVisibleCells[i] = VisibleSet;
 
-        double SetEnd = FPlatformTime::Seconds();
+        //double SetEnd = FPlatformTime::Seconds();
 
         // -------- ACTIVATE --------
-        double ActivateStart = FPlatformTime::Seconds();
+        //double ActivateStart = FPlatformTime::Seconds();
 
         for (const FCubeMapCell& Node : VisibleNodes)
         {
@@ -345,10 +345,10 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
             }
         }
 
-        double ActivateEnd = FPlatformTime::Seconds();
+        //double ActivateEnd = FPlatformTime::Seconds();
 
         // -------- DEACTIVATE --------
-        double DeactivateStart = FPlatformTime::Seconds();
+        //double DeactivateStart = FPlatformTime::Seconds();
 
         TArray<FCubeMapCell> ToRemove;
 
@@ -367,11 +367,11 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
             PendingCells[i].Remove(Node);
         }
 
-        double DeactivateEnd = FPlatformTime::Seconds();
+        //double DeactivateEnd = FPlatformTime::Seconds();
 
-        double LayerEnd = FPlatformTime::Seconds();
+        //double LayerEnd = FPlatformTime::Seconds();
 
-        LayersTotalTime += (LayerEnd - LayerStart);
+        //LayersTotalTime += (LayerEnd - LayerStart);
 
         /*UE_LOG(LogTemp, Warning, TEXT(
             "Layer %d | Total=%.3f ms | Octree=%.3f | Set=%.3f | Activate=%.3f | Deactivate=%.3f | Visible=%d"),
@@ -386,7 +386,7 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
     }
 
     // ------------------ TOTAL ------------------
-    double TotalEnd = FPlatformTime::Seconds();
+    //double TotalEnd = FPlatformTime::Seconds();
 
     /*UE_LOG(LogTemp, Warning, TEXT(
         "UpdateOctree TOTAL=%.3f ms | UniqueLayers=%.3f | Layers=%.3f"),

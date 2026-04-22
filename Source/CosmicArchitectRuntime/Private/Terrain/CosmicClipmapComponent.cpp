@@ -101,173 +101,210 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         DynamicPlanetMat->SetVectorParameterValue("PlanetCenter", GetOwner()->GetActorLocation());
     }
 
-    //UE_LOG(LogTemp, Warning, TEXT("Time %.4f"), TimeToRefresh);
+    if (ElapsedTime <= TimeToRefresh)
+        return;
 
-    if (ElapsedTime > TimeToRefresh) {
+    ElapsedTime = 0;
 
-        ElapsedTime = 0;
+    //double TotalStartTime = FPlatformTime::Seconds();
 
-        FVector SurfacePos;
-        FVector N;
-        FVector ViewerPos;
-        float DistanceToSurface;
+    // calculos necesarios
+    FVector SurfacePos;
+    FVector N;
+    FVector ViewerPos;
+    float DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
+    FRotator Rotation = GetPatchRotation(N);
 
-        DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
-        FRotator Rotation = GetPatchRotation(N);
+    // EJECUCION POR FASE
+    switch (CurrentPhase)
+    {
+    case EUpdatePhase::Foliage:
+        UpdateFoliagePhase(DeltaTime, ViewerPos, DistanceToSurface);
+        break;
 
-        if (FoliageSpawnerComponent)
-        {
-            //UE_LOG(LogTemp, Warning, TEXT("Actualizando foliage"));
-            FoliageSpawnerComponent->UpdateFoliageSpawner(TimeToRefresh, ViewerPos, CurrentActorPosition, PlanetRadius, DistanceToSurface, NoiseGenerationStrategy);
-        }
+    case EUpdatePhase::Collision:
+        UpdateCollisionPhase(ViewerPos, SurfacePos, N, Rotation, DistanceToSurface);
+        break;
 
-        //Actualizar colision si se ha movido el player un minimo
-        if (CollisionComponent && !LastMeshPlayerPos.Equals(ViewerPos, CollisionComponent->CollisionTriangleSize)) {
-            UpdateCollisionNearPlayer(SurfacePos, N, Rotation, DistanceToSurface);
-            LastMeshPlayerPos = ViewerPos;
-        }
-        
-        if (!FarLevel)
-            return;
+    case EUpdatePhase::Mesh:
+        UpdateMeshPhase(ViewerPos, SurfacePos, N, Rotation, DistanceToSurface);
+        break;
+    }
 
-        if (!bPerformanceBuild) {
-            FarLevel->RequestMeshUpdate(NoiseGenerationStrategy);
-            bPerformanceBuild = FarLevel->CheckAndApplyMeshUpdate();
-        }
+    CurrentPhase = (EUpdatePhase)(((uint8)CurrentPhase + 1) % 3);
 
-        // Detectar cambio de modo
-        bool bPrevPerformanceMode = bPerformaceMode;
+    //double TotalEndTime = FPlatformTime::Seconds();
 
-        //Activar/desactivar modo rendimiento al alejarte lo suficiente
-        bPerformaceMode = DistanceToSurface > PlanetRadius * HeightVisibility;
-
-        // Si salimos de performance, esperar actualizacion antes de activar
-        if (bPrevPerformanceMode && !bPerformaceMode)
-        {
-            bWaitingForFirstUpdateAfterPerformance = true;
-        }
-
-        if (!bInit && !bPerformaceMode) {
-            CreateLevels();
-        }
-
-        bool bShouldSwitch =
-            (FarLevel->bActiveMesh && !bPerformaceMode) ||
-            (!FarLevel->bActiveMesh && bPerformaceMode);
-
-        
-        if (bShouldSwitch)
-        {
-            if (!bWaitingForFirstUpdateAfterPerformance)
-            {
-                FarLevel->SetMeshActive(bPerformaceMode);
-
-                for (size_t i = 0; i < Levels.Num(); i++)
-                {
-                    Levels[i]->SetMeshActive(!bPerformaceMode);
-                }
-            }
-
-            bPendingTasksRemaining = bPerformaceMode;
-        }
-
-        //Acabar tareas pendientes
-        if (bPerformaceMode && bPendingTasksRemaining) {
-            bool remainingTasks = false;
-
-            //Ver si han acabado todas las tareas
-            for (size_t i = 0; i < Levels.Num(); i++)
-            {
-                if (Levels[i]->IsTaskActive()) {
-                    remainingTasks = true;
-                    break;
-                }
-            }
-
-            if (!remainingTasks) {
-                for (size_t i = 0; i < Levels.Num(); i++)
-                {
-                    Levels[i]->CancelAsyncWork();
-                }
-                bPendingTasksRemaining = false;
-            }
-        }
-
-        if (bPerformaceMode || FreezeGeneration) return;
-
-        bool MeshesUpdated = true;
-
-        //Ver si han acabado todas las tareas
-        for (size_t i = 0; i < Levels.Num(); i++)
-        {
-            if (Levels[i]->IsTaskActive()) {
-                MeshesUpdated = false;
-            }
-        }
-
-        if (!MeshesUpdated) {
-            return;
-        } 
-        else { //Aplicar actualizaciones de malla
-            for (size_t i = 0; i < Levels.Num(); i++)
-            {
-                Levels[i]->CheckAndApplyMeshUpdate();
-            }
-            if (bBuildingLevels) {
-                bWaitingForFirstUpdateAfterPerformance = false;
-                bBuildingLevels = false;
-            }
-        }
-
-        
-        bool UpdateClipmapLevels = false;
-        
-        //Ver si hay que reducir o incrementar niveles
-        if (Levels.Num() > 1)
-        {
-            UCosmicMeshComponent* MeshLast = Levels.Last();
-            UCosmicMeshComponent* MeshFirst = Levels[0];
-
-            bool bIsVisible = IsClipmapRingVisible(Levels.Num() - 1, DistanceToSurface);
-
-            //UE_LOG(LogTemp, Warning, TEXT("Ultimo visible %d"), bIsVisible);
-
-            if (!bIsVisible && MeshFirst->GridSpacing > MinTriangleSize) {
-                DecreaseClipmapLevelFull();
-                UpdateClipmapLevels = true;
-            }
-            else if(IsClipmapRingVisible(MeshLast->GridSpacing * 2, MeshLast->Resolution, DistanceToSurface) 
-                && MeshLast->GridSpacing < BaseSpacing * FMath::Pow(2.0f, NumLevels - 1)){
-                IncreaseClipmapLevelFull();
-                UpdateClipmapLevels = true;
-            }         
-        }
-
-        //Calcular numero de celdas que hay que desplazar
-        FIntPoint Shift = ComputeGridShiftSpherical(ViewerPos, SurfacePos, BaseGridSpacing * BaseResolution / 4);
-
-        /*if (Shift != FIntPoint::ZeroValue)
-        {
-            UE_LOG(LogTemp, Warning, TEXT("Shift: %s"), *Shift.ToString());
-        }*/
-
-        TotalShift += Shift;
-
-        if (Shift != FIntPoint::ZeroValue || bWaitingForFirstUpdateAfterPerformance || UpdateClipmapLevels){
-
-            if (bWaitingForFirstUpdateAfterPerformance) 
-            {
-                bBuildingLevels = true;
-            }
-
-            for (size_t i = 0; i < Levels.Num(); i++)
-            {
-                Levels[i]->SetPositionAndRotation(SurfacePos - CurrentActorPosition, Rotation);
-                Levels[i]->RequestMeshUpdate(NoiseGenerationStrategy);
-            }
-        }
-    }    
+    //UE_LOG(LogTemp, Warning, TEXT("Tiempo: %.4f, fase: %d"), (TotalEndTime - TotalStartTime) * 1000, (uint8)CurrentPhase);
 }
+
+void UCosmicClipmapComponent::UpdateFoliagePhase(float DeltaTime, const FVector& ViewerPos, float DistanceToSurface)
+{
+    if (FoliageSpawnerComponent)
+    {
+        FoliageSpawnerComponent->UpdateFoliageSpawner(
+            TimeToRefresh, ViewerPos, CurrentActorPosition,
+            PlanetRadius, DistanceToSurface, NoiseGenerationStrategy
+        );
+    }
+}
+
+void UCosmicClipmapComponent::UpdateCollisionPhase(const FVector& ViewerPos, const FVector& SurfacePos,
+    const FVector& N, const FRotator& Rotation,
+    float DistanceToSurface)
+{
+    if (CollisionComponent &&
+        !LastMeshPlayerPos.Equals(ViewerPos, CollisionComponent->CollisionTriangleSize))
+    {
+        UpdateCollisionNearPlayer(SurfacePos, N, Rotation, DistanceToSurface);
+        LastMeshPlayerPos = ViewerPos;
+    }
+}
+
+void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FVector& SurfacePos,
+    const FVector& N, const FRotator& Rotation,
+    float DistanceToSurface)
+{
+    if (!FarLevel) return; 
+    
+    if (!bPerformanceBuild) 
+    { 
+        FarLevel->RequestMeshUpdate(NoiseGenerationStrategy); 
+        bPerformanceBuild = FarLevel->CheckAndApplyMeshUpdate(); 
+    } 
+    
+    // Detectar cambio de modo 
+    bool bPrevPerformanceMode = bPerformaceMode; 
+    
+    //Activar/desactivar modo rendimiento al alejarte lo suficiente 
+    
+    bPerformaceMode = DistanceToSurface > PlanetRadius * HeightVisibility; 
+    
+    // Si salimos de performance, esperar actualizacion antes de activar 
+    
+    if (bPrevPerformanceMode && !bPerformaceMode) 
+    { 
+        bWaitingForFirstUpdateAfterPerformance = true; 
+    } 
+    
+    if (!bInit && !bPerformaceMode) 
+    { 
+        CreateLevels(); 
+    } 
+    
+    bool bShouldSwitch = (FarLevel->bActiveMesh && !bPerformaceMode) || (!FarLevel->bActiveMesh && bPerformaceMode); 
+    
+    if (bShouldSwitch) 
+    { 
+        if (!bWaitingForFirstUpdateAfterPerformance) 
+        { 
+            FarLevel->SetMeshActive(bPerformaceMode); 
+            for (size_t i = 0; i < Levels.Num(); i++) 
+            { 
+                Levels[i]->SetMeshActive(!bPerformaceMode); 
+            } 
+        } 
+        bPendingTasksRemaining = bPerformaceMode; 
+    } 
+    
+    //Acabar tareas pendientes 
+    
+    if (bPerformaceMode && bPendingTasksRemaining) 
+    { 
+        bool remainingTasks = false; 
+        //Ver si han acabado todas las tareas 
+        for (size_t i = 0; i < Levels.Num(); i++) 
+        { 
+            if (Levels[i]->IsTaskActive()) 
+            { 
+                remainingTasks = true; 
+                break; 
+            } 
+        } 
+        if (!remainingTasks) 
+        { 
+            for (size_t i = 0; i < Levels.Num(); i++) 
+            { 
+                Levels[i]->CancelAsyncWork(); 
+            } 
+            bPendingTasksRemaining = false; 
+        } 
+    } 
+
+    if (bPerformaceMode || FreezeGeneration) return; 
+    
+    bool MeshesUpdated = true; 
+    
+    //Ver si han acabado todas las tareas 
+    
+    for (size_t i = 0; i < Levels.Num(); i++) 
+    { 
+        if (Levels[i]->IsTaskActive()) 
+        { 
+            MeshesUpdated = false; 
+        } 
+    } 
+    
+    if (!MeshesUpdated) { return; } 
+    else 
+    { 
+        //Aplicar actualizaciones de malla 
+        for (size_t i = 0; i < Levels.Num(); i++) 
+        { 
+            Levels[i]->CheckAndApplyMeshUpdate(); 
+        } 
+        if (bBuildingLevels) 
+        { 
+            bWaitingForFirstUpdateAfterPerformance = false; 
+            bBuildingLevels = false; 
+        } 
+    } 
+
+    bool UpdateClipmapLevels = false; 
+    //Ver si hay que reducir o incrementar niveles 
+    
+    if (Levels.Num() > 1) 
+    { 
+        UCosmicMeshComponent* MeshLast = Levels.Last(); 
+        UCosmicMeshComponent* MeshFirst = Levels[0]; 
+        
+        bool bIsVisible = IsClipmapRingVisible(Levels.Num() - 1, DistanceToSurface); 
+        //UE_LOG(LogTemp, Warning, TEXT("Ultimo visible %d"), bIsVisible); 
+        
+        if (!bIsVisible && MeshFirst->GridSpacing > MinTriangleSize) 
+        { 
+            DecreaseClipmapLevelFull(); 
+            UpdateClipmapLevels = true; 
+        } 
+        else if(IsClipmapRingVisible(MeshLast->GridSpacing * 2, MeshLast->Resolution, DistanceToSurface) 
+            && MeshLast->GridSpacing < BaseSpacing * FMath::Pow(2.0f, NumLevels - 1))
+        { 
+            IncreaseClipmapLevelFull(); 
+            UpdateClipmapLevels = true; 
+        } 
+    } 
+    
+    //Calcular numero de celdas que hay que desplazar 
+    FIntPoint Shift = ComputeGridShiftSpherical(ViewerPos, SurfacePos, BaseGridSpacing * BaseResolution / 4); 
+    
+    /*if (Shift != FIntPoint::ZeroValue) { UE_LOG(LogTemp, Warning, TEXT("Shift: %s"), *Shift.ToString()); }*/ 
+    
+    TotalShift += Shift; 
+    
+    if (Shift != FIntPoint::ZeroValue || bWaitingForFirstUpdateAfterPerformance || UpdateClipmapLevels)
+    { 
+        if (bWaitingForFirstUpdateAfterPerformance) 
+        { 
+            bBuildingLevels = true; 
+        } 
+        for (size_t i = 0; i < Levels.Num(); i++) 
+        { 
+            Levels[i]->SetPositionAndRotation(SurfacePos - CurrentActorPosition, Rotation);
+            Levels[i]->RequestMeshUpdate(NoiseGenerationStrategy); 
+        } 
+    } 
+}
+
 
 #if WITH_EDITOR
 void UCosmicClipmapComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)

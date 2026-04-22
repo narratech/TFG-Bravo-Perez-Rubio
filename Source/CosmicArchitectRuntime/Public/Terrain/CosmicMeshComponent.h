@@ -44,8 +44,6 @@ public:
     // Malla base (deformada a la esfera, sin alturas adicionales)
     TArray<FVector> BaseVertices;
     TArray<FVector> BaseNormals;
-    TArray<FVector2D> UVs;
-    TArray<FProcMeshTangent> BaseTangents;
 
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
     virtual void OnComponentDestroyed(bool bDestroyingHierarchy);

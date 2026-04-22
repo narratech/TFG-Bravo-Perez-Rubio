@@ -58,7 +58,7 @@ public:
     float HeightVisibility = 5.0f;
 
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "0", ClampMax = "60"))
-    float TimeToRefresh = 0.033f;
+    float TimeToRefresh = 0.01f;
 
     UPROPERTY(EditAnywhere, Category = "Clipmap")
     bool FreezeGeneration = false;
@@ -71,6 +71,13 @@ protected:
     UCosmicMeshComponent* FarLevel;
 
     TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy;
+
+    enum class EUpdatePhase : uint8
+    {
+        Foliage,
+        Collision,
+        Mesh
+    };
     
     float ElapsedTime = 0;
     float TimeToRefreshActive;
@@ -93,6 +100,8 @@ protected:
     FVector AccumulatedDelta = FVector::ZeroVector;
     FIntPoint TotalShift = FIntPoint::ZeroValue;
 
+    EUpdatePhase CurrentPhase = EUpdatePhase::Foliage;
+
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
     virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
@@ -103,6 +112,11 @@ protected:
 #endif
 
     /** Actualizar colisión cerca del jugador */
+    void UpdateFoliagePhase(float DeltaTime, const FVector& ViewerPos, float DistanceToSurface);
+    void UpdateCollisionPhase(const FVector& ViewerPos, const FVector& SurfacePos,
+        const FVector& N, const FRotator& Rotation, float DistanceToSurface);
+    void UpdateMeshPhase(const FVector& ViewerPos, const FVector& SurfacePos,
+        const FVector& N, const FRotator& Rotation, float DistanceToSurface);
     void UpdateCollisionNearPlayer(const FVector& SurfacePos, const FVector& SurfaceNormal, const FRotator& PatchRotation, const double DistanceToSurface);
     void UpdatePatchTransform(const FVector& SurfacePos, const FVector& N);
     void BuildDynamicMaterial();

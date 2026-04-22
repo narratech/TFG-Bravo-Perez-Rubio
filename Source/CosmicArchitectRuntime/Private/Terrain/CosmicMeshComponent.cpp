@@ -33,8 +33,12 @@ void UCosmicMeshComponent::BuildBasePlainMesh()
 
     BaseVertices.Empty(TotalVertices);
     BaseNormals.Empty(TotalVertices);
-    BaseTangents.Empty(TotalVertices);
+
+    TArray<FVector2D> UVs;
+    TArray<FProcMeshTangent> BaseTangents;
+
     UVs.Empty(TotalVertices);
+    BaseTangents.Empty(TotalVertices);
 
     TArray<int32> Triangles;
 
@@ -208,8 +212,12 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
 
     BaseVertices.Empty(TotalVertices);
     BaseNormals.Empty(TotalVertices);
-    BaseTangents.Empty(TotalVertices);
+    
+    TArray<FVector2D> UVs;
+    TArray<FProcMeshTangent> BaseTangents;
+
     UVs.Empty(TotalVertices);
+    BaseTangents.Empty(TotalVertices);
 
     TArray<int32> Triangles;
 
@@ -497,9 +505,9 @@ void UCosmicMeshComponent::BuildSphereMesh()
 
     BaseVertices.Empty();
     BaseNormals.Empty();
-    BaseTangents.Empty();
-    UVs.Empty();
-
+    
+    TArray<FVector2D> UVs;
+    TArray<FProcMeshTangent> BaseTangents;
     TArray<int32> Triangles;
 
     bIsSphereMesh = true;
@@ -655,7 +663,7 @@ void UCosmicMeshComponent::SetHoleQuadrant(EClipmapQuadrant NewQuadrant)
     // 2. Copias temporales para no machacar datos al reordenar
     TArray<FVector> OldV = BaseVertices;
     TArray<FVector> OldN = BaseNormals;
-    TArray<FProcMeshTangent> OldT = BaseTangents;
+    //TArray<FProcMeshTangent> OldT = BaseTangents;
 
     // 3. Rotamos la "Matriz"
     for (int32 y = 0; y < N; ++y)
@@ -689,7 +697,7 @@ void UCosmicMeshComponent::SetHoleQuadrant(EClipmapQuadrant NewQuadrant)
             // OJO AL DATO ABAJO CON LOS VECTORES
             BaseVertices[TargetIndex] = OldV[SourceIndex];
             BaseNormals[TargetIndex] = OldN[SourceIndex];
-            BaseTangents[TargetIndex] = OldT[SourceIndex];
+            //BaseTangents[TargetIndex] = OldT[SourceIndex];
         }
     }
 }
