@@ -100,7 +100,7 @@ protected:
     FVector AccumulatedDelta = FVector::ZeroVector;
     FIntPoint TotalShift = FIntPoint::ZeroValue;
 
-    EUpdatePhase CurrentPhase = EUpdatePhase::Foliage;
+    EUpdatePhase CurrentPhase = EUpdatePhase::Mesh;
 
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
