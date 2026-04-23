@@ -219,7 +219,8 @@ void ACosmicPlanet::UpdateOcean()
     if (OceanComponent)
     {
         OceanComponent->InitOcean(RadiusKm, Root);
-        OceanComponent->RegenerateOcean();
+        if (OceanComponent->bHasOcean) OceanComponent->RegenerateOcean();
+        else OceanComponent->ClearOcean();
     }
 }
 
@@ -292,14 +293,7 @@ void ACosmicPlanet::InitPlanet(
         OceanComponent->OceanResolution = InOceanResolution;
         OceanComponent->OceanMaterial = InOceanMaterial;
 
-        if (bInHasOcean)
-        {
-            UpdateOcean();
-        }
-        else 
-        {
-            OceanComponent->InitOcean(RadiusKm, Root);
-        }
+        UpdateOcean();
     }
 
     // Foliage 

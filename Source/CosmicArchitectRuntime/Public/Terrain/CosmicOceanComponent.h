@@ -22,6 +22,8 @@ public:
 
 	void RegenerateOcean();
 
+	void ClearOcean();
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean")
 	bool bHasOcean = true;
 
@@ -46,8 +48,6 @@ protected:
 	double PlanetRadiusCm;
 
 	bool bInit = false;
-
-	void ClearOcean();
 
 	void BuildDynamicMaterial();
 

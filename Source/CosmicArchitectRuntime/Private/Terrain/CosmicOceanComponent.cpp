@@ -123,7 +123,7 @@ void UCosmicOceanComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-    if (DynamicOceanMat)
+    if (bInit && DynamicOceanMat)
     {
         DynamicOceanMat->SetVectorParameterValue("PlanetCenter", GetOwner()->GetActorLocation());
     }
