@@ -8,7 +8,9 @@
 // [E: Delegado para notificar a Blueprints cuando se termina de generar un sector / I: Delegate to notify Blueprints when a sector generation finishes]
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAsteroidFieldGenerated);
 
-UCLASS(ClassGroup = (CosmicArchitect), meta = (BlueprintSpawnableComponent))
+UCLASS(ClassGroup = (CosmicArchitect), meta = (BlueprintSpawnableComponent),
+	HideCategories = (Rendering, Lighting, Navigation, Replication, Physics, Collision,
+		Activation, AssetUserData, HLOD, Cooking, Tags, ComponentReplication))
 class COSMICARCHITECTRUNTIME_API UCosmicRingComponent : public USceneComponent
 {
 	GENERATED_BODY()

@@ -27,9 +27,6 @@ public:
     // I: Called when a property is changed in the editor. Allows real-time updates.
     virtual void OnConstruction(const FTransform& Transform) override;
 
-    
-
-
     UPROPERTY(EditAnywhere, Category = "Materials")
     TArray<UTexture2D*> PosiblesTexturas;
 
@@ -37,7 +34,19 @@ public:
     UMaterialInstance* BaseMaterial;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+    UMaterialInstance* MoonMaterial;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+    UMaterialInstance* OceanMaterial;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UMaterialInstance* StarMaterial;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+    UMaterialInstance* GasGiantMaterial;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+    UMaterialInstance* RingMaterial;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Debug")
     float LineWidth = 100;
@@ -99,12 +108,24 @@ protected:
     virtual void Tick(float DeltaTime) override;
 #endif
 
-
-    void GenerateStar();
-
 private:
-    UCosmicNoiseClass* CreateRandomNoiseSettings(FRandomStream& Stream, const float PlanetRadius);
+    enum class EPlanetType { GasGiant, Telluric, AsteroidBelt };
 
+    struct FPlanetClassification
+    {
+        EPlanetType Type;
+        bool bHasOcean;
+        float OceanSeaLevel;
+        bool bHasRings;
+        bool bHasMoons;
+        int32 MaxMoons;
+    };
+
+    FPlanetClassification ClassifyPlanet(
+        float OrbitDistanceKm, float PlanetRadiusKm,
+        float SystemRadiusKm, FRandomStream& Stream) const;
+
+    UCosmicNoiseClass* CreateRandomNoiseSettings(FRandomStream& Stream, float PlanetRadius);
     FColor GetRandomColor(FRandomStream& Stream, int min, int max);
 
 public:

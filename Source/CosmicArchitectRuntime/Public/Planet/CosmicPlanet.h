@@ -11,6 +11,7 @@ class UCosmicNoiseClass;
 class UCosmicFoliageSpawner;
 class UCosmicCollisionComponent;
 class UCosmicOceanComponent;
+class UCosmicFoliageCollection;
 
 UCLASS(HideCategories = (
 	Replication, Input, Actor, LOD, Activation, Cooking, Networking,
@@ -62,7 +63,25 @@ public:
 	virtual void OnConstruction(const FTransform& Transform) override;
 #endif
 
-	void InitPlanet(float InRadiusKm, UCosmicNoiseClass* NewNoiseClass, FColor color1, FColor color2, FColor colorHeight, float scale, UMaterialInstance* BaseMaterial, UTexture2D* DefaultTexture);
+	void InitPlanet(
+		float InRadiusKm,
+		UCosmicNoiseClass* NewNoiseClass,
+		FColor color1, FColor color2, FColor colorHeight, float scale,
+		UMaterialInstance* BaseMaterial,
+		UTexture2D* DefaultTexture,
+		// Clipmap
+		int32 InBaseResolution = 128,
+		int32 InNumLevels = 4,
+		int32 InMinTriangleSize = 100,
+		float InHeightVisibility = 5.0f,
+		// Ocean
+		bool  bInHasOcean = true,
+		double InSeaLevelKm = 0.0,
+		int32 InOceanResolution = 128,
+		UMaterialInstance* InOceanMaterial = nullptr,
+		// Foliage
+		UCosmicFoliageCollection* InFoliageCollection = nullptr
+	);
 
 	void CleanupNoiseSettings();
 

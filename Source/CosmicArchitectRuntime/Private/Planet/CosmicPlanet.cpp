@@ -5,6 +5,7 @@
 #include "Terrain/CosmicCollisionComponent.h"
 #include "Terrain/CosmicClipmapComponent.h"
 #include "Terrain/CosmicOceanComponent.h"
+#include "CosmicFoliageCollection.h"
 #include "CosmicNoiseClass.h"
 #include "CosmicFoliageSpawner.h"
 #include "Components/StaticMeshComponent.h"
@@ -240,43 +241,81 @@ void ACosmicPlanet::OnConstruction(const FTransform& Transform)
 }
 #endif
 
-void ACosmicPlanet::InitPlanet(float InRadiusKm, UCosmicNoiseClass* NewNoiseClass, FColor color1, FColor color2, FColor colorHeight, float scale, UMaterialInstance* BaseMaterial, UTexture2D* DefaultTexture)
+void ACosmicPlanet::InitPlanet(
+    float InRadiusKm,
+    UCosmicNoiseClass* NewNoiseClass,
+    FColor color1, FColor color2, FColor colorHeight, float scale,
+    UMaterialInstance* BaseMaterial,
+    UTexture2D* DefaultTexture,
+    // Clipmap 
+    int32 InBaseResolution,
+    int32 InNumLevels,
+    int32 InMinTriangleSize,
+    float InHeightVisibility,
+    // Ocean 
+    bool bInHasOcean,
+    double InSeaLevelKm,
+    int32 InOceanResolution,
+    UMaterialInstance* InOceanMaterial,
+    // Foliage 
+    UCosmicFoliageCollection* InFoliageCollection
+)
 {
     RadiusKm = InRadiusKm;
 
-    // Limpiar NoiseSettings anterior si existe y es transitorio
-    if (NoiseClass && (!NoiseClass->IsAsset() || NoiseClass->GetOutermost()->HasAnyPackageFlags(PKG_DisallowExport)))
+    // Noise 
+    if (NoiseClass && (!NoiseClass->IsAsset() ||
+        NoiseClass->GetOutermost()->HasAnyPackageFlags(PKG_DisallowExport)))
     {
         NoiseClass->ConditionalBeginDestroy();
         NoiseClass = nullptr;
     }
-
-    // Determinar que NoiseSettings usar
     if (NewNoiseClass)
-    {
-        // Usar el que nos pasaron
         NoiseClass = NewNoiseClass;
-    }
-    else if (!NoiseClass)
+
+    // Clipmap 
+    if (ClipmapComponent)
     {
-        // Crear uno por defecto si no tenemos ninguno
-        //NoiseSettings = NewObject<UCosmicNoiseSettings>(this, TEXT("CustomNoiseSettings"));
-
-        //// Configurar valores por defecto
-        //UE_LOG(LogTemp, Log, TEXT("Created default NoiseSettings for planet"));
-    }
-
-    if (ClipmapComponent) {
         ClipmapComponent->BaseMaterial = BaseMaterial;
         ClipmapComponent->DefaultTexture = DefaultTexture;
+        ClipmapComponent->BaseResolution = InBaseResolution;
+        ClipmapComponent->NumLevels = InNumLevels;
+        ClipmapComponent->MinTriangleSize = InMinTriangleSize;
+        ClipmapComponent->HeightVisibility = InHeightVisibility;
     }
-    
+
+    // Ocean 
+    if (OceanComponent)
+    {
+        OceanComponent->bHasOcean = bInHasOcean;
+        OceanComponent->SeaLevelKm = InSeaLevelKm;
+        OceanComponent->OceanResolution = InOceanResolution;
+        OceanComponent->OceanMaterial = InOceanMaterial;
+
+        if (bInHasOcean)
+        {
+            UpdateOcean();
+        }
+        else 
+        {
+            OceanComponent->InitOcean(RadiusKm, Root);
+        }
+    }
+
+    // Foliage 
+    if (FoliageSpawnerComponent && InFoliageCollection)
+        FoliageSpawnerComponent->FoliageCollection = InFoliageCollection;
+
+    // Material colors 
     PlanetMainColor1 = color1;
     PlanetMainColor2 = color2;
     PlanetAltitudeColor = colorHeight;
     MaterialNoiseScale = scale;
 
     InitClipmap();
+    UpdateFoliage();
+    UpdateNoiseSettings();
+    UpdateMaterialOnly();
 }
 
 void ACosmicPlanet::CleanupNoiseSettings()
@@ -284,7 +323,7 @@ void ACosmicPlanet::CleanupNoiseSettings()
     if (NoiseClass && !NoiseClass->IsAsset())
     {
         // Marcar para garbage collection
-        UE_LOG(LogTemp, Warning, TEXT("Planet %s cleaning up NoiseSettings"), *GetName());
+        //UE_LOG(LogTemp, Warning, TEXT("Planet %s cleaning up NoiseSettings"), *GetName());
         NoiseClass->ConditionalBeginDestroy();
         NoiseClass = nullptr;
     }

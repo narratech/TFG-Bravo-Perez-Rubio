@@ -7,6 +7,7 @@
 #include "GameFramework/Actor.h"
 #include "CosmicDefaultNoiseSettings.h"
 #include "Planet/CosmicPlanet.h"
+#include "Planet/CosmicRingComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Simulation/CosmicOrbitComponent.h"
 #include "Simulation/CosmicGravityComponent.h"
@@ -18,8 +19,9 @@ ACosmicSystemGenerator::ACosmicSystemGenerator()
     // E: Desactivamos el Tick porque no necesitamos actualizaciones por frame.
     // I: Disable Tick as we don't need per-frame updates.
 
-#if WITH_EDITOR
     PrimaryActorTick.bCanEverTick = true;
+#if !WITH_EDITOR
+    PrimaryActorTick.bStartWithTickEnabled = false;
 #endif
 
     Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
@@ -73,12 +75,64 @@ void ACosmicSystemGenerator::Tick(float DeltaTime)
 }
 #endif
 
-void ACosmicSystemGenerator::GenerateStar()
+ACosmicSystemGenerator::FPlanetClassification ACosmicSystemGenerator::ClassifyPlanet(
+    float OrbitDistanceKm, float PlanetRadiusKm,
+    float SystemRadiusKm, FRandomStream& Stream) const
 {
-    
+    FPlanetClassification Result;
+
+    // Ratio radio/distancia: planetas grandes cerca = gigantes gaseosos
+    const float SizeRatio = PlanetRadiusKm / OrbitDistanceKm;
+
+    // Zona habitable: entre 25% y 65% del radio del sistema
+    const float OrbitalFraction = OrbitDistanceKm / SystemRadiusKm;
+    const bool bInHabitableZone = OrbitalFraction >= 0.25f && OrbitalFraction <= 0.65f;
+
+    // Zona de transición (cinturón de asteroides): 55%-70%
+    const bool bInBeltZone = OrbitalFraction >= 0.55f && OrbitalFraction <= 0.70f;
+
+    if (SizeRatio > 0.04f)
+    {
+        // GAS GIANT 
+        Result.Type = EPlanetType::GasGiant;
+        Result.bHasOcean = false;
+        Result.bHasRings = Stream.FRandRange(0.f, 1.f) > 0.35f; // 65% de tener anillos
+        Result.bHasMoons = true;
+        Result.MaxMoons = Stream.RandRange(1, 6);
+    }
+    else if (bInBeltZone && Stream.FRandRange(0.f, 1.f) > 0.6f)
+    {
+        // CINTURÓN DE ASTEROIDES 
+        Result.Type = EPlanetType::AsteroidBelt;
+        Result.bHasOcean = false;
+        Result.bHasRings = false;
+        Result.bHasMoons = false;
+        Result.MaxMoons = 0;
+    }
+    else
+    {
+        // PLANETA ROCOSO - TELÚRICO 
+        Result.Type = EPlanetType::Telluric;
+        Result.bHasRings = false;
+        Result.bHasMoons = true;
+        Result.MaxMoons = Stream.RandRange(0, 3);
+
+        // Océano solo en zona habitable, con 70% de probabilidad
+        if (bInHabitableZone && Stream.FRandRange(0.f, 1.f) > 0.3f)
+        {
+            Result.bHasOcean = true;
+            Result.OceanSeaLevel = Stream.FRandRange(-0.005f, 0.01f) * PlanetRadiusKm;
+        }
+        else
+        {
+            Result.bHasOcean = false;
+        }
+    }
+
+    return Result;
 }
 
-UCosmicNoiseClass* ACosmicSystemGenerator::CreateRandomNoiseSettings(FRandomStream& Stream, const float PlanetRadius)
+UCosmicNoiseClass* ACosmicSystemGenerator::CreateRandomNoiseSettings(FRandomStream& Stream, float PlanetRadius)
 {
     UCosmicDefaultNoiseSettings* NewSettings = NewObject<UCosmicDefaultNoiseSettings>(GetTransientPackage(),NAME_None, RF_Transient);
 
@@ -151,38 +205,38 @@ FColor ACosmicSystemGenerator::GetRandomColor(FRandomStream& Stream, int min, in
 void ACosmicSystemGenerator::GenerateBodies()
 {
     ClearBodies();
-
-    if (!GetWorld())
-        return;
+    if (!GetWorld()) return;
 
     FRandomStream Stream(Seed);
-
     FActorSpawnParameters SpawnParams;
     SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
     const float SystemRadiusKm = VolumeSizeKm.X * 0.5f;
 
-    //Estrella
+    // ESTRELLA 
 
     ACosmicPlanet* Star = GetWorld()->SpawnActor<ACosmicPlanet>(
         ACosmicPlanet::StaticClass(),
-        GetActorLocation(),
-        FRotator::ZeroRotator,
-        SpawnParams
-    );
+        GetActorLocation(), FRotator::ZeroRotator, SpawnParams);
 
-    if (!Star)
-        return;
+    if (!Star) return;
 
-    float StarRadiusKm = SystemRadiusKm * 0.15f;
+    const float StarRadiusKm = SystemRadiusKm * 0.15f;
 
-    Star->InitPlanet(StarRadiusKm, nullptr,
-        GetRandomColor(Stream, 50, 255),
-        GetRandomColor(Stream, 50, 255),
-        GetRandomColor(Stream, 50, 255),
+    Star->InitPlanet(
+        StarRadiusKm, nullptr,
+        GetRandomColor(Stream, 180, 255),
+        GetRandomColor(Stream, 100, 220),
+        GetRandomColor(Stream, 50, 180),
         Stream.FRandRange(0.5f, 2.f),
-        StarMaterial,
-        nullptr);
+        StarMaterial, nullptr,
+        // Clipmap (estrella no necesita mucho detalle)
+        64, 3, 200, 5.f,
+        // Sin océano
+        false, 0.0, 64, nullptr,
+        // Sin follaje
+        nullptr
+    );
 
     Star->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
 
@@ -193,180 +247,190 @@ void ACosmicSystemGenerator::GenerateBodies()
     StarGravity->SurfaceGravity = 274.0f;
     StarGravity->GravityMode = ECosmicGravityMode::None;
     Star->AddInstanceComponent(StarGravity);
-    
     GeneratedBodies.Add(Star);
 
-    //Crear luz para la estrella
+    // Luz direccional
     ADirectionalLight* NuevaLuz = GetWorld()->SpawnActor<ADirectionalLight>(
         ADirectionalLight::StaticClass(),
-        Star->GetActorLocation(),
-        Star->GetActorRotation(),
-        SpawnParams
-    );
+        Star->GetActorLocation(), Star->GetActorRotation(), SpawnParams);
     NuevaLuz->AttachToActor(Star, FAttachmentTransformRules::KeepWorldTransform);
-    ULightComponent* LightComp = NuevaLuz->GetLightComponent();
-    UDirectionalLightComponent* DirectionalLightComp = Cast<UDirectionalLightComponent>(LightComp);
-    DirectionalLightComp->AtmosphereSunLightIndex = 0; // Importante para el cielo
-    DirectionalLightComp->Intensity = 50.0f;
-
+    if (UDirectionalLightComponent* DL = Cast<UDirectionalLightComponent>(NuevaLuz->GetLightComponent()))
+    {
+        DL->AtmosphereSunLightIndex = 0;
+        DL->Intensity = 50.f;
+    }
     GeneratedBodies.Add(NuevaLuz);
 
-    FColor color;
-
-    //Crear planetas
+    // PLANETAS 
 
     for (int32 i = 0; i < NumberOfBodies; i++)
     {
+        const float OrbitDistanceKm = Stream.FRandRange(StarRadiusKm * 3.f, SystemRadiusKm);
+        const float PlanetRadiusKm = OrbitDistanceKm * Stream.FRandRange(0.01f, 0.06f);
+
+        FPlanetClassification Class = ClassifyPlanet(
+            OrbitDistanceKm, PlanetRadiusKm, SystemRadiusKm, Stream);
+
+        // Cinturón de asteroides: solo un CosmicRingComponent sobre la estrella
+        if (Class.Type == EPlanetType::AsteroidBelt)
+        {
+            UCosmicRingComponent* Belt = NewObject<UCosmicRingComponent>(Star);
+            Belt->RegisterComponent();
+            Belt->AttachToComponent(
+                Star->GetRootComponent(),
+                FAttachmentTransformRules::KeepRelativeTransform);
+
+            Belt->InnerRadiusKM = OrbitDistanceKm * 0.9f;
+            Belt->OuterRadiusKM = OrbitDistanceKm * 1.1f;
+            Belt->BandFrequency = Stream.FRandRange(30.f, 80.f);
+            Belt->RingColor = FLinearColor(
+                Stream.FRandRange(0.3f, 0.7f),
+                Stream.FRandRange(0.2f, 0.5f),
+                Stream.FRandRange(0.1f, 0.3f), 1.f);
+            Belt->MacroRingMaterial = RingMaterial;
+
+            Star->AddInstanceComponent(Belt);
+            continue; // No spawn planeta
+        }
+
+        // Spawn planeta (rocoso o gigante gaseoso)
+
         ACosmicPlanet* Planet = GetWorld()->SpawnActor<ACosmicPlanet>(
             ACosmicPlanet::StaticClass(),
-            GetActorLocation(), // posición irrelevante
-            FRotator::ZeroRotator,
-            SpawnParams
-        );
+            GetActorLocation(), FRotator::ZeroRotator, SpawnParams);
 
-        if (!Planet)
-            continue;
-
+        if (!Planet) continue;
         Planet->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
 
-        // Distancia orbital
-        float OrbitDistanceKm = Stream.FRandRange(StarRadiusKm * 3.0f, SystemRadiusKm);
-
-        // Radio proporcional a distancia
-        float PlanetRadiusKm = OrbitDistanceKm * Stream.FRandRange(0.01f, 0.05f);
-
         UTexture2D* TexturaElegida = nullptr;
+        if (PosiblesTexturas.Num() > 0)
+            TexturaElegida = PosiblesTexturas[Stream.RandRange(0, PosiblesTexturas.Num() - 1)];
 
-        if (PosiblesTexturas.Num() > 0) {
-            int32 RandomIndex = FMath::RandRange(0, PosiblesTexturas.Num() - 1);
+        // Material según tipo
+        UMaterialInstance* PlanetMat =
+            (Class.Type == EPlanetType::GasGiant) ? GasGiantMaterial : BaseMaterial;
 
-            TexturaElegida = PosiblesTexturas[RandomIndex];
-        }
-        
+        // Resolución según tamaño
+        const int32 ClipRes = (Class.Type == EPlanetType::GasGiant) ? 64 : 128;
+        const int32 OceanRes = Class.bHasOcean ? 128 : 64;
 
-        Planet->InitPlanet(PlanetRadiusKm, CreateRandomNoiseSettings(Stream, PlanetRadiusKm),
+        Planet->InitPlanet(
+            PlanetRadiusKm,
+            (Class.Type == EPlanetType::GasGiant) ? nullptr : CreateRandomNoiseSettings(Stream, PlanetRadiusKm),
             GetRandomColor(Stream, 50, 255),
             GetRandomColor(Stream, 50, 255),
             GetRandomColor(Stream, 50, 255),
             Stream.FRandRange(0.5f, 2.f),
-            BaseMaterial,
-            TexturaElegida
+            PlanetMat,
+            TexturaElegida,
+            // Clipmap
+            ClipRes, 4, 100, 5.f,
+            // Océano
+            Class.bHasOcean,
+            Class.OceanSeaLevel,
+            OceanRes,
+            Class.bHasOcean ? OceanMaterial : nullptr,
+            // Follaje (null por ahora, añadir colección si se desea)
+            nullptr
         );
 
-        
-
-        /* Gravity */
-
+        // Gravedad
         UCosmicGravityComponent* Gravity = NewObject<UCosmicGravityComponent>(Planet);
         Gravity->RegisterComponent();
-        Gravity->SetIsPlanet(true);
+        Gravity->IsPlanet = true;
         Gravity->RadiusKm = PlanetRadiusKm;
-        Gravity->SurfaceGravity = Stream.FRandRange(3.0f, 25.0f);
+        Gravity->SurfaceGravity = Stream.FRandRange(3.f, 25.f);
         Gravity->GravityMode = ECosmicGravityMode::None;
-
         Planet->AddInstanceComponent(Gravity);
 
-        /* Orbit */
-
+        // Órbita
         UCosmicOrbitComponent* Orbit = NewObject<UCosmicOrbitComponent>(Planet);
         Orbit->RegisterComponent();
-
         Orbit->ParentBody = Star;
         Orbit->SemiMajorAxisKm = OrbitDistanceKm;
-        Orbit->Eccentricity = Stream.FRandRange(0.0f, 0.15f);
-        Orbit->InclinationX = Stream.FRandRange(0.0f, 10.0f);
-        Orbit->InitialPosition = Stream.FRandRange(0.0f, 1.0f);
-
-        /*UE_LOG(LogTemp, Warning,
-            TEXT("OrbitDistance: %f"),
-            OrbitDistanceKm);*/
-
-        // Aproximación simplificada Kepler
-        Orbit->OrbitalPeriod = FMath::Pow(OrbitDistanceKm, 3);
-
-        float Hue = Stream.FRandRange(0.f, 360.f);
-        float Saturation = 0.8f;
-        float Value = 1.0f;
-
-        color = FColor(
-            Stream.RandRange(50, 255),  // R
-            Stream.RandRange(50, 255),  // G
-            Stream.RandRange(50, 255),  // B
-            255
-        );
-
-        Orbit->InitOrbit(color);
-
+        Orbit->Eccentricity = Stream.FRandRange(0.f, 0.15f);
+        Orbit->InclinationX = Stream.FRandRange(0.f, 10.f);
+        Orbit->InitialPosition = Stream.FRandRange(0.f, 1.f);
+        Orbit->OrbitalPeriod = FMath::Pow(OrbitDistanceKm, 3.f);
+        Orbit->InitOrbit(GetRandomColor(Stream, 50, 255));
         Planet->AddInstanceComponent(Orbit);
+
+        // Anillos en gigantes gaseosos 
+        if (Class.bHasRings && RingMaterial)
+        {
+            UCosmicRingComponent* Ring = NewObject<UCosmicRingComponent>(Planet);
+            Ring->RegisterComponent();
+            Ring->AttachToComponent(
+                Planet->GetRootComponent(),
+                FAttachmentTransformRules::KeepRelativeTransform);
+
+            Ring->InnerRadiusKM = PlanetRadiusKm * 1.4f;
+            Ring->OuterRadiusKM = PlanetRadiusKm * 2.8f;
+            Ring->InnerRadiusUV = 0.2;
+            Ring->OuterRadiusUV = 0.45;
+            Ring->BandFrequency = Stream.FRandRange(20.f, 60.f);
+            Ring->RingRotation = FRotator(Stream.FRandRange(-15.f, 15.f), 0.f, 0.f);
+            Ring->RingColor = FLinearColor(
+                Stream.FRandRange(0.4f, 0.9f),
+                Stream.FRandRange(0.3f, 0.8f),
+                Stream.FRandRange(0.1f, 0.5f), 1.f);
+            Ring->MacroRingMaterial = RingMaterial;
+            Planet->AddInstanceComponent(Ring);
+        }
 
         GeneratedBodies.Add(Planet);
 
-        //Generar lunas
+        // Lunas (solo planetas rocosos, no gigantes)
+        if (!Class.bHasMoons) continue;
 
-        int32 MoonCount = Stream.RandRange(0, 4);
+        const int32 MoonCount = Stream.RandRange(0, Class.MaxMoons);
 
         for (int32 m = 0; m < MoonCount; m++)
         {
             ACosmicPlanet* Moon = GetWorld()->SpawnActor<ACosmicPlanet>(
                 ACosmicPlanet::StaticClass(),
-                Planet->GetActorLocation(),
-                FRotator::ZeroRotator,
-                SpawnParams
-            );
+                Planet->GetActorLocation(), FRotator::ZeroRotator, SpawnParams);
 
-            if (!Moon)
-                continue;
-
+            if (!Moon) continue;
             Moon->AttachToActor(Planet, FAttachmentTransformRules::KeepWorldTransform);
 
-            float MoonOrbitKm = PlanetRadiusKm * Stream.FRandRange(10.0f, 15.0f);
+            const float MoonOrbitKm = PlanetRadiusKm * Stream.FRandRange(10.f, 15.f);
+            const float MoonRadiusKm = PlanetRadiusKm * Stream.FRandRange(0.1f, 0.3f);
 
-            float MoonRadiusKm = PlanetRadiusKm * Stream.FRandRange(0.1f, 0.3f);
-
-            Moon->InitPlanet(MoonRadiusKm, CreateRandomNoiseSettings(Stream, MoonRadiusKm),
-                GetRandomColor(Stream, 50, 255),
-                GetRandomColor(Stream, 50, 255),
-                GetRandomColor(Stream, 50, 255),
+            // Las lunas nunca tienen océano
+            Moon->InitPlanet(
+                MoonRadiusKm,
+                CreateRandomNoiseSettings(Stream, MoonRadiusKm),
+                GetRandomColor(Stream, 50, 200),
+                GetRandomColor(Stream, 50, 200),
+                GetRandomColor(Stream, 50, 200),
                 Stream.FRandRange(0.5f, 2.f),
-                BaseMaterial,
+                MoonMaterial, nullptr,
+                64, 3, 150, 4.f,
+                false, 0.0, 64, nullptr,
                 nullptr
             );
 
             UCosmicGravityComponent* MoonGravity = NewObject<UCosmicGravityComponent>(Moon);
-
             MoonGravity->RegisterComponent();
             MoonGravity->SetIsPlanet(true);
             MoonGravity->RadiusKm = MoonRadiusKm;
-            MoonGravity->SurfaceGravity =
-                Stream.FRandRange(1.0f, 5.0f);
-
+            MoonGravity->SurfaceGravity = Stream.FRandRange(1.f, 5.f);
             Moon->AddInstanceComponent(MoonGravity);
 
             UCosmicOrbitComponent* MoonOrbit = NewObject<UCosmicOrbitComponent>(Moon);
-
             MoonOrbit->RegisterComponent();
             MoonOrbit->ParentBody = Planet;
             MoonOrbit->SemiMajorAxisKm = MoonOrbitKm;
-            MoonOrbit->Eccentricity = Stream.FRandRange(0.0f, 0.1f);
-            MoonOrbit->InitialPosition = Stream.FRandRange(0.0f, 1.0f);
-
-            MoonOrbit->OrbitalPeriod = FMath::Pow(MoonOrbitKm, 8);
-
-            color = FColor(
-                Stream.RandRange(50, 255),  // R
-                Stream.RandRange(50, 255),  // G
-                Stream.RandRange(50, 255),  // B
-                255
-            );
-
-            MoonOrbit->InitOrbit(color);
-
+            MoonOrbit->Eccentricity = Stream.FRandRange(0.f, 0.1f);
+            MoonOrbit->InitialPosition = Stream.FRandRange(0.f, 1.f);
+            MoonOrbit->OrbitalPeriod = FMath::Pow(MoonOrbitKm, 8.f);
+            MoonOrbit->InitOrbit(GetRandomColor(Stream, 50, 255));
             Moon->AddInstanceComponent(MoonOrbit);
 
             GeneratedBodies.Add(Moon);
         }
     }
-
     /*UE_LOG(LogTemp, Display,
         TEXT("System Generation Complete. Bodies: %d"),
         GeneratedBodies.Num());*/
