@@ -18,9 +18,8 @@ ACosmicSystemGenerator::ACosmicSystemGenerator()
     // I: Disable Tick as we don't need per-frame updates.
     PrimaryActorTick.bCanEverTick = false;
 
-    GenerationVolume = CreateDefaultSubobject<UBoxComponent>(TEXT("GenerationVolume"));
-    RootComponent = GenerationVolume;
-    GenerationVolume->SetLineThickness(20.0f);
+    Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+    RootComponent = Root;
 
     // E: Inicialización de variables por defecto.
     // I: Default variable initialization.
@@ -44,12 +43,7 @@ void ACosmicSystemGenerator::OnConstruction(const FTransform& Transform)
 
     // E: Actualizamos el tamaño visual de la caja cuando cambiamos el valor en el editor.
     // I: Update the visual box size when changing the value in the editor.
-    if (GenerationVolume)
-    {
-        // E: Convertimos Km a Unidades de Unreal (cm). 1 Km = 100,000 cm.
-        // I: Convert Km to Unreal Units (cm). 1 Km = 100,000 cm.
-        GenerationVolume->SetBoxExtent(VolumeSizeKm * 100000.0f);
-    }
+    
 }
 
 void ACosmicSystemGenerator::GenerateStar()

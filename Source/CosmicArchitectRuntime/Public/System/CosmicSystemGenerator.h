@@ -38,11 +38,9 @@ public:
     UMaterialInstance* StarMaterial;
 
 protected:
-    // E: Componente visual para definir el área de generación.
-    // I: Visual component to define the generation area.
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visualization")
-    UBoxComponent* GenerationVolume;
 
+    UPROPERTY(VisibleDefaultsOnly, Category = "Root", BlueprintReadOnly)
+    USceneComponent* Root;
 
     // --- CONFIGURATION ---
 
