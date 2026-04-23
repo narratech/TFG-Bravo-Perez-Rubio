@@ -142,7 +142,7 @@ UCosmicNoiseClass* ACosmicSystemGenerator::CreateRandomNoiseSettings(FRandomStre
     Layer.NoiseType = static_cast<ECosmicNoiseType>(Stream.RandRange(0, 3));
 
     // Tipo fractal
-    Layer.FractalType = static_cast<ECosmicFractalType>(Stream.RandRange(1, 4));
+    Layer.FractalType = static_cast<ECosmicFractalType>(Stream.RandRange(1, 3));
 
     // Frecuencia: inversamente proporcional al tamaño
     Layer.Frequency = Stream.FRandRange(0.08f, 0.2f) * PlanetRadius;
@@ -402,7 +402,7 @@ void ACosmicSystemGenerator::GenerateBodies()
                 GetRandomColor(Stream, 50, 200),
                 Stream.FRandRange(0.5f, 2.f),
                 MoonMaterial, nullptr,
-                64, 3, 150, 4.f,
+                128, 4, 150, 3.f,
                 false, 0.0, 64, nullptr,
                 nullptr
             );
