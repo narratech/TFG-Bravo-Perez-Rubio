@@ -7,6 +7,7 @@
 #include "GameFramework/Actor.h"
 #include "CosmicDefaultNoiseSettings.h"
 #include "Planet/CosmicPlanet.h"
+#include "DrawDebugHelpers.h"
 #include "Simulation/CosmicOrbitComponent.h"
 #include "Simulation/CosmicGravityComponent.h"
 #include "Components/DirectionalLightComponent.h"
@@ -16,7 +17,10 @@ ACosmicSystemGenerator::ACosmicSystemGenerator()
 {
     // E: Desactivamos el Tick porque no necesitamos actualizaciones por frame.
     // I: Disable Tick as we don't need per-frame updates.
-    PrimaryActorTick.bCanEverTick = false;
+
+#if WITH_EDITOR
+    PrimaryActorTick.bCanEverTick = true;
+#endif
 
     Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
     RootComponent = Root;
@@ -45,6 +49,29 @@ void ACosmicSystemGenerator::OnConstruction(const FTransform& Transform)
     // I: Update the visual box size when changing the value in the editor.
     
 }
+
+#if WITH_EDITOR
+void ACosmicSystemGenerator::Tick(float DeltaTime)
+{
+    Super::Tick(DeltaTime);
+
+    UWorld* World = GetWorld();
+    if (!World) return;
+
+    const FVector Center = GetActorLocation();
+    
+    DrawDebugBox(
+        World,
+        Center,
+        (VolumeSizeKm * 100000) * 0.5f,
+        BoxColor,
+        false,
+        DeltaTime * 2,
+        0,
+        LineWidth
+    );
+}
+#endif
 
 void ACosmicSystemGenerator::GenerateStar()
 {
@@ -250,9 +277,9 @@ void ACosmicSystemGenerator::GenerateBodies()
         Orbit->InclinationX = Stream.FRandRange(0.0f, 10.0f);
         Orbit->InitialPosition = Stream.FRandRange(0.0f, 1.0f);
 
-        UE_LOG(LogTemp, Warning,
+        /*UE_LOG(LogTemp, Warning,
             TEXT("OrbitDistance: %f"),
-            OrbitDistanceKm);
+            OrbitDistanceKm);*/
 
         // Aproximación simplificada Kepler
         Orbit->OrbitalPeriod = FMath::Pow(OrbitDistanceKm, 3);
@@ -340,9 +367,9 @@ void ACosmicSystemGenerator::GenerateBodies()
         }
     }
 
-    UE_LOG(LogTemp, Display,
+    /*UE_LOG(LogTemp, Display,
         TEXT("System Generation Complete. Bodies: %d"),
-        GeneratedBodies.Num());
+        GeneratedBodies.Num());*/
 }
 
 void ACosmicSystemGenerator::GenerateWithRandomSeed()

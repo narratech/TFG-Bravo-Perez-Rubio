@@ -27,6 +27,8 @@ public:
     // I: Called when a property is changed in the editor. Allows real-time updates.
     virtual void OnConstruction(const FTransform& Transform) override;
 
+    
+
 
     UPROPERTY(EditAnywhere, Category = "Materials")
     TArray<UTexture2D*> PosiblesTexturas;
@@ -36,6 +38,12 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UMaterialInstance* StarMaterial;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Debug")
+    float LineWidth = 100;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Debug")
+    FColor BoxColor = FColor::Blue;
 
 protected:
 
@@ -86,6 +94,10 @@ protected:
     UPROPERTY()
     TArray<AActor*> GeneratedBodies;
 
+#if WITH_EDITOR
+    virtual bool ShouldTickIfViewportsOnly() const override { return true; }
+    virtual void Tick(float DeltaTime) override;
+#endif
 
 
     void GenerateStar();
