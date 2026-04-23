@@ -286,7 +286,10 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
     //Calcular numero de celdas que hay que desplazar 
     FIntPoint Shift = ComputeGridShiftSpherical(ViewerPos, SurfacePos, BaseGridSpacing * BaseResolution / 4); 
     
-    /*if (Shift != FIntPoint::ZeroValue) { UE_LOG(LogTemp, Warning, TEXT("Shift: %s"), *Shift.ToString()); }*/ 
+    /*if (Shift != FIntPoint::ZeroValue) 
+    { 
+        UE_LOG(LogTemp, Warning, TEXT("Shift: %s"), *Shift.ToString()); 
+    } */
     
     TotalShift += Shift; 
     
@@ -763,7 +766,7 @@ FIntPoint UCosmicClipmapComponent::ComputeGridShiftSpherical(const FVector& Play
     }
 
     // Obtener ángulos esféricos (longitud y latitud) de ambas posiciones
-    FVector2D CurrentAngles = GetSurfaceAngles(CurrentSurfacePos);
+    FVector2D CurrentAngles = GetSurfaceAngles(CurrentSurfacePos - CurrentActorPosition);
     FVector2D PreviousAngles = LastSurfaceAngles;
 
     // Calcular el desplazamiento angular (en radianes)

@@ -23,10 +23,6 @@ public:
     // I: Default constructor.
     ACosmicSystemGenerator();
 
-    // E: Se llama cuando una propiedad cambia en el editor. Permite ver cambios en tiempo real.
-    // I: Called when a property is changed in the editor. Allows real-time updates.
-    virtual void OnConstruction(const FTransform& Transform) override;
-
     UPROPERTY(EditAnywhere, Category = "Materials")
     TArray<UTexture2D*> PosiblesTexturas;
 

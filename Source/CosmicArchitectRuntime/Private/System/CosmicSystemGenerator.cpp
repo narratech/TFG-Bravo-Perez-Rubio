@@ -43,15 +43,6 @@ ACosmicSystemGenerator::ACosmicSystemGenerator()
 
 }
 
-void ACosmicSystemGenerator::OnConstruction(const FTransform& Transform)
-{
-    Super::OnConstruction(Transform); // O usa AActor::OnConstruction(Transform) si tienes problemas con macros
-
-    // E: Actualizamos el tamaño visual de la caja cuando cambiamos el valor en el editor.
-    // I: Update the visual box size when changing the value in the editor.
-    
-}
-
 #if WITH_EDITOR
 void ACosmicSystemGenerator::Tick(float DeltaTime)
 {
@@ -151,7 +142,7 @@ UCosmicNoiseClass* ACosmicSystemGenerator::CreateRandomNoiseSettings(FRandomStre
     Layer.NoiseType = static_cast<ECosmicNoiseType>(Stream.RandRange(0, 3));
 
     // Tipo fractal
-    Layer.FractalType = static_cast<ECosmicFractalType>(Stream.RandRange(0, 3));
+    Layer.FractalType = static_cast<ECosmicFractalType>(Stream.RandRange(1, 4));
 
     // Frecuencia: inversamente proporcional al tamaño
     Layer.Frequency = Stream.FRandRange(0.08f, 0.2f) * PlanetRadius;
