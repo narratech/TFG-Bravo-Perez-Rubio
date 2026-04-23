@@ -2,7 +2,6 @@
 
 
 #include "Terrain/CosmicMeshComponent.h"
-#include "CosmicNoiseSettings.h"
 #include "ICosmicNoiseStrategy.h"
 
 

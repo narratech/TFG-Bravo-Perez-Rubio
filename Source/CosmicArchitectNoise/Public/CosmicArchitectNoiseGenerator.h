@@ -5,8 +5,6 @@
 #include "ThirdParty/FastNoiseLite.h"
 #include "ICosmicNoiseStrategy.h"
 #include "CosmicNoiseTypes.h"
-#include "CosmicNoiseSettings.h"
-#include "CosmicNoiseEvaluator.h"
 
 class FCosmicArchitectNoiseGenerator: public FNonAbandonableTask {
 public:

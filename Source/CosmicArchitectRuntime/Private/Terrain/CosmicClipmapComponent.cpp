@@ -5,7 +5,6 @@
 #include "GameFramework/PlayerController.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/StaticMeshComponent.h"
-#include "CosmicNoiseSettings.h"
 #include "Kismet/GameplayStatics.h"
 #include "Terrain/CosmicMeshComponent.h"
 #include "Terrain/CosmicCollisionComponent.h"
