@@ -58,7 +58,7 @@ void ACosmicSystemGenerator::Tick(float DeltaTime)
     Super::Tick(DeltaTime);
 
     UWorld* World = GetWorld();
-    if (!World) return;
+    if (!World || World->WorldType != EWorldType::Editor) return;
 
     const FVector Center = GetActorLocation();
     
@@ -154,10 +154,10 @@ UCosmicNoiseClass* ACosmicSystemGenerator::CreateRandomNoiseSettings(FRandomStre
     Layer.FractalType = static_cast<ECosmicFractalType>(Stream.RandRange(0, 3));
 
     // Frecuencia: inversamente proporcional al tamaño
-    Layer.Frequency = Stream.FRandRange(0.5f, 2.5f) * PlanetRadius;
+    Layer.Frequency = Stream.FRandRange(0.08f, 0.2f) * PlanetRadius;
 
     // Octavas
-    Layer.Octaves = Stream.RandRange(3, 6);
+    Layer.Octaves = Stream.RandRange(6, 8);
 
     // Lacunarity 
     Layer.Lacunarity = Stream.FRandRange(1.8f, 2.5f);
@@ -166,7 +166,7 @@ UCosmicNoiseClass* ACosmicSystemGenerator::CreateRandomNoiseSettings(FRandomStre
     Layer.Persistence = Stream.FRandRange(0.4f, 0.7f);
 
     // Amplitud: proporcional al radio del planeta
-    Layer.Amplitude = PlanetRadius * 100000 * Stream.FRandRange(0.02f, 0.15f);
+    Layer.Amplitude = PlanetRadius * 100000 * Stream.FRandRange(0.03f, 0.06f);
 
     // BIOMA / CLIMA
     FCosmicNoiseBiomeParameters& Biome = NewSettings->BiomeParameters;
@@ -231,7 +231,7 @@ void ACosmicSystemGenerator::GenerateBodies()
         Stream.FRandRange(0.5f, 2.f),
         StarMaterial, nullptr,
         // Clipmap (estrella no necesita mucho detalle)
-        64, 3, 200, 5.f,
+        128, 1, 200, 0.0f,
         // Sin océano
         false, 0.0, 64, nullptr,
         // Sin follaje
@@ -242,7 +242,7 @@ void ACosmicSystemGenerator::GenerateBodies()
 
     UCosmicGravityComponent* StarGravity = NewObject<UCosmicGravityComponent>(Star);
     StarGravity->RegisterComponent();
-    StarGravity->SetIsPlanet(true);
+    StarGravity->IsPlanet = true;
     StarGravity->RadiusKm = StarRadiusKm;
     StarGravity->SurfaceGravity = 274.0f;
     StarGravity->GravityMode = ECosmicGravityMode::None;
@@ -314,9 +314,11 @@ void ACosmicSystemGenerator::GenerateBodies()
         const int32 ClipRes = (Class.Type == EPlanetType::GasGiant) ? 64 : 128;
         const int32 OceanRes = Class.bHasOcean ? 128 : 64;
 
+        bool IsGasGiant = (Class.Type == EPlanetType::GasGiant);
+
         Planet->InitPlanet(
             PlanetRadiusKm,
-            (Class.Type == EPlanetType::GasGiant) ? nullptr : CreateRandomNoiseSettings(Stream, PlanetRadiusKm),
+            IsGasGiant ? nullptr : CreateRandomNoiseSettings(Stream, PlanetRadiusKm),
             GetRandomColor(Stream, 50, 255),
             GetRandomColor(Stream, 50, 255),
             GetRandomColor(Stream, 50, 255),
@@ -324,7 +326,10 @@ void ACosmicSystemGenerator::GenerateBodies()
             PlanetMat,
             TexturaElegida,
             // Clipmap
-            ClipRes, 4, 100, 5.f,
+            ClipRes,
+            IsGasGiant ? 1 : 6,
+            32, 
+            IsGasGiant ? 0.0 : 3.f,
             // Océano
             Class.bHasOcean,
             Class.OceanSeaLevel,
