@@ -80,8 +80,6 @@ void FFoliageGenerationTask::GenerateSeedPoints(FRandomStream& Random)
 
 void FFoliageGenerationTask::EvaluateEnvironmentalConditions(FRandomStream& Random)
 {
-    uint32 i = 0;
-
     for (FSeedPoint& Point : SeedPoints)
     {
         FLinearColor BiomeData;
@@ -89,48 +87,11 @@ void FFoliageGenerationTask::EvaluateEnvironmentalConditions(FRandomStream& Rand
 
         Point.Temperature = BiomeData.G;
         Point.Humidity = BiomeData.B;
-        Point.Slope = CalculateSlope(Point.Direction, i);
         Point.WorldPosition = Point.Direction * (PlanetRadius + Point.Height);
-        i++;
+
+        // Una sola llamada para pendiente y normal
+        CalculateSlopeAndNormal(Point.Direction, Point.Slope, Point.CachedNormal);
     }
-}
-
-
-float FFoliageGenerationTask::CalculateSlope(
-    const FVector& Direction,
-    int32 PointIndex)
-{
-    const float SampleDistance = 500.0f;
-
-    FVector Tangent1, Tangent2;
-    Direction.FindBestAxisVectors(Tangent1, Tangent2);
-
-    FVector SampleDirs[4] = {
-        (Direction + Tangent1 * (SampleDistance / PlanetRadius)).GetSafeNormal(),
-        (Direction - Tangent1 * (SampleDistance / PlanetRadius)).GetSafeNormal(),
-        (Direction + Tangent2 * (SampleDistance / PlanetRadius)).GetSafeNormal(),
-        (Direction - Tangent2 * (SampleDistance / PlanetRadius)).GetSafeNormal()
-    };
-
-    float CenterHeight = 0.0f;
-    FLinearColor Dummy;
-
-    NoiseGenerationStrategy->EvaluatePoint(Direction, CenterHeight, Dummy);
-
-    float MaxSlope = 0.0f;
-
-    for (int32 i = 0; i < 4; i++)
-    {
-        float SampleHeight = 0.0f;
-        NoiseGenerationStrategy->EvaluatePoint(SampleDirs[i], SampleHeight, Dummy);
-
-        float HeightDiff = FMath::Abs(SampleHeight - CenterHeight);
-        float SlopeAngle = FMath::Atan(HeightDiff / SampleDistance) * (180.0f / PI);
-
-        MaxSlope = FMath::Max(MaxSlope, SlopeAngle);
-    }
-
-    return MaxSlope;
 }
 
 void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
@@ -234,10 +195,9 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
 
         if (SelectedMesh->bAlignToGround)
         {
-            FVector TerrainNormal = GetTerrainNormal(Point.Direction);
-            OffsetNormal = TerrainNormal;
-            FQuat AlignRotation = FQuat::FindBetweenNormals(FVector::UpVector, TerrainNormal);
-            FQuat RandomYawRotation = FQuat(TerrainNormal, FMath::DegreesToRadians(Yaw));
+            OffsetNormal = Point.CachedNormal;  
+            FQuat AlignRotation = FQuat::FindBetweenNormals(FVector::UpVector, Point.CachedNormal);
+            FQuat RandomYawRotation = FQuat(Point.CachedNormal, FMath::DegreesToRadians(Yaw));
             Rotation = RandomYawRotation * AlignRotation;
         }
         else if (SelectedMesh->bAlignToPlanetNormal)
@@ -341,8 +301,10 @@ const FCosmicFoliageCollectionEntry* FFoliageGenerationTask::FindClosestMatching
     return BestEntry;
 }
 
-FVector FFoliageGenerationTask::GetTerrainNormal(
-    const FVector& Direction)
+void FFoliageGenerationTask::CalculateSlopeAndNormal(
+    const FVector& Direction,
+    float& OutSlope,
+    FVector& OutNormal)
 {
     const float SampleDistance = 500.0f;
 
@@ -359,32 +321,31 @@ FVector FFoliageGenerationTask::GetTerrainNormal(
 
     float CenterHeight = 0.0f;
     FLinearColor Dummy;
-
-    // height central desde evaluator
     NoiseGenerationStrategy->EvaluatePoint(Direction, CenterHeight, Dummy);
 
     FVector Positions[4];
+    float   MaxSlope = 0.0f;
 
     for (int32 i = 0; i < 4; i++)
     {
         float SampleHeight = 0.0f;
-
-        // height consistente con el sistema global
         NoiseGenerationStrategy->EvaluatePoint(SampleDirs[i], SampleHeight, Dummy);
 
         Positions[i] = PlanetCenter + SampleDirs[i] * (PlanetRadius + SampleHeight);
+
+        float HeightDiff = FMath::Abs(SampleHeight - CenterHeight);
+        float SlopeAngle = FMath::Atan(HeightDiff / SampleDistance) * (180.0f / PI);
+        MaxSlope = FMath::Max(MaxSlope, SlopeAngle);
     }
 
+    // Normal — misma lógica que GetTerrainNormal
     FVector V1 = Positions[0] - Positions[1];
     FVector V2 = Positions[2] - Positions[3];
-
     FVector Normal = FVector::CrossProduct(V1, V2).GetSafeNormal();
 
-    // asegurar orientación hacia fuera del planeta
     if (FVector::DotProduct(Normal, Direction) < 0)
-    {
         Normal = -Normal;
-    }
 
-    return Normal;
+    OutSlope = MaxSlope;
+    OutNormal = Normal;
 }

@@ -39,6 +39,7 @@ public:
     {
         FVector Direction;      // Dirección desde el centro del planeta
         FVector WorldPosition;  // Posición en el mundo
+        FVector CachedNormal;
         float Temperature;
         float Humidity;
         float Height;
@@ -82,9 +83,8 @@ private:
 
     void GenerateSeedPoints(FRandomStream& Random);
     void EvaluateEnvironmentalConditions(FRandomStream& Random);
-    float CalculateSlope(const FVector& Direction, int32 PointIndex);
     void CreateFoliageInstances(FRandomStream& Random);
     const FCosmicFoliageCollectionEntry* FindBestMatchingEntry(float Temperature, float Humidity, float Slope, float Height);
     const FCosmicFoliageCollectionEntry* FindClosestMatchingEntry( float Temperature, float Humidity, float Slope, float Height);
-    FVector GetTerrainNormal(const FVector& Direction);
+    void CalculateSlopeAndNormal(const FVector& Direction, float& OutSlope, FVector& OutNormal);
 };
