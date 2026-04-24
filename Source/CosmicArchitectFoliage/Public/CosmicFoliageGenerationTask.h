@@ -84,7 +84,5 @@ private:
     void GenerateSeedPoints(FRandomStream& Random);
     void EvaluateEnvironmentalConditions(FRandomStream& Random);
     void CreateFoliageInstances(FRandomStream& Random);
-    const FCosmicFoliageCollectionEntry* FindBestMatchingEntry(float Temperature, float Humidity, float Slope, float Height);
-    const FCosmicFoliageCollectionEntry* FindClosestMatchingEntry( float Temperature, float Humidity, float Slope, float Height);
     void CalculateSlopeAndNormal(const FVector& Direction, float& OutSlope, FVector& OutNormal);
 };

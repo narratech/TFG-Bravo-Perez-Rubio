@@ -103,8 +103,8 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
     {
         const FCosmicFoliageCollectionEntry* Entry;
         const FCosmicFoliageMesh* Mesh;
-        int32                                TargetCount;   // instancias que le corresponden
-        int32                                Assigned;      // cuántas ya se asignaron
+        int32 TargetCount;   // instancias que le corresponden
+        int32 Assigned;      // cuántas ya se asignaron
     };
 
     TArray<FMeshAllocation> Allocations;
@@ -186,7 +186,7 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
         FMeshAllocation& Alloc = Allocations[BestAlloc];
         const FCosmicFoliageMesh* SelectedMesh = Alloc.Mesh;
 
-        // Calcular transformación (igual que antes)
+        // Calcular transformación 
         float Yaw = Random.FRandRange(SelectedMesh->RandomRotationMin, SelectedMesh->RandomRotationMax);
         float Scale = Random.FRandRange(SelectedMesh->ScaleMin, SelectedMesh->ScaleMax);
 
@@ -226,79 +226,6 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
         Alloc.Assigned++;
         TotalAssigned++;
     }
-}
-
-
-const FCosmicFoliageCollectionEntry* FFoliageGenerationTask::FindBestMatchingEntry(float Temperature, float Humidity, float Slope, float Height)
-{
-    for (const FCosmicFoliageCollectionEntry& Entry : Collection->FoliageEntries)
-    {
-        // Verificar si todas las condiciones están dentro de los rangos
-        bool bValid = true;
-
-        bValid &= (Slope >= Entry.SlopeMin && Slope <= Entry.SlopeMax);
-        bValid &= (Temperature >= Entry.TemperatureMin && Temperature <= Entry.TemperatureMax);
-        bValid &= (Humidity >= Entry.HumidityMin && Humidity <= Entry.HumidityMax);
-        bValid &= (Height >= Entry.ElevationMinKm * 100000 && Height <= Entry.ElevationMaxKm * 100000);
-
-        if (bValid)
-        {
-            
-            return &Entry;
-        }
-    }
-
-    return nullptr;
-}
-
-const FCosmicFoliageCollectionEntry* FFoliageGenerationTask::FindClosestMatchingEntry(float Temperature, float Humidity, float Slope, float Height)
-{
-    const FCosmicFoliageCollectionEntry* BestEntry = nullptr;
-    float BestDistance = FLT_MAX;
-
-    for (const FCosmicFoliageCollectionEntry& Entry : Collection->FoliageEntries)
-    {
-        // Calcular distancia normalizada a los rangos
-        float TempDist = 0.0f;
-        if (Temperature < Entry.TemperatureMin)
-            TempDist = Entry.TemperatureMin - Temperature;
-        else if (Temperature > Entry.TemperatureMax)
-            TempDist = Temperature - Entry.TemperatureMax;
-
-        float HumDist = 0.0f;
-        if (Humidity < Entry.HumidityMin)
-            HumDist = Entry.HumidityMin - Humidity;
-        else if (Humidity > Entry.HumidityMax)
-            HumDist = Humidity - Entry.HumidityMax;
-
-        float SlopeDist = 0.0f;
-        if (Slope < Entry.SlopeMin)
-            SlopeDist = Entry.SlopeMin - Slope;
-        else if (Slope > Entry.SlopeMax)
-            SlopeDist = Slope - Entry.SlopeMax;
-
-        float HeightDist = 0.0f;
-        if (Height < Entry.ElevationMinKm * 100000)
-            HeightDist = Entry.ElevationMinKm * 100000 - Height;
-        else if (Height > Entry.ElevationMaxKm * 100000)
-            HeightDist = Height - Entry.ElevationMaxKm * 100000;
-
-        // Distancia euclidiana ponderada
-        float Distance = FMath::Sqrt(
-            TempDist * TempDist * 1.0f +
-            HumDist * HumDist * 1.0f +
-            SlopeDist * SlopeDist * 0.5f +      // Menor peso para pendiente
-            HeightDist * HeightDist * 0.3f       // Menor peso para altura
-        );
-
-        if (Distance < BestDistance)
-        {
-            BestDistance = Distance;
-            BestEntry = &Entry;
-        }
-    }
-
-    return BestEntry;
 }
 
 void FFoliageGenerationTask::CalculateSlopeAndNormal(

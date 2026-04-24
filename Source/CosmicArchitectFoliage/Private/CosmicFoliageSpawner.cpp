@@ -602,7 +602,7 @@ void UCosmicFoliageSpawner::ApplyGeneratedInstances(
         Comp->SetVisibility(true);
         Comp->AddInstances(Transforms, false);
 
-        // ¡CRÍTICO!: Guardamos la referencia en el CellData
+        // Guardamos la referencia en el CellData
         CellData.MeshComponents.Add(Mesh, Comp);
     }
 }
