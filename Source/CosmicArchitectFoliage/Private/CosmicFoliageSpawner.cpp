@@ -312,7 +312,7 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
 
         ECosmicFoliageLayer CurrentLayer = GetLayerFromIndex(i);
 
-        if (!UniqueLayers.Find(CurrentLayer)) break;
+        if (!UniqueLayers.Find(CurrentLayer)) continue;
 
         // -------- OCTREE QUERY --------
         //double OctreeStart = FPlatformTime::Seconds();
