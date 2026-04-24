@@ -34,26 +34,15 @@ void FFoliageGenerationTask::GenerateSeedPoints(FRandomStream& Random)
 {
     SeedPoints.Empty();
 
-    // Filtrar meshes de esta capa y calcular densidad maxima
-    int32 MaxInstancesPerKm2 = 0;
-    TArray<const FCosmicFoliageMesh*> LayerMeshes;
-
+    int32 NumSeeds = 0;
     for (const FCosmicFoliageCollectionEntry& Entry : Collection->FoliageEntries)
-    {
         for (const FCosmicFoliageMesh& Mesh : Entry.Foliage)
-        {
             if (Mesh.FoliageLayer == Layer)
-            {
-                LayerMeshes.Add(&Mesh);
-                MaxInstancesPerKm2 = FMath::Max(MaxInstancesPerKm2, Mesh.InstancesPerKm2);
-            }
-        }
-    }
+                NumSeeds += FMath::Max(1, FMath::RoundToInt(CellAreaKm2 * Mesh.InstancesPerKm2));
 
-    if (LayerMeshes.Num() == 0 || MaxInstancesPerKm2 == 0)
+    if (NumSeeds == 0)
         return;
 
-    int32 NumSeeds = FMath::Max(1, FMath::RoundToInt(CellAreaKm2 * MaxInstancesPerKm2));
     SeedPoints.Reserve(NumSeeds);
 
     // Datos de la celda para mapeo UV
@@ -148,49 +137,99 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
 {
     ResultInstances.Empty();
 
-    // Agrupar meshes por capa y entrada
-    TMap<const FCosmicFoliageCollectionEntry*, TArray<const FCosmicFoliageMesh*>> MeshesByEntry;
+    // Recopilar todos los meshes válidos de esta capa con su cuota de instancias
+    struct FMeshAllocation
+    {
+        const FCosmicFoliageCollectionEntry* Entry;
+        const FCosmicFoliageMesh* Mesh;
+        int32                                TargetCount;   // instancias que le corresponden
+        int32                                Assigned;      // cuántas ya se asignaron
+    };
+
+    TArray<FMeshAllocation> Allocations;
+    int32 TotalTarget = 0;
+
     for (const FCosmicFoliageCollectionEntry& Entry : Collection->FoliageEntries)
     {
-        TArray<const FCosmicFoliageMesh*> ValidMeshes;
         for (const FCosmicFoliageMesh& Mesh : Entry.Foliage)
         {
-            if (Mesh.FoliageLayer == Layer && Mesh.Mesh)
-            {
-                ValidMeshes.Add(&Mesh);
-            }
-        }
-        if (ValidMeshes.Num() > 0)
-        {
-            MeshesByEntry.Add(&Entry, ValidMeshes);
+            if (Mesh.FoliageLayer != Layer || !Mesh.Mesh)
+                continue;
+
+            int32 Target = FMath::Max(1, FMath::RoundToInt(CellAreaKm2 * Mesh.InstancesPerKm2));
+            Allocations.Add({ &Entry, &Mesh, Target, 0 });
+            TotalTarget += Target;
         }
     }
 
-    for (const FSeedPoint& Point : SeedPoints)
+    if (Allocations.Num() == 0 || TotalTarget == 0)
+        return;
+
+    // Barajar los seed points para evitar sesgos espaciales en la asignación
+    TArray<int32> PointIndices;
+    PointIndices.Reserve(SeedPoints.Num());
+    for (int32 i = 0; i < SeedPoints.Num(); i++)
+        PointIndices.Add(i);
+
+    // Fisher-Yates shuffle
+    for (int32 i = PointIndices.Num() - 1; i > 0; i--)
     {
-        const FCosmicFoliageCollectionEntry* Entry = FindBestMatchingEntry(
-            Point.Temperature, Point.Humidity, Point.Slope, Point.Height);
+        int32 j = Random.RandRange(0, i);
+        PointIndices.Swap(i, j);
+    }
 
-        if (!Entry || !MeshesByEntry.Contains(Entry))
-            continue;
+    // Distribuir puntos entre allocations proporcionalmente sin desperdiciar ninguno.
+    // Iteramos en orden aleatorio y asignamos cada punto al mesh que más instancias
+    // le faltan en proporción a su cuota (largest remainder / round-robin ponderado).
+    ResultInstances.Reserve(FMath::Min(SeedPoints.Num(), TotalTarget));
 
-        const TArray<const FCosmicFoliageMesh*>& ValidMeshes = MeshesByEntry[Entry];
-        if (ValidMeshes.Num() == 0)
-            continue;
+    int32 TotalAssigned = 0;
 
-        // Seleccion por peso de entrada 
-        const FCosmicFoliageMesh* SelectedMesh = ValidMeshes[Random.RandRange(0, ValidMeshes.Num() - 1)];
+    for (int32 Idx : PointIndices)
+    {
+        if (TotalAssigned >= TotalTarget)
+            break;
 
-        // Densidad basada EXCLUSIVAMENTE en InstancesPerKm2
-        float SpawnProbability = static_cast<float>(SelectedMesh->InstancesPerKm2) / 1000.0f; // Normalizado
-        if (Random.FRand() > SpawnProbability)
-            continue;
+        const FSeedPoint& Point = SeedPoints[Idx];
 
-        // Calcular transformación
+        // Buscar la allocation con mayor "deuda" proporcional restante
+        // deuda = (TargetCount - Assigned) — elegimos la de mayor cuota pendiente
+        int32 BestAlloc = -1;
+        int32 BestRemaining = 0;
+
+        for (int32 a = 0; a < Allocations.Num(); a++)
+        {
+            const FMeshAllocation& Alloc = Allocations[a];
+            int32 Remaining = Alloc.TargetCount - Alloc.Assigned;
+            if (Remaining > BestRemaining)
+            {
+                // Verificar que las condiciones ambientales del punto encajan con esta entry
+                const FCosmicFoliageCollectionEntry* E = Alloc.Entry;
+                bool bValid =
+                    Point.Slope >= E->SlopeMin && Point.Slope <= E->SlopeMax &&
+                    Point.Temperature >= E->TemperatureMin && Point.Temperature <= E->TemperatureMax &&
+                    Point.Humidity >= E->HumidityMin && Point.Humidity <= E->HumidityMax &&
+                    Point.Height >= E->ElevationMinKm * 100000.f && Point.Height <= E->ElevationMaxKm * 100000.f;
+
+                if (bValid)
+                {
+                    BestRemaining = Remaining;
+                    BestAlloc = a;
+                }
+            }
+        }
+
+        if (BestAlloc == -1)
+            continue; // ningún mesh acepta las condiciones de este punto
+
+        FMeshAllocation& Alloc = Allocations[BestAlloc];
+        const FCosmicFoliageMesh* SelectedMesh = Alloc.Mesh;
+
+        // Calcular transformación (igual que antes)
         float Yaw = Random.FRandRange(SelectedMesh->RandomRotationMin, SelectedMesh->RandomRotationMax);
         float Scale = Random.FRandRange(SelectedMesh->ScaleMin, SelectedMesh->ScaleMax);
 
-        FQuat Rotation;
+        FQuat   Rotation;
         FVector OffsetNormal = FVector::UpVector;
 
         if (SelectedMesh->bAlignToGround)
@@ -223,6 +262,9 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
         Instance.Mesh = SelectedMesh->Mesh;
         Instance.Transform = Transform;
         ResultInstances.Add(Instance);
+
+        Alloc.Assigned++;
+        TotalAssigned++;
     }
 }
 
