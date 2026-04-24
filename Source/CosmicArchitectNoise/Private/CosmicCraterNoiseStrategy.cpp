@@ -47,13 +47,14 @@ void FCosmicCraterNoiseStrategy::Initialize(int32 InSeed, FCosmicNoiseLayer InLa
     CraterNoise.SetCellularReturnType(FastNoiseLite::CellularReturnType_Distance);
     CraterNoise.SetFrequency(CraterParameters.CraterFrequency);
 
-    if (CraterParameters.CraterOctaves > 1)
+    /*if (CraterParameters.CraterOctaves > 1)
     {
         CraterNoise.SetFractalType(FastNoiseLite::FractalType_FBm);
         CraterNoise.SetFractalOctaves(CraterParameters.CraterOctaves);
         CraterNoise.SetFractalLacunarity(CraterParameters.CraterLacunarity);
         CraterNoise.SetFractalGain(CraterParameters.CraterPersistence);
-    }
+    }*/
+    CraterNoise.SetFractalType(FastNoiseLite::FractalType_None);
 }
 
 void FCosmicCraterNoiseStrategy::EvaluatePoint(const FVector& NoiseDir, float& OutHeight, FLinearColor& OutColor) const
@@ -67,32 +68,48 @@ void FCosmicCraterNoiseStrategy::EvaluatePoint(const FVector& NoiseDir, float& O
     float Height = BaseNoise * LayerParameters.Amplitude;
 
     // CRATERES
-    float RawCrater = FMath::Abs(CraterNoise.GetNoise(X, Y, Z)); //Altura inicial del ruido celular
-    RawCrater += BaseNoise * CraterParameters.CraterDistortion; //Distorsion aplicada para generar desperfeccion
+    float FinalCraterHeight = 0.0f;
+    float FreqScale = 1.0f;
+    float AmpScale = 1.0f;
 
-    // Se escala la cavidad
-    float D = RawCrater / FMath::Max(CraterParameters.CraterRadiusMultiplier, 0.01f);
-    float Cavity = (D * D) - 1.0f;
-    Cavity = FMath::Clamp(Cavity, -1.0f, 0.0f);
+    for (int32 i = 0; i < CraterParameters.CraterOctaves; ++i) {
+        float OffsetX = (X * FreqScale) + (i * 133.7f);
+        float OffsetY = (Y * FreqScale) + (i * 133.7f);
+        float OffsetZ = (Z * FreqScale) + (i * 133.7f);
+        float RawCrater = FMath::Abs(CraterNoise.GetNoise(OffsetX, OffsetY, OffsetZ)); //Altura inicial del ruido celular
 
-    //Se afilan los bordes
-    float RimDistance = FMath::Abs(D - 1.0f);
-    float Rim = 1.0f - (RimDistance * CraterParameters.CraterRimSharpness);
-    Rim = FMath::Clamp(Rim, 0.0f, 1.0f);
-    Rim = Rim * Rim * (3.0f - 2.0f * Rim);
+        float SizeVariation = FMath::Lerp(0.6f, 1.4f, (BaseNoise + 1.0f) * 0.5f);
+        float DynamicRadius = CraterParameters.CraterRadiusMultiplier * SizeVariation;
 
-    float FinalCrater = (Cavity * CraterParameters.CraterDepth) +
-        (Rim * (CraterParameters.CraterDepth * CraterParameters.CraterRimHeight));
+        // Se escala la cavidad
+        float D = RawCrater / FMath::Max(DynamicRadius, 0.01f);
+        float Cavity = (D * D) - 1.0f;
+        Cavity = FMath::Clamp(Cavity, -1.0f, 0.0f);
 
-    // Añadir el suelo del cráter
-    if (FinalCrater < -CraterParameters.CraterDepth + CraterParameters.CraterFloorHeight)
-    {
-        // Rellenar el fondo con algo de ruido para que no sea un plato liso
-        FinalCrater = -CraterParameters.CraterDepth + CraterParameters.CraterFloorHeight + (BaseNoise * CraterParameters.CraterNoiseBreakup * 100.0f);
+
+        //Se afilan los bordes
+        float RimDistance = FMath::Abs(D - 1.0f);
+        float Rim = 1.0f - (RimDistance * CraterParameters.CraterRimSharpness);
+        Rim = FMath::Clamp(Rim, 0.0f, 1.0f);
+        Rim = Rim * Rim * (3.0f - 2.0f * Rim);
+
+        float CurrentDepth = CraterParameters.CraterDepth * AmpScale;
+        float ThisCrater = (Cavity * CurrentDepth) + (Rim * (CurrentDepth * CraterParameters.CraterRimHeight));
+
+        // Suelo del cráter
+        if (ThisCrater < -CurrentDepth + (CraterParameters.CraterFloorHeight * AmpScale))
+        {
+            ThisCrater = -CurrentDepth + (CraterParameters.CraterFloorHeight * AmpScale);
+        }
+
+        FinalCraterHeight += ThisCrater;
+
+        FreqScale *= CraterParameters.CraterLacunarity; // Suele ser 2.0 o 2.5
+        AmpScale *= CraterParameters.CraterPersistence;   // Suele ser 0.4 o 0.5
     }
 
     // Restar/Sumar al terreno base
-    Height += FinalCrater;
+    Height += FinalCraterHeight;
 
     // HUMEDAD
     float RawHum = HumidityNoise.GetNoise(X, Y, Z);

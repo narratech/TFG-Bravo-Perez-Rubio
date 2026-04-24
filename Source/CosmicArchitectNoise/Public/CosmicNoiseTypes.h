@@ -131,7 +131,7 @@ struct COSMICARCHITECTNOISE_API FCosmicNoiseCraterParameters
 {
     GENERATED_BODY()
 
-    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0.0001", ClampMax = "1000"))
+    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0.0001", ClampMax = "100"))
     float CraterFrequency = 2.0f;
 
     UPROPERTY(EditAnywhere, Category = "Craters")
