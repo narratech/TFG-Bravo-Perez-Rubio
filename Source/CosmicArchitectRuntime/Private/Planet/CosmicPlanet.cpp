@@ -249,6 +249,7 @@ void ACosmicPlanet::InitPlanet(
     UMaterialInstance* BaseMaterial,
     UTexture2D* DefaultTexture,
     // Clipmap 
+    bool UseClipmap,
     int32 InBaseResolution,
     int32 InNumLevels,
     int32 InMinTriangleSize,
@@ -283,6 +284,7 @@ void ACosmicPlanet::InitPlanet(
         ClipmapComponent->NumLevels = InNumLevels;
         ClipmapComponent->MinTriangleSize = InMinTriangleSize;
         ClipmapComponent->HeightVisibility = InHeightVisibility;
+        ClipmapComponent->UseClipmap = UseClipmap;
     }
 
     // Ocean 

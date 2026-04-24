@@ -221,12 +221,8 @@ void ACosmicSystemGenerator::GenerateBodies()
         GetRandomColor(Stream, 50, 180),
         Stream.FRandRange(0.5f, 2.f),
         StarMaterial, nullptr,
-        // Clipmap (estrella no necesita mucho detalle)
-        128, 1, 200, 0.0f,
-        // Sin océano
-        false, 0.0, 64, nullptr,
-        // Sin follaje
-        nullptr
+        false,
+        128
     );
 
     Star->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
@@ -317,6 +313,7 @@ void ACosmicSystemGenerator::GenerateBodies()
             PlanetMat,
             TexturaElegida,
             // Clipmap
+            !IsGasGiant,
             ClipRes,
             IsGasGiant ? 1 : 6,
             32, 
@@ -401,8 +398,8 @@ void ACosmicSystemGenerator::GenerateBodies()
                 GetRandomColor(Stream, 50, 200),
                 GetRandomColor(Stream, 50, 200),
                 Stream.FRandRange(0.5f, 2.f),
-                MoonMaterial, nullptr,
-                128, 4, 150, 3.f,
+                MoonMaterial, nullptr, 
+                true, 128, 4, 150, 3.f,
                 false, 0.0, 64, nullptr,
                 nullptr
             );

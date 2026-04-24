@@ -70,6 +70,7 @@ public:
 		UMaterialInstance* BaseMaterial,
 		UTexture2D* DefaultTexture,
 		// Clipmap
+		bool UseClipmap = true,
 		int32 InBaseResolution = 128,
 		int32 InNumLevels = 4,
 		int32 InMinTriangleSize = 100,
