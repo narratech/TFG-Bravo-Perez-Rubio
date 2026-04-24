@@ -61,6 +61,9 @@ public:
     float TimeToRefresh = 0.01f;
 
     UPROPERTY(EditAnywhere, Category = "Clipmap")
+    bool UseClipmap = true;
+
+    UPROPERTY(EditAnywhere, Category = "Clipmap")
     bool FreezeGeneration = false;
 
     UCosmicCollisionComponent* CollisionComponent;

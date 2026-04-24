@@ -103,6 +103,9 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
     if (ElapsedTime <= TimeToRefresh)
         return;
 
+    if (!UseClipmap && bPerformanceBuild)
+        return;
+
     ElapsedTime = 0;
 
     //double TotalStartTime = FPlatformTime::Seconds();
@@ -171,6 +174,8 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
         FarLevel->RequestMeshUpdate(NoiseGenerationStrategy); 
         bPerformanceBuild = FarLevel->CheckAndApplyMeshUpdate(); 
     } 
+
+    if (!UseClipmap) return;
     
     // Detectar cambio de modo 
     bool bPrevPerformanceMode = bPerformaceMode; 
@@ -339,6 +344,17 @@ void UCosmicClipmapComponent::PostEditChangeProperty(FPropertyChangedEvent& Prop
         PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, DefaultTexture))
     {
         BuildDynamicMaterial();
+        return;
+    }
+
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, UseClipmap))
+    {
+        if (!UseClipmap)
+        {
+            ClearLevels();
+
+            CreatePerformanceLevel(true);
+        }
         return;
     }
 
