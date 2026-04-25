@@ -8,7 +8,6 @@
 #include "CosmicMeshComponent.generated.h"
 
 class ICosmicNoiseStrategy;
-class UCosmicNoiseSettings;
 
 UENUM(BlueprintType)
 enum class EClipmapQuadrant : uint8
@@ -39,7 +38,6 @@ public:
     bool bActiveMesh;
 
     FTransform PatchTransform;
-    EClipmapQuadrant CurrentQuadrant = EClipmapQuadrant::BottomRight;
 
     // Malla base (deformada a la esfera, sin alturas adicionales)
     TArray<FVector> BaseVertices;
@@ -48,9 +46,7 @@ public:
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
     virtual void OnComponentDestroyed(bool bDestroyingHierarchy);
 
-    void BuildBaseMesh();
     void BuildBaseProjectedMesh();
-    void BuildBasePlainMesh();
     void BuildSphereMesh();
     void ReScaleLevel(int64 GridSpacing);
     void SetPositionAndRotation(const FVector& SurfacePos, const FRotator& PatchRotation);
@@ -61,9 +57,6 @@ public:
     bool CheckAndApplyMeshUpdate();
     bool IsTaskActive();
     void CancelAsyncWork();
-    void ShiftLevel(FIntPoint Shift);
-    int32 GetQuadrantIndex(EClipmapQuadrant Q) const;
-    void SetHoleQuadrant(EClipmapQuadrant NewQuadrant);
 
 protected:
     FAsyncTask<FCosmicArchitectNoiseGenerator>* NoiseTask = nullptr;

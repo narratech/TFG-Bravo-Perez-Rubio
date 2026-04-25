@@ -462,7 +462,7 @@ void UCosmicClipmapComponent::CreateLevels()
         Mesh->SetPositionAndRotation(SurfacePos, PatchRotation);
 
         // Construir malla
-        Mesh->BuildBaseMesh();
+        Mesh->BuildBaseProjectedMesh();
         Mesh->SetMeshActive(true);
         Mesh->RequestMeshUpdate(NoiseGenerationStrategy);
         
@@ -841,100 +841,6 @@ FVector2D UCosmicClipmapComponent::GetSurfaceAngles(const FVector& SurfacePos)
     double Latitude = FMath::Asin(FMath::Clamp(Normalized.Z, -0.999999f, 0.999999f));
 
     return FVector2D(Longitude, Latitude);
-}
-
-uint32 UCosmicClipmapComponent::UpdateLevels(const FIntPoint& Shift)
-{
-    int32 JumpsX = Shift.X;
-    int32 JumpsY = Shift.Y;
-
-    for (int32 i = 0; i < Levels.Num(); ++i)
-    {
-        UCosmicMeshComponent* Level = Levels[i];
-
-        if (i == 0)
-        {
-            // El nivel base siempre se mueve
-            Level->ShiftLevel(Shift);
-            Level->RequestMeshUpdate(NoiseGenerationStrategy);
-            continue;
-        }
-
-        EClipmapQuadrant currentQuadrant = Level->CurrentQuadrant;
-
-        // Descomponemos el cuadrante: ahora usamos bIsBottom porque +Y es Bottom
-        bool bIsRight = (currentQuadrant == EClipmapQuadrant::TopRight || currentQuadrant == EClipmapQuadrant::BottomRight);
-        bool bIsBottom = (currentQuadrant == EClipmapQuadrant::BottomLeft || currentQuadrant == EClipmapQuadrant::BottomRight);
-
-        // LOGICA DEL EJE X (+X es Derecha)
-        if (JumpsX != 0)
-        {
-            if (FMath::Abs(JumpsX) % 2 == 1)
-            {
-                if (bIsRight) {
-                    if (JumpsX > 0) JumpsX = (JumpsX / 2) + 1; // Empuja el borde derecho
-                    else JumpsX = (JumpsX / 2);                // Absorbe hacia el centro
-                    bIsRight = false; // El hueco cambia a la izquierda
-                }
-                else {
-                    if (JumpsX < 0) JumpsX = (JumpsX / 2) - 1; // Empuja el borde izquierdo
-                    else JumpsX = (JumpsX / 2);                // Absorbe hacia el centro
-                    bIsRight = true;  // El hueco cambia a la derecha
-                }
-            }
-            else
-            {
-                JumpsX = JumpsX / 2;
-            }
-        }
-
-        // LOGICA DEL EJE Y (+Y es Abajo / Bottom)
-        if (JumpsY != 0)
-        {
-            if (FMath::Abs(JumpsY) % 2 == 1)
-            {
-                if (bIsBottom) {
-                    if (JumpsY > 0) JumpsY = (JumpsY / 2) + 1; // Empuja el borde inferior (+Y)
-                    else JumpsY = (JumpsY / 2);                // Absorbe el salto -Y hacia el centro
-                    bIsBottom = false; // El hueco cambia a Arriba (Top)
-                }
-                else {
-                    if (JumpsY < 0) JumpsY = (JumpsY / 2) - 1; // Empuja el borde superior (-Y)
-                    else JumpsY = (JumpsY / 2);                // Absorbe el salto +Y hacia el centro
-                    bIsBottom = true;  // El hueco cambia a Abajo (Bottom)
-                }
-            }
-            else
-            {
-                JumpsY = JumpsY / 2;
-            }
-        }
-
-        // Reconstruimos el cuadrante a partir de los booleanos
-        EClipmapQuadrant NewQuadrant;
-        if (!bIsBottom && !bIsRight) NewQuadrant = EClipmapQuadrant::TopLeft;
-        else if (!bIsBottom && bIsRight) NewQuadrant = EClipmapQuadrant::TopRight;
-        else if (bIsBottom && !bIsRight) NewQuadrant = EClipmapQuadrant::BottomLeft;
-        else NewQuadrant = EClipmapQuadrant::BottomRight;
-
-        // Solo actualizamos el cuadrante si realmente ha cambiado
-        if (NewQuadrant != currentQuadrant) {
-            Level->SetHoleQuadrant(NewQuadrant);
-        }
-
-        // Aplicamos el movimiento fisico a este nivel
-        FIntPoint Movement(JumpsX, JumpsY);
-        if (Movement != FIntPoint::ZeroValue) {
-            Level->ShiftLevel(Movement);
-        }
-
-        Level->RequestMeshUpdate(NoiseGenerationStrategy);
-
-        // Salida temprana, si ya no hay movimiento que propagar, cortamos el bucle para ahorrar CPU
-        if (JumpsX == 0 && JumpsY == 0) return i - 1;
-    }
-
-    return NumLevels - 1;
 }
 
 FVector UCosmicClipmapComponent::GetPlayerLocation()
