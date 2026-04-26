@@ -12,6 +12,7 @@ class UCosmicFoliageSpawner;
 class UCosmicCollisionComponent;
 class UCosmicOceanComponent;
 class UCosmicFoliageCollection;
+class UMaterialInstance;
 
 UCLASS(HideCategories = (
 	Replication, Input, Actor, LOD, Activation, Cooking, Networking,

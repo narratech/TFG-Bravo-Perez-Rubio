@@ -4,6 +4,8 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Engine/StaticMesh.h"
+#include "GameFramework/Pawn.h"
+#include "Engine/World.h"
 
 // [E: Constructor: Inicializamos escala, mallas y materiales automáticos / I: Constructor: We initialize scale, meshes and automatic materials]
 UCosmicRingComponent::UCosmicRingComponent()

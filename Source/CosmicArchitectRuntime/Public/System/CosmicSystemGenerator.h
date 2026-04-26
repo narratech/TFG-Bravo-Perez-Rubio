@@ -7,6 +7,7 @@
 #include "CosmicSystemGenerator.generated.h"
 
 class UCosmicNoiseClass;
+class UMaterialInstance;
 
 // E: Configuramos la clase ocultando categorías innecesarias para mantener el editor limpio.
 // I: Configuring the class by hiding unnecessary categories to keep the editor clean.

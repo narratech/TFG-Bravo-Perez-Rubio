@@ -7,6 +7,8 @@
 #include "CosmicOceanComponent.generated.h"
 
 class UCosmicMeshComponent;
+class UMaterialInstance;
+class UMaterialInstanceDynamic;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent),
 	HideCategories = (Activation, Tags, AssetUserData, Navigation, Rendering, Replication, Input, Actor, Collision, Cooking))

@@ -11,6 +11,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
 #include "UObject/Package.h"
+#include "Materials/MaterialInstance.h"
 
 // Sets default values
 ACosmicPlanet::ACosmicPlanet()

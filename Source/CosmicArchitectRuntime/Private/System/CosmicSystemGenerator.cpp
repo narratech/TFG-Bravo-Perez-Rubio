@@ -13,6 +13,7 @@
 #include "Simulation/CosmicGravityComponent.h"
 #include "Components/DirectionalLightComponent.h"
 #include "Engine/DirectionalLight.h"
+#include "Materials/MaterialInstance.h"
 
 ACosmicSystemGenerator::ACosmicSystemGenerator()
 {

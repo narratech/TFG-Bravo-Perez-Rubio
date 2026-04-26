@@ -8,6 +8,7 @@ TSharedPtr<ICosmicNoiseStrategy> UCosmicNoiseClass::CreateStrategy() const
     return nullptr;
 }
 
+#if WITH_EDITOR
 void UCosmicNoiseClass::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
     Super::PostEditChangeProperty(PropertyChangedEvent); // Siempre llama al Super primero o al inicio
@@ -20,3 +21,4 @@ void UCosmicNoiseClass::PostEditChangeProperty(FPropertyChangedEvent& PropertyCh
 
     OnNoiseSettingsChanged.Broadcast();
 }
+#endif

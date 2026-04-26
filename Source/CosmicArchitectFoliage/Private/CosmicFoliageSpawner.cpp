@@ -187,7 +187,7 @@ void UCosmicFoliageSpawner::EndPlay(const EEndPlayReason::Type EndPlayReason)
 }
 
 
-
+#if WITH_EDITOR
 void UCosmicFoliageSpawner::PreEditChange(FProperty* PropertyAboutToChange)
 {
     Super::PreEditChange(PropertyAboutToChange);
@@ -228,6 +228,7 @@ void UCosmicFoliageSpawner::PostEditChangeProperty(FPropertyChangedEvent& Proper
         return;
     }
 }
+#endif
 
 void UCosmicFoliageSpawner::DrawDebugCells(const FVector& PlanetCenter, double PlanetRadius)
 {

@@ -13,6 +13,7 @@
 #include "Simulation/CosmicGravitySubsystem.h" 
 #include "Planet/CosmicPlanet.h"
 #include "DrawDebugHelpers.h"
+#include "Engine/World.h"
 
 ACosmicSpherePlayer::ACosmicSpherePlayer()
 {
@@ -283,49 +284,49 @@ void ACosmicSpherePlayer::HandleDynamicParenting()
 	// =========================================================================
 	// ZONA DE DEBUG (MUESTRA LA INFORMACIÓN EN PANTALLA CADA FRAME)
 	// =========================================================================
-	if (GEngine)
-	{
-		// 1. Ver cuántos planetas hay registrados en tu mapa
-		GEngine->AddOnScreenDebugMessage(10, 0.0f, FColor::Cyan, FString::Printf(TEXT("Planetas evaluados: %d"), CheckedPlanetsCount));
+	//if (GEngine)
+	//{
+	//	// 1. Ver cuántos planetas hay registrados en tu mapa
+	//	GEngine->AddOnScreenDebugMessage(10, 0.0f, FColor::Cyan, FString::Printf(TEXT("Planetas evaluados: %d"), CheckedPlanetsCount));
 
-		if (NearestPlanet)
-		{
-			// 2. Ver a qué planeta estamos apuntando
-			GEngine->AddOnScreenDebugMessage(11, 0.0f, FColor::Yellow, FString::Printf(TEXT("Planeta más cercano: %s"), *NearestPlanet->GetName()));
+	//	if (NearestPlanet)
+	//	{
+	//		// 2. Ver a qué planeta estamos apuntando
+	//		GEngine->AddOnScreenDebugMessage(11, 0.0f, FColor::Yellow, FString::Printf(TEXT("Planeta más cercano: %s"), *NearestPlanet->GetName()));
 
-			// 3. Ver la distancia matemática vs el Threshold (Si es menor, se pone verde. Si es mayor, naranja)
-			FColor DistColor = (MinDist <= ParentingDistanceThreshold) ? FColor::Green : FColor::Orange;
-			GEngine->AddOnScreenDebugMessage(12, 0.0f, DistColor, FString::Printf(TEXT("Distancia a Superficie: %.2f cm | Límite: %.2f cm"), MinDist, ParentingDistanceThreshold));
-		}
-		else
-		{
-			GEngine->AddOnScreenDebugMessage(11, 0.0f, FColor::Red, TEXT("No se encontró ningún planeta cercano."));
-		}
-	}
-	// =========================================================================
+	//		// 3. Ver la distancia matemática vs el Threshold (Si es menor, se pone verde. Si es mayor, naranja)
+	//		FColor DistColor = (MinDist <= ParentingDistanceThreshold) ? FColor::Green : FColor::Orange;
+	//		GEngine->AddOnScreenDebugMessage(12, 0.0f, DistColor, FString::Printf(TEXT("Distancia a Superficie: %.2f cm | Límite: %.2f cm"), MinDist, ParentingDistanceThreshold));
+	//	}
+	//	else
+	//	{
+	//		GEngine->AddOnScreenDebugMessage(11, 0.0f, FColor::Red, TEXT("No se encontró ningún planeta cercano."));
+	//	}
+	//}
+	//// =========================================================================
 
-	if (NearestPlanet && MinDist <= ParentingDistanceThreshold)
-	{
-		if (CurrentParentPlanet != NearestPlanet)
-		{
-			CurrentParentPlanet = NearestPlanet;
-			FAttachmentTransformRules AttachRules(EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, false);
-			//SphereComp->SetSimulatePhysics(false);
-			AttachToActor(NearestPlanet, AttachRules);
+	//if (NearestPlanet && MinDist <= ParentingDistanceThreshold)
+	//{
+	//	if (CurrentParentPlanet != NearestPlanet)
+	//	{
+	//		CurrentParentPlanet = NearestPlanet;
+	//		FAttachmentTransformRules AttachRules(EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, false);
+	//		//SphereComp->SetSimulatePhysics(false);
+	//		AttachToActor(NearestPlanet, AttachRules);
 
-			// DEBUG: Aviso de que nos hemos pegado (Dura 3 segundos en pantalla)
-			if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Emerald, FString::Printf(TEXT(">>> ATTACHED AL PLANETA %s <<<"), *NearestPlanet->GetName()));
-		}
-	}
-	else if (CurrentParentPlanet != nullptr)
-	{
-		FDetachmentTransformRules DetachRules(EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, false);
-		DetachFromActor(DetachRules);
-		CurrentParentPlanet = nullptr;
+	//		// DEBUG: Aviso de que nos hemos pegado (Dura 3 segundos en pantalla)
+	//		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Emerald, FString::Printf(TEXT(">>> ATTACHED AL PLANETA %s <<<"), *NearestPlanet->GetName()));
+	//	}
+	//}
+	//else if (CurrentParentPlanet != nullptr)
+	//{
+	//	FDetachmentTransformRules DetachRules(EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, false);
+	//	DetachFromActor(DetachRules);
+	//	CurrentParentPlanet = nullptr;
 
-		// DEBUG: Aviso de que nos hemos soltado (Dura 3 segundos en pantalla)
-		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red, TEXT(">>> DETACHED (LIBRE EN EL ESPACIO) <<<"));
-	}
+	//	// DEBUG: Aviso de que nos hemos soltado (Dura 3 segundos en pantalla)
+	//	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red, TEXT(">>> DETACHED (LIBRE EN EL ESPACIO) <<<"));
+	//}
 }
 
 void ACosmicSpherePlayer::Move(const FInputActionValue& Value)

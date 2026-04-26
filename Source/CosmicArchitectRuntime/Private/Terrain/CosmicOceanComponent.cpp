@@ -3,6 +3,8 @@
 
 #include "Terrain/CosmicOceanComponent.h"
 #include "Terrain/CosmicMeshComponent.h"
+#include "Materials/MaterialInstance.h"
+#include "Materials/MaterialInstanceDynamic.h"
 
 // Sets default values for this component's properties
 UCosmicOceanComponent::UCosmicOceanComponent()
@@ -88,6 +90,7 @@ void UCosmicOceanComponent::ClearOcean()
     bInit = false;
 }
 
+#if WITH_EDITOR
 void UCosmicOceanComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
     Super::PostEditChangeProperty(PropertyChangedEvent);
@@ -116,7 +119,7 @@ void UCosmicOceanComponent::PostEditChangeProperty(FPropertyChangedEvent& Proper
         return;
     }
 }
-
+#endif
 
 // Called every frame
 void UCosmicOceanComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)

@@ -3,6 +3,7 @@
 
 #include "CosmicFoliageCollection.h"
 
+#if WITH_EDITOR
 void UCosmicFoliageCollection::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
     Super::PostEditChangeProperty(PropertyChangedEvent); 
@@ -15,3 +16,4 @@ void UCosmicFoliageCollection::PostEditChangeProperty(FPropertyChangedEvent& Pro
 
     OnFoliageCollectionChanged.Broadcast();
 }
+#endif
