@@ -30,7 +30,7 @@ public:
 	bool bHasOcean = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean", meta = (EditCondition = "bHasOcean"))
-	double SeaLevelKm = 0.0;
+	double SeaLevelKm = -0.01;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean", meta = (EditCondition = "bHasOcean", ClampMin = "8", ClampMax = "256"))
 	int32 OceanResolution = 128;
