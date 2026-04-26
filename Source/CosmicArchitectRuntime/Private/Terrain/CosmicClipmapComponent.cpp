@@ -609,20 +609,27 @@ void UCosmicClipmapComponent::ReasignLevels()
     //UE_LOG(LogTemp, Warning, TEXT("UCosmicClipmapComponent::ReasignLevels() - Reasignando %d niveles"), LevelsReasigned);
 }
 
-void UCosmicClipmapComponent::SetMaterialData(FColor color1, FColor color2, FColor colorHeight, float scale)
+void UCosmicClipmapComponent::SetMaterialData(FColor Color1, FColor Color2, FColor ColorCold, FColor ColorHot,
+    FColor ColorSlope, float ScaleL, float ScaleM, float ScaleS)
 {
-    PlanetMainColor1 = color1;
-    PlanetMainColor2 = color2;
-    PlanetAltitudeColor = colorHeight;
-    MaterialNoiseScale = scale;
+    PlanetMainColor1 = Color1;
+    PlanetMainColor2 = Color2;
+    PlanetColdColor = ColorCold;
+    PlanetHotColor = ColorHot;
+    PlanetSlopeColor = ColorSlope;
+    NoiseScaleLarge = ScaleL;
+    NoiseScaleMedium = ScaleM;
+    NoiseScaleSmall = ScaleS;
 
     if (DynamicPlanetMat)
     {
         DynamicPlanetMat->SetScalarParameterValue(FName("PlanetRadius"), PlanetRadius);
-        DynamicPlanetMat->SetVectorParameterValue(FName("BaseColor"), color1);
-        DynamicPlanetMat->SetVectorParameterValue(FName("MidColor"), color2);
-        DynamicPlanetMat->SetVectorParameterValue(FName("ColdColor"), colorHeight);
-        DynamicPlanetMat->SetScalarParameterValue(FName("NoiseScale"), scale);
+        DynamicPlanetMat->SetVectorParameterValue(FName("BaseColor"), Color1);
+        DynamicPlanetMat->SetVectorParameterValue(FName("MidColor"), Color2);
+        DynamicPlanetMat->SetVectorParameterValue(FName("ColdColor"), ColorCold);
+        DynamicPlanetMat->SetScalarParameterValue(FName("NoiseScaleLarge"), ScaleL);
+        DynamicPlanetMat->SetScalarParameterValue(FName("NoiseScaleMedium"), ScaleM);
+        DynamicPlanetMat->SetScalarParameterValue(FName("NoiseScaleSmall"), ScaleS);
         DynamicPlanetMat->SetTextureParameterValue(FName("PlanetTexture"), DefaultTexture);
     }
 }
@@ -633,7 +640,8 @@ void UCosmicClipmapComponent::BuildDynamicMaterial()
 
         DynamicPlanetMat = UMaterialInstanceDynamic::Create(BaseMaterial, this);
 
-        SetMaterialData(PlanetMainColor1, PlanetMainColor2, PlanetAltitudeColor, MaterialNoiseScale);
+        SetMaterialData(PlanetMainColor1, PlanetMainColor2, PlanetColdColor, PlanetHotColor,
+            PlanetSlopeColor, NoiseScaleLarge, NoiseScaleMedium, NoiseScaleSmall);
     } 
     else {
         DynamicPlanetMat = nullptr;

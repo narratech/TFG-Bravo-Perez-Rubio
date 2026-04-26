@@ -44,17 +44,29 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Planet", BlueprintReadOnly)
 	UCosmicFoliageSpawner* FoliageSpawnerComponent;
 
-	UPROPERTY(EditAnywhere, Category = "Materials")
-	FColor PlanetMainColor1 = FColor::Green;
+	UPROPERTY(EditAnywhere, Category = "Materials|Color")
+	FColor PlanetMainColor1 = FColor::Red;
 
-	UPROPERTY(EditAnywhere, Category = "Materials")
-	FColor PlanetMainColor2 = FColor::Red;
+	UPROPERTY(EditAnywhere, Category = "Materials|Color")
+	FColor PlanetMainColor2 = FColor::Orange;
 
-	UPROPERTY(EditAnywhere, Category = "Materials")
-	FColor PlanetAltitudeColor = FColor::Yellow;
+	UPROPERTY(EditAnywhere, Category = "Materials|Color")
+	FColor PlanetColdColor = FColor::White;
 
-	UPROPERTY(EditAnywhere, Category = "Materials", meta = (ClampMin = "0.1", ClampMax = "20"))
-	float MaterialNoiseScale = 1.f;
+	UPROPERTY(EditAnywhere, Category = "Materials|Color")
+	FColor PlanetHotColor = FColor::Red;
+
+	UPROPERTY(EditAnywhere, Category = "Materials|Color")
+	FColor PlanetSlopeColor = FColor::Black;
+
+	UPROPERTY(EditAnywhere, Category = "Materials|Noise", meta = (ClampMin = "0.01"))
+	float NoiseScaleSmall = 1.f;
+
+	UPROPERTY(EditAnywhere, Category = "Materials|Noise", meta = (ClampMin = "0.01"))
+	float NoiseScaleMedium = 3.f;
+
+	UPROPERTY(EditAnywhere, Category = "Materials|Noise", meta = (ClampMin = "0.01"))
+	float NoiseScaleLarge = 100.f;
 
 	
 	// Sets default values for this actor's properties
@@ -67,7 +79,8 @@ public:
 	void InitPlanet(
 		float InRadiusKm,
 		UCosmicNoiseClass* NewNoiseClass,
-		FColor color1, FColor color2, FColor colorHeight, float scale,
+		FColor Color1, FColor Color2, FColor ColorCold, FColor ColorHot,
+		FColor ColorSlope, float ScaleL, float ScaleM, float ScaleS,
 		UMaterialInstance* BaseMaterial,
 		UTexture2D* DefaultTexture,
 		// Clipmap

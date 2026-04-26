@@ -27,7 +27,8 @@ public:
 
     void ClearLevels();
     void ReasignLevels();
-    void SetMaterialData(FColor color1, FColor color2, FColor colorHeight, float scale);
+    void SetMaterialData(FColor Color1, FColor Color2, FColor ColorCold, FColor ColorHot,
+        FColor ColorSlope, float ScaleL, float ScaleM, float ScaleS);
     void RequestCompleteMeshUpdate();
     void UpdateNoiseEvaluator();
 
@@ -95,8 +96,12 @@ protected:
 
     FColor PlanetMainColor1 = FColor::Green;
     FColor PlanetMainColor2 = FColor::Red;
-    FColor PlanetAltitudeColor = FColor::Yellow;
-    float MaterialNoiseScale = 1.f;
+    FColor PlanetColdColor = FColor::Yellow;
+    FColor PlanetHotColor = FColor::Yellow;
+    FColor PlanetSlopeColor = FColor::Yellow;
+    float NoiseScaleSmall = 1.f;
+    float NoiseScaleMedium = 1.f;
+    float NoiseScaleLarge = 1.f;
     FVector LastPlayerPos;
     FVector LastMeshPlayerPos;
     FVector CurrentActorPosition;
@@ -131,7 +136,6 @@ protected:
     FIntPoint ComputeGridShiftSpherical(const FVector& PlayerPos, const FVector& CurrentSurfacePos, int64 GridSpacing);
     FIntPoint ComputeGridShift(const FVector& PlayerPos, const FVector& CurrentSurfacePos, float GridSpacing);
     FVector2D GetSurfaceAngles(const FVector& SurfacePos);
-    uint32 UpdateLevels(const FIntPoint& Shift);
     bool IsClipmapRingVisible(const int32 LevelIndex, const double DistanceToSurface);
     bool IsClipmapRingVisible(const int64 GridSpacing, const int64 Resolution, const double DistanceToSurface);
     void DecreaseClipmapLevelFull();

@@ -39,7 +39,10 @@ void ACosmicPlanet::PostInitializeComponents()
         ClipmapComponent->UpdateNoiseEvaluator();
         ClipmapComponent->CollisionComponent = CollisionComponent;
         ClipmapComponent->FoliageSpawnerComponent = FoliageSpawnerComponent;
-        ClipmapComponent->SetMaterialData(PlanetMainColor1, PlanetMainColor2, PlanetAltitudeColor, MaterialNoiseScale);
+        ClipmapComponent->SetMaterialData(
+            PlanetMainColor1, PlanetMainColor2, PlanetColdColor, PlanetHotColor,
+            PlanetSlopeColor, NoiseScaleLarge, NoiseScaleMedium, NoiseScaleSmall
+        );
         ClipmapComponent->ReasignLevels();
 #else
         UpdateMaterialOnly();
@@ -175,10 +178,8 @@ void ACosmicPlanet::UpdateMaterialOnly()
         //UE_LOG(LogTemp, Warning, TEXT("Actualizando material"));
 
         ClipmapComponent->SetMaterialData(
-            PlanetMainColor1,
-            PlanetMainColor2,
-            PlanetAltitudeColor,
-            MaterialNoiseScale
+            PlanetMainColor1, PlanetMainColor2, PlanetColdColor, PlanetHotColor,
+            PlanetSlopeColor, NoiseScaleLarge, NoiseScaleMedium, NoiseScaleSmall
         );
     }
 }
@@ -246,7 +247,8 @@ void ACosmicPlanet::OnConstruction(const FTransform& Transform)
 void ACosmicPlanet::InitPlanet(
     float InRadiusKm,
     UCosmicNoiseClass* NewNoiseClass,
-    FColor color1, FColor color2, FColor colorHeight, float scale,
+    FColor Color1, FColor Color2, FColor ColorCold, FColor ColorHot,
+    FColor ColorSlope, float ScaleL, float ScaleM, float ScaleS,
     UMaterialInstance* BaseMaterial,
     UTexture2D* DefaultTexture,
     // Clipmap 
@@ -304,10 +306,14 @@ void ACosmicPlanet::InitPlanet(
         FoliageSpawnerComponent->FoliageCollection = InFoliageCollection;
 
     // Material colors 
-    PlanetMainColor1 = color1;
-    PlanetMainColor2 = color2;
-    PlanetAltitudeColor = colorHeight;
-    MaterialNoiseScale = scale;
+    PlanetMainColor1 = Color1;
+    PlanetMainColor2 = Color2;
+    PlanetColdColor = ColorCold;
+    PlanetHotColor = ColorHot;
+    PlanetSlopeColor = ColorSlope;
+    NoiseScaleLarge = ScaleL;
+    NoiseScaleMedium = ScaleM;
+    NoiseScaleSmall = ScaleS;
 
     InitClipmap();
     UpdateFoliage();
@@ -337,8 +343,12 @@ void ACosmicPlanet::PostEditChangeProperty(FPropertyChangedEvent& PropertyChange
 
     if (PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, PlanetMainColor1) ||
         PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, PlanetMainColor2) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, PlanetAltitudeColor) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, MaterialNoiseScale))
+        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, PlanetColdColor) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, PlanetHotColor) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, PlanetSlopeColor) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, NoiseScaleSmall) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, NoiseScaleMedium) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, NoiseScaleLarge))
     {
         UpdateMaterialOnly();
         return;
