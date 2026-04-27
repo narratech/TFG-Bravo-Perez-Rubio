@@ -632,7 +632,8 @@ void UCosmicClipmapComponent::SetMaterialData(FColor Color1, FColor Color2, FCol
         DynamicPlanetMat->SetScalarParameterValue(FName("NoiseScaleLarge"), ScaleL);
         DynamicPlanetMat->SetScalarParameterValue(FName("NoiseScaleMedium"), ScaleM);
         DynamicPlanetMat->SetScalarParameterValue(FName("NoiseScaleSmall"), ScaleS);
-        DynamicPlanetMat->SetTextureParameterValue(FName("PlanetTexture"), DefaultTexture);
+        if(DefaultTexture)
+            DynamicPlanetMat->SetTextureParameterValue(FName("Floortexture"), DefaultTexture);
     }
 }
 
