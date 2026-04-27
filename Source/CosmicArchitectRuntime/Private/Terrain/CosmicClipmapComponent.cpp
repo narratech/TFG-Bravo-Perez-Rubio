@@ -627,6 +627,8 @@ void UCosmicClipmapComponent::SetMaterialData(FColor Color1, FColor Color2, FCol
         DynamicPlanetMat->SetVectorParameterValue(FName("BaseColor"), Color1);
         DynamicPlanetMat->SetVectorParameterValue(FName("MidColor"), Color2);
         DynamicPlanetMat->SetVectorParameterValue(FName("ColdColor"), ColorCold);
+        DynamicPlanetMat->SetVectorParameterValue(FName("HotColor"), ColorHot);
+        DynamicPlanetMat->SetVectorParameterValue(FName("SlopeColor"), ColorSlope);
         DynamicPlanetMat->SetScalarParameterValue(FName("NoiseScaleLarge"), ScaleL);
         DynamicPlanetMat->SetScalarParameterValue(FName("NoiseScaleMedium"), ScaleM);
         DynamicPlanetMat->SetScalarParameterValue(FName("NoiseScaleSmall"), ScaleS);
