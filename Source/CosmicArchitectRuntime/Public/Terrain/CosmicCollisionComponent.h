@@ -22,13 +22,13 @@ public:
     UCosmicCollisionComponent();
 
     UPROPERTY(EditAnywhere, Category = "Collision")
-    float CollisionTriangleSize = 150.f;
+    float CollisionTriangleSize = 250.f;
 
     UPROPERTY(EditAnywhere, Category = "Collision")
-    int32 CollisionResolution = 16;
+    int32 CollisionResolution = 12;
 
     UPROPERTY(EditAnywhere, Category = "Collision")
-    double MaxCollisionDistance = 10000.f;
+    double MaxCollisionDistance = 30000.f;
 
     /** Mostrar malla de colision en el editor (para depuracion) */
     UPROPERTY(EditAnywhere, Category = "Collision")

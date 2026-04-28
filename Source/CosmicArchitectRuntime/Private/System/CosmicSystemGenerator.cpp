@@ -113,7 +113,7 @@ ACosmicSystemGenerator::FPlanetClassification ACosmicSystemGenerator::ClassifyPl
         if (bInHabitableZone && Stream.FRandRange(0.f, 1.f) > 0.3f)
         {
             Result.bHasOcean = true;
-            Result.OceanSeaLevel = Stream.FRandRange(-0.005f, 0.01f) * PlanetRadiusKm;
+            Result.OceanSeaLevel = Stream.FRandRange(-0.00002f, 0.00002f) * PlanetRadiusKm;
         }
         else
         {
@@ -223,11 +223,11 @@ void ACosmicSystemGenerator::GenerateBodies()
         GetRandomColor(Stream, 50, 180),
         GetRandomColor(Stream, 50, 180),
         Stream.FRandRange(0.5f, 2.f),
-        Stream.FRandRange(3.f, 5.f),
-        Stream.FRandRange(50.f, 100.f),
+        Stream.FRandRange(4.f, 8.f),
+        Stream.FRandRange(4.f, 6.f),
         StarMaterial, nullptr,
         false,
-        128
+        128, 0, 0, 0, false
     );
 
     Star->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);

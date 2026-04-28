@@ -73,6 +73,8 @@ void UCosmicClipmapComponent::BeginPlay()
     FVector ViewerPos;
     float DistanceToSurface;
 
+    ElapsedTime = FMath::FRandRange(0.f, TimeToRefresh);
+
     DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
     FRotator Rotation = GetPatchRotation(N);
 
@@ -107,7 +109,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
     if (!UseClipmap && bPerformanceBuild)
         return;
 
-    ElapsedTime = 0;
+    ElapsedTime = ElapsedTime - TimeToRefresh;
 
     //double TotalStartTime = FPlatformTime::Seconds();
 
