@@ -219,7 +219,7 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
         Transform.SetScale3D(FVector(Scale));
 
         FCosmicFoliageInstance Instance;
-        Instance.Mesh = SelectedMesh->Mesh;
+        Instance.MeshDef = SelectedMesh;
         Instance.Transform = Transform;
         ResultInstances.Add(Instance);
 

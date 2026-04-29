@@ -532,8 +532,7 @@ void UCosmicFoliageSpawner::ProcessDeactivationQueue()
                 if (MeshPair.Value)
                 {
                     InstanceCount += MeshPair.Value->GetInstanceCount();
-
-                    // ¡En lugar de destruirlo, lo reciclamos devolviéndolo al pool!
+                    // reciclamos HISM
                     ReleaseHISM(MeshPair.Key, MeshPair.Value);
                 }
             }
@@ -582,66 +581,60 @@ void UCosmicFoliageSpawner::ApplyGeneratedInstances(
 
     FCosmicFoliageCellData& CellData = LayerCells[GetIndexFromLayer(Layer)].ActiveCells.FindOrAdd(Cell);
 
-    TMap<UStaticMesh*, TArray<FTransform>> Batch;
+    TMap<FCosmicHISMKey, TArray<FTransform>> Batch;
 
     for (const FCosmicFoliageInstance& Inst : Instances)
     {
-        if (!Inst.Mesh) continue;
-        Batch.FindOrAdd(Inst.Mesh).Add(Inst.Transform);
+        if (!Inst.MeshDef || !Inst.MeshDef->Mesh) continue;
+
+        FCosmicHISMKey Key{ Inst.MeshDef->Mesh, Inst.MeshDef->bHasCollision };
+        Batch.FindOrAdd(Key).Add(Inst.Transform);
     }
 
     for (auto& Pair : Batch)
     {
-        UStaticMesh* Mesh = Pair.Key;
+        const FCosmicHISMKey& Key = Pair.Key;
         TArray<FTransform>& Transforms = Pair.Value;
 
-        // Adquirimos un componente exclusivo para esta celda
-        UHierarchicalInstancedStaticMeshComponent* Comp = AcquireHISM(Mesh);
-
+        UHierarchicalInstancedStaticMeshComponent* Comp = AcquireHISM(Key);
         if (!Comp) continue;
 
         Comp->SetVisibility(true);
         Comp->AddInstances(Transforms, false);
 
-        // Guardamos la referencia en el CellData
-        CellData.MeshComponents.Add(Mesh, Comp);
+        CellData.MeshComponents.Add(Key, Comp);
     }
 }
 
-UHierarchicalInstancedStaticMeshComponent* UCosmicFoliageSpawner::AcquireHISM(UStaticMesh* Mesh)
+UHierarchicalInstancedStaticMeshComponent* UCosmicFoliageSpawner::AcquireHISM(const FCosmicHISMKey& Key)
 {
-    if (!Mesh) return nullptr;
+    if (!Key.Mesh) return nullptr;
 
-    FCosmicHISMPoolList& PoolList = FreeHISMPool.FindOrAdd(Mesh);
+    FCosmicHISMPoolList& PoolList = FreeHISMPool.FindOrAdd(Key);
 
-    // Si hay un componente libre en el pool, lo sacamos y lo reutilizamos
     if (PoolList.Components.Num() > 0)
     {
         UHierarchicalInstancedStaticMeshComponent* Comp = PoolList.Components.Pop();
-        if (Comp)
-        {
-            return Comp;
-        }
+        if (Comp) return Comp;
     }
 
-    // Si no hay componentes libres, creamos uno nuevo
     UHierarchicalInstancedStaticMeshComponent* NewComp = NewObject<UHierarchicalInstancedStaticMeshComponent>(GetOwner());
-    NewComp->SetStaticMesh(Mesh);
+    NewComp->SetStaticMesh(Key.Mesh);
+    NewComp->SetCollisionEnabled(Key.bHasCollision
+        ? ECollisionEnabled::QueryAndPhysics
+        : ECollisionEnabled::NoCollision);
     NewComp->SetupAttachment(GetOwner()->GetRootComponent());
     NewComp->RegisterComponent();
-
     return NewComp;
 }
 
-void UCosmicFoliageSpawner::ReleaseHISM(UStaticMesh* Mesh, UHierarchicalInstancedStaticMeshComponent* Comp)
+void UCosmicFoliageSpawner::ReleaseHISM(const FCosmicHISMKey& Key, UHierarchicalInstancedStaticMeshComponent* Comp)
 {
-    if (!Comp || !Mesh) return;
+    if (!Comp || !Key.Mesh) return;
 
-    // Vaciamos las instancias de la celda y lo ocultamos
     Comp->ClearInstances();
     Comp->SetVisibility(false);
 
-    // Lo devolvemos al pool para que otra celda lo use en el futuro
-    FreeHISMPool.FindOrAdd(Mesh).Components.Add(Comp);
+    FreeHISMPool.FindOrAdd(Key).Components.Add(Comp);
 }
 

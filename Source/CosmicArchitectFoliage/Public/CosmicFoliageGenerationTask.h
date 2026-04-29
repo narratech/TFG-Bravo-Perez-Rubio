@@ -17,10 +17,7 @@ struct FCosmicFoliageInstance
 {
     GENERATED_BODY()
 
-    UPROPERTY()
-    UStaticMesh* Mesh = nullptr;
-
-    UPROPERTY()
+    const FCosmicFoliageMesh* MeshDef = nullptr;
     FTransform Transform;
 };
 

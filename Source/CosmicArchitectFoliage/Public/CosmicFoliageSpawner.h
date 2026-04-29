@@ -13,13 +13,30 @@ class UCosmicFoliageCollection;
 class ICosmicNoiseStrategy;
 
 USTRUCT()
+struct FCosmicHISMKey
+{
+    GENERATED_BODY()
+
+    UStaticMesh* Mesh = nullptr;
+    bool         bHasCollision = true;
+
+    bool operator==(const FCosmicHISMKey& Other) const
+    {
+        return Mesh == Other.Mesh && bHasCollision == Other.bHasCollision;
+    }
+};
+
+FORCEINLINE uint32 GetTypeHash(const FCosmicHISMKey& Key)
+{
+    return HashCombine(GetTypeHash(Key.Mesh), GetTypeHash(Key.bHasCollision));
+}
+
+USTRUCT()
 struct FCosmicFoliageCellData
 {
     GENERATED_BODY()
 
-    UPROPERTY()
-    TMap<UStaticMesh*, UHierarchicalInstancedStaticMeshComponent*> MeshComponents;
-
+    TMap<FCosmicHISMKey, UHierarchicalInstancedStaticMeshComponent*> MeshComponents;
 };
 
 // Estructura para almacenar celdas por capa
@@ -29,7 +46,6 @@ struct FCosmicFoliageLayerCells
     GENERATED_BODY()
 
     // Mapa de celda: datos de componentes para esta capa específica
-    UPROPERTY()
     TMap<FCubeMapCell, FCosmicFoliageCellData> ActiveCells;
 };
 
@@ -38,7 +54,6 @@ struct FCosmicHISMPoolList
 {
     GENERATED_BODY()
 
-    UPROPERTY()
     TArray<UHierarchicalInstancedStaticMeshComponent*> Components;
 };
 
@@ -57,6 +72,7 @@ FORCEINLINE uint32 GetTypeHash(const FCosmicHISMPoolKey& Key)
 {
     return HashCombine(GetTypeHash(Key.Mesh), (uint32)Key.Layer);
 }
+
 
 /**
  * Componente que gestiona el spawning de foliage cerca del jugador
@@ -142,7 +158,7 @@ private:
     TSet<FCubeMapCell> CurrentVisibleCells[3];
 
     UPROPERTY()
-    TMap<UStaticMesh*, FCosmicHISMPoolList> FreeHISMPool;
+    TMap<FCosmicHISMKey, FCosmicHISMPoolList> FreeHISMPool;
 
     float ElapsedTime = 0.0f;
     FRandomStream RandomStream;
@@ -154,7 +170,7 @@ private:
     /** Aplica las instancias generadas al mundo */
     void ApplyGeneratedInstances(const FCubeMapCell& Cell, ECosmicFoliageLayer Layer, const TArray<FCosmicFoliageInstance>& Instances);
 
-    UHierarchicalInstancedStaticMeshComponent* AcquireHISM(UStaticMesh* Mesh);
-    void ReleaseHISM(UStaticMesh* Mesh, UHierarchicalInstancedStaticMeshComponent* Comp);
+    UHierarchicalInstancedStaticMeshComponent* AcquireHISM(const FCosmicHISMKey& Key);
+    void ReleaseHISM(const FCosmicHISMKey& Key, UHierarchicalInstancedStaticMeshComponent* Comp);
 
 };
