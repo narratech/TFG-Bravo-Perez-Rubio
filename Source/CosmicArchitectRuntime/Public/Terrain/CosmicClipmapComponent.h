@@ -46,7 +46,7 @@ public:
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "8", ClampMax = "256"))
     int32 BaseResolution = 128;
 
-    UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "1", ClampMax = "20"))
+    UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "1", ClampMax = "10"))
     int32 NumLevels = 4;
 
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "10"))
@@ -57,9 +57,6 @@ public:
 
     UPROPERTY(EditAnywhere, Category = "Clipmap")
     float HeightVisibility = 5.0f;
-
-    UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "0", ClampMax = "60"))
-    float TimeToRefresh = 0.01f;
 
     UPROPERTY(EditAnywhere, Category = "Clipmap")
     bool UseClipmap = true;
@@ -102,6 +99,7 @@ protected:
     float NoiseScaleSmall = 1.f;
     float NoiseScaleMedium = 1.f;
     float NoiseScaleLarge = 1.f;
+    float TimeToRefresh = 0.01f;
     FVector LastPlayerPos;
     FVector LastMeshPlayerPos;
     FVector CurrentActorPosition;

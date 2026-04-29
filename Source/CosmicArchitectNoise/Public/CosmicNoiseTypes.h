@@ -149,7 +149,7 @@ struct COSMICARCHITECTNOISE_API FCosmicNoiseCraterParameters
     UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0.1", ClampMax = "20"))
     float CraterRimSharpness = 2.5f;
 
-    UPROPERTY(EditAnywhere, Category = "Craters")
+    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0", ClampMax = "1"))
     float CraterFloorHeight = 0.f;
 
     UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0", ClampMax = "1"))
