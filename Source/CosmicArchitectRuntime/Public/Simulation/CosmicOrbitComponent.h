@@ -8,7 +8,8 @@
 
 // E: Componente que maneja el movimiento orbital y la rotación de un cuerpo celeste.
 // I: Component that handles the orbital movement and rotation of a celestial body.
-UCLASS(ClassGroup = (Cosmic), meta = (BlueprintSpawnableComponent))
+UCLASS(ClassGroup = (Cosmic), meta = (BlueprintSpawnableComponent),
+	HideCategories = (Navigation, Replication, Activation, AssetUserData, Cooking, Tags))
 class COSMICARCHITECTRUNTIME_API UCosmicOrbitComponent : public UActorComponent
 {
 	GENERATED_BODY()

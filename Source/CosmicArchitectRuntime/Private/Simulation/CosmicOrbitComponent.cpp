@@ -48,6 +48,31 @@ void UCosmicOrbitComponent::PostEditChangeProperty(FPropertyChangedEvent& Proper
 		PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOrbitComponent, InitialPosition) ||
 		PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOrbitComponent, OrbitalPeriod));
 
+	if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOrbitComponent, ParentBody))
+	{
+		if (AActor* Owner = GetOwner())
+		{
+			if (ParentBody)
+			{
+				// E: Evitar que el actor se asigne a sí mismo como padre
+				// I: Prevent the actor from assigning itself as its own parent
+				if (ParentBody == Owner)
+				{
+					ParentBody = nullptr;
+					return;
+				}
+
+				Owner->AttachToActor(ParentBody,
+					FAttachmentTransformRules::KeepWorldTransform);
+			}
+			else
+			{
+				Owner->DetachFromActor(
+					FDetachmentTransformRules::KeepWorldTransform);
+			}
+		}
+	}
+
 	// E: Si estamos en el editor y no jugando, actualizar posición
 	// I: If we are in the editor and not playing, update position
 	UWorld* World = GetWorld();
