@@ -129,6 +129,10 @@ private:
 	void Look(const FInputActionValue& Value);
 	void Jump(const FInputActionValue& Value);
 
+	// E: Comprueba si el jugador está tocando el suelo mediante un Raycast.
+	// I: Checks if the player is touching the ground via Raycast.
+	bool IsGrounded() const;
+
 	// E: Lógica que evalúa si el jugador debe anclarse a un planeta cercano para heredar su movimiento/rotación.
 	// I: Logic that evaluates if the player should attach to a nearby planet to inherit its movement/rotation.
 	void HandleDynamicParenting();

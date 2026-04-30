@@ -371,10 +371,45 @@ void ACosmicSpherePlayer::Look(const FInputActionValue& Value)
 
 void ACosmicSpherePlayer::Jump(const FInputActionValue& Value)
 {
+	// E: Solo saltamos si estamos en el suelo.
+	// I: Only jump if we are grounded.
+	if (!IsGrounded()) return;
+
 	if (CapsuleComp && VisualRoot)
 	{
-		// E: Impulso seco en el eje Z local (que gracias a nuestro Tick, siempre es contrario a la gravedad).
-		// I: Sharp impulse on the local Z axis (which thanks to our Tick, is always opposite to gravity).
 		CapsuleComp->AddImpulse(VisualRoot->GetUpVector() * 800.0f, NAME_None, true);
 	}
+}
+
+bool ACosmicSpherePlayer::IsGrounded() const
+{
+	if (!CapsuleComp || !VisualRoot) return false;
+
+	// E: El rayo sale desde el centro de la cápsula hacia el suelo local (opuesto a UpVector).
+	// I: The ray starts from the capsule center towards the local ground (opposite to UpVector).
+	FVector Start = GetActorLocation();
+	FVector Down = -VisualRoot->GetUpVector();
+
+	// E: La longitud del rayo = mitad de la cápsula + un pequeño margen de 15 cm.
+	// I: Ray length = half capsule height + a small 15 cm margin.
+	float HalfHeight = CapsuleComp->GetScaledCapsuleHalfHeight();
+	FVector End = Start + Down * (HalfHeight + 15.0f);
+
+	FHitResult Hit;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this); // E: Ignoramos al propio jugador. I: Ignore the player itself.
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(
+		Hit,
+		Start,
+		End,
+		ECC_Visibility, // E: Canal estándar; cámbialo a WorldStatic si prefieres. I: Standard channel; swap to WorldStatic if preferred.
+		Params
+	);
+
+	// E: (Opcional) Dibuja el rayo en pantalla para depuración. Comenta en producción.
+	// I: (Optional) Draw the ray on screen for debugging. Comment out in production.
+	// DrawDebugLine(GetWorld(), Start, End, bHit ? FColor::Green : FColor::Red, false, -1.0f, 0, 2.0f);
+
+	return bHit;
 }
