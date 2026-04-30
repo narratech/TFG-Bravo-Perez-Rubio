@@ -1,7 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "System/CosmicSpherePlayer.h"
-#include "Components/SphereComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
@@ -28,14 +28,15 @@ ACosmicSpherePlayer::ACosmicSpherePlayer()
 	// CREACIÓN DE COMPONENTES
 	// =========================================================================
 
-	// E: 1. Esfera de Colisión y Físicas.
-	// I: 1. Collision and Physics Sphere.
-	SphereComp = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComp"));
-	SphereComp->InitSphereRadius(40.0f);
-	SphereComp->SetCollisionProfileName(TEXT("Pawn"));
-	SphereComp->SetSimulatePhysics(true);
-	SphereComp->SetEnableGravity(false); // E: Desactivamos gravedad nativa para usar la del plugin. I: Disable native gravity to use the plugin's.
-	RootComponent = SphereComp;
+	CapsuleComp = CreateDefaultSubobject<UCapsuleComponent>(TEXT("CapsuleComp"));
+	RootComponent = CapsuleComp;
+	CapsuleComp->InitCapsuleSize(40.0f, 90.0f);
+
+	// E: Habilitamos las físicas y deshabilitamos la gravedad por defecto de Unreal (Z- constante).
+	// I: Enable physics and disable Unreal's default gravity (constant Z-).
+	CapsuleComp->SetSimulatePhysics(true);
+	CapsuleComp->SetEnableGravity(false);
+	CapsuleComp->SetCollisionProfileName(TEXT("Pawn"));
 
 	// E: 2. Raíz visual estabilizada (Alineada estrictamente con el planeta).
 	// I: 2. Stabilized visual root (Strictly aligned with the planet).
@@ -177,7 +178,7 @@ void ACosmicSpherePlayer::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (!VisualRoot || !MeshRoot || !SphereComp) return;
+	if (!VisualRoot || !MeshRoot || !CapsuleComp) return;
 
 	// =========================================================================
 	// 1. CÁLCULO DE GRAVEDAD LOCAL (LOCAL GRAVITY CALCULATION)
@@ -213,7 +214,7 @@ void ACosmicSpherePlayer::Tick(float DeltaTime)
 
 		// E: Aplicamos una fuerza de gravedad terrestre constante (980 cm/s^2).
 		// I: We apply a constant Earth-like gravity force (980 cm/s^2).
-		SphereComp->AddForce(GravityDown * 980.0f, NAME_None, true);
+		CapsuleComp->AddForce(GravityDown * 980.0f, NAME_None, true);
 	}
 
 	FVector TargetUp = -GravityDown;
@@ -337,7 +338,7 @@ void ACosmicSpherePlayer::Move(const FInputActionValue& Value)
 	// I: If no input, reset the target direction so the model stops trying to rotate.
 	if (MovementVector.IsNearlyZero()) { TargetFacingDirection = FVector::ZeroVector; return; }
 
-	if (VisualRoot && CameraComp && SphereComp)
+	if (VisualRoot && CameraComp && CapsuleComp)
 	{
 		FVector UpVector = VisualRoot->GetUpVector();
 
@@ -349,7 +350,7 @@ void ACosmicSpherePlayer::Move(const FInputActionValue& Value)
 		// E: Creamos el vector direccional y aplicamos fuerza a la esfera para rodar.
 		// I: Create the directional vector and apply force to the sphere to roll.
 		TargetFacingDirection = (ForwardOnGround * MovementVector.Y) + (RightOnGround * MovementVector.X);
-		SphereComp->AddForce(TargetFacingDirection * MovementForce);
+		CapsuleComp->AddForce(TargetFacingDirection * MovementForce);
 	}
 }
 
@@ -370,10 +371,10 @@ void ACosmicSpherePlayer::Look(const FInputActionValue& Value)
 
 void ACosmicSpherePlayer::Jump(const FInputActionValue& Value)
 {
-	if (SphereComp && VisualRoot)
+	if (CapsuleComp && VisualRoot)
 	{
 		// E: Impulso seco en el eje Z local (que gracias a nuestro Tick, siempre es contrario a la gravedad).
 		// I: Sharp impulse on the local Z axis (which thanks to our Tick, is always opposite to gravity).
-		SphereComp->AddImpulse(VisualRoot->GetUpVector() * 800.0f, NAME_None, true);
+		CapsuleComp->AddImpulse(VisualRoot->GetUpVector() * 800.0f, NAME_None, true);
 	}
 }

@@ -8,7 +8,7 @@
 #include "CosmicSpherePlayer.generated.h"
 
 class UCosmicGravityComponent;
-class USphereComponent;
+class UCapsuleComponent;
 class USceneComponent;
 class USkeletalMeshComponent;
 class USpringArmComponent;
@@ -41,10 +41,8 @@ protected:
 	// COMPONENTES DE JERARQUÍA (HIERARCHY COMPONENTS)
 	// =========================================================================
 
-	// E: Colisionador principal. Rueda físicamente por el planeta.
-	// I: Main collider. Physically rolls around the planet.
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Components")
-	USphereComponent* SphereComp;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Componentes")
+	UCapsuleComponent* CapsuleComp;
 
 	// E: Nodo que no rota con la esfera física, sino que se alinea estrictamente con la gravedad (Eje Z siempre hacia "Arriba").
 	// I: Node that does not rotate with the physics sphere, but aligns strictly with gravity (Z axis always "Up").
