@@ -214,7 +214,7 @@ void ACosmicSpherePlayer::Tick(float DeltaTime)
 
 		// E: Aplicamos una fuerza de gravedad terrestre constante (980 cm/s^2).
 		// I: We apply a constant Earth-like gravity force (980 cm/s^2).
-		CapsuleComp->AddForce(GravityDown * 980.0f, NAME_None, true);
+		CapsuleComp->AddForce(GravityDown * GravityAcceleration * 100, NAME_None, true);
 	}
 
 	FVector TargetUp = -GravityDown;
@@ -235,7 +235,7 @@ void ACosmicSpherePlayer::Tick(float DeltaTime)
 	// 3. PARENTESCO DINÁMICO (DYNAMIC PARENTING)
 	// =========================================================================
 
-	HandleDynamicParenting();
+	//HandleDynamicParenting();
 
 	// =========================================================================
 	// 4. ROTACIÓN SUAVE DEL MODELO 3D (SMOOTH MESH ROTATION)

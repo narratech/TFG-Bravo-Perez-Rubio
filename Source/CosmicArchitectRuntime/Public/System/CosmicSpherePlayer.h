@@ -83,6 +83,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Movement")
 	float MovementForce = 350000.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Movement")
+	float GravityAcceleration = 9.8f;
+
 	// E: Sensibilidad de la cámara al mover el ratón o el joystick.
 	// I: Camera sensitivity when moving the mouse or joystick.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Input")
