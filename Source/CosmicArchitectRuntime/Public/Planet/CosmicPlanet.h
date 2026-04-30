@@ -104,17 +104,17 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+#if WITH_EDITOR
 	virtual void PostDuplicate(EDuplicateMode::Type Mode) override;
-	
+#endif
+
 	virtual void Destroyed() override;
 
 	virtual void BeginDestroy() override;
 
 	virtual void PostInitializeComponents() override;
 
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
-
-	virtual void Tick(float DeltaTime) override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	void InitClipmap();
 
@@ -127,6 +127,8 @@ protected:
 	void UpdateOcean();
 
 	void UpdateMaterialOnly();
+
+	void ClearData();
 
 	bool bInitializedInEditor = false;
 

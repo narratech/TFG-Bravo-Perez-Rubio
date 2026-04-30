@@ -66,6 +66,7 @@ void ACosmicPlanet::BeginPlay()
 	Super::BeginPlay(); 
 }
 
+#if WITH_EDITOR
 void ACosmicPlanet::PostDuplicate(EDuplicateMode::Type Mode)
 {
     Super::PostDuplicate(Mode);
@@ -79,24 +80,13 @@ void ACosmicPlanet::PostDuplicate(EDuplicateMode::Type Mode)
         UpdateNoiseSettings();
     }
 }
+#endif
 
 
 void ACosmicPlanet::Destroyed()
 {
-
     //UE_LOG(LogTemp, Warning, TEXT("Destruyendo planeta"));
-
-    if (CollisionComponent)
-    {
-        //UE_LOG(LogTemp, Warning, TEXT("Eliminando colisiones"));
-        CollisionComponent->ClearCollision();
-    }
-
-    if (NoiseClass && ClipmapComponent)
-    {
-        NoiseClass->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
-    }
-
+    ClearData();
     bInitializedInEditor = false;
 
     Super::Destroyed();
@@ -105,43 +95,14 @@ void ACosmicPlanet::Destroyed()
 void ACosmicPlanet::BeginDestroy()
 {
     //UE_LOG(LogTemp, Warning, TEXT("Recolector destruyendo planeta"));
-
-    if (CollisionComponent)
-    {
-        //UE_LOG(LogTemp, Warning, TEXT("Eliminando colisiones"));
-        CollisionComponent->ClearCollision();
-    }
-
-    if (NoiseClass && ClipmapComponent)
-    {
-        NoiseClass->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
-    }
-
+    ClearData();
     Super::BeginDestroy();
 }
 
 void ACosmicPlanet::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-    if (CollisionComponent)
-    {
-        CollisionComponent->ClearCollision();
-    }
-
-    if (NoiseClass && ClipmapComponent)
-    {
-        NoiseClass->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
-    }
-
+    ClearData();
     Super::EndPlay(EndPlayReason);
-}
-
-void ACosmicPlanet::Tick(float DeltaTime)
-{
-    Super::Tick(DeltaTime);
-
-   /* if (FoliageSpawnerComponent) {
-        FoliageSpawnerComponent->UpdateFoliageGeneration(DeltaTime, GetActorLocation(), RadiusKm * 100000, NoiseSettings);
-    }*/
 }
 
 
@@ -181,6 +142,20 @@ void ACosmicPlanet::UpdateMaterialOnly()
             PlanetMainColor1, PlanetMainColor2, PlanetColdColor, PlanetHotColor,
             PlanetSlopeColor, NoiseScaleLarge, NoiseScaleMedium, NoiseScaleSmall
         );
+    }
+}
+
+void ACosmicPlanet::ClearData()
+{
+    if (CollisionComponent)
+    {
+        //UE_LOG(LogTemp, Warning, TEXT("Eliminando colisiones"));
+        CollisionComponent->ClearCollision();
+    }
+
+    if (NoiseClass && ClipmapComponent)
+    {
+        NoiseClass->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
     }
 }
 
