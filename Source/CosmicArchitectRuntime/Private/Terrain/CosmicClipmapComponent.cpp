@@ -76,9 +76,10 @@ void UCosmicClipmapComponent::BeginPlay()
     ElapsedTime = FMath::FRandRange(0.f, TimeToRefresh);
 
     DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
-    FRotator Rotation = GetPatchRotation(N);
 
-    UpdateCollisionNearPlayer(SurfacePos, N, Rotation, DistanceToSurface);
+    UpdateMeshPhase(ViewerPos, SurfacePos, N, DistanceToSurface);
+
+    UpdateCollisionNearPlayer(SurfacePos, N, GetPatchRotation(N), DistanceToSurface);
 
     LastSurfaceAngles = GetSurfaceAngles(SurfacePos);
     LastPlayerPos = ViewerPos;

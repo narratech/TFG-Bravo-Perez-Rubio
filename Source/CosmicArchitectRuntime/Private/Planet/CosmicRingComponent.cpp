@@ -126,6 +126,7 @@ void UCosmicRingComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 	// Nota: Usamos FadeMaxDistanceKM para que los asteroides aparezcan justo cuando el shader macro empieza a desaparecer.
 	double GenerationThreshold = FadeMaxDistanceKM * 100000.0;
 
+
 	// [E: Si entramos en la zona, el HISM está vacío y no está procesando / I: If we enter the zone, HISM is empty and not processing]
 	if (DistanceToPlayer <= GenerationThreshold && AsteroidHISM->GetInstanceCount() == 0 && !bIsGeneratingAsteroids)
 	{
@@ -134,15 +135,15 @@ void UCosmicRingComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 		// [E: Variables locales seguras para inyectar en el hilo secundario / I: Safe local variables to inject into the background thread]
 		double InnerCm = InnerRadiusKM * 100000.0;
 		double OuterCm = OuterRadiusKM * 100000.0;
-		int32 NumAsteroids = 10000; // [E: Cantidad de asteroides por sector / I: Asteroids per sector amount]
+		int NumInstances = NumAsteroids;
 
 		// [E: Lanzar hilo asíncrono para cálculos pesados / I: Launch async thread for heavy calculations]
-		AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [this, InnerCm, OuterCm, NumAsteroids]()
+		AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [this, InnerCm, OuterCm, NumInstances]()
 			{
 				TArray<FTransform> AsteroidTransforms;
-				AsteroidTransforms.Reserve(NumAsteroids);
+				AsteroidTransforms.Reserve(NumInstances);
 
-				for (int32 i = 0; i < NumAsteroids; i++)
+				for (int32 i = 0; i < NumInstances; i++)
 				{
 					// [E: Distribución circular aleatoria dentro de los límites LWC / I: Random circular distribution within LWC limits]
 					float Angle = FMath::RandRange(0.0f, PI * 2.0f);
@@ -156,7 +157,7 @@ void UCosmicRingComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 
 					FVector Location = FVector(X, Y, Z);
 					FRotator Rotation = FRotator(FMath::RandRange(0.0f, 360.0f), FMath::RandRange(0.0f, 360.0f), FMath::RandRange(0.0f, 360.0f));
-					FVector Scale = FVector(FMath::RandRange(0.2f, 2.5f)); // Tamaños variables
+					FVector Scale = FVector(FMath::RandRange(MinScale, MaxScale)); // Tamaños variables
 
 					AsteroidTransforms.Add(FTransform(Rotation, Location, Scale));
 				}
