@@ -78,63 +78,46 @@ void UCosmicOrbitComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 	UpdateOrbitVisualization();
 
 	UWorld* World = GetWorld();
-	if (!World || World->WorldType == EWorldType::Editor) return;
+	// Solo bloqueamos si estamos en editor Y no estamos simulando.
+	if (!World || (World->WorldType == EWorldType::Editor && !bEditorSimulating)) return;
 #endif
+
+	// Escala el DeltaTime con el multiplicador inyectado por el generador.
+	const float ScaledDelta = DeltaTime * EditorSpeedMultiplier;
 
 	if (AActor* Owner = GetOwner())
 	{
-		UPrimitiveComponent* RootPrim = Cast<UPrimitiveComponent>(Owner->GetRootComponent());
-
-		FRotator DeltaRotation = FRotator(0.0f, SpinSpeed * DeltaTime, 0.0f);
-		// E: Aplicar rotación sobre si mismo
-		// I: Apply rotation on itself
+		FRotator DeltaRotation = FRotator(0.0f, SpinSpeed * ScaledDelta, 0.0f);
 		Owner->AddActorLocalRotation(DeltaRotation);
 	}
 
-	if (!ParentBody || OrbitalPeriod <= 0.0f) return;
+	if (!ParentBody || OrbitalPeriod <= 0.0f || ScaledDelta <= KINDA_SMALL_NUMBER) return;
 
-	CurrentOrbitTime += DeltaTime;
-
+	CurrentOrbitTime += ScaledDelta;
 	CurrentOrbitTime = FMath::Fmod(CurrentOrbitTime, OrbitalPeriod);
 
-	// E: Calcular el porcentaje de la órbita completado
-	// I: Calculate the percentage of the orbit completed
 	float MeanMotion = (2.0f * PI) / OrbitalPeriod;
 	float MeanAnomaly = MeanMotion * CurrentOrbitTime;
-
 	float E = MeanAnomaly;
 
-	// E: Iteraciones de la ecuacion de Kepler
-	// I: Iterations of Kepler's equation
-	for (int32 i = 0; i < 5; ++i) {
-		float SinE = FMath::Sin(E);
-		float CosE = FMath::Cos(E);
-
-		float DeltaE = (E - Eccentricity * SinE - MeanAnomaly) / (1.0f - Eccentricity * CosE);
+	for (int32 i = 0; i < 5; ++i)
+	{
+		float DeltaE = (E - Eccentricity * FMath::Sin(E) - MeanAnomaly)
+			/ (1.0f - Eccentricity * FMath::Cos(E));
 		E -= DeltaE;
 	}
 
 	float SemiMajorAxisCm = SemiMajorAxisKm * 100000;
-
-	// E: Calcular posicion final
-	// I: Calculate final position
 	float X = SemiMajorAxisCm * (FMath::Cos(E) - Eccentricity);
 	float Y = SemiMajorAxisCm * FMath::Sqrt(1.0f - Eccentricity * Eccentricity) * FMath::Sin(E);
 
 	FVector OrbitalPos(X, Y, 0.0f);
-
-	// E: Aplicar inclinacion (Rotar plano de la orbita)
-	// I: Apply inclination (Rotate orbit plane)
 	FRotator OrbitTilt(InclinationX, InclinationY, InclinationZ);
 	FVector RotatedPos = OrbitTilt.RotateVector(OrbitalPos);
 
-	FVector FinalLocation = RotatedPos;
-
 	if (AActor* Owner = GetOwner())
 	{
-		// E: Mover actor a la posicion
-		// I: Move actor to the position
-		Owner->SetActorRelativeLocation(FinalLocation);
+		Owner->SetActorRelativeLocation(RotatedPos);
 	}
 }
 

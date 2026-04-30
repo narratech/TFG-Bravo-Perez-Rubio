@@ -84,6 +84,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rotation")
 	float SpinSpeed = 0.0f; // Grados por segundo en el eje Z (Yaw)
 
+	// E: Indica si el generador está simulando órbitas en el editor.
+    // I: Indicates whether the generator is simulating orbits in the editor.
+	UPROPERTY()
+	bool bEditorSimulating = false;
+
+	// E: Multiplicador de velocidad orbital inyectado desde el generador.
+	// I: Orbital speed multiplier injected from the generator.
+	UPROPERTY()
+	float EditorSpeedMultiplier = 1.0f;
+
 	// E: Inicializa los parámetros visuales básicos de la órbita (color, grosor).
 	// I: Initializes the basic visual parameters of the orbit (color, thickness).
 	void InitOrbit(FColor color = FColor::Cyan);
@@ -115,7 +125,7 @@ private:
 	// E: Grosor de las líneas dibujadas para representar la órbita.
 	// I: Thickness of the lines drawn to represent the orbit.
 	UPROPERTY(EditAnywhere, Category = "Orbit Visualization", meta = (ClampMin = "0.1", ClampMax = "100000"))
-	float OrbitThickness = 2000.0f;
+	float OrbitThickness = 5000.0f;
 
 	// E: Define si se debe dibujar o no la órbita en el visor del editor.
 	// I: Defines whether or not the orbit should be drawn in the editor viewport.

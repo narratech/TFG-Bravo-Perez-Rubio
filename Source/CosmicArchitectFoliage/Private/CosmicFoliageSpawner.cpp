@@ -56,55 +56,10 @@ void UCosmicFoliageSpawner::UpdateFoliageSpawner(float DeltaTime, const FVector&
     if (ElapsedTime < UpdateInterval) return;
     ElapsedTime = 0.0f;
 
-    //double TotalStartTime = FPlatformTime::Seconds();
-
-    // --- OCTREE + GENERACIÓN ---
-    //double OctreeStartTime = FPlatformTime::Seconds();
-
     UpdateOctreeAndGenerate(ViewerLocation, DistanceToSurface, PlanetCenter, PlanetRadius, NoiseGenerationStrategy);
-
-    //double OctreeEndTime = FPlatformTime::Seconds();
-
-
-    // --- COMPLETAR TASKS ---
-    //double TasksStartTime = FPlatformTime::Seconds();
-
     UpdateFoliageGeneration();
-
-    //double TasksEndTime = FPlatformTime::Seconds();
-
-
-    // --- APLICAR INSTANCIAS ---
-    //double ApplyStartTime = FPlatformTime::Seconds();
-
     ProcessApplyQueue();
-
-    //double ApplyEndTime = FPlatformTime::Seconds();
-
-
-    //double DeleteStartTime = FPlatformTime::Seconds();
-
     ProcessDeactivationQueue();
-
-    //double DeleteEndTime = FPlatformTime::Seconds();
-
-    // --- TOTAL ---
-    //double TotalEndTime = FPlatformTime::Seconds();
-
-    /*if ((TotalEndTime - TotalStartTime) * 1000.0 > 1.0f) {
-        UE_LOG(LogTemp, Warning, TEXT("FOLIAGE TIMING: Total=%.4f ms | Octree=%.4f | Tasks=%.4f | Apply=%.4f | Deactivate=%.4f"),
-            (TotalEndTime - TotalStartTime) * 1000.0,
-            (OctreeEndTime - OctreeStartTime) * 1000.0,
-            (TasksEndTime - TasksStartTime) * 1000.0,
-            (ApplyEndTime - ApplyStartTime) * 1000.0,
-            (DeleteStartTime - DeleteEndTime) * 1000.0
-        );
-    }*/
-    // LOG
-   
-    
-
-    //UE_LOG(LogTemp, Warning, TEXT("Tareas Activas: %d, Pendientes: %d"), ActiveCells.Num(), PendingCells.Num());
 
     // Debug: Dibujar celdas
     DrawDebugCells(PlanetCenter, PlanetRadius);

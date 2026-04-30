@@ -63,6 +63,19 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration")
     int32 Seed;
 
+    // E: Multiplicador global de velocidad para todos los periodos orbitales del sistema.
+    //    1.0 = velocidad normal. Valores mayores aceleran todas las órbitas proporcionalmente.
+    // I: Global speed multiplier for all orbital periods in the system.
+    //    1.0 = normal speed. Higher values accelerate all orbits proportionally.
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration",
+        meta = (ClampMin = "0.0", ClampMax = "100000.0"))
+    float OrbitSpeedMultiplier = 1.0f;
+
+    // E: Indica si la simulación orbital en el editor está activa.
+    // I: Indicates whether the editor orbital simulation is currently active.
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Configuration")
+    bool bIsSimulatingOrbits = false;
+
     // E: Cantidad de cuerpos (esferas) a generar.
     // I: Amount of bodies (spheres) to generate.
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration", meta = (ClampMin = "1", ClampMax = "200"))
@@ -140,4 +153,14 @@ public:
     // I: Destroys all previously generated actors.
     UFUNCTION(CallInEditor, Category = "Actions")
     void ClearBodies();
+
+    // E: Inicia la simulación orbital en el editor (sin necesidad de Play).
+    // I: Starts the orbital simulation in the editor (no Play required).
+    UFUNCTION(CallInEditor, Category = "Actions")
+    void StartOrbitSimulation();
+
+    // E: Detiene la simulación orbital en el editor.
+    // I: Stops the orbital simulation in the editor.
+    UFUNCTION(CallInEditor, Category = "Actions")
+    void StopOrbitSimulation();
 };

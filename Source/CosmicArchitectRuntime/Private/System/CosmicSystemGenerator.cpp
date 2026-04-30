@@ -52,18 +52,26 @@ void ACosmicSystemGenerator::Tick(float DeltaTime)
     UWorld* World = GetWorld();
     if (!World || World->WorldType != EWorldType::Editor) return;
 
-    const FVector Center = GetActorLocation();
-    
-    DrawDebugBox(
-        World,
-        Center,
+    // Dibuja el volumen de generación.
+    DrawDebugBox(World, GetActorLocation(),
         (VolumeSizeKm * 100000) * 0.5f,
-        BoxColor,
-        false,
-        DeltaTime * 2,
-        0,
-        LineWidth
-    );
+        BoxColor, false, DeltaTime * 2, 0, LineWidth);
+
+    // Propaga el multiplicador a todos los OrbitComponents en caliente.
+    if (bIsSimulatingOrbits)
+    {
+        for (AActor* Actor : GeneratedBodies)
+        {
+            if (!Actor) continue;
+            TArray<UCosmicOrbitComponent*> Orbits;
+            Actor->GetComponents<UCosmicOrbitComponent>(Orbits);
+            if (Orbits.Num() == 0) continue;
+            for (UCosmicOrbitComponent* Orbit : Orbits)
+            {
+                Orbit->EditorSpeedMultiplier = OrbitSpeedMultiplier;
+            }
+        }
+    }
 }
 #endif
 
@@ -353,7 +361,7 @@ void ACosmicSystemGenerator::GenerateBodies()
         Orbit->Eccentricity = Stream.FRandRange(0.f, 0.15f);
         Orbit->InclinationX = Stream.FRandRange(0.f, 10.f);
         Orbit->InitialPosition = Stream.FRandRange(0.f, 1.f);
-        Orbit->OrbitalPeriod = FMath::Pow(OrbitDistanceKm, 3.f);
+        Orbit->OrbitalPeriod = FMath::Pow(OrbitDistanceKm, 2.f);
         Orbit->InitOrbit(GetRandomColor(Stream, 50, 255));
         Planet->AddInstanceComponent(Orbit);
 
@@ -437,6 +445,12 @@ void ACosmicSystemGenerator::GenerateBodies()
             GeneratedBodies.Add(Moon);
         }
     }
+
+    if (bIsSimulatingOrbits)
+    {
+        StartOrbitSimulation();
+    }
+
     /*UE_LOG(LogTemp, Display,
         TEXT("System Generation Complete. Bodies: %d"),
         GeneratedBodies.Num());*/
@@ -472,4 +486,37 @@ void ACosmicSystemGenerator::ClearBodies()
         }
     }
     GeneratedBodies.Empty();
+}
+
+void ACosmicSystemGenerator::StartOrbitSimulation()
+{
+    bIsSimulatingOrbits = true;
+
+    for (AActor* Actor : GeneratedBodies)
+    {
+        if (!Actor) continue;
+        TArray<UCosmicOrbitComponent*> Orbits;
+        Actor->GetComponents<UCosmicOrbitComponent>(Orbits);
+        for (UCosmicOrbitComponent* Orbit : Orbits)
+        {
+            Orbit->EditorSpeedMultiplier = OrbitSpeedMultiplier;
+            Orbit->bEditorSimulating = true;
+        }
+    }
+}
+
+void ACosmicSystemGenerator::StopOrbitSimulation()
+{
+    bIsSimulatingOrbits = false;
+
+    for (AActor* Actor : GeneratedBodies)
+    {
+        if (!Actor) continue;
+        TArray<UCosmicOrbitComponent*> Orbits;
+        Actor->GetComponents<UCosmicOrbitComponent>(Orbits);
+        for (UCosmicOrbitComponent* Orbit : Orbits)
+        {
+            Orbit->bEditorSimulating = false;
+        }
+    }
 }
