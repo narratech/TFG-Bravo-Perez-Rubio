@@ -6,6 +6,8 @@
 #include "Engine/StaticMesh.h"
 #include "GameFramework/Pawn.h"
 #include "Engine/World.h"
+
+// [E: Cabeceras de Editor protegidas para que el juego empaquetado no de error / I: Editor headers protected so packaged game doesn't error]
 #if WITH_EDITOR
 #include "Editor.h"
 #include "EditorViewportClient.h"
@@ -16,7 +18,6 @@ UCosmicRingComponent::UCosmicRingComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
 	bTickInEditor = true;
-	bIsGeneratingAsteroids = false;
 
 	// [E: Crear componente visual para el plano macro / I: Create visual component for the macro plane]
 	MacroDiskComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MacroDiskComponent"));
@@ -42,20 +43,11 @@ UCosmicRingComponent::UCosmicRingComponent()
 	{
 		MacroRingMaterial = CosmicMaterialAsset.Object;
 	}
-
-	// [E: Crear gestor HISM para los asteroides físicos / I: Create HISM manager for physical asteroids]
-	AsteroidHISM = CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(TEXT("AsteroidHISM"));
-	AsteroidHISM->SetupAttachment(this);
 }
 
 void UCosmicRingComponent::BeginPlay()
 {
 	Super::BeginPlay();
-
-	if (AsteroidMesh)
-	{
-		AsteroidHISM->SetStaticMesh(AsteroidMesh);
-	}
 
 	// [E: Crear instancia dinámica basada en el material asignado / I: Create dynamic instance based on assigned material]
 	if (MacroRingMaterial && MacroDiskComponent)
@@ -85,20 +77,13 @@ void UCosmicRingComponent::OnRegister()
 			DynamicRingMat = UMaterialInstanceDynamic::Create(MacroRingMaterial, this);
 		}
 
-		// [E: Asignamos el material a la malla / I: Assign material to the mesh]
 		MacroDiskComponent->SetMaterial(0, DynamicRingMat);
 
 		// [E: Aplicamos escala inicial y parámetros del shader / I: Apply initial scale and shader parameters]
 		double CurrentScale = OuterRadiusKM * 2000.0;
 		MacroDiskComponent->SetRelativeScale3D(FVector(CurrentScale, CurrentScale, 1.0f));
-		// MacroDiskComponent->SetRelativeRotation(RingRotation); // Descomenta si usas rotación inicial
 
 		UpdateShaderParameters();
-	}
-
-	if (AsteroidHISM && AsteroidMesh)
-	{
-		AsteroidHISM->SetStaticMesh(AsteroidMesh);
 	}
 }
 
@@ -110,15 +95,44 @@ void UCosmicRingComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
 		MacroDiskComponent->DestroyComponent();
 	}
 
-	// [E: Destruimos el generador de asteroides / I: Destroy the asteroid generator]
-	if (IsValid(AsteroidHISM))
+	// [E: Destruimos todos los HISMs activos de los sectores / I: Destroy all active HISMs from sectors]
+	for (auto& Pair : ActiveSectors)
 	{
-		AsteroidHISM->ClearInstances(); // Vaciamos la memoria primero por seguridad
-		AsteroidHISM->DestroyComponent();
+		if (IsValid(Pair.Value))
+		{
+			Pair.Value->DestroyComponent();
+		}
 	}
+	ActiveSectors.Empty();
+
+	// [E: Destruimos los componentes reciclados guardados en el almacén / I: Destroy recycled components stored in the pool]
+	for (UHierarchicalInstancedStaticMeshComponent* PoolHISM : HISMPool)
+	{
+		if (IsValid(PoolHISM))
+		{
+			PoolHISM->DestroyComponent();
+		}
+	}
+	HISMPool.Empty();
 
 	// [E: Llamamos a la clase padre para que termine el proceso de destrucción / I: Call parent class to finish the destruction process]
 	Super::OnComponentDestroyed(bDestroyingHierarchy);
+}
+
+UHierarchicalInstancedStaticMeshComponent* UCosmicRingComponent::GetOrCreateHISM()
+{
+	// [E: Si tenemos un componente reciclado en el almacén, lo sacamos y lo usamos / I: If we have a recycled component, pop and use it]
+	if (HISMPool.Num() > 0)
+	{
+		return HISMPool.Pop();
+	}
+
+	// [E: Si no hay reciclados, creamos uno nuevo dinámicamente / I: If no recycled ones, create dynamically]
+	UHierarchicalInstancedStaticMeshComponent* NewHISM = NewObject<UHierarchicalInstancedStaticMeshComponent>(this);
+	NewHISM->SetStaticMesh(AsteroidMesh);
+	NewHISM->SetupAttachment(this);
+	NewHISM->RegisterComponent(); // Obligatorio al crear componentes en tiempo de ejecución
+	return NewHISM;
 }
 
 #if WITH_EDITOR
@@ -131,7 +145,6 @@ void UCosmicRingComponent::PostEditChangeProperty(FPropertyChangedEvent& Propert
 	{
 		double CurrentScale = OuterRadiusKM * 2000.0;
 		MacroDiskComponent->SetRelativeScale3D(FVector(CurrentScale, CurrentScale, 1.0f));
-		// MacroDiskComponent->SetRelativeRotation(RingRotation);
 
 		UpdateShaderParameters();
 	}
@@ -142,13 +155,11 @@ void UCosmicRingComponent::UpdateShaderParameters()
 {
 	if (DynamicRingMat)
 	{
-		// [E: Enviar parámetros al shader dinámico / I: Send parameters to the dynamic shader]
 		DynamicRingMat->SetVectorParameterValue(FName("RingColor"), RingColor);
 		DynamicRingMat->SetScalarParameterValue(FName("BandFrequency"), (float)BandFrequency);
 		DynamicRingMat->SetScalarParameterValue(FName("InnerRadius"), (float)InnerRadiusUV);
 		DynamicRingMat->SetScalarParameterValue(FName("OuterRadius"), (float)OuterRadiusUV);
 
-		// [E: Conversión de Kilómetros a Unidades Unreal para el desvanecimiento / I: Kilometers to Unreal Units conversion for fading]
 		DynamicRingMat->SetScalarParameterValue(FName("FadeMinDistance"), (float)(FadeMinDistanceKM * 100000.0));
 		DynamicRingMat->SetScalarParameterValue(FName("FadeMaxDistance"), (float)(FadeMaxDistanceKM * 100000.0));
 	}
@@ -167,7 +178,6 @@ void UCosmicRingComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 	// [E: LÓGICA DE DETECCIÓN DE CÁMARA (JUEGO VS EDITOR) / I: CAMERA DETECTION LOGIC (GAME VS EDITOR)]
 	if (GetWorld()->IsGameWorld())
 	{
-		// [E: Si estamos en juego, usamos la posición del Pawn del jugador / I: If in game, use player's Pawn location]
 		APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
 		if (PlayerPawn)
 		{
@@ -178,7 +188,6 @@ void UCosmicRingComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 #if WITH_EDITOR
 	else
 	{
-		// [E: Si estamos en el Editor, buscamos la cámara activa del Viewport / I: If in Editor, look for active Viewport camera]
 		if (GEditor && GEditor->GetActiveViewport() && GEditor->GetActiveViewport()->GetClient())
 		{
 			FEditorViewportClient* ViewportClient = static_cast<FEditorViewportClient*>(GEditor->GetActiveViewport()->GetClient());
@@ -195,56 +204,123 @@ void UCosmicRingComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 
 	// [E: Cálculo de distancia y umbral de generación / I: Distance calculation and generation threshold]
 	double DistanceToCamera = FVector::Distance(CameraLocation, GetComponentLocation());
-	double GenerationThreshold = FadeMaxDistanceKM * 100000.0; // KM a Unidades Unreal (cm)
+	double GenerationThreshold = FadeMaxDistanceKM * 100000.0;
 
-	// [E: LÓGICA DE GENERACIÓN ASÍNCRONA / I: ASYNC GENERATION LOGIC]
-	// [E: Si entramos en el rango y no hay asteroides ni proceso activo / I: If in range and no asteroids or active process]
-	if (DistanceToCamera <= GenerationThreshold && AsteroidHISM->GetInstanceCount() == 0 && !bIsGeneratingAsteroids)
+	// ===================================================================================================
+	// [E: LÓGICA DE SECTORIZACIÓN DINÁMICA (TREADMILL) / I: DYNAMIC SECTORIZATION LOGIC (TREADMILL)]
+	// ===================================================================================================
+	if (DistanceToCamera <= GenerationThreshold)
 	{
-		bIsGeneratingAsteroids = true;
+		// [E: Transformamos la posición de la cámara a coordenadas locales del anillo / I: Transform camera loc to ring local coordinates]
+		FVector LocalCamLoc = GetComponentTransform().InverseTransformPosition(CameraLocation);
 
-		// [E: Captura de variables locales para el hilo secundario / I: Capture local variables for background thread]
+		// [E: Calculamos el ángulo en Radianes y lo pasamos a Grados (0 a 360) / I: Calculate angle in Radians and to Degrees]
+		float AngleRad = FMath::Atan2(LocalCamLoc.Y, LocalCamLoc.X);
+		if (AngleRad < 0) AngleRad += 2 * PI;
+		float AngleDeg = FMath::RadiansToDegrees(AngleRad);
+
+		// [E: Averiguamos en qué sector estamos (Ej: 45º / 15º = Sector 3) / I: Find current sector]
+		int32 CurrentSector = FMath::FloorToInt(AngleDeg / SectorAngleDegrees);
+		int32 TotalSectors = FMath::FloorToInt(360.0f / SectorAngleDegrees);
+
+		// [E: 1. Crear lista de los sectores que DEBEN estar visibles / I: 1. Create list of REQUIRED visible sectors]
+		TArray<int32> RequiredSectors;
+		for (int32 i = -VisibleSectors; i <= VisibleSectors; ++i)
+		{
+			int32 SectorID = (CurrentSector + i) % TotalSectors;
+			if (SectorID < 0) SectorID += TotalSectors; // Mantenemos el valor circular
+			RequiredSectors.Add(SectorID);
+		}
+
+		// [E: 2. Eliminar sectores viejos que dejamos atrás / I: 2. Remove old sectors left behind]
+		TArray<int32> ActiveKeys;
+		ActiveSectors.GetKeys(ActiveKeys);
+
+		for (int32 ActiveID : ActiveKeys)
+		{
+			if (!RequiredSectors.Contains(ActiveID))
+			{
+				UHierarchicalInstancedStaticMeshComponent* OldHISM = ActiveSectors[ActiveID];
+				if (IsValid(OldHISM))
+				{
+					OldHISM->ClearInstances();
+					HISMPool.Add(OldHISM);
+				}
+				ActiveSectors.Remove(ActiveID);
+			}
+		}
+
+		// [E: 3. Generar sectores nuevos frente a nosotros / I: 3. Generate new sectors ahead of us]
 		double InnerCm = InnerRadiusKM * 100000.0;
 		double OuterCm = OuterRadiusKM * 100000.0;
-		int32 Count = 10000; // [E: Cantidad de asteroides / I: Asteroids count]
+		float LocalMinScale = MinScale;
+		float LocalMaxScale = MaxScale;
+		int32 Density = AsteroidsPerSector;
 
-		AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [this, InnerCm, OuterCm, Count]()
+		for (int32 ReqID : RequiredSectors)
+		{
+			if (!ActiveSectors.Contains(ReqID))
 			{
-				TArray<FTransform> NewTransforms;
-				NewTransforms.Reserve(Count);
+				// [E: Pedimos un HISM (nuevo o reciclado) y lo guardamos / I: Request a HISM (new or recycled) and store it]
+				UHierarchicalInstancedStaticMeshComponent* SectorHISM = GetOrCreateHISM();
+				// [E: Aseguramos que tiene la malla correcta por si el usuario la cambió en el editor / I: Ensure correct mesh in case of Editor changes]
+				SectorHISM->SetStaticMesh(AsteroidMesh);
+				ActiveSectors.Add(ReqID, SectorHISM);
 
-				for (int32 i = 0; i < Count; i++)
-				{
-					float Angle = FMath::RandRange(0.0f, PI * 2.0f);
-					float Distance = FMath::RandRange((float)InnerCm, (float)OuterCm);
+				float StartAngleRad = FMath::DegreesToRadians(ReqID * SectorAngleDegrees);
+				float EndAngleRad = FMath::DegreesToRadians((ReqID + 1) * SectorAngleDegrees);
 
-					float X = FMath::Cos(Angle) * Distance;
-					float Y = FMath::Sin(Angle) * Distance;
-					float Z = FMath::RandRange(-20000.0f, 20000.0f); // [E: Grosor del anillo / I: Ring thickness]
-
-					FVector Loc = FVector(X, Y, Z);
-					FRotator Rot = FRotator(FMath::RandRange(0.f, 360.f), FMath::RandRange(0.f, 360.f), FMath::RandRange(0.f, 360.f));
-					FVector Sca = FVector(FMath::RandRange(0.5f, 2.0f));
-
-					NewTransforms.Add(FTransform(Rot, Loc, Sca));
-				}
-
-				// [E: Regreso al Hilo Principal para aplicar cambios en el HISM / I: Return to GameThread to apply HISM changes]
-				AsyncTask(ENamedThreads::GameThread, [this, NewTransforms]()
+				// [E: Lanzamos el hilo asíncrono SOLO para este trozo / I: Launch async thread ONLY for this slice]
+				AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [SectorHISM, StartAngleRad, EndAngleRad, InnerCm, OuterCm, Density, LocalMinScale, LocalMaxScale]()
 					{
-						if (IsValid(this) && AsteroidHISM)
+						TArray<FTransform> NewTransforms;
+						NewTransforms.Reserve(Density);
+
+						for (int32 i = 0; i < Density; i++)
 						{
-							AsteroidHISM->AddInstances(NewTransforms, false);
-							UE_LOG(LogTemp, Warning, TEXT("¡Asteroides Generados! Instancias totales: %d"), AsteroidHISM->GetInstanceCount());
+							float Angle = FMath::RandRange(StartAngleRad, EndAngleRad);
+							float Distance = FMath::RandRange((float)InnerCm, (float)OuterCm);
+
+							float X = FMath::Cos(Angle) * Distance;
+							float Y = FMath::Sin(Angle) * Distance;
+							float Z = FMath::RandRange(-20000.0f, 20000.0f);
+
+							FVector Loc = FVector(X, Y, Z);
+							FRotator Rot = FRotator(FMath::RandRange(0.f, 360.f), FMath::RandRange(0.f, 360.f), FMath::RandRange(0.f, 360.f));
+							FVector Sca = FVector(FMath::RandRange(LocalMinScale, LocalMaxScale));
+
+							NewTransforms.Add(FTransform(Rot, Loc, Sca));
 						}
-						bIsGeneratingAsteroids = false;
+
+						AsyncTask(ENamedThreads::GameThread, [SectorHISM, NewTransforms]()
+							{
+								if (IsValid(SectorHISM))
+								{
+									SectorHISM->AddInstances(NewTransforms, false);
+								}
+							});
 					});
-			});
+			}
+		}
 	}
-	// [E: LÓGICA DE LIMPIEZA / I: CLEANUP LOGIC]
-	// [E: Si nos alejamos del umbral, liberamos memoria RAM / I: If we move away from threshold, free RAM]
-	else if (DistanceToCamera > GenerationThreshold && AsteroidHISM->GetInstanceCount() > 0 && !bIsGeneratingAsteroids)
+	// ===================================================================================================
+	// [E: LÓGICA DE LIMPIEZA TOTAL / I: FULL CLEANUP LOGIC]
+	// ===================================================================================================
+	else if (ActiveSectors.Num() > 0)
 	{
-		AsteroidHISM->ClearInstances();
+		// [E: Si nos alejamos del anillo, mandamos todos los sectores activos al almacén / I: If we move away, send all active sectors to pool]
+		TArray<int32> ActiveKeys;
+		ActiveSectors.GetKeys(ActiveKeys);
+
+		for (int32 ActiveID : ActiveKeys)
+		{
+			UHierarchicalInstancedStaticMeshComponent* OldHISM = ActiveSectors[ActiveID];
+			if (IsValid(OldHISM))
+			{
+				OldHISM->ClearInstances();
+				HISMPool.Add(OldHISM);
+			}
+		}
+		ActiveSectors.Empty();
 	}
 }

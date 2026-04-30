@@ -11,7 +11,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAsteroidFieldGenerated);
 UCLASS(ClassGroup = (CosmicArchitect), meta = (BlueprintSpawnableComponent),
 	HideCategories = (Rendering, Lighting, Navigation, Replication, Physics, Collision,
 		Activation, AssetUserData, HLOD, Cooking, Tags, ComponentReplication))
-class COSMICARCHITECTRUNTIME_API UCosmicRingComponent : public USceneComponent
+	class COSMICARCHITECTRUNTIME_API UCosmicRingComponent : public USceneComponent
 {
 	GENERATED_BODY()
 
@@ -75,14 +75,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
 	FRotator RingRotation = FRotator::ZeroRotator;
 
+	// [E: Escala mínima de las rocas espaciales / I: Minimum scale of space rocks]
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
-	int32 NumAsteroids = 1000;
+	float MinScale = 1.0f;
 
+	// [E: Escala máxima de las rocas espaciales / I: Maximum scale of space rocks]
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
-	float MinScale = 1;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
-	float MaxScale = 10;
+	float MaxScale = 10.0f;
 
 	// [E: Distancia límite para desvanecer el shader (KM) / I: Threshold distance to fade shader (KM)]
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
@@ -92,6 +91,22 @@ public:
 	double FadeMaxDistanceKM = 15.0;
 
 	// -------------------------------------------------------------------------
+	// [E: OPTIMIZACIÓN Y RENDIMIENTO (Sectorización) / I: OPTIMIZATION & PERFORMANCE (Sectorization)]
+	// -------------------------------------------------------------------------
+
+	// [E: Tamaño en grados de cada porción generada / I: Size in degrees of each generated slice]
+	UPROPERTY(EditAnywhere, Category = "Cosmic Architect | Optimization")
+	float SectorAngleDegrees = 15.0f;
+
+	// [E: Sectores cargados a cada lado del jugador / I: Sectors loaded on each side of the player]
+	UPROPERTY(EditAnywhere, Category = "Cosmic Architect | Optimization")
+	int32 VisibleSectors = 2;
+
+	// [E: Control de densidad de rocas por sector / I: Rock density control per sector]
+	UPROPERTY(EditAnywhere, Category = "Cosmic Architect | Optimization")
+	int32 AsteroidsPerSector = 2000;
+
+	// -------------------------------------------------------------------------
 	// [E: COMPONENTES INTERNOS / I: INTERNAL COMPONENTS]
 	// -------------------------------------------------------------------------
 private:
@@ -99,16 +114,20 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "Cosmic Architect | Internal")
 	class UStaticMeshComponent* MacroDiskComponent;
 
-	// [E: Gestor de instancias para rendimiento extremo / I: Instance manager for extreme performance]
-	UPROPERTY(VisibleAnywhere, Category = "Cosmic Architect | Internal")
-	UHierarchicalInstancedStaticMeshComponent* AsteroidHISM;
-
 	// [E: Referencia al material dinámico para modificar parámetros / I: Reference to dynamic material to modify parameters]
 	UPROPERTY()
 	class UMaterialInstanceDynamic* DynamicRingMat;
 
-	// [E: Bandera para evitar múltiples llamadas asíncronas simultáneas / I: Flag to prevent multiple simultaneous async calls]
-	bool bIsGeneratingAsteroids;
+	// [E: Diccionario de Sectores Activos (Clave: ID, Valor: HISM) / I: Active Sectors Dictionary (Key: ID, Value: HISM)]
+	UPROPERTY()
+	TMap<int32, UHierarchicalInstancedStaticMeshComponent*> ActiveSectors;
+
+	// [E: Almacén de componentes inactivos para reciclar / I: Inactive components pool for recycling]
+	UPROPERTY()
+	TArray<UHierarchicalInstancedStaticMeshComponent*> HISMPool;
+
+	// [E: Función auxiliar para reciclar o crear HISMs / I: Helper function to recycle or create HISMs]
+	UHierarchicalInstancedStaticMeshComponent* GetOrCreateHISM();
 
 	// [E: Función auxiliar para inyectar datos al Shader / I: Helper function to inject data into Shader]
 	void UpdateShaderParameters();
