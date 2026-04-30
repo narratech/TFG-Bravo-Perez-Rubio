@@ -135,10 +135,12 @@ protected:
     FIntPoint ComputeGridShiftSpherical(const FVector& PlayerPos, const FVector& CurrentSurfacePos, int64 GridSpacing);
     FIntPoint ComputeGridShift(const FVector& PlayerPos, const FVector& CurrentSurfacePos, float GridSpacing);
     FVector2D GetSurfaceAngles(const FVector& SurfacePos);
-    bool IsClipmapRingVisible(const int32 LevelIndex, const double DistanceToSurface);
-    bool IsClipmapRingVisible(const int64 GridSpacing, const int64 Resolution, const double DistanceToSurface);
-    void DecreaseClipmapLevelFull();
-    void IncreaseClipmapLevelFull();
+    int32 CalculateDecreaseSteps(const double DistanceToSurface) const;
+    int32 CalculateIncreaseSteps(const double DistanceToSurface) const;
+    bool IsClipmapRingVisible(const int32 LevelIndex, const double DistanceToSurface) const;
+    bool IsClipmapRingVisible(const int64 GridSpacing, const int64 Resolution, const double DistanceToSurface) const;
+    void DecreaseClipmapLevelFull(int32 Steps = 1);
+    void IncreaseClipmapLevelFull(int32 Steps = 1);
 
 private:
     UPROPERTY()

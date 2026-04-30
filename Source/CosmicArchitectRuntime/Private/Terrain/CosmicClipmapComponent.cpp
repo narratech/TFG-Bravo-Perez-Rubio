@@ -213,9 +213,9 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
     
     if (bShouldSwitch) 
     {   
-        TimeToRefresh = bPerformaceMode ? 0.05f : 0.01f;
         if (!bWaitingForFirstUpdateAfterPerformance) 
         { 
+            TimeToRefresh = bPerformaceMode ? 0.05f : 0.01f;
             FarLevel->SetMeshActive(bPerformaceMode); 
             for (size_t i = 0; i < Levels.Num(); i++) 
             { 
@@ -281,26 +281,27 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
     bool UpdateClipmapLevels = false; 
     //Ver si hay que reducir o incrementar niveles 
     
-    if (Levels.Num() > 1) 
-    { 
-        UCosmicMeshComponent* MeshLast = Levels.Last(); 
-        UCosmicMeshComponent* MeshFirst = Levels[0]; 
-        
-        bool bIsVisible = IsClipmapRingVisible(Levels.Num() - 1, DistanceToSurface); 
-        //UE_LOG(LogTemp, Warning, TEXT("Ultimo visible %d"), bIsVisible); 
-        
-        if (!bIsVisible && MeshFirst->GridSpacing > MinTriangleSize) 
-        { 
-            DecreaseClipmapLevelFull(); 
-            UpdateClipmapLevels = true; 
-        } 
-        else if(IsClipmapRingVisible(MeshLast->GridSpacing * 2, MeshLast->Resolution, DistanceToSurface) 
+    if (Levels.Num() > 1)
+    {
+        UCosmicMeshComponent* MeshLast = Levels.Last();
+        UCosmicMeshComponent* MeshFirst = Levels[0];
+
+        const bool bLastVisible = IsClipmapRingVisible(Levels.Num() - 1, DistanceToSurface);
+
+        if (!bLastVisible && MeshFirst->GridSpacing > MinTriangleSize)
+        {
+            const int32 Steps = CalculateDecreaseSteps(DistanceToSurface);
+            DecreaseClipmapLevelFull(Steps);
+            UpdateClipmapLevels = true;
+        }
+        else if (IsClipmapRingVisible(MeshLast->GridSpacing * 2, MeshLast->Resolution, DistanceToSurface)
             && MeshLast->GridSpacing < BaseSpacing * FMath::Pow(2.0f, NumLevels - 1))
-        { 
-            IncreaseClipmapLevelFull(); 
-            UpdateClipmapLevels = true; 
-        } 
-    } 
+        {
+            const int32 Steps = CalculateIncreaseSteps(DistanceToSurface);
+            IncreaseClipmapLevelFull(Steps);
+            UpdateClipmapLevels = true;
+        }
+    }
     
     //Calcular numero de celdas que hay que desplazar 
     FIntPoint Shift = ComputeGridShiftSpherical(ViewerPos, SurfacePos, BaseGridSpacing * BaseResolution / 4); 
@@ -986,9 +987,44 @@ float UCosmicClipmapComponent::GetDistanceToPlainSurface(FVector& OutViewerPos, 
     return Distance;
 }
 
+int32 UCosmicClipmapComponent::CalculateDecreaseSteps(const double DistanceToSurface) const
+{
+    // hay que bajar al menos 1, buscamos el mínimo n tal que
+    // el último anillo sea visible tras n halvings
+    int32 Steps = 1;
+    const int64 LastResolution = Levels.Last()->Resolution;
+    const int64 LastSpacing = Levels.Last()->GridSpacing;
+    const int64 FirstSpacing = Levels[0]->GridSpacing;
+
+    while (!IsClipmapRingVisible(LastSpacing >> Steps, LastResolution, DistanceToSurface))
+    {
+        // No bajar más si el primer nivel ya tocaría el límite mínimo
+        if ((FirstSpacing >> (Steps + 1)) <= MinTriangleSize)
+            break;
+        Steps++;
+    }
+    return Steps;
+}
+
+int32 UCosmicClipmapComponent::CalculateIncreaseSteps(const double DistanceToSurface) const
+{
+    // buscamos cuántos doublings
+    // consecutivos siguen siendo visibles sin superar el spacing máximo permitido
+    int32 Steps = 1;
+    const int64 LastResolution = Levels.Last()->Resolution;
+    const int64 LastSpacing = Levels.Last()->GridSpacing;
+    const int64 MaxSpacing = static_cast<int64>(BaseSpacing * FMath::Pow(2.0f, NumLevels - 1));
+
+    while (IsClipmapRingVisible(LastSpacing << (Steps + 1), LastResolution, DistanceToSurface)
+        && (LastSpacing << Steps) < MaxSpacing)
+    {
+        Steps++;
+    }
+    return Steps;
+}
 
 
-bool UCosmicClipmapComponent::IsClipmapRingVisible(const int32 LevelIndex, const double DistanceToSurface)
+bool UCosmicClipmapComponent::IsClipmapRingVisible(const int32 LevelIndex, const double DistanceToSurface) const
 {  
     
     // Calcular el radio del clipmap en la superficie
@@ -1001,7 +1037,7 @@ bool UCosmicClipmapComponent::IsClipmapRingVisible(const int32 LevelIndex, const
     return ClipmapSurfaceRadius <= VisibleRadius * 2.f; 
 }
 
-bool UCosmicClipmapComponent::IsClipmapRingVisible(const int64 GridSpacing, const int64 Resolution, const double DistanceToSurface)
+bool UCosmicClipmapComponent::IsClipmapRingVisible(const int64 GridSpacing, const int64 Resolution, const double DistanceToSurface) const
 {
     int64 ClipmapSurfaceRadius = GridSpacing * (Resolution - 2) / 2;
 
@@ -1013,35 +1049,38 @@ bool UCosmicClipmapComponent::IsClipmapRingVisible(const int64 GridSpacing, cons
 }
 
 
-void UCosmicClipmapComponent::DecreaseClipmapLevelFull()
+void UCosmicClipmapComponent::DecreaseClipmapLevelFull(int32 Steps)
 {
-    if (NumLevels > 1) {
-        BaseGridSpacing /= 2;
-        TotalShift *= 2;
+    if (NumLevels <= 1 || Steps <= 0) return;
 
-        // Recalcular desde el nivel base
-        float NewGridSpacing = BaseGridSpacing;
+    // Aplicar todos los halvings al BaseGridSpacing de una vez
+    const int64 Divisor = static_cast<int64>(1) << Steps; // 2^Steps
+    BaseGridSpacing /= Divisor;
+    TotalShift *= Divisor;
 
-        for (size_t i = 0; i < NumLevels; i++)
-        {
-            Levels[i]->ReScaleLevel(NewGridSpacing);
-            NewGridSpacing *= 2; // cada nivel duplica el spacing
-        }
+    // Reconstruir spacings desde la nueva base
+    float NewGridSpacing = BaseGridSpacing;
+    for (int32 i = 0; i < NumLevels; i++)
+    {
+        Levels[i]->ReScaleLevel(NewGridSpacing);
+        NewGridSpacing *= 2.f;
     }
 }
 
-
-
-void UCosmicClipmapComponent::IncreaseClipmapLevelFull()
+void UCosmicClipmapComponent::IncreaseClipmapLevelFull(int32 Steps)
 {
-    if (NumLevels > 1) {
-        BaseGridSpacing *= 2;
-        TotalShift /= 2;
+    if (NumLevels <= 1 || Steps <= 0) return;
 
-        for (size_t i = 0; i < NumLevels; i++)
-        {
-            Levels[i]->ReScaleLevel(Levels[i]->GridSpacing * 2);
-        }
+    const int64 Multiplier = static_cast<int64>(1) << Steps; // 2^Steps
+    BaseGridSpacing *= Multiplier;
+    TotalShift /= Multiplier;
+
+    // Reconstruir spacings desde la nueva base
+    float NewGridSpacing = BaseGridSpacing;
+    for (int32 i = 0; i < NumLevels; i++)
+    {
+        Levels[i]->ReScaleLevel(NewGridSpacing);
+        NewGridSpacing *= 2.f;
     }
 }
 
