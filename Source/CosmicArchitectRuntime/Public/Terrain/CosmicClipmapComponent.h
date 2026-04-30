@@ -120,14 +120,15 @@ protected:
     /** Actualizar colisión cerca del jugador */
     void UpdateFoliagePhase(float DeltaTime, const FVector& ViewerPos, float DistanceToSurface);
     void UpdateCollisionPhase(const FVector& ViewerPos, const FVector& SurfacePos,
-        const FVector& N, const FRotator& Rotation, float DistanceToSurface);
+        const FVector& N, float DistanceToSurface);
     void UpdateMeshPhase(const FVector& ViewerPos, const FVector& SurfacePos,
-        const FVector& N, const FRotator& Rotation, float DistanceToSurface);
+        const FVector& N, float DistanceToSurface);
     void UpdateCollisionNearPlayer(const FVector& SurfacePos, const FVector& SurfaceNormal, const FRotator& PatchRotation, const double DistanceToSurface);
     void UpdatePatchTransform(const FVector& SurfacePos, const FVector& N);
     void BuildDynamicMaterial();
     FRotator GetPatchRotation(const FVector& SurfacePos) const;
     double GetDistanceToSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N);
+    double GetFastDistanceToSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N);
     float GetDistanceToPlainSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N);
     FVector GetPlayerLocation();
     FIntPoint ComputeGridShiftPlanar(const FVector& PlayerPos, float GridSpacing);

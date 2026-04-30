@@ -117,26 +117,38 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
     FVector SurfacePos;
     FVector N;
     FVector ViewerPos;
-    float DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
-    FRotator Rotation = GetPatchRotation(N);
+    float DistanceToSurface;  
 
-    // EJECUCION POR FASE
-    switch (CurrentPhase)
+    if (!bPerformaceMode) {
+
+        DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
+
+        switch (CurrentPhase)
+        {
+        case EUpdatePhase::Foliage:
+            UpdateFoliagePhase(DeltaTime, ViewerPos, DistanceToSurface);
+            break;
+
+        case EUpdatePhase::Collision:
+            UpdateCollisionPhase(ViewerPos, SurfacePos, N, DistanceToSurface);
+            break;
+
+        case EUpdatePhase::Mesh:
+            UpdateMeshPhase(ViewerPos, SurfacePos, N, DistanceToSurface);
+            break;
+        }
+
+        CurrentPhase = (EUpdatePhase)(((uint8)CurrentPhase + 1) % 3);
+    }
+    else
     {
-    case EUpdatePhase::Foliage:
-        UpdateFoliagePhase(DeltaTime, ViewerPos, DistanceToSurface);
-        break;
-
-    case EUpdatePhase::Collision:
-        UpdateCollisionPhase(ViewerPos, SurfacePos, N, Rotation, DistanceToSurface);
-        break;
-
-    case EUpdatePhase::Mesh:
-        UpdateMeshPhase(ViewerPos, SurfacePos, N, Rotation, DistanceToSurface);
-        break;
+        DistanceToSurface = GetFastDistanceToSurface(ViewerPos, SurfacePos, N);
+        UpdateMeshPhase(ViewerPos, SurfacePos, N, DistanceToSurface);
     }
 
-    CurrentPhase = (EUpdatePhase)(((uint8)CurrentPhase + 1) % 3);
+    // EJECUCION POR FASE
+    
+    
 
     //double TotalEndTime = FPlatformTime::Seconds();
 
@@ -155,20 +167,18 @@ void UCosmicClipmapComponent::UpdateFoliagePhase(float DeltaTime, const FVector&
 }
 
 void UCosmicClipmapComponent::UpdateCollisionPhase(const FVector& ViewerPos, const FVector& SurfacePos,
-    const FVector& N, const FRotator& Rotation,
-    float DistanceToSurface)
+    const FVector& N, float DistanceToSurface)
 {
     if (CollisionComponent &&
         !LastMeshPlayerPos.Equals(ViewerPos, CollisionComponent->CollisionTriangleSize))
     {
-        UpdateCollisionNearPlayer(SurfacePos, N, Rotation, DistanceToSurface);
+        UpdateCollisionNearPlayer(SurfacePos, N, GetPatchRotation(N), DistanceToSurface);
         LastMeshPlayerPos = ViewerPos;
     }
 }
 
 void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FVector& SurfacePos,
-    const FVector& N, const FRotator& Rotation,
-    float DistanceToSurface)
+    const FVector& N, float DistanceToSurface)
 {
     if (!FarLevel) return; 
     
@@ -202,7 +212,8 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
     bool bShouldSwitch = (FarLevel->bActiveMesh && !bPerformaceMode) || (!FarLevel->bActiveMesh && bPerformaceMode); 
     
     if (bShouldSwitch) 
-    { 
+    {   
+        TimeToRefresh = bPerformaceMode ? 0.05f : 0.01f;
         if (!bWaitingForFirstUpdateAfterPerformance) 
         { 
             FarLevel->SetMeshActive(bPerformaceMode); 
@@ -303,6 +314,7 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
     
     if (Shift != FIntPoint::ZeroValue || bWaitingForFirstUpdateAfterPerformance || UpdateClipmapLevels)
     { 
+        const FRotator Rotation = GetPatchRotation(N);
         if (bWaitingForFirstUpdateAfterPerformance) 
         { 
             bBuildingLevels = true; 
@@ -913,6 +925,34 @@ double UCosmicClipmapComponent::GetDistanceToSurface(
     double DistanceToSurface = DistanceToCenter - SurfaceRadius;
 
     if (DistanceToCenter <= SurfaceRadius)
+    {
+        return 0.0;
+    }
+
+    return DistanceToSurface;
+}
+
+double UCosmicClipmapComponent::GetFastDistanceToSurface(
+    FVector& OutViewerPos,
+    FVector& OutSurfacePos,
+    FVector& OutN)
+{
+    AActor* Owner = GetOwner();
+    if (!Owner) return 0.f;
+
+    OutViewerPos = GetPlayerLocation();
+    CurrentActorPosition = Owner->GetActorLocation();
+
+    FVector CenterToViewer = OutViewerPos - CurrentActorPosition;
+    double DistanceToCenter = CenterToViewer.Length();
+
+    OutN = CenterToViewer.GetSafeNormal();
+
+    OutSurfacePos = CurrentActorPosition + OutN * PlanetRadius;
+
+    double DistanceToSurface = DistanceToCenter - PlanetRadius;
+
+    if (DistanceToCenter <= PlanetRadius)
     {
         return 0.0;
     }
