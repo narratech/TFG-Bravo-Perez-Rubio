@@ -6,11 +6,16 @@
 #include "Engine/StaticMesh.h"
 #include "GameFramework/Pawn.h"
 #include "Engine/World.h"
+#if WITH_EDITOR
+#include "Editor.h"
+#include "EditorViewportClient.h"
+#endif
 
 // [E: Constructor: Inicializamos escala, mallas y materiales automáticos / I: Constructor: We initialize scale, meshes and automatic materials]
 UCosmicRingComponent::UCosmicRingComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
+	bTickInEditor = true;
 	bIsGeneratingAsteroids = false;
 
 	// [E: Crear componente visual para el plano macro / I: Create visual component for the macro plane]
@@ -67,25 +72,66 @@ void UCosmicRingComponent::BeginPlay()
 	}
 }
 
-#if WITH_EDITOR
-void UCosmicRingComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+void UCosmicRingComponent::OnRegister()
 {
-	Super::PostEditChangeProperty(PropertyChangedEvent);
+	Super::OnRegister();
 
-	if (MacroRingMaterial && MacroDiskComponent)
+	// [E: Validamos que tengamos malla y material base asignados / I: Validate we have mesh and base material assigned]
+	if (MacroDiskComponent && MacroRingMaterial)
 	{
-		// [E: Asegurar que el material dinámico exista y esté aplicado en el Editor / I: Ensure dynamic material exists and is applied in the Editor]
+		// [E: Si el material dinámico no existe, lo creamos / I: If dynamic material doesn't exist, create it]
 		if (!DynamicRingMat)
 		{
 			DynamicRingMat = UMaterialInstanceDynamic::Create(MacroRingMaterial, this);
 		}
 
+		// [E: Asignamos el material a la malla / I: Assign material to the mesh]
 		MacroDiskComponent->SetMaterial(0, DynamicRingMat);
 
-		// [E: Forzar actualización de tamaño en base al slider de OuterRadiusKM / I: Force size update based on OuterRadiusKM slider]
+		// [E: Aplicamos escala inicial y parámetros del shader / I: Apply initial scale and shader parameters]
 		double CurrentScale = OuterRadiusKM * 2000.0;
 		MacroDiskComponent->SetRelativeScale3D(FVector(CurrentScale, CurrentScale, 1.0f));
-		MacroDiskComponent->SetRelativeRotation(RingRotation);
+		// MacroDiskComponent->SetRelativeRotation(RingRotation); // Descomenta si usas rotación inicial
+
+		UpdateShaderParameters();
+	}
+
+	if (AsteroidHISM && AsteroidMesh)
+	{
+		AsteroidHISM->SetStaticMesh(AsteroidMesh);
+	}
+}
+
+void UCosmicRingComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
+{
+	// [E: Destruimos el disco visual explícitamente para evitar fantasmas en el Editor / I: Explicitly destroy visual disk to avoid Editor ghosts]
+	if (IsValid(MacroDiskComponent))
+	{
+		MacroDiskComponent->DestroyComponent();
+	}
+
+	// [E: Destruimos el generador de asteroides / I: Destroy the asteroid generator]
+	if (IsValid(AsteroidHISM))
+	{
+		AsteroidHISM->ClearInstances(); // Vaciamos la memoria primero por seguridad
+		AsteroidHISM->DestroyComponent();
+	}
+
+	// [E: Llamamos a la clase padre para que termine el proceso de destrucción / I: Call parent class to finish the destruction process]
+	Super::OnComponentDestroyed(bDestroyingHierarchy);
+}
+
+#if WITH_EDITOR
+void UCosmicRingComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+	// [E: Como OnRegister ya lo creó, aquí solo actualizamos escala y variables / I: Since OnRegister created it, here we only update scale and variables]
+	if (MacroDiskComponent && DynamicRingMat)
+	{
+		double CurrentScale = OuterRadiusKM * 2000.0;
+		MacroDiskComponent->SetRelativeScale3D(FVector(CurrentScale, CurrentScale, 1.0f));
+		// MacroDiskComponent->SetRelativeRotation(RingRotation);
 
 		UpdateShaderParameters();
 	}
@@ -112,70 +158,92 @@ void UCosmicRingComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	// [E: Solo ejecutar en tiempo de juego real y si hay malla asignada / I: Only execute in real game time and if a mesh is assigned]
-	if (!GetWorld() || !GetWorld()->IsGameWorld() || !AsteroidMesh) return;
+	// [E: Validación básica: necesitamos mundo y malla para trabajar / I: Basic validation: world and mesh needed to work]
+	if (!GetWorld() || !AsteroidMesh) return;
 
-	// [E: Obtener al jugador para calcular la distancia / I: Get player to calculate distance]
-	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
-	if (!PlayerPawn) return;
+	FVector CameraLocation = FVector::ZeroVector;
+	bool bGotCameraLocation = false;
 
-	// [E: Distancia absoluta desde la cámara al centro del anillo / I: Absolute distance from camera to ring center]
-	double DistanceToPlayer = FVector::Distance(PlayerPawn->GetActorLocation(), GetComponentLocation());
+	// [E: LÓGICA DE DETECCIÓN DE CÁMARA (JUEGO VS EDITOR) / I: CAMERA DETECTION LOGIC (GAME VS EDITOR)]
+	if (GetWorld()->IsGameWorld())
+	{
+		// [E: Si estamos en juego, usamos la posición del Pawn del jugador / I: If in game, use player's Pawn location]
+		APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
+		if (PlayerPawn)
+		{
+			CameraLocation = PlayerPawn->GetActorLocation();
+			bGotCameraLocation = true;
+		}
+	}
+#if WITH_EDITOR
+	else
+	{
+		// [E: Si estamos en el Editor, buscamos la cámara activa del Viewport / I: If in Editor, look for active Viewport camera]
+		if (GEditor && GEditor->GetActiveViewport() && GEditor->GetActiveViewport()->GetClient())
+		{
+			FEditorViewportClient* ViewportClient = static_cast<FEditorViewportClient*>(GEditor->GetActiveViewport()->GetClient());
+			if (ViewportClient)
+			{
+				CameraLocation = ViewportClient->GetViewLocation();
+				bGotCameraLocation = true;
+			}
+		}
+	}
+#endif
 
-	// [E: Convertimos el umbral KM a Unidades Unreal (cm) / I: Convert KM threshold to Unreal Units (cm)]
-	// Nota: Usamos FadeMaxDistanceKM para que los asteroides aparezcan justo cuando el shader macro empieza a desaparecer.
-	double GenerationThreshold = FadeMaxDistanceKM * 100000.0;
+	if (!bGotCameraLocation) return;
 
+	// [E: Cálculo de distancia y umbral de generación / I: Distance calculation and generation threshold]
+	double DistanceToCamera = FVector::Distance(CameraLocation, GetComponentLocation());
+	double GenerationThreshold = FadeMaxDistanceKM * 100000.0; // KM a Unidades Unreal (cm)
 
-	// [E: Si entramos en la zona, el HISM está vacío y no está procesando / I: If we enter the zone, HISM is empty and not processing]
-	if (DistanceToPlayer <= GenerationThreshold && AsteroidHISM->GetInstanceCount() == 0 && !bIsGeneratingAsteroids)
+	// [E: LÓGICA DE GENERACIÓN ASÍNCRONA / I: ASYNC GENERATION LOGIC]
+	// [E: Si entramos en el rango y no hay asteroides ni proceso activo / I: If in range and no asteroids or active process]
+	if (DistanceToCamera <= GenerationThreshold && AsteroidHISM->GetInstanceCount() == 0 && !bIsGeneratingAsteroids)
 	{
 		bIsGeneratingAsteroids = true;
 
-		// [E: Variables locales seguras para inyectar en el hilo secundario / I: Safe local variables to inject into the background thread]
+		// [E: Captura de variables locales para el hilo secundario / I: Capture local variables for background thread]
 		double InnerCm = InnerRadiusKM * 100000.0;
 		double OuterCm = OuterRadiusKM * 100000.0;
-		int NumInstances = NumAsteroids;
+		int32 Count = 10000; // [E: Cantidad de asteroides / I: Asteroids count]
 
-		// [E: Lanzar hilo asíncrono para cálculos pesados / I: Launch async thread for heavy calculations]
-		AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [this, InnerCm, OuterCm, NumInstances]()
+		AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask, [this, InnerCm, OuterCm, Count]()
 			{
-				TArray<FTransform> AsteroidTransforms;
-				AsteroidTransforms.Reserve(NumInstances);
+				TArray<FTransform> NewTransforms;
+				NewTransforms.Reserve(Count);
 
-				for (int32 i = 0; i < NumInstances; i++)
+				for (int32 i = 0; i < Count; i++)
 				{
-					// [E: Distribución circular aleatoria dentro de los límites LWC / I: Random circular distribution within LWC limits]
 					float Angle = FMath::RandRange(0.0f, PI * 2.0f);
 					float Distance = FMath::RandRange((float)InnerCm, (float)OuterCm);
 
 					float X = FMath::Cos(Angle) * Distance;
 					float Y = FMath::Sin(Angle) * Distance;
+					float Z = FMath::RandRange(-20000.0f, 20000.0f); // [E: Grosor del anillo / I: Ring thickness]
 
-					// [E: Grosor del anillo (Eje Z). Ajustable según necesidad / I: Ring thickness (Z Axis). Adjustable as needed]
-					float Z = FMath::RandRange(-20000.0f, 20000.0f);
+					FVector Loc = FVector(X, Y, Z);
+					FRotator Rot = FRotator(FMath::RandRange(0.f, 360.f), FMath::RandRange(0.f, 360.f), FMath::RandRange(0.f, 360.f));
+					FVector Sca = FVector(FMath::RandRange(0.5f, 2.0f));
 
-					FVector Location = FVector(X, Y, Z);
-					FRotator Rotation = FRotator(FMath::RandRange(0.0f, 360.0f), FMath::RandRange(0.0f, 360.0f), FMath::RandRange(0.0f, 360.0f));
-					FVector Scale = FVector(FMath::RandRange(MinScale, MaxScale)); // Tamaños variables
-
-					AsteroidTransforms.Add(FTransform(Rotation, Location, Scale));
+					NewTransforms.Add(FTransform(Rot, Loc, Sca));
 				}
 
-				// [E: Volver al hilo principal para renderizar la malla (Obligatorio) / I: Return to main thread to render mesh (Mandatory)]
-				AsyncTask(ENamedThreads::GameThread, [this, AsteroidTransforms]()
+				// [E: Regreso al Hilo Principal para aplicar cambios en el HISM / I: Return to GameThread to apply HISM changes]
+				AsyncTask(ENamedThreads::GameThread, [this, NewTransforms]()
 					{
-						// [E: Doble comprobación de seguridad por si el actor se destruyó durante el cálculo / I: Double safety check in case actor was destroyed during math]
 						if (IsValid(this) && AsteroidHISM)
 						{
-							AsteroidHISM->AddInstances(AsteroidTransforms, false);
+							AsteroidHISM->AddInstances(NewTransforms, false);
+							UE_LOG(LogTemp, Warning, TEXT("¡Asteroides Generados! Instancias totales: %d"), AsteroidHISM->GetInstanceCount());
 						}
 						bIsGeneratingAsteroids = false;
 					});
 			});
 	}
-	// [E: Si nos alejamos lo suficiente, destruir instancias para ahorrar RAM / I: If we move far enough, destroy instances to save RAM]
-	else if (DistanceToPlayer > GenerationThreshold && AsteroidHISM->GetInstanceCount() > 0 && !bIsGeneratingAsteroids)
+	// [E: LÓGICA DE LIMPIEZA / I: CLEANUP LOGIC]
+	// [E: Si nos alejamos del umbral, liberamos memoria RAM / I: If we move away from threshold, free RAM]
+	else if (DistanceToCamera > GenerationThreshold && AsteroidHISM->GetInstanceCount() > 0 && !bIsGeneratingAsteroids)
 	{
 		AsteroidHISM->ClearInstances();
 	}

@@ -29,6 +29,12 @@ protected:
 public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+	// [E: Se ejecuta al registrar el componente en el mundo (Editor y Juego) / I: Executes when component is registered in the world (Editor and Game)]
+	virtual void OnRegister() override;
+
+	// [E: Se ejecuta justo antes de que este componente sea destruido / I: Executes right before this component is destroyed]
+	virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override;
+
 	// -------------------------------------------------------------------------
 	// [E: PROPIEDADES DE DISEÑO (Expuestas al Usuario) / I: DESIGN PROPERTIES (Exposed to User)]
 	// -------------------------------------------------------------------------
@@ -70,7 +76,7 @@ public:
 	FRotator RingRotation = FRotator::ZeroRotator;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
-	int32 NumAsteroids = 5000;
+	int32 NumAsteroids = 1000;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
 	float MinScale = 1;

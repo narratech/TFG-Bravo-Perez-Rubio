@@ -94,6 +94,8 @@ void ACosmicSpherePlayer::BeginPlay()
 			}
 		}
 	}
+
+	CapsuleComp->SetMassOverrideInKg(NAME_None, GravityComp->Mass, true);
 }
 
 void ACosmicSpherePlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -180,48 +182,11 @@ void ACosmicSpherePlayer::Tick(float DeltaTime)
 
 	if (!VisualRoot || !MeshRoot || !CapsuleComp) return;
 
-	// =========================================================================
-	// 1. CÁLCULO DE GRAVEDAD LOCAL (LOCAL GRAVITY CALCULATION)
-	// =========================================================================
+	FVector GravityDown = GravityComp ? GravityComp->CurrentGravityDirection : FVector::DownVector * GravityAcceleration * 100; // Gravedad por defecto
 
-	FVector GravityDown = FVector::DownVector; // Gravedad por defecto
-	AActor* NearestPlanet = nullptr;
-	float MinDist = TNumericLimits<float>::Max();
-
-	// E: Buscamos el planeta más cercano para saber hacia dónde caer.
-	// I: Find the nearest planet to know which way to fall.
-	if (UCosmicGravitySubsystem* Subsystem = GetWorld()->GetSubsystem<UCosmicGravitySubsystem>())
-	{
-		for (UCosmicGravityComponent* PlanetComp : Subsystem->GetPlanets())
-		{
-			if (ACosmicPlanet* PlanetActor = Cast<ACosmicPlanet>(PlanetComp->GetOwner()))
-			{
-				float DistToSurface = FVector::Dist(GetActorLocation(), PlanetActor->GetActorLocation()) - (PlanetActor->RadiusKm * 100000.0f);
-				if (DistToSurface < MinDist)
-				{
-					MinDist = DistToSurface;
-					NearestPlanet = PlanetActor;
-				}
-			}
-		}
-	}
-
-	// E: Si hay un planeta cerca, definimos la gravedad hacia su núcleo y la aplicamos.
-	// I: If there is a nearby planet, we define gravity towards its core and apply it.
-	if (NearestPlanet)
-	{
-		GravityDown = (NearestPlanet->GetActorLocation() - GetActorLocation()).GetSafeNormal();
-
-		// E: Aplicamos una fuerza de gravedad terrestre constante (980 cm/s^2).
-		// I: We apply a constant Earth-like gravity force (980 cm/s^2).
-		CapsuleComp->AddForce(GravityDown * GravityAcceleration * 100, NAME_None, true);
-	}
-
-	FVector TargetUp = -GravityDown;
-
-	// =========================================================================
-	// 2. ALINEACIÓN INSTANTÁNEA (INSTANT ALIGNMENT)
-	// =========================================================================
+	CapsuleComp->AddForce(GravityDown, NAME_None, true);
+	
+	FVector TargetUp = -GravityDown.GetSafeNormal();
 
 	FVector StableForward = FVector::VectorPlaneProject(VisualRoot->GetForwardVector(), TargetUp).GetSafeNormal();
 	if (StableForward.IsNearlyZero()) {
@@ -230,16 +195,6 @@ void ACosmicSpherePlayer::Tick(float DeltaTime)
 
 	FQuat TargetVisualQuat = FRotationMatrix::MakeFromXZ(StableForward, TargetUp).ToQuat();
 	VisualRoot->SetWorldRotation(TargetVisualQuat);
-
-	// =========================================================================
-	// 3. PARENTESCO DINÁMICO (DYNAMIC PARENTING)
-	// =========================================================================
-
-	//HandleDynamicParenting();
-
-	// =========================================================================
-	// 4. ROTACIÓN SUAVE DEL MODELO 3D (SMOOTH MESH ROTATION)
-	// =========================================================================
 
 	FVector MeshDesiredForward = TargetFacingDirection.IsNearlyZero() ?
 		FVector::VectorPlaneProject(MeshRoot->GetForwardVector(), TargetUp).GetSafeNormal() :
