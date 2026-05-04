@@ -134,12 +134,20 @@ static FAutoConsoleCommandWithWorldAndArgs CmdFoliagePerFrameTest(
 
 static FAutoConsoleCommandWithWorldAndArgs CmdClipmapResolutionTest(
     TEXT("bm.clipmap_res"),
-    TEXT("Test clipmap resolution: bm.clipmap_res 256"),
+    TEXT("Test clipmap resolution. Usage:\n")
+    TEXT("  bm.clipmap_res         - Run sequential test (8, 16, 32, 64, 128, 256)\n")
+    TEXT("  bm.clipmap_res 256     - Test single resolution 256"),
     FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(
         [](const TArray<FString>& Args, UWorld* World)
         {
-            if (!World || Args.Num() == 0) return;
-            int32 Resolution = FCString::Atoi(*Args[0]);
+            if (!World) return;
+
+            int32 Resolution = 0;
+            if (Args.Num() > 0)
+            {
+                Resolution = FCString::Atoi(*Args[0]);
+            }
+
             if (UBenchmarkManager* Manager = UBenchmarkManager::Get(World))
             {
                 Manager->RunClipmapResolutionTest(Resolution);
@@ -150,12 +158,16 @@ static FAutoConsoleCommandWithWorldAndArgs CmdClipmapResolutionTest(
 
 static FAutoConsoleCommandWithWorldAndArgs CmdClipmapLevelsTest(
     TEXT("bm.clipmap_levels"),
-    TEXT("Test clipmap levels: bm.clipmap_levels 6"),
+    TEXT("Test clipmap levels. Usage:\n")
+    TEXT("  bm.clipmap_levels      - Run sequential test (1, 2, 4, 6, 8)\n")
+    TEXT("  bm.clipmap_levels 6    - Test single config with 6 levels"),
     FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(
         [](const TArray<FString>& Args, UWorld* World)
         {
-            if (!World || Args.Num() == 0) return;
-            int32 Levels = FCString::Atoi(*Args[0]);
+            if (!World) return;
+
+            int32 Levels = (Args.Num() > 0) ? FCString::Atoi(*Args[0]) : 0;
+
             if (UBenchmarkManager* Manager = UBenchmarkManager::Get(World))
             {
                 Manager->RunClipmapLevelsTest(Levels);
