@@ -21,6 +21,7 @@ public:
     void StopBenchmark();
 
     // --- Planets ---
+    void SetClipmapConfig(int32 BaseRes, int32 Levels);
     void SpawnPlanets(int32 NumPlanets);
     void ClearPlanets();
 
@@ -32,5 +33,13 @@ public:
     // --- Métricas ---
     void BeginCapture();
     void EndCapture();
-	
+
+    struct FClipmapConfig
+    {
+        int32 BaseResolution = 128;
+        int32 NumLevels = 4;
+    };
+
+private:
+    FClipmapConfig CurrentClipmapConfig;
 };
