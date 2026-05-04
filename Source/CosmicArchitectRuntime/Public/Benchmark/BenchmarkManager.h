@@ -14,9 +14,8 @@ class COSMICARCHITECTRUNTIME_API UBenchmarkManager : public UWorldSubsystem
 {
 	GENERATED_BODY()
 
-    static UBenchmarkManager* Get(UWorld* World);
-
 public:
+    static UBenchmarkManager* Get(UWorld* World);
     // --- Control general ---
     void StartBenchmark();
     void StopBenchmark();
