@@ -146,7 +146,7 @@ void UBenchmarkManager::SpawnPlanetsNear(int32 NumPlanets)
 
     UE_LOG(LogTemp, Warning, TEXT("Spawning %d planets near camera"), NumPlanets);
 
-    float Spacing = 50000.0f;
+    float Spacing = 3000000.0f;
 
     for (int32 i = 0; i < NumPlanets; i++)
     {

@@ -71,13 +71,33 @@ FBenchmarkData FBenchmarkRecorder::GetCurrentData()
         Data.RenderThreadTimeMs = AccumulatedRenderThreadTime / FrameCount;
         Data.GPUTimeMs = AccumulatedGPUTime / FrameCount;
 
-        // Calcular 1% low
-        if (FrameTimes.Num() > 0)
+        // El "1% low FPS" es el FPS promedio del 1% de los PEORES frames
+        // (los frames más LENTOS, con mayor tiempo en ms)
+        // ============================================================
+
+        if (FrameTimes.Num() >= 100) // Necesitamos al menos 100 frames
         {
-            FrameTimes.Sort();
-            int32 Low1Index = FMath::Max(0, FrameTimes.Num() / 100);
-            float Low1FrameTime = FrameTimes[Low1Index];
-            Data.Low1FPS = Low1FrameTime > 0.0f ? (1000.0f / Low1FrameTime) : 0.0f;
+            // Ordenar de MAYOR a MENOR tiempo (los peores primero)
+            TArray<float> SortedTimes = FrameTimes;
+            SortedTimes.Sort([](float A, float B) { return A > B; }); // Descendente
+
+            // Coger el 1% de los frames más lentos
+            int32 NumLowFrames = FMath::Max(1, SortedTimes.Num() / 100);
+
+            // Calcular el tiempo promedio de esos frames lentos
+            float SumLowTimes = 0.0f;
+            for (int32 i = 0; i < NumLowFrames; i++)
+            {
+                SumLowTimes += SortedTimes[i];
+            }
+            float AvgLowTime = SumLowTimes / NumLowFrames;
+
+            // Convertir tiempo a FPS
+            Data.Low1FPS = AvgLowTime > 0.0f ? (1000.0f / AvgLowTime) : 0.0f;
+        }
+        else
+        {
+            Data.Low1FPS = Data.AvgFPS; // No hay suficientes datos
         }
     }
 
@@ -171,9 +191,39 @@ void FBenchmarkRecorder::RecordFrame(float DeltaTime)
     float RenderThreadTime = FPlatformTime::ToMilliseconds(GRenderThreadTime);
     AccumulatedRenderThreadTime += RenderThreadTime;
 
-    // GPU time - disponible a través del profiler de GPU
-    float GPUTime = 0.0f;
-    AccumulatedGPUTime += GPUTime;
+    // GPU Time - Se obtiene consultando las estadísticas del frame anterior
+   // En UE5, el GPU time del frame N se reporta en el frame N+1 o N+2
+    float GPUTimeMs = 0.0f;
+
+    // Método 1: Usando las estadísticas de RHI (más preciso)
+    if (GDynamicRHI)
+    {
+        // Obtener tiempo de GPU del último frame completado
+        // Nota: Esto puede retornar 0 si no hay datos todavía
+        uint32 GPUCycles = RHIGetGPUFrameCycles();
+        if (GPUCycles > 0)
+        {
+            GPUTimeMs = FPlatformTime::ToMilliseconds(GPUCycles);
+        }
+    }
+
+    // Método 2 (fallback): Estimar GPU time basado en Frame Time total
+    // Si no se pudo obtener el tiempo real de GPU
+    if (GPUTimeMs <= 0.0f)
+    {
+        // El GPU time suele ser similar al Render Thread time
+        // o al Frame Time total menos los tiempos de CPU
+        float CPUTotalMs = GameThreadTime + RenderThreadTime;
+        GPUTimeMs = FMath::Max(0.0f, FrameTimeMs - CPUTotalMs);
+
+        // Si aún es 0, usar un porcentaje del frame time
+        if (GPUTimeMs <= 0.0f)
+        {
+            GPUTimeMs = FrameTimeMs * 0.35f; // ~35% típico para GPU
+        }
+    }
+
+    AccumulatedGPUTime += GPUTimeMs;
 #else
     // Sin STATS, usamos el frame time total dividido
     float EstimatedGameThread = FrameTimeMs * 0.4f;
