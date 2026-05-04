@@ -58,6 +58,12 @@ public class CosmicArchitectRuntime : ModuleRules
 			}
             );
 
+        if (Target.Platform == UnrealTargetPlatform.Win64)
+        {
+            PublicSystemLibraries.Add("DXGI.lib");
+            PublicSystemLibraries.Add("D3D11.lib");
+        }
+
         if (Target.bBuildEditor)
         {
             PrivateDependencyModuleNames.AddRange(new string[] { "UnrealEd" });

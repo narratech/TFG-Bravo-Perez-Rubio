@@ -2,13 +2,15 @@
 
 #include "Benchmark/BenchmarkRecorder.h"
 #include "Engine/Engine.h"
-#include "Engine/GameViewportClient.h"
-#include "RenderingThread.h"
-#include "EngineGlobals.h"
 #include "HAL/PlatformMemory.h"
-#include "RHI.h"
-#include "Stats/Stats.h"
-#include "ProfilingDebugging/CsvProfiler.h"
+#include "HAL/PlatformTime.h"
+
+// Para VRAM en Windows
+#if PLATFORM_WINDOWS
+#include "Windows/AllowWindowsPlatformTypes.h"
+#include <dxgi1_4.h>
+#include "Windows/HideWindowsPlatformTypes.h"
+#endif
 
 // Variables estáticas
 bool FBenchmarkRecorder::bIsRecording = false;
@@ -20,6 +22,44 @@ float FBenchmarkRecorder::AccumulatedRenderThreadTime = 0.0f;
 float FBenchmarkRecorder::AccumulatedGPUTime = 0.0f;
 int32 FBenchmarkRecorder::FrameCount = 0;
 TArray<float> FBenchmarkRecorder::FrameTimes;
+
+static float GetVRAMUsageGB()
+{
+#if PLATFORM_WINDOWS
+    // Intentar obtener la VRAM usada por el proceso actual
+    IDXGIFactory4* DXGIFactory = nullptr;
+    HRESULT hr = CreateDXGIFactory1(__uuidof(IDXGIFactory4), (void**)&DXGIFactory);
+
+    if (SUCCEEDED(hr) && DXGIFactory)
+    {
+        IDXGIAdapter3* Adapter = nullptr;
+        hr = DXGIFactory->EnumAdapters(0, (IDXGIAdapter**)&Adapter);
+
+        if (SUCCEEDED(hr) && Adapter)
+        {
+            DXGI_QUERY_VIDEO_MEMORY_INFO VideoMemoryInfo;
+            hr = Adapter->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &VideoMemoryInfo);
+
+            if (SUCCEEDED(hr))
+            {
+                // CurrentUsage está en bytes, convertir a GB
+                float VRAM_GB = static_cast<float>(VideoMemoryInfo.CurrentUsage) / (1024.0f * 1024.0f * 1024.0f);
+
+                Adapter->Release();
+                DXGIFactory->Release();
+
+                return VRAM_GB;
+            }
+
+            Adapter->Release();
+        }
+
+        DXGIFactory->Release();
+    }
+#endif
+
+    return 0.0f;
+}
 
 void FBenchmarkRecorder::StartRecording()
 {
@@ -101,25 +141,11 @@ FBenchmarkData FBenchmarkRecorder::GetCurrentData()
         }
     }
 
-    // Obtener estadísticas de memoria del sistema
     FPlatformMemoryStats MemStats = FPlatformMemory::GetStats();
-    Data.RAM = static_cast<float>(MemStats.UsedPhysical) / (1024.0f * 1024.0f * 1024.0f); // Bytes -> GB
+    Data.RAM = MemStats.UsedPhysical / (1024.0f * 1024.0f * 1024.0f);
 
-    // Obtener VRAM - forma correcta en UE5
-    // Usamos la interfaz de RHI para consultar memoria de GPU
-    if (GDynamicRHI)
-    {
-        // Obtener estadísticas de textura como aproximación de VRAM
-        // Nota: No hay una API directa para VRAM total en UE5 pública
-        // Usamos el contador de memoria de texturas como estimación
-        Data.VRAM = 0.0f;
-
-        // Alternativa: usar GCurrentRendertargetMemorySize o similar
-#if STATS
-// Los stats de memoria están disponibles cuando STATS está habilitado
-// Estos se pueden leer desde el sistema de stats de UE
-#endif
-    }
+    // VRAM - usando DXGI en Windows
+    Data.VRAM = GetVRAMUsageGB();
 
     return Data;
 }
