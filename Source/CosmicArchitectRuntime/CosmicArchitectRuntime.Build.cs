@@ -62,13 +62,5 @@ public class CosmicArchitectRuntime : ModuleRules
         {
             PrivateDependencyModuleNames.AddRange(new string[] { "UnrealEd" });
         }
-
-        // CONFIGURACIÓN ADICIONAL PARA BENCHMARK
-        // Habilitar stats (excepto en Shipping)
-        if (Target.Configuration != UnrealTargetConfiguration.Shipping)
-        {
-            PrivateDefinitions.Add("STATS=1");
-            PrivateDefinitions.Add("CSV_PROFILER=1");
-        }
     }
 }

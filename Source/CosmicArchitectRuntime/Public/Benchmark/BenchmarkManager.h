@@ -4,18 +4,28 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
+#include "Tickable.h"
 #include "BenchmarkManager.generated.h"
 
 /**
  *
  */
 UCLASS()
-class COSMICARCHITECTRUNTIME_API UBenchmarkManager : public UWorldSubsystem
+class COSMICARCHITECTRUNTIME_API UBenchmarkManager : public UWorldSubsystem, public FTickableGameObject
 {
     GENERATED_BODY()
 
 public:
     static UBenchmarkManager* Get(UWorld* World);
+
+    // --- FTickableGameObject interface ---
+    virtual void Tick(float DeltaTime) override;
+    virtual TStatId GetStatId() const override
+    {
+        RETURN_QUICK_DECLARE_CYCLE_STAT(UBenchmarkManager, STATGROUP_Tickables);
+    }
+    virtual bool IsTickable() const override { return bIsCapturing; }
+    virtual bool IsTickableInEditor() const override { return false; }
 
     // --- Control general ---
     void StartBenchmark();
@@ -62,9 +72,36 @@ public:
 
 private:
     FClipmapConfig CurrentClipmapConfig;
-    FTimerHandle BenchmarkTimerHandle;
     FString CurrentTestName;
     int32 CurrentNumObjects;
 
+    // Variables para el sistema de captura por tick
+    bool bIsCapturing = false;
+    float CaptureDuration = 0.0f;
+    float AccumulatedCaptureTime = 0.0f;
+
+    // Variables para tests secuenciales
+    bool bIsRunningSequentialTest = false;
+    TArray<int32> SequentialTestSteps;
+    int32 CurrentSequentialStepIndex = 0;
+    FTimerHandle SequentialTestTimerHandle;
+
+    // Tipo de test secuencial
+    enum class ESequentialTestType : uint8
+    {
+        PlanetScaling,
+        ClosePlanetScaling,
+        FoliageDensity,
+        FoliagePerFrame,
+        ClipmapResolution,
+        ClipmapLevels,
+        OrbitSimulation,
+        NBodySimulation,
+        None
+    };
+    ESequentialTestType CurrentSequentialTestType = ESequentialTestType::None;
+
     void OnBenchmarkCaptureComplete();
+    void RunNextSequentialStep();
+    void OnSequentialTestComplete();
 };

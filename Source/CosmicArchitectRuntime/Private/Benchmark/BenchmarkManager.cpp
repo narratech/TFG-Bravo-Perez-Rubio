@@ -13,6 +13,32 @@ UBenchmarkManager* UBenchmarkManager::Get(UWorld* World)
     return World->GetSubsystem<UBenchmarkManager>();
 }
 
+// ============================================================
+// FTickableGameObject Implementation
+// ============================================================
+
+void UBenchmarkManager::Tick(float DeltaTime)
+{
+    if (bIsCapturing)
+    {
+        // Registrar datos de este frame
+        FBenchmarkRecorder::RecordFrame(DeltaTime);
+
+        // Acumular tiempo transcurrido
+        AccumulatedCaptureTime += DeltaTime;
+
+        // Verificar si se alcanzó la duración de captura
+        if (AccumulatedCaptureTime >= CaptureDuration)
+        {
+            OnBenchmarkCaptureComplete();
+        }
+    }
+}
+
+// ============================================================
+// Control General
+// ============================================================
+
 void UBenchmarkManager::StartBenchmark()
 {
     UE_LOG(LogTemp, Warning, TEXT("Benchmark started"));
@@ -20,8 +46,29 @@ void UBenchmarkManager::StartBenchmark()
 
 void UBenchmarkManager::StopBenchmark()
 {
+    // Detener test secuencial si está corriendo
+    if (bIsRunningSequentialTest)
+    {
+        bIsRunningSequentialTest = false;
+        UWorld* World = GetWorld();
+        if (World)
+        {
+            World->GetTimerManager().ClearTimer(SequentialTestTimerHandle);
+        }
+    }
+
+    // Detener captura
+    if (bIsCapturing)
+    {
+        EndCapture();
+    }
+
     UE_LOG(LogTemp, Warning, TEXT("Benchmark finished"));
 }
+
+// ============================================================
+// Clipmap Config
+// ============================================================
 
 void UBenchmarkManager::SetClipmapConfig(int32 BaseRes, int32 Levels)
 {
@@ -31,6 +78,10 @@ void UBenchmarkManager::SetClipmapConfig(int32 BaseRes, int32 Levels)
     UE_LOG(LogTemp, Warning, TEXT("Clipmap updated: Res=%d Levels=%d"),
         BaseRes, Levels);
 }
+
+// ============================================================
+// Spawn / Clear Planets
+// ============================================================
 
 void UBenchmarkManager::SpawnPlanets(int32 NumPlanets)
 {
@@ -47,91 +98,6 @@ void UBenchmarkManager::SpawnPlanets(int32 NumPlanets)
         FActorSpawnParameters Params;
         Params.SpawnCollisionHandlingOverride =
             ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-        ACosmicPlanet* Planet = World->SpawnActor<ACosmicPlanet>(
-            ACosmicPlanet::StaticClass(),
-            Location,
-            Rotation,
-            Params
-        );
-
-        if (!Planet) continue;
-
-        Planet->InitPlanet(
-            10.0f,                 // RadiusKm
-            nullptr,                 // Noise
-            FColor::Red,
-            FColor::Orange,
-            FColor::White,
-            FColor::Red,
-            FColor::Black,
-            100.f,                  // ScaleL
-            3.f,                    // ScaleM
-            1.f,                    // ScaleS
-            nullptr,                // Material
-            nullptr,                // Texture
-
-            // Clipmap
-            true,
-            CurrentClipmapConfig.BaseResolution,
-            CurrentClipmapConfig.NumLevels,
-            100,
-            5.0f,
-
-            // Ocean
-            true,
-            0.0,
-            128,
-            nullptr,
-
-            // Foliage
-            nullptr
-        );
-    }
-}
-
-void UBenchmarkManager::SpawnPlanetsNear(int32 NumPlanets)
-{
-    UWorld* World = GetWorld();
-    if (!World) return;
-
-    // Obtener posición de la cámara
-    FVector CameraLocation = FVector::ZeroVector;
-    if (GEngine && GEngine->GameViewport)
-    {
-        // Obtener posición del jugador o usar origen
-        APlayerController* PC = World->GetFirstPlayerController();
-        if (PC)
-        {
-            APawn* Pawn = PC->GetPawn();
-            if (Pawn)
-            {
-                CameraLocation = Pawn->GetActorLocation();
-            }
-        }
-    }
-
-    UE_LOG(LogTemp, Warning, TEXT("Spawning %d planets near camera"), NumPlanets);
-
-    // Espaciamiento para planetas cercanos (que estén dentro del rango de alto detalle)
-    float Spacing = 50000.0f; // 50 km entre planetas
-
-    for (int32 i = 0; i < NumPlanets; i++)
-    {
-        // Distribuir en un patrón circular alrededor de la cámara
-        float Angle = (360.0f / NumPlanets) * i;
-        float Radians = FMath::DegreesToRadians(Angle);
-
-        FVector Location = CameraLocation + FVector(
-            FMath::Cos(Radians) * Spacing,
-            FMath::Sin(Radians) * Spacing,
-            0.0f
-        );
-
-        FRotator Rotation = FRotator::ZeroRotator;
-
-        FActorSpawnParameters Params;
-        Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
         ACosmicPlanet* Planet = World->SpawnActor<ACosmicPlanet>(
             ACosmicPlanet::StaticClass(),
@@ -162,15 +128,75 @@ void UBenchmarkManager::SpawnPlanetsNear(int32 NumPlanets)
     }
 }
 
+void UBenchmarkManager::SpawnPlanetsNear(int32 NumPlanets)
+{
+    UWorld* World = GetWorld();
+    if (!World) return;
+
+    FVector CameraLocation = FVector::ZeroVector;
+    APlayerController* PC = World->GetFirstPlayerController();
+    if (PC)
+    {
+        APawn* Pawn = PC->GetPawn();
+        if (Pawn)
+        {
+            CameraLocation = Pawn->GetActorLocation();
+        }
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("Spawning %d planets near camera"), NumPlanets);
+
+    float Spacing = 50000.0f;
+
+    for (int32 i = 0; i < NumPlanets; i++)
+    {
+        float Angle = (360.0f / FMath::Max(1, NumPlanets)) * i;
+        float Radians = FMath::DegreesToRadians(Angle);
+
+        FVector Location = CameraLocation + FVector(
+            FMath::Cos(Radians) * Spacing,
+            FMath::Sin(Radians) * Spacing,
+            0.0f
+        );
+
+        FRotator Rotation = FRotator::ZeroRotator;
+
+        FActorSpawnParameters Params;
+        Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+        ACosmicPlanet* Planet = World->SpawnActor<ACosmicPlanet>(
+            ACosmicPlanet::StaticClass(),
+            Location,
+            Rotation,
+            Params
+        );
+
+        if (!Planet) continue;
+
+        Planet->InitPlanet(
+            10.0f, nullptr,
+            FColor::Red, FColor::Orange,
+            FColor::White, FColor::Red, FColor::Black,
+            100.f, 3.f, 1.f,
+            nullptr, nullptr,
+            true,
+            CurrentClipmapConfig.BaseResolution,
+            CurrentClipmapConfig.NumLevels,
+            100, 5.0f,
+            true, 0.0, 128, nullptr,
+            nullptr
+        );
+    }
+}
+
 void UBenchmarkManager::SpawnPlanetsFar(int32 NumPlanets)
 {
     UWorld* World = GetWorld();
     if (!World) return;
 
-    UE_LOG(LogTemp, Warning, TEXT("Spawning %d far planets (low detail mode)"), NumPlanets);
+    UE_LOG(LogTemp, Warning, TEXT("Spawning %d far planets"), NumPlanets);
 
-    // Espaciamiento grande para que estén en modo bajo detalle
-    float Spacing = 5000000.0f; // 5000 km entre planetas
+    float Spacing = 5000000.0f;
 
     for (int32 i = 0; i < NumPlanets; i++)
     {
@@ -190,8 +216,7 @@ void UBenchmarkManager::SpawnPlanetsFar(int32 NumPlanets)
         if (!Planet) continue;
 
         Planet->InitPlanet(
-            10.0f,
-            nullptr,
+            10.0f, nullptr,
             FColor::Red, FColor::Orange,
             FColor::White, FColor::Red, FColor::Black,
             100.f, 3.f, 1.f,
@@ -222,145 +247,138 @@ void UBenchmarkManager::ClearPlanets()
     UE_LOG(LogTemp, Warning, TEXT("Cleared %d planets"), FoundActors.Num());
 }
 
+// ============================================================
+// Tests Secuenciales
+// ============================================================
+
 void UBenchmarkManager::RunPlanetScalingTest()
 {
-    UE_LOG(LogTemp, Warning, TEXT("=== Planet Scaling Test ==="));
+    UE_LOG(LogTemp, Warning, TEXT("============================================"));
+    UE_LOG(LogTemp, Warning, TEXT("=== Planet Scaling Test (Sequential) ==="));
+    UE_LOG(LogTemp, Warning, TEXT("============================================"));
 
-    ClearPlanets();
-
-    TArray<int32> Steps = { 1, 2, 4, 8, 16, 32 };
-
-    for (int32 Num : Steps)
+    if (bIsRunningSequentialTest)
     {
-        ClearPlanets();
-        SpawnPlanets(Num);
-
-        SetCurrentTestParams(Num, FString::Printf(TEXT("PlanetScaling_%d"), Num));
-        BeginCapture(5.0f);
-
-        // Esperar a que termine la captura antes de continuar
-        // En una implementación real, esto sería asíncrono
+        UE_LOG(LogTemp, Warning, TEXT("Test already running. Stop it first."));
+        return;
     }
-}
-
-void UBenchmarkManager::RunClosePlanetTest()
-{
-    UE_LOG(LogTemp, Warning, TEXT("=== Close Planet Test ==="));
 
     ClearPlanets();
 
-    TArray<int32> Steps = { 1, 2, 4, 8 };
+    // Configurar test secuencial
+    SequentialTestSteps = { 1, 2, 4, 8, 16, 32 };
+    CurrentSequentialStepIndex = 0;
+    CurrentSequentialTestType = ESequentialTestType::PlanetScaling;
+    bIsRunningSequentialTest = true;
 
-    for (int32 Num : Steps)
+    // Iniciar primer paso
+    RunNextSequentialStep();
+}
+
+void UBenchmarkManager::RunNextSequentialStep()
+{
+    if (!bIsRunningSequentialTest) return;
+
+    // Verificar si ya terminamos todos los pasos
+    if (CurrentSequentialStepIndex >= SequentialTestSteps.Num())
     {
-        ClearPlanets();
-        SpawnPlanetsNear(Num);
-
-        SetCurrentTestParams(Num, FString::Printf(TEXT("ClosePlanets_%d"), Num));
-        BeginCapture(5.0f);
+        OnSequentialTestComplete();
+        return;
     }
-}
 
-void UBenchmarkManager::RunFoliageDensityTest(int32 TotalInstances)
-{
-    UE_LOG(LogTemp, Warning, TEXT("=== Foliage Density Test: %d instances ==="), TotalInstances);
-    SetCurrentTestParams(TotalInstances, FString::Printf(TEXT("FoliageDensity_%d"), TotalInstances));
-}
+    int32 CurrentStep = SequentialTestSteps[CurrentSequentialStepIndex];
 
-void UBenchmarkManager::RunFoliagePerFrameTest(int32 MaxInstancesPerFrame)
-{
-    UE_LOG(LogTemp, Warning, TEXT("=== Foliage Per Frame Test: %d max/frame ==="), MaxInstancesPerFrame);
-    SetCurrentTestParams(MaxInstancesPerFrame, FString::Printf(TEXT("FoliagePerFrame_%d"), MaxInstancesPerFrame));
-}
+    UE_LOG(LogTemp, Warning, TEXT(""));
+    UE_LOG(LogTemp, Warning, TEXT("--- Step %d/%d: Testing with %d ---"),
+        CurrentSequentialStepIndex + 1, SequentialTestSteps.Num(), CurrentStep);
 
-void UBenchmarkManager::RunClipmapResolutionTest(int32 Resolution)
-{
-    UE_LOG(LogTemp, Warning, TEXT("=== Clipmap Resolution Test: %d ==="), Resolution);
-
-    // Actualizar configuración
-    SetClipmapConfig(Resolution, CurrentClipmapConfig.NumLevels);
+    // Limpiar planetas anteriores
     ClearPlanets();
-    SpawnPlanets(1); // Un solo planeta para prueba controlada
 
-    SetCurrentTestParams(Resolution, FString::Printf(TEXT("ClipmapRes_%d"), Resolution));
-    BeginCapture(5.0f);
-}
+    // Generar planetas según el tipo de test
+    switch (CurrentSequentialTestType)
+    {
+    case ESequentialTestType::PlanetScaling:
+        SpawnPlanets(CurrentStep);
+        break;
 
-void UBenchmarkManager::RunClipmapLevelsTest(int32 Levels)
-{
-    UE_LOG(LogTemp, Warning, TEXT("=== Clipmap Levels Test: %d ==="), Levels);
+    case ESequentialTestType::ClosePlanetScaling:
+        SpawnPlanetsNear(CurrentStep);
+        break;
 
-    SetClipmapConfig(CurrentClipmapConfig.BaseResolution, Levels);
-    ClearPlanets();
-    SpawnPlanets(1);
+        // Otros casos...
 
-    SetCurrentTestParams(Levels, FString::Printf(TEXT("ClipmapLevels_%d"), Levels));
-    BeginCapture(5.0f);
-}
+    default:
+        break;
+    }
 
-void UBenchmarkManager::RunOrbitSimulationTest(int32 NumBodies)
-{
-    UE_LOG(LogTemp, Warning, TEXT("=== Orbit Simulation Test: %d bodies ==="), NumBodies);
-    SetCurrentTestParams(NumBodies, FString::Printf(TEXT("OrbitSim_%d"), NumBodies));
-    BeginCapture(5.0f);
-}
-
-void UBenchmarkManager::RunNBodySimulationTest(int32 NumBodies)
-{
-    UE_LOG(LogTemp, Warning, TEXT("=== N-Body Simulation Test: %d bodies ==="), NumBodies);
-    SetCurrentTestParams(NumBodies, FString::Printf(TEXT("NBodySim_%d"), NumBodies));
-    BeginCapture(5.0f);
-}
-
-void UBenchmarkManager::RunSystemGeneratorTest(int32 NumBodies)
-{
-    UE_LOG(LogTemp, Warning, TEXT("=== System Generator Test: %d bodies ==="), NumBodies);
-
-    double StartTime = FPlatformTime::Seconds();
-
-    // Aquí iría la llamada real al generador de sistemas
-    // Ejemplo: GenerateSystem(NumBodies);
-
-    double EndTime = FPlatformTime::Seconds();
-    double GenerationTime = EndTime - StartTime;
-
-    UE_LOG(LogTemp, Warning, TEXT("System generation time for %d bodies: %.3f seconds"),
-        NumBodies, GenerationTime);
-}
-
-void UBenchmarkManager::RunFoliageTest()
-{
-    UE_LOG(LogTemp, Warning, TEXT("RunFoliageTest"));
-}
-
-void UBenchmarkManager::RunSimulationTest()
-{
-    UE_LOG(LogTemp, Warning, TEXT("RunSimulationTest"));
-}
-
-void UBenchmarkManager::BeginCapture(float DurationSeconds)
-{
-    FBenchmarkRecorder::StartRecording();
-    SetCurrentTestParams(CurrentNumObjects, CurrentTestName);
-
-    // Programar fin de captura
+    // Dar un pequeño tiempo para que los sistemas se estabilicen (1 segundo)
     UWorld* World = GetWorld();
     if (World)
     {
         World->GetTimerManager().SetTimer(
-            BenchmarkTimerHandle,
-            this,
-            &UBenchmarkManager::OnBenchmarkCaptureComplete,
-            DurationSeconds,
+            SequentialTestTimerHandle,
+            [this]()
+            {
+                // Configurar y comenzar captura
+                int32 CurrentStep = SequentialTestSteps[CurrentSequentialStepIndex];
+                FString TestName;
+
+                switch (CurrentSequentialTestType)
+                {
+                case ESequentialTestType::PlanetScaling:
+                    TestName = FString::Printf(TEXT("PlanetScaling_%d"), CurrentStep);
+                    break;
+                case ESequentialTestType::ClosePlanetScaling:
+                    TestName = FString::Printf(TEXT("ClosePlanet_%d"), CurrentStep);
+                    break;
+                default:
+                    TestName = FString::Printf(TEXT("Test_%d"), CurrentStep);
+                    break;
+                }
+
+                SetCurrentTestParams(CurrentStep, TestName);
+                BeginCapture(5.0f);
+            },
+            1.0f, // 1 segundo de estabilización
             false
         );
     }
+}
 
-    UE_LOG(LogTemp, Warning, TEXT("Capture Start - Duration: %.1f seconds"), DurationSeconds);
+void UBenchmarkManager::OnSequentialTestComplete()
+{
+    bIsRunningSequentialTest = false;
+    CurrentSequentialTestType = ESequentialTestType::None;
+    SequentialTestSteps.Empty();
+
+    ClearPlanets();
+
+    UE_LOG(LogTemp, Warning, TEXT(""));
+    UE_LOG(LogTemp, Warning, TEXT("============================================"));
+    UE_LOG(LogTemp, Warning, TEXT("=== Sequential Test Complete ==="));
+    UE_LOG(LogTemp, Warning, TEXT("============================================"));
+}
+
+// ============================================================
+// Captura de Métricas
+// ============================================================
+
+void UBenchmarkManager::BeginCapture(float DurationSeconds)
+{
+    FBenchmarkRecorder::StartRecording();
+
+    bIsCapturing = true;
+    CaptureDuration = DurationSeconds;
+    AccumulatedCaptureTime = 0.0f;
+
+    UE_LOG(LogTemp, Warning, TEXT("Capture Start - Duration: %.1f seconds - Test: %s"),
+        DurationSeconds, *CurrentTestName);
 }
 
 void UBenchmarkManager::EndCapture()
 {
+    bIsCapturing = false;
     FBenchmarkRecorder::StopRecording();
     FBenchmarkRecorder::LogCurrentData(CurrentTestName);
 }
@@ -373,5 +391,117 @@ void UBenchmarkManager::SetCurrentTestParams(int32 NumObjects, const FString& Te
 
 void UBenchmarkManager::OnBenchmarkCaptureComplete()
 {
-    EndCapture();
+    bIsCapturing = false;
+
+    // Detener y mostrar resultados
+    FBenchmarkRecorder::StopRecording();
+    FBenchmarkRecorder::LogCurrentData(CurrentTestName);
+
+    UE_LOG(LogTemp, Warning, TEXT("Capture completed for test: %s (%.1f seconds)"),
+        *CurrentTestName, AccumulatedCaptureTime);
+
+    // Si estamos en un test secuencial, programar el siguiente paso
+    if (bIsRunningSequentialTest)
+    {
+        CurrentSequentialStepIndex++;
+
+        UWorld* World = GetWorld();
+        if (World)
+        {
+            // Pequeña pausa entre pasos (0.5 segundos)
+            World->GetTimerManager().SetTimer(
+                SequentialTestTimerHandle,
+                this,
+                &UBenchmarkManager::RunNextSequentialStep,
+                0.5f,
+                false
+            );
+        }
+    }
+}
+
+// ============================================================
+// Tests individuales (no secuenciales)
+// ============================================================
+
+void UBenchmarkManager::RunClosePlanetTest()
+{
+    UE_LOG(LogTemp, Warning, TEXT("=== Close Planet Test ==="));
+
+    SequentialTestSteps = { 1, 2, 4, 8 };
+    CurrentSequentialStepIndex = 0;
+    CurrentSequentialTestType = ESequentialTestType::ClosePlanetScaling;
+    bIsRunningSequentialTest = true;
+
+    ClearPlanets();
+    RunNextSequentialStep();
+}
+
+void UBenchmarkManager::RunFoliageTest()
+{
+    UE_LOG(LogTemp, Warning, TEXT("RunFoliageTest - Not implemented yet"));
+}
+
+void UBenchmarkManager::RunSimulationTest()
+{
+    UE_LOG(LogTemp, Warning, TEXT("RunSimulationTest - Not implemented yet"));
+}
+
+// ============================================================
+// Stubs para otros tests
+// ============================================================
+
+void UBenchmarkManager::RunFoliageDensityTest(int32 TotalInstances)
+{
+    SetCurrentTestParams(TotalInstances, FString::Printf(TEXT("FoliageDensity_%d"), TotalInstances));
+    BeginCapture(5.0f);
+}
+
+void UBenchmarkManager::RunFoliagePerFrameTest(int32 MaxInstancesPerFrame)
+{
+    SetCurrentTestParams(MaxInstancesPerFrame, FString::Printf(TEXT("FoliagePerFrame_%d"), MaxInstancesPerFrame));
+    BeginCapture(5.0f);
+}
+
+void UBenchmarkManager::RunClipmapResolutionTest(int32 Resolution)
+{
+    SetClipmapConfig(Resolution, CurrentClipmapConfig.NumLevels);
+    ClearPlanets();
+    SpawnPlanets(1);
+    SetCurrentTestParams(Resolution, FString::Printf(TEXT("ClipmapRes_%d"), Resolution));
+    BeginCapture(5.0f);
+}
+
+void UBenchmarkManager::RunClipmapLevelsTest(int32 Levels)
+{
+    SetClipmapConfig(CurrentClipmapConfig.BaseResolution, Levels);
+    ClearPlanets();
+    SpawnPlanets(1);
+    SetCurrentTestParams(Levels, FString::Printf(TEXT("ClipmapLevels_%d"), Levels));
+    BeginCapture(5.0f);
+}
+
+void UBenchmarkManager::RunOrbitSimulationTest(int32 NumBodies)
+{
+    SetCurrentTestParams(NumBodies, FString::Printf(TEXT("OrbitSim_%d"), NumBodies));
+    BeginCapture(5.0f);
+}
+
+void UBenchmarkManager::RunNBodySimulationTest(int32 NumBodies)
+{
+    SetCurrentTestParams(NumBodies, FString::Printf(TEXT("NBodySim_%d"), NumBodies));
+    BeginCapture(5.0f);
+}
+
+void UBenchmarkManager::RunSystemGeneratorTest(int32 NumBodies)
+{
+    double StartTime = FPlatformTime::Seconds();
+
+    // GenerateSystem(NumBodies); // Aquí iría la llamada real
+
+    double EndTime = FPlatformTime::Seconds();
+    double GenerationTime = EndTime - StartTime;
+
+    UE_LOG(LogTemp, Warning, TEXT("System generation time for %d bodies: %.3f seconds"),
+        NumBodies, GenerationTime);
 }
