@@ -110,13 +110,13 @@ void UCosmicOrbitComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 	// Escala el DeltaTime con el multiplicador inyectado por el generador.
 	const float ScaledDelta = DeltaTime * EditorSpeedMultiplier;
 
+	if (!ParentBody || OrbitalPeriod <= 0.0f || ScaledDelta <= KINDA_SMALL_NUMBER) return;
+
 	if (AActor* Owner = GetOwner())
 	{
 		FRotator DeltaRotation = FRotator(0.0f, SpinSpeed * ScaledDelta, 0.0f);
 		Owner->AddActorLocalRotation(DeltaRotation);
 	}
-
-	if (!ParentBody || OrbitalPeriod <= 0.0f || ScaledDelta <= KINDA_SMALL_NUMBER) return;
 
 	CurrentOrbitTime += ScaledDelta;
 	CurrentOrbitTime = FMath::Fmod(CurrentOrbitTime, OrbitalPeriod);

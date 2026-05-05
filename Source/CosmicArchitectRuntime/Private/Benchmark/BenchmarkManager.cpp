@@ -3,6 +3,7 @@
 #include "Benchmark/BenchmarkManager.h"
 #include "Benchmark/BenchmarkRecorder.h"
 #include "Benchmark/BenchmarkSimBody.h"
+#include "Simulation/CosmicGravitySubsystem.h"
 #include "Engine/World.h"
 #include "Planet/CosmicPlanet.h"
 #include "Kismet/GameplayStatics.h"
@@ -237,9 +238,7 @@ void UBenchmarkManager::ClearPlanets()
 
 void UBenchmarkManager::RunPlanetScalingTest()
 {
-    UE_LOG(LogTemp, Warning, TEXT("============================================"));
     UE_LOG(LogTemp, Warning, TEXT("=== Planet Scaling Test (Sequential) ==="));
-    UE_LOG(LogTemp, Warning, TEXT("============================================"));
 
     if (bIsRunningSequentialTest)
     {
@@ -307,9 +306,12 @@ void UBenchmarkManager::RunNextSequentialStep()
         break;
     }
     case ESequentialTestType::OrbitSimulation:
-        SpawnSimBodies(CurrentStep, false); // Órbitas simples
+        SpawnSimBodies(CurrentStep, false); // Órbitas elípticas
         break;
 
+    case ESequentialTestType::NBodySimulation:
+        SpawnSimBodies(CurrentStep, true); // N-Body completo
+        break;
 
     default:
         break;
@@ -341,6 +343,9 @@ void UBenchmarkManager::RunNextSequentialStep()
                     break;
                 case ESequentialTestType::OrbitSimulation:
                     TestName = FString::Printf(TEXT("OrbitSim_%d"), CurrentStep);
+                    break;
+                case ESequentialTestType::NBodySimulation:
+                    TestName = FString::Printf(TEXT("NBodySim_%d"), CurrentStep);
                     break;
                 default:
                     TestName = FString::Printf(TEXT("Test_%d"), CurrentStep);
@@ -576,8 +581,37 @@ void UBenchmarkManager::RunOrbitSimulationTest(int32 NumBodies)
 
 void UBenchmarkManager::RunNBodySimulationTest(int32 NumBodies)
 {
-    SetCurrentTestParams(NumBodies, FString::Printf(TEXT("NBodySim_%d"), NumBodies));
-    BeginCapture(5.0f);
+    // Si NumBodies <= 0, ejecutar test secuencial
+    if (NumBodies <= 0)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("=== NBody Simulation Test (Sequential) ==="));
+
+        if (bIsRunningSequentialTest)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Test already running. Stop it first."));
+            return;
+        }
+
+        // Pasos: 10, 20, 50, 100, 200 cuerpos
+        SequentialTestSteps = { 10, 20, 50, 100, 200 };
+        CurrentSequentialStepIndex = 0;
+        CurrentSequentialTestType = ESequentialTestType::NBodySimulation;
+        bIsRunningSequentialTest = true;
+
+        ClearSimBodies();
+        RunNextSequentialStep();
+    }
+    else
+    {
+        // Test individual
+        UE_LOG(LogTemp, Warning, TEXT("=== NBody Simulation Test: %d bodies ==="), NumBodies);
+
+        ClearSimBodies();
+        SpawnSimBodies(NumBodies, true); // nbody
+
+        SetCurrentTestParams(NumBodies, FString::Printf(TEXT("NBodySim_%d"), NumBodies));
+        BeginCapture(5.0f);
+    }
 }
 
 void UBenchmarkManager::SpawnSimBodies(int32 NumBodies, bool bNBodySimulation)
@@ -590,6 +624,10 @@ void UBenchmarkManager::SpawnSimBodies(int32 NumBodies, bool bNBodySimulation)
 
     SimBodies.Empty();
     SimBodies.Reserve(NumBodies);
+
+    UCosmicGravitySubsystem* Subsystem = GetWorld()->GetSubsystem<UCosmicGravitySubsystem>();
+
+    if (!Subsystem && bNBodySimulation) return;
 
     // Crear cuerpo central
     FActorSpawnParameters Params;
@@ -608,14 +646,16 @@ void UBenchmarkManager::SpawnSimBodies(int32 NumBodies, bool bNBodySimulation)
         // Hacer la esfera central un poco más grande
         if (CentralBody->MeshComponent)
         {
-            CentralBody->MeshComponent->SetWorldScale3D(FVector(0.2f));
+            CentralBody->MeshComponent->SetWorldScale3D(FVector(20.f));
         }
     }
 
     // Crear cuerpos orbitales
     for (int32 i = 0; i < NumBodies; i++)
     {
-        FVector Location = FVector::Zero();
+        FVector Location = FVector(FMath::FRandRange(-10000.0f, 10000.0f),
+            FMath::FRandRange(-10000.0f, 10000.0f),
+            FMath::FRandRange(-10000.0f, 10000.0f));
         FRotator Rotation = FRotator::ZeroRotator;
 
         ABenchmarkSimBody* Body = World->SpawnActor<ABenchmarkSimBody>(
@@ -627,10 +667,20 @@ void UBenchmarkManager::SpawnSimBodies(int32 NumBodies, bool bNBodySimulation)
 
         if (Body)
         {
-            // Órbita aleatoria alrededor del cuerpo central
-            float SemiMajorAxis = FMath::FRandRange(0.1f, 1.0f);
-            Body->AttachToActor(CentralBody, FAttachmentTransformRules::KeepWorldTransform);
-            Body->InitRandomOrbit(CentralBody, SemiMajorAxis);
+            if (bNBodySimulation) 
+            {
+                Body->InitGravityComponent(bNBodySimulation);
+                Subsystem->RegisterBody(Body->GravityComponent);
+                Body->InitAsCentralBody();
+            }
+            else
+            {
+                // Órbita aleatoria alrededor del cuerpo central
+                float SemiMajorAxis = FMath::FRandRange(0.3f, 1.5f);
+                Body->AttachToActor(CentralBody, FAttachmentTransformRules::KeepWorldTransform);
+                Body->InitRandomOrbit(CentralBody, SemiMajorAxis);
+            }
+                
             SimBodies.Add(Body);
         }
     }

@@ -2,6 +2,8 @@
 
 #include "Benchmark/BenchmarkSimBody.h"
 #include "Simulation/CosmicOrbitComponent.h"
+#include "Simulation/CosmicGravityComponent.h"
+#include "Simulation/CosmicGravitySubsystem.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "UObject/ConstructorHelpers.h"
@@ -39,6 +41,8 @@ ABenchmarkSimBody::ABenchmarkSimBody()
 
 	// Crear componente orbital
 	OrbitComponent = CreateDefaultSubobject<UCosmicOrbitComponent>(TEXT("OrbitComponent"));
+
+	GravityComponent = CreateDefaultSubobject<UCosmicGravityComponent>(TEXT("GravityComponent"));
 }
 
 void ABenchmarkSimBody::InitRandomOrbit(AActor* InParentBody, float InSemiMajorAxisKm)
@@ -56,6 +60,16 @@ void ABenchmarkSimBody::InitRandomOrbit(AActor* InParentBody, float InSemiMajorA
 	OrbitComponent->InclinationY = FMath::FRandRange(0.0f, 30.0f);
 	OrbitComponent->InclinationZ = FMath::FRandRange(0.0f, 30.0f);
 	OrbitComponent->SpinSpeed = FMath::FRandRange(-45.0f, 45.0f);
+}
+
+void ABenchmarkSimBody::InitGravityComponent(bool Nbody)
+{
+	if (!GravityComponent) return;
+
+	GravityComponent->GravityMode = Nbody ? ECosmicGravityMode::NBody : ECosmicGravityMode::None;
+	GravityComponent->IsPlanet = false;
+	GravityComponent->Mass = 1000000000000000.0;
+	GravityComponent->RadiusKm = 0.01f;
 }
 
 void ABenchmarkSimBody::InitAsCentralBody()

@@ -198,12 +198,14 @@ static FAutoConsoleCommandWithWorldAndArgs CmdOrbitSimTest(
 
 static FAutoConsoleCommandWithWorldAndArgs CmdNBodySimTest(
     TEXT("bm.nbody_sim"),
-    TEXT("Test N-body simulation: bm.nbody_sim 50"),
+    TEXT("Test N-Body simulation. Usage:\n")
+    TEXT("  bm.nbody_sim        - Run sequential test (10, 20, 50, 100, 200)\n")
+    TEXT("  bm.nbody_sim 50     - Test with 50 bodies"),
     FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(
         [](const TArray<FString>& Args, UWorld* World)
         {
-            if (!World || Args.Num() == 0) return;
-            int32 NumBodies = FCString::Atoi(*Args[0]);
+            if (!World) return;
+            int32 NumBodies = (Args.Num() > 0) ? FCString::Atoi(*Args[0]) : 0;
             if (UBenchmarkManager* Manager = UBenchmarkManager::Get(World))
             {
                 Manager->RunNBodySimulationTest(NumBodies);

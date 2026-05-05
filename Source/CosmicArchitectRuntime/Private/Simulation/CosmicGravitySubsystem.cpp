@@ -124,7 +124,7 @@ void UCosmicGravitySubsystem::Tick(float DeltaTime)
     // I: We integrate all active bodies
     for (UCosmicGravityComponent* Body : Bodies)
     {
-        if (Body)
+        if (Body && Body->GravityMode != ECosmicGravityMode::None && Body->IsAffectedByOthers)
         {
             Body->Integrate(DeltaTime);
         }
