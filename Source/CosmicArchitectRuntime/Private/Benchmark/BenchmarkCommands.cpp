@@ -180,12 +180,14 @@ static FAutoConsoleCommandWithWorldAndArgs CmdClipmapLevelsTest(
 
 static FAutoConsoleCommandWithWorldAndArgs CmdOrbitSimTest(
     TEXT("bm.orbit_sim"),
-    TEXT("Test orbit simulation: bm.orbit_sim 50"),
+    TEXT("Test orbit simulation. Usage:\n")
+    TEXT("  bm.orbit_sim        - Run sequential test (10, 50, 100, 200, 500)\n")
+    TEXT("  bm.orbit_sim 50     - Test with 50 bodies"),
     FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(
         [](const TArray<FString>& Args, UWorld* World)
         {
-            if (!World || Args.Num() == 0) return;
-            int32 NumBodies = FCString::Atoi(*Args[0]);
+            if (!World) return;
+            int32 NumBodies = (Args.Num() > 0) ? FCString::Atoi(*Args[0]) : 0;
             if (UBenchmarkManager* Manager = UBenchmarkManager::Get(World))
             {
                 Manager->RunOrbitSimulationTest(NumBodies);

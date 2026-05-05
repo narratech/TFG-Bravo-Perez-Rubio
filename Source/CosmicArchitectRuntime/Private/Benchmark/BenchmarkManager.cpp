@@ -2,6 +2,7 @@
 
 #include "Benchmark/BenchmarkManager.h"
 #include "Benchmark/BenchmarkRecorder.h"
+#include "Benchmark/BenchmarkSimBody.h"
 #include "Engine/World.h"
 #include "Planet/CosmicPlanet.h"
 #include "Kismet/GameplayStatics.h"
@@ -12,10 +13,6 @@ UBenchmarkManager* UBenchmarkManager::Get(UWorld* World)
     if (!World) return nullptr;
     return World->GetSubsystem<UBenchmarkManager>();
 }
-
-// ============================================================
-// FTickableGameObject Implementation
-// ============================================================
 
 void UBenchmarkManager::Tick(float DeltaTime)
 {
@@ -34,10 +31,6 @@ void UBenchmarkManager::Tick(float DeltaTime)
         }
     }
 }
-
-// ============================================================
-// Control General
-// ============================================================
 
 void UBenchmarkManager::StartBenchmark()
 {
@@ -242,10 +235,6 @@ void UBenchmarkManager::ClearPlanets()
     UE_LOG(LogTemp, Warning, TEXT("Cleared %d planets"), FoundActors.Num());
 }
 
-// ============================================================
-// Tests Secuenciales
-// ============================================================
-
 void UBenchmarkManager::RunPlanetScalingTest()
 {
     UE_LOG(LogTemp, Warning, TEXT("============================================"));
@@ -258,6 +247,7 @@ void UBenchmarkManager::RunPlanetScalingTest()
         return;
     }
 
+    ClearSimBodies();
     ClearPlanets();
 
     // Configurar test secuencial
@@ -288,6 +278,7 @@ void UBenchmarkManager::RunNextSequentialStep()
         CurrentSequentialStepIndex + 1, SequentialTestSteps.Num(), CurrentStep);
 
     // Limpiar planetas anteriores
+    ClearSimBodies();
     ClearPlanets();
 
     // Generar planetas según el tipo de test
@@ -308,7 +299,6 @@ void UBenchmarkManager::RunNextSequentialStep()
         SpawnPlanetsNear(1); // Solo 1 planeta para test de resolución
         break;
     }
-
     case ESequentialTestType::ClipmapLevels:
     {
         // Actualizar niveles manteniendo resolución base
@@ -316,6 +306,10 @@ void UBenchmarkManager::RunNextSequentialStep()
         SpawnPlanetsNear(1);
         break;
     }
+    case ESequentialTestType::OrbitSimulation:
+        SpawnSimBodies(CurrentStep, false); // Órbitas simples
+        break;
+
 
     default:
         break;
@@ -345,6 +339,9 @@ void UBenchmarkManager::RunNextSequentialStep()
                 case ESequentialTestType::ClipmapLevels:
                     TestName = FString::Printf(TEXT("ClipmapLevels_%d"), CurrentStep);
                     break;
+                case ESequentialTestType::OrbitSimulation:
+                    TestName = FString::Printf(TEXT("OrbitSim_%d"), CurrentStep);
+                    break;
                 default:
                     TestName = FString::Printf(TEXT("Test_%d"), CurrentStep);
                     break;
@@ -366,11 +363,10 @@ void UBenchmarkManager::OnSequentialTestComplete()
     SequentialTestSteps.Empty();
 
     ClearPlanets();
+    ClearSimBodies();
 
     UE_LOG(LogTemp, Warning, TEXT(""));
-    UE_LOG(LogTemp, Warning, TEXT("============================================"));
     UE_LOG(LogTemp, Warning, TEXT("=== Sequential Test Complete ==="));
-    UE_LOG(LogTemp, Warning, TEXT("============================================"));
 }
 
 
@@ -442,6 +438,7 @@ void UBenchmarkManager::RunClosePlanetTest()
     bIsRunningSequentialTest = true;
 
     ClearPlanets();
+    ClearSimBodies();
     RunNextSequentialStep();
 }
 
@@ -487,6 +484,7 @@ void UBenchmarkManager::RunClipmapResolutionTest(int32 Resolution)
         CurrentSequentialTestType = ESequentialTestType::ClipmapResolution;
         bIsRunningSequentialTest = true;
 
+        ClearSimBodies();
         ClearPlanets();
         RunNextSequentialStep();
     }
@@ -496,6 +494,7 @@ void UBenchmarkManager::RunClipmapResolutionTest(int32 Resolution)
         UE_LOG(LogTemp, Warning, TEXT("=== Clipmap Resolution Test: %d ==="), Resolution);
 
         SetClipmapConfig(Resolution, CurrentClipmapConfig.NumLevels);
+        ClearSimBodies();
         ClearPlanets();
         SpawnPlanetsNear(1);
         SetCurrentTestParams(Resolution, FString::Printf(TEXT("ClipmapRes_%d"), Resolution));
@@ -522,6 +521,7 @@ void UBenchmarkManager::RunClipmapLevelsTest(int32 Levels)
         CurrentSequentialTestType = ESequentialTestType::ClipmapLevels;
         bIsRunningSequentialTest = true;
 
+        ClearSimBodies();
         ClearPlanets();
         RunNextSequentialStep();
     }
@@ -531,6 +531,7 @@ void UBenchmarkManager::RunClipmapLevelsTest(int32 Levels)
         UE_LOG(LogTemp, Warning, TEXT("=== Clipmap Levels Test: %d levels ==="), Levels);
 
         SetClipmapConfig(CurrentClipmapConfig.BaseResolution, Levels);
+        ClearSimBodies();
         ClearPlanets();
         SpawnPlanetsNear(1);
         SetCurrentTestParams(Levels, FString::Printf(TEXT("ClipmapLevels_%d"), Levels));
@@ -540,14 +541,122 @@ void UBenchmarkManager::RunClipmapLevelsTest(int32 Levels)
 
 void UBenchmarkManager::RunOrbitSimulationTest(int32 NumBodies)
 {
-    SetCurrentTestParams(NumBodies, FString::Printf(TEXT("OrbitSim_%d"), NumBodies));
-    BeginCapture(5.0f);
+    // Si NumBodies <= 0, ejecutar test secuencial
+    if (NumBodies <= 0)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("=== Orbit Simulation Test (Sequential) ==="));
+
+        if (bIsRunningSequentialTest)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Test already running. Stop it first."));
+            return;
+        }
+
+        // Pasos: 10, 50, 100, 200, 500 cuerpos
+        SequentialTestSteps = { 10, 50, 100, 200, 500, 1000 };
+        CurrentSequentialStepIndex = 0;
+        CurrentSequentialTestType = ESequentialTestType::OrbitSimulation;
+        bIsRunningSequentialTest = true;
+
+        ClearSimBodies();
+        RunNextSequentialStep();
+    }
+    else
+    {
+        // Test individual
+        UE_LOG(LogTemp, Warning, TEXT("=== Orbit Simulation Test: %d bodies ==="), NumBodies);
+
+        ClearSimBodies();
+        SpawnSimBodies(NumBodies, false); // false = órbitas simples
+
+        SetCurrentTestParams(NumBodies, FString::Printf(TEXT("OrbitSim_%d"), NumBodies));
+        BeginCapture(5.0f);
+    }
 }
 
 void UBenchmarkManager::RunNBodySimulationTest(int32 NumBodies)
 {
     SetCurrentTestParams(NumBodies, FString::Printf(TEXT("NBodySim_%d"), NumBodies));
     BeginCapture(5.0f);
+}
+
+void UBenchmarkManager::SpawnSimBodies(int32 NumBodies, bool bNBodySimulation)
+{
+    UWorld* World = GetWorld();
+    if (!World) return;
+
+    UE_LOG(LogTemp, Warning, TEXT("Spawning %d simulation bodies (N-Body: %s)"),
+        NumBodies, bNBodySimulation ? TEXT("true") : TEXT("false"));
+
+    SimBodies.Empty();
+    SimBodies.Reserve(NumBodies);
+
+    // Crear cuerpo central
+    FActorSpawnParameters Params;
+    Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+    CentralBody = World->SpawnActor<ABenchmarkSimBody>(
+        ABenchmarkSimBody::StaticClass(),
+        FVector::ZeroVector,
+        FRotator::ZeroRotator,
+        Params
+    );
+
+    if (CentralBody)
+    {
+        CentralBody->InitAsCentralBody();
+        // Hacer la esfera central un poco más grande
+        if (CentralBody->MeshComponent)
+        {
+            CentralBody->MeshComponent->SetWorldScale3D(FVector(0.2f));
+        }
+    }
+
+    // Crear cuerpos orbitales
+    for (int32 i = 0; i < NumBodies; i++)
+    {
+        FVector Location = FVector::Zero();
+        FRotator Rotation = FRotator::ZeroRotator;
+
+        ABenchmarkSimBody* Body = World->SpawnActor<ABenchmarkSimBody>(
+            ABenchmarkSimBody::StaticClass(),
+            Location,
+            Rotation,
+            Params
+        );
+
+        if (Body)
+        {
+            // Órbita aleatoria alrededor del cuerpo central
+            float SemiMajorAxis = FMath::FRandRange(0.1f, 1.0f);
+            Body->AttachToActor(CentralBody, FAttachmentTransformRules::KeepWorldTransform);
+            Body->InitRandomOrbit(CentralBody, SemiMajorAxis);
+            SimBodies.Add(Body);
+        }
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("Spawned %d orbital bodies"), SimBodies.Num());
+}
+
+void UBenchmarkManager::ClearSimBodies()
+{
+    for (ABenchmarkSimBody* Body : SimBodies)
+    {
+        if (Body)
+        {
+            Body->Destroy();
+        }
+    }
+    SimBodies.Empty();
+
+    // Destruir cuerpo central
+    if (CentralBody)
+    {
+        CentralBody->Destroy();
+        CentralBody = nullptr;
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT("Cleared all simulation bodies"));
 }
 
 void UBenchmarkManager::RunSystemGeneratorTest(int32 NumBodies)

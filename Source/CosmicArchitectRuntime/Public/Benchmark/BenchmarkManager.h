@@ -7,6 +7,8 @@
 #include "Tickable.h"
 #include "BenchmarkManager.generated.h"
 
+class ABenchmarkSimBody;
+
 /**
  *
  */
@@ -55,6 +57,8 @@ public:
     // --- Simulation Tests ---
     void RunOrbitSimulationTest(int32 NumBodies);
     void RunNBodySimulationTest(int32 NumBodies);
+    void SpawnSimBodies(int32 NumBodies, bool bNBodySimulation);
+    void ClearSimBodies();
 
     // --- System Generator Test ---
     void RunSystemGeneratorTest(int32 NumBodies);
@@ -74,6 +78,9 @@ private:
     FClipmapConfig CurrentClipmapConfig;
     FString CurrentTestName;
     int32 CurrentNumObjects;
+
+    TArray<ABenchmarkSimBody*> SimBodies;
+    ABenchmarkSimBody* CentralBody = nullptr;
 
     // Variables para el sistema de captura por tick
     bool bIsCapturing = false;
