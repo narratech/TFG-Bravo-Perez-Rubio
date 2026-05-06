@@ -61,7 +61,7 @@ protected:
     // E: Semilla para la generación de números aleatorios (Determinismo).
     // I: Seed for random number generation (Determinism).
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration")
-    int32 Seed;
+    int32 Seed = 1337;
 
     // E: Multiplicador global de velocidad para todos los periodos orbitales del sistema.
     //    1.0 = velocidad normal. Valores mayores aceleran todas las órbitas proporcionalmente.
@@ -139,6 +139,9 @@ private:
     FColor GetRandomColor(FRandomStream& Stream, int min, int max);
 
 public:
+
+    void SetNumBodies(int32 NumBodies);
+
     // E: Genera los cuerpos basándose en la configuración actual.
     // I: Generates bodies based on the current configuration.
     UFUNCTION(CallInEditor, Category = "Actions")

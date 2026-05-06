@@ -202,6 +202,11 @@ FColor ACosmicSystemGenerator::GetRandomColor(FRandomStream& Stream, int min, in
     );
 }
 
+void ACosmicSystemGenerator::SetNumBodies(int32 NumBodies)
+{
+    NumberOfBodies = NumBodies;
+}
+
 void ACosmicSystemGenerator::GenerateBodies()
 {
     ClearBodies();

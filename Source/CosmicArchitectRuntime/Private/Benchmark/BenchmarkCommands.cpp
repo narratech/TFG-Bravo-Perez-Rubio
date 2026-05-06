@@ -218,12 +218,14 @@ static FAutoConsoleCommandWithWorldAndArgs CmdNBodySimTest(
 
 static FAutoConsoleCommandWithWorldAndArgs CmdSystemGenTest(
     TEXT("bm.system_gen"),
-    TEXT("Test system generator: bm.system_gen 50"),
+    TEXT("Test System Generation. Usage:\n")
+    TEXT("  bm.system_gen       - Run sequential test (1, 2, 5, 10, 20, 50)\n")
+    TEXT("  bm.system_gen 10     - Test with 10 bodies"),
     FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(
         [](const TArray<FString>& Args, UWorld* World)
         {
-            if (!World || Args.Num() == 0) return;
-            int32 NumBodies = FCString::Atoi(*Args[0]);
+            if (!World) return;
+            int32 NumBodies = (Args.Num() > 0) ? FCString::Atoi(*Args[0]) : 0;
             if (UBenchmarkManager* Manager = UBenchmarkManager::Get(World))
             {
                 Manager->RunSystemGeneratorTest(NumBodies);

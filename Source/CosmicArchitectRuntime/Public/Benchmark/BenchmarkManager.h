@@ -10,6 +10,7 @@
 class ABenchmarkSimBody;
 class UCosmicNoiseClass;
 class UCosmicFoliageCollection;
+class ACosmicSystemGenerator;
 
 /**
  *
@@ -118,6 +119,8 @@ private:
 
     TArray<ABenchmarkSimBody*> SimBodies;
     ABenchmarkSimBody* CentralBody = nullptr;
+    ACosmicSystemGenerator* SystemGenerator = nullptr;
+
 
     // Variables para el sistema de captura por tick
     bool bIsCapturing = false;

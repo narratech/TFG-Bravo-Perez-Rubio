@@ -635,6 +635,37 @@ void UBenchmarkManager::RunNBodySimulationTest(int32 NumBodies)
 
 void UBenchmarkManager::RunSystemGeneratorTest(int32 NumBodies)
 {
+    UWorld* World = GetWorld();
+    if (!World) return;
+
+    if (SystemGenerator)
+    {
+        SystemGenerator->ClearBodies();
+    }
+    else
+    {
+        FActorSpawnParameters Params;
+        Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+        SystemGenerator = World->SpawnActor<ACosmicSystemGenerator>(
+            ACosmicSystemGenerator::StaticClass(),
+            FVector::ZeroVector,
+            FRotator::ZeroRotator,
+            Params);
+
+        if (!SystemGenerator) return;
+
+        SystemGenerator->BaseMaterial = BaseMaterial;
+        SystemGenerator->MoonMaterial = MoonMaterial;
+        SystemGenerator->StarMaterial = StarMaterial;
+        SystemGenerator->GasGiantMaterial = GasGiantMaterial;
+        SystemGenerator->OceanMaterial = OceanMaterial;
+        SystemGenerator->RingMaterial = RingMaterial;
+    }
+
+    ClearSimBodies();
+    ClearPlanets();
+
     if (NumBodies <= 0)
     {
         UE_LOG(LogTemp, Warning, TEXT("=== System Generation Test ==="));
@@ -643,30 +674,43 @@ void UBenchmarkManager::RunSystemGeneratorTest(int32 NumBodies)
 
         for (size_t i = 0; i < SequentialTestSteps.Num(); i++)
         {
+            SystemGenerator->SetNumBodies(SequentialTestSteps[i]);
 
             double StartTime = FPlatformTime::Seconds();
 
-            // GenerateSystem(NumBodies);
+            SystemGenerator->GenerateBodies();
 
             double EndTime = FPlatformTime::Seconds();
             double GenerationTime = EndTime - StartTime;
 
             UE_LOG(LogTemp, Warning, TEXT("System generation time for %d bodies: %.3f seconds"),
-                NumBodies, GenerationTime);
+                SequentialTestSteps[i], GenerationTime);
+
+            SystemGenerator->ClearBodies();
         }
         
     }
     else
     {
+        SystemGenerator->SetNumBodies(NumBodies);
+
         double StartTime = FPlatformTime::Seconds();
 
-        // GenerateSystem(NumBodies); 
+        SystemGenerator->GenerateBodies();
 
         double EndTime = FPlatformTime::Seconds();
         double GenerationTime = EndTime - StartTime;
 
         UE_LOG(LogTemp, Warning, TEXT("System generation time for %d bodies: %.3f seconds"),
             NumBodies, GenerationTime);
+
+        SystemGenerator->ClearBodies();
+    }
+
+    if (SystemGenerator)
+    {
+        SystemGenerator->Destroy();
+        SystemGenerator = nullptr;
     }
 }
 
