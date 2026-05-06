@@ -8,6 +8,8 @@
 #include "BenchmarkManager.generated.h"
 
 class ABenchmarkSimBody;
+class UCosmicNoiseClass;
+class UCosmicFoliageCollection;
 
 /**
  *
@@ -28,6 +30,17 @@ public:
     }
     virtual bool IsTickable() const override { return bIsCapturing; }
     virtual bool IsTickableInEditor() const override { return false; }
+
+    void InitializeAssets(
+        UMaterialInstance* InBaseMaterial,
+        UMaterialInstance* InMoonMaterial,
+        UMaterialInstance* InOceanMaterial,
+        UMaterialInstance* InStarMaterial,
+        UMaterialInstance* InGasGiantMaterial,
+        UMaterialInstance* InRingMaterial,
+        UCosmicNoiseClass* InNoiseClass,
+        UCosmicFoliageCollection* InFoliageCollection
+    );
 
     // --- Control general ---
     void StartBenchmark();
@@ -75,6 +88,30 @@ public:
     };
 
 private:
+    UPROPERTY(EditAnywhere, Category = "Configuration")
+    UMaterialInstance* BaseMaterial;
+
+    UPROPERTY(EditAnywhere, Category = "Configuration")
+    UMaterialInstance* MoonMaterial;
+
+    UPROPERTY(EditAnywhere, Category = "Configuration")
+    UMaterialInstance* OceanMaterial;
+
+    UPROPERTY(EditAnywhere, Category = "Configuration")
+    UMaterialInstance* StarMaterial;
+
+    UPROPERTY(EditAnywhere, Category = "Configuration")
+    UMaterialInstance* GasGiantMaterial;
+
+    UPROPERTY(EditAnywhere, Category = "Configuration")
+    UMaterialInstance* RingMaterial;
+
+    UPROPERTY(EditAnywhere, Category = "Configuration")
+    UCosmicNoiseClass* NoiseClass;
+
+    UPROPERTY(EditAnywhere, Category = "Configuration")
+    UCosmicFoliageCollection* FoliageCollection;
+
     FClipmapConfig CurrentClipmapConfig;
     FString CurrentTestName;
     int32 CurrentNumObjects;
@@ -104,6 +141,7 @@ private:
         ClipmapLevels,
         OrbitSimulation,
         NBodySimulation,
+        SystemGeneration,
         None
     };
     ESequentialTestType CurrentSequentialTestType = ESequentialTestType::None;

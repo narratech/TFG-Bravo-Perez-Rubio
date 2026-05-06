@@ -4,9 +4,12 @@
 #include "Benchmark/BenchmarkRecorder.h"
 #include "Benchmark/BenchmarkSimBody.h"
 #include "Simulation/CosmicGravitySubsystem.h"
+#include "System/CosmicSystemGenerator.h"
+#include "CosmicFoliageCollection.h"
 #include "Engine/World.h"
 #include "Planet/CosmicPlanet.h"
 #include "Kismet/GameplayStatics.h"
+#include "CosmicNoiseClass.h"
 #include "TimerManager.h"
 
 UBenchmarkManager* UBenchmarkManager::Get(UWorld* World)
@@ -31,6 +34,22 @@ void UBenchmarkManager::Tick(float DeltaTime)
             OnBenchmarkCaptureComplete();
         }
     }
+}
+
+void UBenchmarkManager::InitializeAssets(UMaterialInstance* InBaseMaterial, UMaterialInstance* InMoonMaterial,
+    UMaterialInstance* InOceanMaterial, UMaterialInstance* InStarMaterial, UMaterialInstance* InGasGiantMaterial,
+    UMaterialInstance* InRingMaterial, UCosmicNoiseClass* InNoiseClass, UCosmicFoliageCollection* InFoliageCollection)
+{
+    BaseMaterial = InBaseMaterial;
+    MoonMaterial = InMoonMaterial;
+    OceanMaterial = InOceanMaterial;
+    StarMaterial = InStarMaterial;
+    GasGiantMaterial = InGasGiantMaterial;
+    RingMaterial = InRingMaterial;
+    NoiseClass = InNoiseClass;
+    FoliageCollection = InFoliageCollection;
+
+    UE_LOG(LogTemp, Log, TEXT("BenchmarkManager: Assets inicializados"));
 }
 
 void UBenchmarkManager::StartBenchmark()
@@ -99,19 +118,19 @@ void UBenchmarkManager::SpawnPlanets(int32 NumPlanets)
 
         Planet->InitPlanet(
             10.0f,
-            nullptr,
+            NoiseClass,
             FColor::Red,
             FColor::Orange,
             FColor::White,
             FColor::Red,
             FColor::Black,
             100.f, 3.f, 1.f,
-            nullptr, nullptr,
+            BaseMaterial, nullptr,
             true,
             CurrentClipmapConfig.BaseResolution,
             CurrentClipmapConfig.NumLevels,
             100, 5.0f,
-            true, 0.0, 128, nullptr,
+            true, 0.0, 128, OceanMaterial,
             nullptr
         );
     }
@@ -163,16 +182,16 @@ void UBenchmarkManager::SpawnPlanetsNear(int32 NumPlanets)
         if (!Planet) continue;
 
         Planet->InitPlanet(
-            10.0f, nullptr,
+            10.0f, NoiseClass,
             FColor::Red, FColor::Orange,
             FColor::White, FColor::Red, FColor::Black,
             100.f, 3.f, 1.f,
-            nullptr, nullptr,
+            BaseMaterial, nullptr,
             true,
             CurrentClipmapConfig.BaseResolution,
             CurrentClipmapConfig.NumLevels,
             100, 5.0f,
-            true, 0.0, 128, nullptr,
+            true, 0.0, 128, OceanMaterial,
             nullptr
         );
     }
@@ -205,16 +224,16 @@ void UBenchmarkManager::SpawnPlanetsFar(int32 NumPlanets)
         if (!Planet) continue;
 
         Planet->InitPlanet(
-            10.0f, nullptr,
+            10.0f, NoiseClass,
             FColor::Red, FColor::Orange,
             FColor::White, FColor::Red, FColor::Black,
             100.f, 3.f, 1.f,
-            nullptr, nullptr,
+            BaseMaterial, nullptr,
             true,
             CurrentClipmapConfig.BaseResolution,
             CurrentClipmapConfig.NumLevels,
             100, 5.0f,
-            true, 0.0, 128, nullptr,
+            true, 0.0, 128, OceanMaterial,
             nullptr
         );
     }
@@ -614,6 +633,43 @@ void UBenchmarkManager::RunNBodySimulationTest(int32 NumBodies)
     }
 }
 
+void UBenchmarkManager::RunSystemGeneratorTest(int32 NumBodies)
+{
+    if (NumBodies <= 0)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("=== System Generation Test ==="));
+
+        SequentialTestSteps = { 1, 2, 5, 10, 20, 50 };
+
+        for (size_t i = 0; i < SequentialTestSteps.Num(); i++)
+        {
+
+            double StartTime = FPlatformTime::Seconds();
+
+            // GenerateSystem(NumBodies);
+
+            double EndTime = FPlatformTime::Seconds();
+            double GenerationTime = EndTime - StartTime;
+
+            UE_LOG(LogTemp, Warning, TEXT("System generation time for %d bodies: %.3f seconds"),
+                NumBodies, GenerationTime);
+        }
+        
+    }
+    else
+    {
+        double StartTime = FPlatformTime::Seconds();
+
+        // GenerateSystem(NumBodies); 
+
+        double EndTime = FPlatformTime::Seconds();
+        double GenerationTime = EndTime - StartTime;
+
+        UE_LOG(LogTemp, Warning, TEXT("System generation time for %d bodies: %.3f seconds"),
+            NumBodies, GenerationTime);
+    }
+}
+
 void UBenchmarkManager::SpawnSimBodies(int32 NumBodies, bool bNBodySimulation)
 {
     UWorld* World = GetWorld();
@@ -709,15 +765,3 @@ void UBenchmarkManager::ClearSimBodies()
     UE_LOG(LogTemp, Warning, TEXT("Cleared all simulation bodies"));
 }
 
-void UBenchmarkManager::RunSystemGeneratorTest(int32 NumBodies)
-{
-    double StartTime = FPlatformTime::Seconds();
-
-    // GenerateSystem(NumBodies); // Aquí iría la llamada real
-
-    double EndTime = FPlatformTime::Seconds();
-    double GenerationTime = EndTime - StartTime;
-
-    UE_LOG(LogTemp, Warning, TEXT("System generation time for %d bodies: %.3f seconds"),
-        NumBodies, GenerationTime);
-}
