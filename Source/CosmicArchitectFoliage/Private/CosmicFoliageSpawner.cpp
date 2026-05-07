@@ -272,7 +272,7 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
         if (!UniqueLayers.Find(CurrentLayer)) continue;
 
         // -------- OCTREE QUERY --------
-        double OctreeStart = FPlatformTime::Seconds();
+        //double OctreeStart = FPlatformTime::Seconds();
 
         TArray<FCubeMapCell> VisibleNodes;
         if (DistanceToSurface < GetLayerRadius(CurrentLayer) * 100000)
@@ -281,7 +281,7 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
             //UE_LOG(LogTemp, Warning, TEXT("ViewerLocaction: %s, PlanetCenter: %s, LayerRadius: %.4f"), *ViewerLocation.ToString(), *PlanetCenter.ToString(), GetLayerRadius(CurrentLayer));
         }
         
-        double OctreeEnd = FPlatformTime::Seconds();
+        //double OctreeEnd = FPlatformTime::Seconds();
 
         //UE_LOG(LogTemp, Warning, TEXT("UpdateOctree Layer %d , %.3f ms"), i, (OctreeEnd - OctreeStart) * 1000.0);
     

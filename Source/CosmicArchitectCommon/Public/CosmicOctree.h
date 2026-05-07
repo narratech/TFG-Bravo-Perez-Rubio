@@ -74,7 +74,7 @@ private:
         const FVector& PlayerPos,
         const FVector& PlanetCenter,
         float ViewDistanceCm,
-        float ViewAngleRad,
+        int32 RequiredDepth,
         TArray<FCubeMapCell>& OutNodes) const;
     
 
