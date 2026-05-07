@@ -12,9 +12,6 @@ static const double G = 0.00000000006674;
 // I: Gravitational constant
 static const double GUnreal = G * 10000;
 
-// E: Factor de suavizado para evitar que la fuerza sea infinita si dos cuerpos se tocan
-// I: Smoothing factor to prevent infinite force if two bodies touch
-static const double Softening = 100000.0;
 
 void UCosmicGravitySubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
