@@ -98,6 +98,12 @@ public:
 		UCosmicFoliageCollection* InFoliageCollection = nullptr
 	);
 
+	void SetFoliageParams(
+		int32 InFoliageInstancesPerFrame = 50.f,
+		float NearLayerRadiusKm = 0.05f,
+		float MediumLayerRadiusKm = 0.2f,
+		float FarLayerRadiusKm = 0.5f);
+
 	void CleanupNoiseSettings();
 
 protected:

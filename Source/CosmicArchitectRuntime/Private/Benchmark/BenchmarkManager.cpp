@@ -131,7 +131,14 @@ void UBenchmarkManager::SpawnPlanets(int32 NumPlanets)
             CurrentClipmapConfig.NumLevels,
             100, 5.0f,
             true, 0.0, 128, OceanMaterial,
-            nullptr
+            FoliageCollection
+        );
+
+        Planet->SetFoliageParams(
+            CurrentFoliageConfig.FoliageInstancesPerFrame,
+            CurrentFoliageConfig.NearLayerRadiusKm,
+            CurrentFoliageConfig.MediumLayerRadiusKm,
+            CurrentFoliageConfig.FarLayerRadiusKm
         );
     }
 }
@@ -154,7 +161,7 @@ void UBenchmarkManager::SpawnPlanetsNear(int32 NumPlanets)
 
     UE_LOG(LogTemp, Warning, TEXT("Spawning %d planets near camera"), NumPlanets);
 
-    float Spacing = 3000000.0f;
+    float Spacing = 1005000.0f;
 
     for (int32 i = 0; i < NumPlanets; i++)
     {
@@ -181,6 +188,13 @@ void UBenchmarkManager::SpawnPlanetsNear(int32 NumPlanets)
 
         if (!Planet) continue;
 
+        Planet->SetFoliageParams(
+            CurrentFoliageConfig.FoliageInstancesPerFrame,
+            CurrentFoliageConfig.NearLayerRadiusKm,
+            CurrentFoliageConfig.MediumLayerRadiusKm,
+            CurrentFoliageConfig.FarLayerRadiusKm
+        );
+
         Planet->InitPlanet(
             10.0f, NoiseClass,
             FColor::Red, FColor::Orange,
@@ -192,8 +206,8 @@ void UBenchmarkManager::SpawnPlanetsNear(int32 NumPlanets)
             CurrentClipmapConfig.NumLevels,
             100, 5.0f,
             true, 0.0, 128, OceanMaterial,
-            nullptr
-        );
+            FoliageCollection
+        );   
     }
 }
 
@@ -299,6 +313,8 @@ void UBenchmarkManager::RunNextSequentialStep()
     ClearSimBodies();
     ClearPlanets();
 
+    
+
     // Generar planetas según el tipo de test
     switch (CurrentSequentialTestType)
     {
@@ -309,7 +325,18 @@ void UBenchmarkManager::RunNextSequentialStep()
     case ESequentialTestType::ClosePlanetScaling:
         SpawnPlanetsNear(CurrentStep);
         break;
-
+    case ESequentialTestType::FoliagePerFrame:
+        SetFoliageConfig(CurrentStep);
+        SpawnPlanetsNear(1);
+        break;
+    case ESequentialTestType::FoliageViewDistance:
+        if (CurrentStep < RadiusConfigs.Num())
+        {
+            FVector Radii = RadiusConfigs[CurrentStep];
+            SetFoliageConfig(100, Radii.X, Radii.Y, Radii.Z);
+            SpawnPlanetsNear(1);
+        }
+        break;
     case ESequentialTestType::ClipmapResolution:
     {
         // Actualizar configuración de clipmap
@@ -353,6 +380,12 @@ void UBenchmarkManager::RunNextSequentialStep()
                     break;
                 case ESequentialTestType::ClosePlanetScaling:
                     TestName = FString::Printf(TEXT("ClosePlanet_%d"), CurrentStep);
+                    break;
+                case ESequentialTestType::FoliagePerFrame:
+                    TestName = FString::Printf(TEXT("FoliagePerFrame_%d"), CurrentStep);
+                    break;
+                case ESequentialTestType::FoliageViewDistance:
+                    TestName = FString::Printf(TEXT("FoliageRadius_%d"), CurrentStep);
                     break;
                 case ESequentialTestType::ClipmapResolution:
                     TestName = FString::Printf(TEXT("ClipmapRes_%d"), CurrentStep);
@@ -420,6 +453,13 @@ void UBenchmarkManager::SetCurrentTestParams(int32 NumObjects, const FString& Te
     CurrentTestName = TestName;
 }
 
+void UBenchmarkManager::OnWorldEndPlay(UWorld& InWorld)
+{
+    EndCapture();
+
+    Super::OnWorldEndPlay(InWorld);
+}
+
 void UBenchmarkManager::OnBenchmarkCaptureComplete()
 {
     bIsCapturing = false;
@@ -461,8 +501,6 @@ void UBenchmarkManager::RunClosePlanetTest()
     CurrentSequentialTestType = ESequentialTestType::ClosePlanetScaling;
     bIsRunningSequentialTest = true;
 
-    ClearPlanets();
-    ClearSimBodies();
     RunNextSequentialStep();
 }
 
@@ -477,17 +515,79 @@ void UBenchmarkManager::RunSimulationTest()
 }
 
 
-// Stubs para otros tests
-void UBenchmarkManager::RunFoliageDensityTest(int32 TotalInstances)
+void UBenchmarkManager::SetFoliageConfig(int32 InFoliageInstancesPerFrame, float NearLayerRadiusKm, float MediumLayerRadiusKm, float FarLayerRadiusKm)
 {
-    SetCurrentTestParams(TotalInstances, FString::Printf(TEXT("FoliageDensity_%d"), TotalInstances));
-    BeginCapture(5.0f);
+    CurrentFoliageConfig.FoliageInstancesPerFrame = InFoliageInstancesPerFrame;
+    CurrentFoliageConfig.NearLayerRadiusKm = NearLayerRadiusKm;
+    CurrentFoliageConfig.MediumLayerRadiusKm = MediumLayerRadiusKm;
+    CurrentFoliageConfig.FarLayerRadiusKm = FarLayerRadiusKm;
 }
 
 void UBenchmarkManager::RunFoliagePerFrameTest(int32 MaxInstancesPerFrame)
 {
-    SetCurrentTestParams(MaxInstancesPerFrame, FString::Printf(TEXT("FoliagePerFrame_%d"), MaxInstancesPerFrame));
-    BeginCapture(5.0f);
+    if (MaxInstancesPerFrame <= 0)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("=== Foliage Per Frame Test (Sequential) ==="));
+
+        if (bIsRunningSequentialTest)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Test already running. Stop it first."));
+            return;
+        }
+
+        // Pasos de instancias por frame
+        SequentialTestSteps = { 10, 50, 100, 200, 500, 1000 };
+        CurrentSequentialStepIndex = 0;
+        CurrentSequentialTestType = ESequentialTestType::FoliagePerFrame;
+        bIsRunningSequentialTest = true;
+
+        RunNextSequentialStep();
+    }
+    else
+    {
+        // Test individual
+        UE_LOG(LogTemp, Warning, TEXT("=== Foliage Per Frame Test: %d instances/frame ==="), MaxInstancesPerFrame);
+
+        ClearSimBodies();
+        ClearPlanets();
+
+        SetFoliageConfig(MaxInstancesPerFrame);
+
+        // Spawnear un planeta cerca
+        SpawnPlanetsNear(1);
+
+        SetCurrentTestParams(MaxInstancesPerFrame, FString::Printf(TEXT("FoliagePerFrame_%d"), MaxInstancesPerFrame));
+        BeginCapture(5.0f);
+    }
+}
+
+void UBenchmarkManager::RunFoliageRadiusTest()
+{
+    UE_LOG(LogTemp, Warning, TEXT("=== Foliage Radius Test (Sequential) ==="));
+
+    if (bIsRunningSequentialTest)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Test already running. Stop it first."));
+        return;
+    }
+
+    RadiusConfigs = {
+            FVector(0.01f, 0.05f, 0.1f),   // Muy cercano
+            FVector(0.02f, 0.1f, 0.2f),     // Cercano
+            FVector(0.05f, 0.2f, 0.5f),     // Default
+            FVector(0.1f, 0.4f, 1.0f),      // Medio
+            FVector(0.2f, 0.8f, 2.0f),      // Lejos
+            FVector(0.5f, 2.0f, 5.0f)       // Muy lejos
+    };
+
+    // Este test variará los radios de las capas
+    // Usaremos pasos predefinidos para las 3 capas
+    SequentialTestSteps = { 0, 1, 2, 3, 4, 5 }; // Índices para diferentes configuraciones
+    CurrentSequentialStepIndex = 0;
+    CurrentSequentialTestType = ESequentialTestType::FoliageViewDistance;
+    bIsRunningSequentialTest = true;
+
+    RunNextSequentialStep();
 }
 
 void UBenchmarkManager::RunClipmapResolutionTest(int32 Resolution)
@@ -508,8 +608,6 @@ void UBenchmarkManager::RunClipmapResolutionTest(int32 Resolution)
         CurrentSequentialTestType = ESequentialTestType::ClipmapResolution;
         bIsRunningSequentialTest = true;
 
-        ClearSimBodies();
-        ClearPlanets();
         RunNextSequentialStep();
     }
     else
@@ -545,8 +643,6 @@ void UBenchmarkManager::RunClipmapLevelsTest(int32 Levels)
         CurrentSequentialTestType = ESequentialTestType::ClipmapLevels;
         bIsRunningSequentialTest = true;
 
-        ClearSimBodies();
-        ClearPlanets();
         RunNextSequentialStep();
     }
     else
@@ -582,7 +678,6 @@ void UBenchmarkManager::RunOrbitSimulationTest(int32 NumBodies)
         CurrentSequentialTestType = ESequentialTestType::OrbitSimulation;
         bIsRunningSequentialTest = true;
 
-        ClearSimBodies();
         RunNextSequentialStep();
     }
     else
@@ -617,7 +712,6 @@ void UBenchmarkManager::RunNBodySimulationTest(int32 NumBodies)
         CurrentSequentialTestType = ESequentialTestType::NBodySimulation;
         bIsRunningSequentialTest = true;
 
-        ClearSimBodies();
         RunNextSequentialStep();
     }
     else

@@ -16,7 +16,7 @@ class ACosmicSystemGenerator;
  *
  */
 UCLASS()
-class COSMICARCHITECTRUNTIME_API UBenchmarkManager : public UWorldSubsystem, public FTickableGameObject
+class COSMICARCHITECTRUNTIME_API UBenchmarkManager : public UTickableWorldSubsystem
 {
     GENERATED_BODY()
 
@@ -61,8 +61,14 @@ public:
     void RunSimulationTest();
 
     // --- Foliage Tests ---
-    void RunFoliageDensityTest(int32 TotalInstances);
+    void SetFoliageConfig(
+        int32 InFoliageInstancesPerFrame = 50.f,
+        float NearLayerRadiusKm = 0.05f,
+        float MediumLayerRadiusKm = 0.2f,
+        float FarLayerRadiusKm = 0.5f
+    );
     void RunFoliagePerFrameTest(int32 MaxInstancesPerFrame);
+    void RunFoliageRadiusTest();
 
     // --- Clipmap Tests ---
     void RunClipmapResolutionTest(int32 Resolution);
@@ -82,10 +88,22 @@ public:
     void EndCapture();
     void SetCurrentTestParams(int32 NumObjects, const FString& TestName);
 
+protected:
+
+    virtual void OnWorldEndPlay(UWorld& InWorld) override;
+
     struct FClipmapConfig
     {
         int32 BaseResolution = 128;
         int32 NumLevels = 4;
+    };
+
+    struct FFoliageConfig
+    {
+        int32 FoliageInstancesPerFrame = 50.f;
+        float NearLayerRadiusKm = 0.05f;
+        float MediumLayerRadiusKm = 0.2f;
+        float FarLayerRadiusKm = 0.5f;
     };
 
 private:
@@ -114,6 +132,7 @@ private:
     UCosmicFoliageCollection* FoliageCollection;
 
     FClipmapConfig CurrentClipmapConfig;
+    FFoliageConfig CurrentFoliageConfig;
     FString CurrentTestName;
     int32 CurrentNumObjects;
 
@@ -121,6 +140,7 @@ private:
     ABenchmarkSimBody* CentralBody = nullptr;
     ACosmicSystemGenerator* SystemGenerator = nullptr;
 
+    TArray<FVector> RadiusConfigs;
 
     // Variables para el sistema de captura por tick
     bool bIsCapturing = false;
@@ -138,7 +158,7 @@ private:
     {
         PlanetScaling,
         ClosePlanetScaling,
-        FoliageDensity,
+        FoliageViewDistance,
         FoliagePerFrame,
         ClipmapResolution,
         ClipmapLevels,

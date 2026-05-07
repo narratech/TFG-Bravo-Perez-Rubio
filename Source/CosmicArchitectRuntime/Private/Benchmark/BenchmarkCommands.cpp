@@ -98,33 +98,35 @@ static FAutoConsoleCommandWithWorldAndArgs CmdRunClosePlanetTest(
 
 // COMANDOS DE FOLIAGE 
 
-static FAutoConsoleCommandWithWorldAndArgs CmdFoliageDensityTest(
-    TEXT("bm.foliage_density"),
-    TEXT("Test foliage density: bm.foliage_density 10000"),
+static FAutoConsoleCommandWithWorldAndArgs CmdFoliagePerFrameTest(
+    TEXT("bm.foliage_per_frame"),
+    TEXT("Test foliage instances per frame. Usage:\n")
+    TEXT("  bm.foliage_per_frame      - Run sequential test (10, 50, 100, 200, 500, 1000)\n")
+    TEXT("  bm.foliage_per_frame 200  - Test with 200 instances/frame"),
     FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(
         [](const TArray<FString>& Args, UWorld* World)
         {
-            if (!World || Args.Num() == 0) return;
-            int32 Instances = FCString::Atoi(*Args[0]);
+            if (!World) return;
+            int32 MaxPerFrame = (Args.Num() > 0) ? FCString::Atoi(*Args[0]) : 0;
             if (UBenchmarkManager* Manager = UBenchmarkManager::Get(World))
             {
-                Manager->RunFoliageDensityTest(Instances);
+                Manager->RunFoliagePerFrameTest(MaxPerFrame);
             }
         }
     )
 );
 
-static FAutoConsoleCommandWithWorldAndArgs CmdFoliagePerFrameTest(
-    TEXT("bm.foliage_per_frame"),
-    TEXT("Test foliage instances per frame: bm.foliage_per_frame 100"),
+static FAutoConsoleCommandWithWorldAndArgs CmdFoliageRadiusTest(
+    TEXT("bm.foliage_radius"),
+    TEXT("Run foliage view distance test with different layer radii:\n")
+    TEXT("  Tests: Near(0.01-0.5), Medium(0.05-2.0), Far(0.1-5.0) km"),
     FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(
         [](const TArray<FString>& Args, UWorld* World)
         {
-            if (!World || Args.Num() == 0) return;
-            int32 MaxPerFrame = FCString::Atoi(*Args[0]);
+            if (!World) return;
             if (UBenchmarkManager* Manager = UBenchmarkManager::Get(World))
             {
-                Manager->RunFoliagePerFrameTest(MaxPerFrame);
+                Manager->RunFoliageRadiusTest();
             }
         }
     )

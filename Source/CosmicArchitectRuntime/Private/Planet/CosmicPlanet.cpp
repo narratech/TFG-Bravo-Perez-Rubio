@@ -296,6 +296,17 @@ void ACosmicPlanet::InitPlanet(
     UpdateMaterialOnly();
 }
 
+void ACosmicPlanet::SetFoliageParams(int32 InFoliageInstancesPerFrame, float InNearLayerRadiusKm, float InMediumLayerRadiusKm, float InFarLayerRadiusKm)
+{
+    if (FoliageSpawnerComponent)
+    {
+        FoliageSpawnerComponent->MaxInstancesPerFrame = InFoliageInstancesPerFrame;
+        FoliageSpawnerComponent->NearLayerRadiusKm = InNearLayerRadiusKm;
+        FoliageSpawnerComponent->MediumLayerRadiusKm = InMediumLayerRadiusKm;
+        FoliageSpawnerComponent->FarLayerRadiusKm = InFarLayerRadiusKm;
+    }
+}
+
 void ACosmicPlanet::CleanupNoiseSettings()
 {
     if (NoiseClass && !NoiseClass->IsAsset())

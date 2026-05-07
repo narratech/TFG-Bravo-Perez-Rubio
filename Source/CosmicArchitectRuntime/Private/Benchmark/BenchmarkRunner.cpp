@@ -138,7 +138,7 @@ void FBenchmarkRunner::RunFoliageBenchmark(UBenchmarkManager* Manager)
     for (int32 Instances : DensitySteps)
     {
         Manager->SetCurrentTestParams(Instances, FString::Printf(TEXT("FoliageDensity_%d"), Instances));
-        Manager->RunFoliageDensityTest(Instances);
+        //Manager->RunFoliageDensityTest(Instances);
         Manager->BeginCapture(5.0f);
     }
 
@@ -148,7 +148,7 @@ void FBenchmarkRunner::RunFoliageBenchmark(UBenchmarkManager* Manager)
     for (int32 MaxPerFrame : PerFrameSteps)
     {
         Manager->SetCurrentTestParams(MaxPerFrame, FString::Printf(TEXT("FoliagePerFrame_%d"), MaxPerFrame));
-        Manager->RunFoliagePerFrameTest(MaxPerFrame);
+        //Manager->RunFoliagePerFrameTest(MaxPerFrame);
         Manager->BeginCapture(5.0f);
     }
 }
