@@ -127,7 +127,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         switch (CurrentPhase)
         {
         case EUpdatePhase::Foliage:
-            UpdateFoliagePhase(DeltaTime, ViewerPos, DistanceToSurface);
+            UpdateFoliagePhase(DeltaTime, SurfacePos + N * DistanceToSurface, DistanceToSurface);
             break;
 
         case EUpdatePhase::Collision:

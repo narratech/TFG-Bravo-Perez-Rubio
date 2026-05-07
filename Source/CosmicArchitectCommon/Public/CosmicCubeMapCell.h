@@ -64,18 +64,20 @@ struct FNodeBounds
     }
 
     // Obtener las 8 esquinas en coordenadas de esfera
-    TArray<FVector> GetSphereCorners(float PlanetRadius) const
+    TArray<FVector> GetSphereCorners(float Radius) const
     {
-        TArray<FVector> Corners = GetCubeCorners();
-        TArray<FVector> SphereCorners;
+        TArray<FVector> Corners;
 
-        for (const FVector& Corner : Corners)
-        {
-            // Proyectar a la esfera
-            FVector Dir = Corner.GetSafeNormal();
-            SphereCorners.Add(Dir * PlanetRadius);
-        }
+        // 8 esquinas de la celda en el cubo
+        Corners.Add(FVector(MinCorner.X, MinCorner.Y, MinCorner.Z).GetSafeNormal() * Radius);
+        Corners.Add(FVector(MaxCorner.X, MinCorner.Y, MinCorner.Z).GetSafeNormal() * Radius);
+        Corners.Add(FVector(MaxCorner.X, MaxCorner.Y, MinCorner.Z).GetSafeNormal() * Radius);
+        Corners.Add(FVector(MinCorner.X, MaxCorner.Y, MinCorner.Z).GetSafeNormal() * Radius);
+        Corners.Add(FVector(MinCorner.X, MinCorner.Y, MaxCorner.Z).GetSafeNormal() * Radius);
+        Corners.Add(FVector(MaxCorner.X, MinCorner.Y, MaxCorner.Z).GetSafeNormal() * Radius);
+        Corners.Add(FVector(MaxCorner.X, MaxCorner.Y, MaxCorner.Z).GetSafeNormal() * Radius);
+        Corners.Add(FVector(MinCorner.X, MaxCorner.Y, MaxCorner.Z).GetSafeNormal() * Radius);
 
-        return SphereCorners;
+        return Corners;
     }
 };

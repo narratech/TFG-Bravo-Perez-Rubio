@@ -238,13 +238,13 @@ void UCosmicFoliageSpawner::DrawDebugCells(const FVector& PlanetCenter, double P
 
 void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocation, double DistanceToSurface, const FVector& PlanetCenter, double PlanetRadius, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy)
 {
-    double TotalStart = FPlatformTime::Seconds();
+    //double TotalStart = FPlatformTime::Seconds();
 
     if (!FoliageCollection)
         return;
 
     // ------------------ UNIQUE LAYERS ------------------
-    double UniqueStart = FPlatformTime::Seconds();
+    //double UniqueStart = FPlatformTime::Seconds();
 
     TSet<ECosmicFoliageLayer> UniqueLayers;
 
@@ -256,11 +256,12 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
         }
     }
 
-    double UniqueEnd = FPlatformTime::Seconds();
+    //double UniqueEnd = FPlatformTime::Seconds();
 
 
     // ------------------ POR LAYER ------------------
-    double LayersTotalTime = 0.0;
+    //
+    // double LayersTotalTime = 0.0;
 
     for (size_t i = 0; i < 3; i++)
     {
@@ -271,15 +272,19 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
         if (!UniqueLayers.Find(CurrentLayer)) continue;
 
         // -------- OCTREE QUERY --------
-        //double OctreeStart = FPlatformTime::Seconds();
+        double OctreeStart = FPlatformTime::Seconds();
 
         TArray<FCubeMapCell> VisibleNodes;
         if (DistanceToSurface < GetLayerRadius(CurrentLayer) * 100000)
-        {
+        {           
             Octree.GetNodesInRadius(ViewerLocation, PlanetCenter, GetLayerRadius(CurrentLayer), VisibleNodes);
+            //UE_LOG(LogTemp, Warning, TEXT("ViewerLocaction: %s, PlanetCenter: %s, LayerRadius: %.4f"), *ViewerLocation.ToString(), *PlanetCenter.ToString(), GetLayerRadius(CurrentLayer));
         }
+        
+        double OctreeEnd = FPlatformTime::Seconds();
 
-        //double OctreeEnd = FPlatformTime::Seconds();
+        //UE_LOG(LogTemp, Warning, TEXT("UpdateOctree Layer %d , %.3f ms"), i, (OctreeEnd - OctreeStart) * 1000.0);
+    
 
         // -------- SET BUILD --------
         //double SetStart = FPlatformTime::Seconds();
