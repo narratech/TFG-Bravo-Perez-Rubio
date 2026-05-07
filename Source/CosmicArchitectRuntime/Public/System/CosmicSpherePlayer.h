@@ -37,6 +37,12 @@ protected:
 	// I: Binds the player controls (Enhanced Input System).
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	UPROPERTY(BlueprintReadOnly, Category = "CosmicArchitect|Movement")
+	bool bIsGroundedState;
+
+	UPROPERTY(BlueprintReadOnly, Category = "CosmicArchitect|Movement")
+	float VerticalVelocity;
+
 	// =========================================================================
 	// COMPONENTES DE JERARQUÍA (HIERARCHY COMPONENTS)
 	// =========================================================================

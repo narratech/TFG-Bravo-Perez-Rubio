@@ -205,6 +205,9 @@ void ACosmicSpherePlayer::Tick(float DeltaTime)
 		FQuat TargetMeshQuat = FRotationMatrix::MakeFromXZ(MeshDesiredForward, TargetUp).ToQuat();
 		MeshRoot->SetWorldRotation(FMath::QInterpTo(MeshRoot->GetComponentQuat(), TargetMeshQuat, DeltaTime, 15.0f));
 	}
+
+	bIsGroundedState = IsGrounded();
+	VerticalVelocity = FVector::DotProduct(CapsuleComp->GetComponentVelocity(), VisualRoot->GetUpVector());
 }
 
 void ACosmicSpherePlayer::HandleDynamicParenting()
