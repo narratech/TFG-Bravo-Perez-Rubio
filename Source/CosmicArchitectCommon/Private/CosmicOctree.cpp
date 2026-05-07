@@ -156,49 +156,75 @@ FCubeMapCell FCosmicOctree::GetParent(const FCubeMapCell& Child) const
 
 float FCosmicOctree::GetCellAngularSize(const FCubeMapCell& Cell) const
 {
-    // Tamano angular aproximado de la celda
-    int32 CellsPerSide = 1 << Cell.Depth;
-    float AnglePerSide = (PI / 2.0f) / CellsPerSide; // 90 grados en radianes / numero de celdas
-    return AnglePerSide;
+    // Obtener los límites reales de la celda en el cubo
+    FNodeBounds Bounds = GetNodeBounds(Cell);
+
+    // Calcular los 4 vectores de las esquinas en la esfera
+    TArray<FVector> Corners = Bounds.GetSphereCorners(1.0f); // Radio unitario para ángulos
+
+    // Encontrar la distancia angular máxima entre cualquier par de esquinas
+    float MaxAngularDist = 0.0f;
+    for (int32 i = 0; i < Corners.Num(); i++)
+    {
+        for (int32 j = i + 1; j < Corners.Num(); j++)
+        {
+            float Dot = FVector::DotProduct(Corners[i], Corners[j]);
+            Dot = FMath::Clamp(Dot, -1.0f, 1.0f);
+            float AngularDist = FMath::Acos(Dot);
+            MaxAngularDist = FMath::Max(MaxAngularDist, AngularDist);
+        }
+    }
+
+    return MaxAngularDist; // Diámetro angular máximo real de la celda en radianes
 }
 
 float FCosmicOctree::GetCellRadius(const FCubeMapCell& Cell) const
 {
-    // Calcular el tamaño angular de la celda
-    float AngularSize = GetCellAngularSize(Cell);
+    // Método mejorado: calcular el radio real del parche en la esfera
+    FNodeBounds Bounds = GetNodeBounds(Cell);
+    TArray<FVector> SphereCorners = Bounds.GetSphereCorners(SphereRadius);
 
-    // El radio es la mitad del tamaño angular (distancia del centro al borde)
-    // Multiplicado por el radio del planeta para obtener distancia real en centímetros
-    return (AngularSize * 0.5f) * SphereRadius;
-}
+    // Centro de la celda en la esfera
+    FVector Center = GetNodeCenterWorld(Cell, FVector::ZeroVector, SphereRadius);
 
-int32 FCosmicOctree::GetDesiredDepth(float DistanceKm) const
-{
-    // Convertir distancia a angulo
-    float DistanceCm = DistanceKm * 100000.0f;
-    float AngleRad = DistanceCm / SphereRadius;
-
-    // Queremos celdas cuyo tamano angular sea aproximadamente la mitad del angulo de visión
-    float TargetAngularSize = AngleRad * 0.5f;
-
-    // Encontrar el depth que da un tamano angular cercano al objetivo
-    for (int32 Depth = 0; Depth <= MaxDepth; Depth++)
+    // Encontrar la distancia máxima al centro
+    float MaxRadius = 0.0f;
+    for (const FVector& Corner : SphereCorners)
     {
-        FCubeMapCell TestCell;
-        TestCell.Face = 0;
-        TestCell.X = 0;
-        TestCell.Y = 0;
-        TestCell.Depth = Depth;
-
-        float CellAngle = GetCellAngularSize(TestCell);
-        if (CellAngle <= TargetAngularSize)
-        {
-            return FMath::Max(0, Depth - 1);
-        }
+        float Dist = FVector::Dist(Center, Corner);
+        MaxRadius = FMath::Max(MaxRadius, Dist);
     }
 
-    return MaxDepth;
+    return MaxRadius;
 }
+
+//int32 FCosmicOctree::GetDesiredDepth(float DistanceKm) const
+//{
+//    // Convertir distancia a angulo
+//    float DistanceCm = DistanceKm * 100000.0f;
+//    float AngleRad = DistanceCm / SphereRadius;
+//
+//    // Queremos celdas cuyo tamano angular sea aproximadamente la mitad del angulo de visión
+//    float TargetAngularSize = AngleRad * 0.5f;
+//
+//    // Encontrar el depth que da un tamano angular cercano al objetivo
+//    for (int32 Depth = 0; Depth <= MaxDepth; Depth++)
+//    {
+//        FCubeMapCell TestCell;
+//        TestCell.Face = 0;
+//        TestCell.X = 0;
+//        TestCell.Y = 0;
+//        TestCell.Depth = Depth;
+//
+//        float CellAngle = GetCellAngularSize(TestCell);
+//        if (CellAngle <= TargetAngularSize)
+//        {
+//            return FMath::Max(0, Depth - 1);
+//        }
+//    }
+//
+//    return MaxDepth;
+//}
 
 //int32 FCosmicOctree::GetMaxDepthFromDistance(float DistanceToSurfaceCm) const
 //{
@@ -213,58 +239,88 @@ int32 FCosmicOctree::GetDesiredDepth(float DistanceKm) const
 
 void FCosmicOctree::TraverseCell(
     const FCubeMapCell& Cell,
-    const FVector& PlayerDir,
+    const FVector& PlayerPos,
+    const FVector& PlanetCenter,
+    float ViewDistanceCm,
     float ViewAngleRad,
     TArray<FCubeMapCell>& OutNodes) const
 {
-    FVector CellDir = GetNodeCenterDirection(Cell);
+    // Calcular los límites del parche esférico de esta celda
+    FNodeBounds Bounds = GetNodeBounds(Cell);
 
-    float Dot = FVector::DotProduct(CellDir, PlayerDir);
-    Dot = FMath::Clamp(Dot, -1.0f, 1.0f);
+    // Obtener las esquinas de la celda proyectadas a la esfera
+    TArray<FVector> SphereCorners = Bounds.GetSphereCorners(SphereRadius);
 
-    float AngularDistance = FMath::Acos(Dot);
+    // Verificar si algún punto de la celda está dentro del radio de visión 3D
+    bool bAnyPointInRange = false;
 
-    // Radio angular aproximado de la celda (media diagonal)
+    for (const FVector& Corner : SphereCorners)
+    {
+        float DistToPoint = FVector::Dist(Corner, PlayerPos);
+        if (DistToPoint <= ViewDistanceCm)
+        {
+            bAnyPointInRange = true;
+            break;
+        }
+    }
+
+    // Si ningún punto está en rango, verificar si la celda podría intersecar
+    if (!bAnyPointInRange)
+    {
+        FVector CellCenter = GetNodeCenterWorld(Cell, PlanetCenter, SphereRadius);
+        float DistToCellCenter = FVector::Dist(PlayerPos, CellCenter);
+        float CellRadius = GetCellRadius(Cell);
+
+        // Si la distancia es mayor que (radio_vision + radio_celda), no hay intersección posible
+        if (DistToCellCenter > ViewDistanceCm + CellRadius)
+        {
+            return;
+        }
+
+        // Si ya es un nodo hoja y está cerca, incluirlo por seguridad
+        if (Cell.Depth >= MaxDepth)
+        {
+            OutNodes.Add(Cell);
+            return;
+        }
+    }
+
+    // Calcular el tamaño angular real de la celda
     float CellAngularSize = GetCellAngularSize(Cell);
-    float CellAngularRadius = CellAngularSize * 0.70710678f; // sqrt(2)/2
 
-    // Si la celda está demasiado lejos de la dirección del jugador, la descartamos
-    if (AngularDistance > ViewAngleRad + CellAngularRadius)
-        return;
-
-    // Si ya es suficientemente pequeña, la añadimos
-    if (Cell.Depth >= MaxDepth || CellAngularSize <= ViewAngleRad * 0.5f)
+    // CONDICIÓN DE SUBDIVISIÓN: 
+    // Subdividir si la celda es más grande que la mitad del ángulo de visión
+    if (Cell.Depth < MaxDepth && CellAngularSize > ViewAngleRad * 0.5f)
     {
-        OutNodes.Add(Cell);
+        // Subdividir la celda
+        TArray<FCubeMapCell> Children;
+        GetChildren(Cell, Children);
+
+        for (const FCubeMapCell& Child : Children)
+        {
+            TraverseCell(Child, PlayerPos, PlanetCenter, ViewDistanceCm, ViewAngleRad, OutNodes);
+        }
         return;
     }
 
-    // Si no, subdividimos los 4 hijos
-    TArray<FCubeMapCell> Children;
-    GetChildren(Cell, Children);
-
-    for (const FCubeMapCell& Child : Children)
-    {
-        TraverseCell(Child, PlayerDir, ViewAngleRad, OutNodes);
-    }
+    // Si llegamos aquí, la celda es suficientemente pequeña o es hoja
+    OutNodes.Add(Cell);
 }
 
 void FCosmicOctree::GetNodesInRadius(
     const FVector& ViewerLocation,
     const FVector& PlanetCenter,
-    float ViewDistanceKm,      // Distancia de visión en km
+    float ViewDistanceKm,
     TArray<FCubeMapCell>& OutNodes) const
 {
     OutNodes.Reset();
 
     float ViewDistanceCm = ViewDistanceKm * 100000.0f;
 
-    // Dirección del jugador respecto al centro del planeta
-    const FVector PlayerDir = (ViewerLocation - PlanetCenter).GetSafeNormal();
-
     // Ángulo equivalente a la distancia de visión sobre la esfera
     float ViewAngleRad = ViewDistanceCm / SphereRadius;
 
+    // Para cada cara, verificar rápidamente si puede ser visible
     for (int32 Face = 0; Face < 6; Face++)
     {
         FCubeMapCell Root;
@@ -273,7 +329,17 @@ void FCosmicOctree::GetNodesInRadius(
         Root.Y = 0;
         Root.Depth = 0;
 
-        TraverseCell(Root, PlayerDir, ViewAngleRad, OutNodes);
+        // Verificar si esta cara podría ser visible
+        FVector FaceCenter = GetNodeCenterWorld(Root, PlanetCenter, SphereRadius);
+        float DistToFaceCenter = FVector::Dist(ViewerLocation, FaceCenter);
+        float FaceRadius = PI * SphereRadius / 2.0f; // 90 grados en cm (cara completa)
+
+        if (DistToFaceCenter > ViewDistanceCm + FaceRadius)
+        {
+            continue; // Esta cara está definitivamente fuera de rango
+        }
+
+        TraverseCell(Root, ViewerLocation, PlanetCenter, ViewDistanceCm, ViewAngleRad, OutNodes);
     }
 }
 

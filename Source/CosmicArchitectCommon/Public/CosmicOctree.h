@@ -69,8 +69,15 @@ private:
 
     //int32 GetMaxDepthFromDistance(float DistanceToSurfaceCm) const;
 
-    void TraverseCell(const FCubeMapCell& Cell, const FVector& PlayerDir, float ViewAngleRad, TArray<FCubeMapCell>& OutNodes) const; 
+    void TraverseCell(
+        const FCubeMapCell& Cell,
+        const FVector& PlayerPos,
+        const FVector& PlanetCenter,
+        float ViewDistanceCm,
+        float ViewAngleRad,
+        TArray<FCubeMapCell>& OutNodes) const;
+    
 
     // Funcion auxiliar para obtener el nivel de detalle deseado segun distancia
-    int32 GetDesiredDepth(float DistanceKm) const;
+    //int32 GetDesiredDepth(float DistanceKm) const;
 };
