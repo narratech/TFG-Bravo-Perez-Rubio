@@ -155,6 +155,18 @@ void UCosmicRingComponent::PostEditChangeProperty(FPropertyChangedEvent& Propert
 
 		UpdateShaderParameters();
 	}
+
+	for (auto& Pair : ActiveSectors)
+	{
+		if (IsValid(Pair.Value))
+		{
+			UMaterialInstanceDynamic* DynMat = Cast<UMaterialInstanceDynamic>(Pair.Value->GetMaterial(0));
+			if (DynMat)
+			{
+				DynMat->SetVectorParameterValue(FName("AsteroidColor"), RingColor);
+			}
+		}
+	}
 }
 #endif
 
