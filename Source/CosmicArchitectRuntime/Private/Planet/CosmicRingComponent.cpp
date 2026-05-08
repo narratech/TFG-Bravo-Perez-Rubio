@@ -43,6 +43,13 @@ UCosmicRingComponent::UCosmicRingComponent()
 	{
 		MacroRingMaterial = CosmicMaterialAsset.Object;
 	}
+
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> AsteroidMeshAsset(TEXT("/Script/Engine.StaticMesh'/CosmicArchitect/Models/Asteroid/asteroid_01.asteroid_01'"));
+
+	if (AsteroidMeshAsset.Succeeded())
+	{
+		AsteroidMesh = AsteroidMeshAsset.Object;
+	}
 }
 
 void UCosmicRingComponent::BeginPlay()
@@ -265,6 +272,11 @@ void UCosmicRingComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 				UHierarchicalInstancedStaticMeshComponent* SectorHISM = GetOrCreateHISM();
 				// [E: Aseguramos que tiene la malla correcta por si el usuario la cambió en el editor / I: Ensure correct mesh in case of Editor changes]
 				SectorHISM->SetStaticMesh(AsteroidMesh);
+				UMaterialInstanceDynamic* DynMat = SectorHISM->CreateDynamicMaterialInstance(0);
+				if (DynMat)
+				{
+					DynMat->SetVectorParameterValue(FName("AsteroidColor"), RingColor);
+				}
 				ActiveSectors.Add(ReqID, SectorHISM);
 
 				float StartAngleRad = FMath::DegreesToRadians(ReqID * SectorAngleDegrees);

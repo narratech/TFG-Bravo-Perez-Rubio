@@ -85,10 +85,10 @@ public:
 
 	// [E: Distancia límite para desvanecer el shader (KM) / I: Threshold distance to fade shader (KM)]
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
-	double FadeMinDistanceKM = 1.0;
+	double FadeMinDistanceKM = 0.01;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
-	double FadeMaxDistanceKM = 15.0;
+	double FadeMaxDistanceKM = 0.05;
 
 	// -------------------------------------------------------------------------
 	// [E: OPTIMIZACIÓN Y RENDIMIENTO (Sectorización) / I: OPTIMIZATION & PERFORMANCE (Sectorization)]
@@ -104,7 +104,7 @@ public:
 
 	// [E: Control de densidad de rocas por sector / I: Rock density control per sector]
 	UPROPERTY(EditAnywhere, Category = "Cosmic Architect | Optimization")
-	int32 AsteroidsPerSector = 2000;
+	int32 AsteroidsPerSector = 500;
 
 	// -------------------------------------------------------------------------
 	// [E: COMPONENTES INTERNOS / I: INTERNAL COMPONENTS]
