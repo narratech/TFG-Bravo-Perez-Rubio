@@ -39,6 +39,7 @@ void UCosmicFoliageSpawner::InitFoliageSpawner(float RadiusKm)
 {
     RandomStream.Initialize(0);
     Octree.Initialize(RadiusKm * 100000, 16); // 16 niveles de profundidad
+    ClearFoliage();
 
     if (FoliageCollection)
     {
@@ -578,7 +579,11 @@ UHierarchicalInstancedStaticMeshComponent* UCosmicFoliageSpawner::AcquireHISM(co
         if (Comp) return Comp;
     }
 
-    UHierarchicalInstancedStaticMeshComponent* NewComp = NewObject<UHierarchicalInstancedStaticMeshComponent>(GetOwner());
+    UHierarchicalInstancedStaticMeshComponent* NewComp = NewObject<UHierarchicalInstancedStaticMeshComponent>(
+        GetOwner(),
+        NAME_None,
+        RF_Transient | RF_DuplicateTransient  // Marcar como transitorio
+    );
     NewComp->SetStaticMesh(Key.Mesh);
     NewComp->SetCollisionEnabled(Key.bHasCollision
         ? ECollisionEnabled::QueryAndPhysics
