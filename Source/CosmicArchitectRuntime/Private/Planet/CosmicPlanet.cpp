@@ -31,7 +31,7 @@ void ACosmicPlanet::PostInitializeComponents()
 {
     Super::PostInitializeComponents();
 
-    if (ClipmapComponent) {
+    /*if (ClipmapComponent) {
 #if WITH_EDITOR
         ClipmapComponent->ParentRoot = Root;
         ClipmapComponent->PlanetRadius = RadiusKm * 100000;
@@ -45,12 +45,14 @@ void ACosmicPlanet::PostInitializeComponents()
         );
         ClipmapComponent->ReasignLevels();
 #else
-        UpdateMaterialOnly();
-        UpdateNoiseSettings();
-        InitClipmap();
-        UpdateOcean();
+        
 #endif
-    }
+    }*/
+
+    UpdateMaterialOnly();
+    UpdateNoiseSettings();
+    InitClipmap();
+    UpdateOcean();
 
     if (FoliageSpawnerComponent) 
     {

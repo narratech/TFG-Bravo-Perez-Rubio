@@ -446,7 +446,8 @@ void UCosmicClipmapComponent::CreateLevels()
         // Crear componente
         UCosmicMeshComponent* Mesh = NewObject<UCosmicMeshComponent>(
             GetOwner(),
-            ComponentName
+            ComponentName,
+            RF_Transient | RF_DuplicateTransient  // Marcar como transitorio
         );
 
         if (!Mesh)
@@ -508,7 +509,8 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
 
     UCosmicMeshComponent* Mesh = NewObject<UCosmicMeshComponent>(
         GetOwner(),
-        ComponentName
+        ComponentName,
+        RF_Transient | RF_DuplicateTransient  // Marcar como transitorio
     );
 
     if (Mesh)
@@ -918,7 +920,8 @@ double UCosmicClipmapComponent::GetDistanceToSurface(
     FLinearColor Dummy;
     float Height = 0;
 
-    NoiseGenerationStrategy->EvaluatePoint(OutN, Height, Dummy);
+    if(NoiseGenerationStrategy)
+        NoiseGenerationStrategy->EvaluatePoint(OutN, Height, Dummy);
 
     double SurfaceRadius = PlanetRadius + Height;
 

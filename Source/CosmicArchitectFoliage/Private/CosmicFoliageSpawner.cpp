@@ -53,17 +53,13 @@ void UCosmicFoliageSpawner::InitFoliageSpawner(float RadiusKm)
 
 void UCosmicFoliageSpawner::UpdateFoliageSpawner(float DeltaTime, const FVector& ViewerLocation, const FVector& PlanetCenter, double PlanetRadius, double DistanceToSurface, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy)
 {
-    ElapsedTime += DeltaTime;
-    if (ElapsedTime < UpdateInterval) return;
-    ElapsedTime = 0.0f;
-
     UpdateOctreeAndGenerate(ViewerLocation, DistanceToSurface, PlanetCenter, PlanetRadius, NoiseGenerationStrategy);
     UpdateFoliageGeneration();
     ProcessApplyQueue();
     ProcessDeactivationQueue();
 
     // Debug: Dibujar celdas
-    DrawDebugCells(PlanetCenter, PlanetRadius);
+    //DrawDebugCells(PlanetCenter, PlanetRadius);
 }
 
 void UCosmicFoliageSpawner::CancelAsyncWork()

@@ -302,11 +302,13 @@ void UCosmicCollisionComponent::BuildCollision()
         return;
     }
 
-    bIsActive = true;
-
     UWorld* World = GetWorld();
 
-    bool bAsync = World && World->IsGameWorld() && bUseAsyncCooking;
+    if (!World->IsGameWorld()) return;
+
+    bIsActive = true;
+
+    bool bAsync = World && bUseAsyncCooking;
 
     if (bAsync)
     {

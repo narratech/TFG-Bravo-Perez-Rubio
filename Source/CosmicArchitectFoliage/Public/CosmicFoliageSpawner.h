@@ -106,9 +106,6 @@ public:
     float FarLayerRadiusKm = 0.5f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
-    float UpdateInterval = 0.0f;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
     int32 MaxInstancesPerFrame = 100;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Debug")
@@ -160,7 +157,6 @@ private:
     UPROPERTY()
     TMap<FCosmicHISMKey, FCosmicHISMPoolList> FreeHISMPool;
 
-    float ElapsedTime = 0.0f;
     FRandomStream RandomStream;
     TSet<FCubeMapCell> PendingCells[3];
     TArray<FAsyncTask<FFoliageGenerationTask>*> ActiveTasks[3];

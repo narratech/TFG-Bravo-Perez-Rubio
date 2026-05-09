@@ -32,7 +32,8 @@ void UCosmicOceanComponent::RegenerateOcean()
 
     UCosmicMeshComponent* Mesh = NewObject<UCosmicMeshComponent>(
         GetOwner(),
-        ComponentName
+        ComponentName,
+        RF_Transient | RF_DuplicateTransient  // Marcar como transitorio
     );
 
     if (Mesh)
