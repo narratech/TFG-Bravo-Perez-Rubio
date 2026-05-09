@@ -31,23 +31,7 @@ void ACosmicPlanet::PostInitializeComponents()
 {
     Super::PostInitializeComponents();
 
-    /*if (ClipmapComponent) {
-#if WITH_EDITOR
-        ClipmapComponent->ParentRoot = Root;
-        ClipmapComponent->PlanetRadius = RadiusKm * 100000;
-        ClipmapComponent->NoiseClass = NoiseClass;
-        ClipmapComponent->UpdateNoiseEvaluator();
-        ClipmapComponent->CollisionComponent = CollisionComponent;
-        ClipmapComponent->FoliageSpawnerComponent = FoliageSpawnerComponent;
-        ClipmapComponent->SetMaterialData(
-            PlanetMainColor1, PlanetMainColor2, PlanetColdColor, PlanetHotColor,
-            PlanetSlopeColor, NoiseScaleLarge, NoiseScaleMedium, NoiseScaleSmall
-        );
-        ClipmapComponent->ReasignLevels();
-#else
-        
-#endif
-    }*/
+    UE_LOG(LogTemp, Warning, TEXT("post Init planeta"));
 
     UpdateMaterialOnly();
     UpdateNoiseSettings();
@@ -73,13 +57,16 @@ void ACosmicPlanet::PostDuplicate(EDuplicateMode::Type Mode)
 {
     Super::PostDuplicate(Mode);
 
-    ClipmapComponent->PlanetRadius = RadiusKm * 100000;
-
     if (!GetWorld()->IsGameWorld())
     {
-        UE_LOG(LogTemp, Warning, TEXT("Duplicando planeta"));
-      
+        ClipmapComponent->PlanetRadius = RadiusKm * 100000;
+        if (FoliageSpawnerComponent)
+        {
+            ClipmapComponent->FoliageSpawnerComponent = FoliageSpawnerComponent;
+            FoliageSpawnerComponent->InitFoliageSpawner(RadiusKm);
+        }
         UpdateNoiseSettings();
+
     }
 }
 #endif
