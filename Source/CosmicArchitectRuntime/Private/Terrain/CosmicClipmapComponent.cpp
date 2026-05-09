@@ -29,9 +29,9 @@ UCosmicClipmapComponent::UCosmicClipmapComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 }
 
-void UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePos, const FVector& SurfaceNormal, const FRotator& PatchRotation, const double DistanceToSurface)
+bool UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePos, const FVector& SurfaceNormal, const double DistanceToSurface)
 {
-    if (!CollisionComponent) return;
+    if (!CollisionComponent) return false;
 
     // Solo generar colisión si el jugador está cerca de la superficie
     if (DistanceToSurface < CollisionComponent->MaxCollisionDistance)
@@ -42,18 +42,22 @@ void UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePo
         }
         CollisionComponent->SetWorldLocationAndRotation(
             SurfacePos,
-            PatchRotation,
+            GetPatchRotation(SurfaceNormal),
             false, 
             nullptr,
             ETeleportType::TeleportPhysics // teleport limpio
         );
         CollisionComponent->UpdateCollisionMesh(NoiseGenerationStrategy, CurrentActorPosition);
+        return true;
     }
     else if(CollisionComponent->IsBuilt())
     {
         // Limpiar colisión si está lejos
         CollisionComponent->ClearCollision();
+        return true;
     }
+
+    return false;
 }
 
 // Called when the game starts
@@ -79,7 +83,7 @@ void UCosmicClipmapComponent::BeginPlay()
 
     UpdateMeshPhase(ViewerPos, SurfacePos, N, DistanceToSurface);
 
-    UpdateCollisionNearPlayer(SurfacePos, N, GetPatchRotation(N), DistanceToSurface);
+    UpdateCollisionNearPlayer(SurfacePos, N, DistanceToSurface);
 
     LastSurfaceAngles = GetSurfaceAngles(SurfacePos);
     LastPlayerPos = ViewerPos;
@@ -114,16 +118,17 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
     //double TotalStartTime = FPlatformTime::Seconds();
 
-    // calculos necesarios
     FVector SurfacePos;
     FVector N;
     FVector ViewerPos;
     float DistanceToSurface;  
-
+ 
     if (!bPerformaceMode) {
 
+        bool UpdateFoliageExtra = false;
         DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
 
+        // EJECUCION POR FASE
         switch (CurrentPhase)
         {
         case EUpdatePhase::Foliage:
@@ -131,12 +136,18 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             break;
 
         case EUpdatePhase::Collision:
-            UpdateCollisionPhase(ViewerPos, SurfacePos, N, DistanceToSurface);
+            UpdateFoliageExtra = !UpdateCollisionPhase(ViewerPos, SurfacePos, N, DistanceToSurface);
             break;
 
         case EUpdatePhase::Mesh:
             UpdateMeshPhase(ViewerPos, SurfacePos, N, DistanceToSurface);
             break;
+        }
+
+        //Si no hay que actualizar colisión pedimos actualizar foliage
+        if (UpdateFoliageExtra)
+        {
+            UpdateFoliagePhase(DeltaTime, SurfacePos + N * DistanceToSurface, DistanceToSurface);
         }
 
         CurrentPhase = (EUpdatePhase)(((uint8)CurrentPhase + 1) % 3);
@@ -147,7 +158,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         UpdateMeshPhase(ViewerPos, SurfacePos, N, DistanceToSurface);
     }
 
-    // EJECUCION POR FASE
+    
     
     
 
@@ -167,15 +178,16 @@ void UCosmicClipmapComponent::UpdateFoliagePhase(float DeltaTime, const FVector&
     }
 }
 
-void UCosmicClipmapComponent::UpdateCollisionPhase(const FVector& ViewerPos, const FVector& SurfacePos,
+bool UCosmicClipmapComponent::UpdateCollisionPhase(const FVector& ViewerPos, const FVector& SurfacePos,
     const FVector& N, float DistanceToSurface)
 {
     if (CollisionComponent &&
         !LastMeshPlayerPos.Equals(ViewerPos, CollisionComponent->CollisionTriangleSize))
     {
-        UpdateCollisionNearPlayer(SurfacePos, N, GetPatchRotation(N), DistanceToSurface);
         LastMeshPlayerPos = ViewerPos;
+        return UpdateCollisionNearPlayer(SurfacePos, N, DistanceToSurface);
     }
+    return false;
 }
 
 void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FVector& SurfacePos,

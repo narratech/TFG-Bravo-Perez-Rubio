@@ -91,7 +91,7 @@ void UBenchmarkManager::SetClipmapConfig(int32 BaseRes, int32 Levels)
 
 
 // Spawn / Clear Planets
-void UBenchmarkManager::SpawnPlanets(int32 NumPlanets)
+void UBenchmarkManager::SpawnPlanets(int32 NumPlanets, bool UseFoliage)
 {
     UWorld* World = GetWorld();
     if (!World) return;
@@ -116,6 +116,16 @@ void UBenchmarkManager::SpawnPlanets(int32 NumPlanets)
 
         if (!Planet) continue;
 
+        if (UseFoliage)
+        {
+            Planet->SetFoliageParams(
+                CurrentFoliageConfig.FoliageInstancesPerFrame,
+                CurrentFoliageConfig.NearLayerRadiusKm,
+                CurrentFoliageConfig.MediumLayerRadiusKm,
+                CurrentFoliageConfig.FarLayerRadiusKm
+            );
+        }      
+
         Planet->InitPlanet(
             10.0f,
             NoiseClass,
@@ -131,19 +141,14 @@ void UBenchmarkManager::SpawnPlanets(int32 NumPlanets)
             CurrentClipmapConfig.NumLevels,
             100, 5.0f,
             true, 0.0, 128, OceanMaterial,
-            FoliageCollection
+            UseFoliage ? FoliageCollection : nullptr
         );
 
-        Planet->SetFoliageParams(
-            CurrentFoliageConfig.FoliageInstancesPerFrame,
-            CurrentFoliageConfig.NearLayerRadiusKm,
-            CurrentFoliageConfig.MediumLayerRadiusKm,
-            CurrentFoliageConfig.FarLayerRadiusKm
-        );
+        
     }
 }
 
-void UBenchmarkManager::SpawnPlanetsNear(int32 NumPlanets)
+void UBenchmarkManager::SpawnPlanetsNear(int32 NumPlanets, bool UseFoliage)
 {
     UWorld* World = GetWorld();
     if (!World) return;
@@ -188,12 +193,16 @@ void UBenchmarkManager::SpawnPlanetsNear(int32 NumPlanets)
 
         if (!Planet) continue;
 
-        Planet->SetFoliageParams(
-            CurrentFoliageConfig.FoliageInstancesPerFrame,
-            CurrentFoliageConfig.NearLayerRadiusKm,
-            CurrentFoliageConfig.MediumLayerRadiusKm,
-            CurrentFoliageConfig.FarLayerRadiusKm
-        );
+        if (UseFoliage)
+        {
+            Planet->SetFoliageParams(
+                CurrentFoliageConfig.FoliageInstancesPerFrame,
+                CurrentFoliageConfig.NearLayerRadiusKm,
+                CurrentFoliageConfig.MediumLayerRadiusKm,
+                CurrentFoliageConfig.FarLayerRadiusKm
+            );
+        }
+        
 
         Planet->InitPlanet(
             10.0f, NoiseClass,
@@ -206,12 +215,12 @@ void UBenchmarkManager::SpawnPlanetsNear(int32 NumPlanets)
             CurrentClipmapConfig.NumLevels,
             100, 5.0f,
             true, 0.0, 128, OceanMaterial,
-            FoliageCollection
+            UseFoliage ? FoliageCollection : nullptr
         );   
     }
 }
 
-void UBenchmarkManager::SpawnPlanetsFar(int32 NumPlanets)
+void UBenchmarkManager::SpawnPlanetsFar(int32 NumPlanets, bool UseFoliage)
 {
     UWorld* World = GetWorld();
     if (!World) return;
@@ -248,7 +257,7 @@ void UBenchmarkManager::SpawnPlanetsFar(int32 NumPlanets)
             CurrentClipmapConfig.NumLevels,
             100, 5.0f,
             true, 0.0, 128, OceanMaterial,
-            nullptr
+            UseFoliage ? FoliageCollection : nullptr
         );
     }
 }
@@ -341,14 +350,14 @@ void UBenchmarkManager::RunNextSequentialStep()
     {
         // Actualizar configuración de clipmap
         SetClipmapConfig(CurrentStep, CurrentClipmapConfig.NumLevels);
-        SpawnPlanetsNear(1); // Solo 1 planeta para test de resolución
+        SpawnPlanetsNear(1, false); // Solo 1 planeta para test de resolución
         break;
     }
     case ESequentialTestType::ClipmapLevels:
     {
         // Actualizar niveles manteniendo resolución base
         SetClipmapConfig(CurrentClipmapConfig.BaseResolution, CurrentStep);
-        SpawnPlanetsNear(1);
+        SpawnPlanetsNear(1, false);
         break;
     }
     case ESequentialTestType::OrbitSimulation:
@@ -618,7 +627,7 @@ void UBenchmarkManager::RunClipmapResolutionTest(int32 Resolution)
         SetClipmapConfig(Resolution, CurrentClipmapConfig.NumLevels);
         ClearSimBodies();
         ClearPlanets();
-        SpawnPlanetsNear(1);
+        SpawnPlanetsNear(1, false);
         SetCurrentTestParams(Resolution, FString::Printf(TEXT("ClipmapRes_%d"), Resolution));
         BeginCapture(5.0f);
     }

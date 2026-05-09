@@ -119,11 +119,11 @@ protected:
 
     /** Actualizar colisión cerca del jugador */
     void UpdateFoliagePhase(float DeltaTime, const FVector& ViewerPos, float DistanceToSurface);
-    void UpdateCollisionPhase(const FVector& ViewerPos, const FVector& SurfacePos,
+    bool UpdateCollisionPhase(const FVector& ViewerPos, const FVector& SurfacePos,
         const FVector& N, float DistanceToSurface);
     void UpdateMeshPhase(const FVector& ViewerPos, const FVector& SurfacePos,
         const FVector& N, float DistanceToSurface);
-    void UpdateCollisionNearPlayer(const FVector& SurfacePos, const FVector& SurfaceNormal, const FRotator& PatchRotation, const double DistanceToSurface);
+    bool UpdateCollisionNearPlayer(const FVector& SurfacePos, const FVector& SurfaceNormal, const double DistanceToSurface);
     void UpdatePatchTransform(const FVector& SurfacePos, const FVector& N);
     void BuildDynamicMaterial();
     FRotator GetPatchRotation(const FVector& SurfacePos) const;

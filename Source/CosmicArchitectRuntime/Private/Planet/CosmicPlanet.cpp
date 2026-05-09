@@ -31,8 +31,6 @@ void ACosmicPlanet::PostInitializeComponents()
 {
     Super::PostInitializeComponents();
 
-    UE_LOG(LogTemp, Warning, TEXT("post Init planeta"));
-
     UpdateMaterialOnly();
     UpdateNoiseSettings();
     InitClipmap();

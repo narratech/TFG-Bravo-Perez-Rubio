@@ -49,9 +49,9 @@ public:
 
     // --- Planets ---
     void SetClipmapConfig(int32 BaseRes, int32 Levels);
-    void SpawnPlanets(int32 NumPlanets);
-    void SpawnPlanetsNear(int32 NumPlanets);
-    void SpawnPlanetsFar(int32 NumPlanets);
+    void SpawnPlanets(int32 NumPlanets, bool UseFoliage = false);
+    void SpawnPlanetsNear(int32 NumPlanets, bool UseFoliage = true);
+    void SpawnPlanetsFar(int32 NumPlanets, bool UseFoliage = false);
     void ClearPlanets();
 
     // --- Tests ---
