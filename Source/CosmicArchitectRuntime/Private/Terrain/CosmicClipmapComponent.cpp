@@ -77,6 +77,8 @@ void UCosmicClipmapComponent::BeginPlay()
     FVector ViewerPos;
     float DistanceToSurface;
 
+    bPerformaceMode = true;
+
     ElapsedTime = FMath::FRandRange(0.f, TimeToRefresh);
 
     DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
@@ -193,107 +195,133 @@ bool UCosmicClipmapComponent::UpdateCollisionPhase(const FVector& ViewerPos, con
 void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FVector& SurfacePos,
     const FVector& N, float DistanceToSurface)
 {
-    if (!FarLevel) return; 
-    
-    if (!bPerformanceBuild) 
-    { 
-        FarLevel->RequestMeshUpdate(NoiseGenerationStrategy); 
-        bPerformanceBuild = FarLevel->CheckAndApplyMeshUpdate(); 
-    } 
+    if (!FarLevel) return;
+
+    // --- Actualización permanente del FarLevel (rendimiento) ---
+    if (!bPerformanceBuild)
+    {
+        FarLevel->RequestMeshUpdate(NoiseGenerationStrategy);
+        bPerformanceBuild = FarLevel->CheckAndApplyMeshUpdate();
+    }
 
     if (!UseClipmap) return;
-    
-    // Detectar cambio de modo 
-    bool bPrevPerformanceMode = bPerformaceMode; 
-    
-    //Activar/desactivar modo rendimiento al alejarte lo suficiente 
-    
-    bPerformaceMode = DistanceToSurface > PlanetRadius * HeightVisibility; 
-    
-    // Si salimos de performance, esperar actualizacion antes de activar 
-    
-    if (bPrevPerformanceMode && !bPerformaceMode) 
-    { 
-        bWaitingForFirstUpdateAfterPerformance = true; 
-    } 
-    
-    if (!bInit && !bPerformaceMode) 
-    { 
-        CreateLevels(); 
-    } 
-    
-    bool bShouldSwitch = (FarLevel->bActiveMesh && !bPerformaceMode) || (!FarLevel->bActiveMesh && bPerformaceMode); 
-    
-    if (bShouldSwitch) 
-    {   
-        if (!bWaitingForFirstUpdateAfterPerformance) 
-        { 
-            TimeToRefresh = bPerformaceMode ? 0.05f : 0.01f;
-            FarLevel->SetMeshActive(bPerformaceMode); 
-            for (size_t i = 0; i < Levels.Num(); i++) 
-            { 
-                Levels[i]->SetMeshActive(!bPerformaceMode); 
-            } 
-        } 
-        bPendingTasksRemaining = bPerformaceMode; 
-    } 
-    
-    //Acabar tareas pendientes 
-    
-    if (bPerformaceMode && bPendingTasksRemaining) 
-    { 
-        bool remainingTasks = false; 
-        //Ver si han acabado todas las tareas 
-        for (size_t i = 0; i < Levels.Num(); i++) 
-        { 
-            if (Levels[i]->IsTaskActive()) 
-            { 
-                remainingTasks = true; 
-                break; 
-            } 
-        } 
-        if (!remainingTasks) 
-        { 
-            for (size_t i = 0; i < Levels.Num(); i++) 
-            { 
-                Levels[i]->CancelAsyncWork(); 
-            } 
-            bPendingTasksRemaining = false; 
-        } 
-    } 
 
-    if (bPerformaceMode || FreezeGeneration) return; 
-    
-    bool MeshesUpdated = true; 
-    
-    //Ver si han acabado todas las tareas 
-    
-    for (size_t i = 0; i < Levels.Num(); i++) 
-    { 
-        if (Levels[i]->IsTaskActive()) 
-        { 
-            MeshesUpdated = false; 
-        } 
-    } 
-    
-    if (!MeshesUpdated) { return; } 
-    else 
-    { 
-        //Aplicar actualizaciones de malla 
-        for (size_t i = 0; i < Levels.Num(); i++) 
-        { 
-            Levels[i]->CheckAndApplyMeshUpdate(); 
-        } 
-        if (bBuildingLevels) 
-        { 
-            bWaitingForFirstUpdateAfterPerformance = false; 
-            bBuildingLevels = false; 
-        } 
-    } 
+    // --- Detección de cambio de modo ---
+    bool bPrevPerformanceMode = bPerformaceMode;
+    bPerformaceMode = DistanceToSurface > PlanetRadius * HeightVisibility;
 
-    bool UpdateClipmapLevels = false; 
-    //Ver si hay que reducir o incrementar niveles 
-    
+    // --- Crear niveles normales si es necesario y no estamos en rendimiento ---
+    if (!bInit && !bPerformaceMode)
+    {
+        CreateLevels();
+    }
+
+    // --- Manejar transiciones de modo ---
+    if (bPrevPerformanceMode != bPerformaceMode)
+    {
+        if (bPerformaceMode)          // Ir a modo rendimiento (esperar tareas pendientes)
+        {
+            // Activar FarLevel inmediatamente (ya está construido)
+            FarLevel->SetMeshActive(true);
+
+            for (size_t i = 0; i < Levels.Num(); i++)
+            {
+                Levels[i]->SetMeshActive(false);
+            }
+            // Iniciar espera para ocultar niveles cuando sus tareas terminen
+            bWaitingForPerformanceTransition = true;
+        }
+        else                           // Ir a modo normal (esperar a que los niveles estén listos)
+        {
+            bWaitingForNormalTransition = true;
+        }
+    }
+
+    // --- Si estamos en espera de transición a rendimiento ---
+    if (bWaitingForPerformanceTransition)
+    {
+        bool allTasksDone = true;
+        for (size_t i = 0; i < Levels.Num(); i++)
+        {
+            if (Levels[i]->IsTaskActive())
+            {
+                allTasksDone = false;
+                break;
+            }
+        }
+
+        if (!allTasksDone)
+        {
+            return;  // Seguir esperando, FarLevel ya está visible mientras tanto
+        }
+
+        // Tareas terminadas: descartar resultados y ocultar niveles
+        for (size_t i = 0; i < Levels.Num(); i++)
+        {
+            Levels[i]->CancelAsyncWork();
+        }
+
+        bWaitingForPerformanceTransition = false;
+        return;  // No continuar con la lógica normal
+    }
+
+    // --- Si estamos en espera de transición a normal ---
+    if (bWaitingForNormalTransition)
+    {
+        bool allTasksDone = true;
+        for (size_t i = 0; i < Levels.Num(); i++)
+        {
+            if (Levels[i]->IsTaskActive())
+            {
+                allTasksDone = false;
+                break;
+            }
+        }
+
+        if (!allTasksDone)
+        {
+            return;  // Seguir esperando, FarLevel sigue visible
+        }
+
+        // Todas las tareas terminadas: aplicar resultados y mostrar niveles
+        UE_LOG(LogTemp, Warning, TEXT("Haciendo visible niveles (primera actualización completada)"));
+
+        for (size_t i = 0; i < Levels.Num(); i++)
+        {
+            Levels[i]->CheckAndApplyMeshUpdate();
+            Levels[i]->SetMeshActive(true);
+        }
+        FarLevel->SetMeshActive(false);
+
+        bWaitingForNormalTransition = false;
+    }
+
+    // --- Si estamos en modo rendimiento o congelado, no continuar ---
+    if (bPerformaceMode || FreezeGeneration) return;
+
+    // Verificar si las actualizaciones han terminado
+    bool MeshesUpdated = true;
+    for (size_t i = 0; i < Levels.Num(); i++)
+    {
+        if (Levels[i]->IsTaskActive())
+        {
+            MeshesUpdated = false;
+            break;
+        }
+    }
+
+    if (!MeshesUpdated) return;
+
+    // Tareas terminadas: aplicar actualizaciones
+    for (size_t i = 0; i < Levels.Num(); i++)
+    {
+        Levels[i]->CheckAndApplyMeshUpdate();
+    }
+
+    // --- Lógica normal de clipmap (modo normal ya establecido) ---
+
+    // Verificar si hay que reducir o incrementar niveles del clipmap
+    bool UpdateClipmapLevels = false;
     if (Levels.Num() > 1)
     {
         UCosmicMeshComponent* MeshLast = Levels.Last();
@@ -315,29 +343,21 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
             UpdateClipmapLevels = true;
         }
     }
-    
-    //Calcular numero de celdas que hay que desplazar 
-    FIntPoint Shift = ComputeGridShiftSpherical(ViewerPos, SurfacePos, BaseGridSpacing * BaseResolution / 4); 
-    
-    /*if (Shift != FIntPoint::ZeroValue) 
-    { 
-        UE_LOG(LogTemp, Warning, TEXT("Shift: %s"), *Shift.ToString()); 
-    } */
-    
-    TotalShift += Shift; 
-    
-    if (Shift != FIntPoint::ZeroValue || bWaitingForFirstUpdateAfterPerformance || UpdateClipmapLevels)
-    { 
+
+    // Calcular desplazamiento necesario
+    FIntPoint Shift = ComputeGridShiftSpherical(ViewerPos, SurfacePos, BaseGridSpacing * BaseResolution / 4);
+    TotalShift += Shift;
+
+    // Si hubo desplazamiento o cambios en los niveles, solicitar nuevas actualizaciones
+    if (Shift != FIntPoint::ZeroValue || UpdateClipmapLevels)
+    {
         const FRotator Rotation = GetPatchRotation(N);
-        if (bWaitingForFirstUpdateAfterPerformance) 
-        { 
-            bBuildingLevels = true; 
-        } 
-        for (size_t i = 0; i < Levels.Num(); i++) 
-        { 
+
+        for (size_t i = 0; i < Levels.Num(); i++)
+        {
             Levels[i]->SetPositionAndRotation(SurfacePos - CurrentActorPosition, Rotation);
-            Levels[i]->RequestMeshUpdate(NoiseGenerationStrategy); 
-        } 
+            Levels[i]->RequestMeshUpdate(NoiseGenerationStrategy);
+        }
     } 
 }
 
@@ -489,11 +509,11 @@ void UCosmicClipmapComponent::CreateLevels()
             Mesh->SetPositionAndRotation(SurfacePos, PatchRotation);
         }*/
 
-        Mesh->SetPositionAndRotation(SurfacePos, PatchRotation);
+        Mesh->SetPositionAndRotation(SurfacePos - CurrentActorPosition, PatchRotation);
 
         // Construir malla
         Mesh->BuildBaseProjectedMesh();
-        Mesh->SetMeshActive(true);
+        Mesh->SetMeshActive(false);
         Mesh->RequestMeshUpdate(NoiseGenerationStrategy);
         
         // Asignar material

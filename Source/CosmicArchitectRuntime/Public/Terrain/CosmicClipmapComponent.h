@@ -86,7 +86,8 @@ protected:
     bool bInit = false;
     bool bPerformanceBuild = false;
     bool bPendingTasksRemaining = false;
-    bool bWaitingForFirstUpdateAfterPerformance = false;
+    bool bWaitingForNormalTransition = false;
+    bool bWaitingForPerformanceTransition = false;
     bool bBuildingLevels = false;
     bool IsPlanet = true;
     int64 BaseSpacing = 200;
