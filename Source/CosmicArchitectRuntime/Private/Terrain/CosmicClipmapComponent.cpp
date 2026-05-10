@@ -579,6 +579,8 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
 
     UpdateNoiseEvaluator();
 
+    bPerformaceMode = true;
+
     bInit = false;
 }
 
