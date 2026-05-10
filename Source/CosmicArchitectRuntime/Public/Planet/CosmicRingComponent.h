@@ -32,6 +32,8 @@ public:
 	// [E: Se ejecuta al registrar el componente en el mundo (Editor y Juego) / I: Executes when component is registered in the world (Editor and Game)]
 	virtual void OnRegister() override;
 
+	virtual void OnAttachmentChanged() override;
+
 	// [E: Se ejecuta justo antes de que este componente sea destruido / I: Executes right before this component is destroyed]
 	virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override;
 

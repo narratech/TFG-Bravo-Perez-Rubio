@@ -28,7 +28,7 @@ UCosmicRingComponent::UCosmicRingComponent()
 	// [E: Configurar escala basada en el radio KM: (KM * 100,000 cm) / 50 cm radio base = KM * 2000 / I: Setup scale based on KM radius]
 	double InitialScale = OuterRadiusKM * 2000.0;
 	MacroDiskComponent->SetRelativeScale3D(FVector(InitialScale, InitialScale, 1.0f));
-	MacroDiskComponent->SetRelativeRotation(RingRotation);
+	SetRelativeRotation(RingRotation);
 
 	// [E: Asignación automática de la malla de plano del motor / I: Automatic Engine Plane mesh assignment]
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> PlaneMeshAsset(TEXT("StaticMesh'/Engine/BasicShapes/Plane.Plane'"));
@@ -65,7 +65,7 @@ void UCosmicRingComponent::BeginPlay()
 		// [E: Actualizamos físicas visuales (escala y rotación) al empezar / I: Update visual physics (scale and rotation) on play]
 		double CurrentScale = OuterRadiusKM * 2000.0;
 		MacroDiskComponent->SetRelativeScale3D(FVector(CurrentScale, CurrentScale, 1.0f));
-		MacroDiskComponent->SetRelativeRotation(RingRotation);
+		SetRelativeRotation(RingRotation);
 
 		UpdateShaderParameters();
 	}
@@ -89,9 +89,18 @@ void UCosmicRingComponent::OnRegister()
 		// [E: Aplicamos escala inicial y parámetros del shader / I: Apply initial scale and shader parameters]
 		double CurrentScale = OuterRadiusKM * 2000.0;
 		MacroDiskComponent->SetRelativeScale3D(FVector(CurrentScale, CurrentScale, 1.0f));
-
+		SetRelativeRotation(RingRotation);
 		UpdateShaderParameters();
 	}
+}
+
+void UCosmicRingComponent::OnAttachmentChanged()
+{
+	Super::OnAttachmentChanged();
+
+	SetRelativeLocation(FVector::ZeroVector);
+
+	SetRelativeRotation(FRotator::ZeroRotator);
 }
 
 void UCosmicRingComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
@@ -147,12 +156,18 @@ void UCosmicRingComponent::PostEditChangeProperty(FPropertyChangedEvent& Propert
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 
+	FName PropertyName = (PropertyChangedEvent.Property != nullptr) ? PropertyChangedEvent.Property->GetFName() : NAME_None;
+
+	if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicRingComponent, RingRotation))
+	{
+		SetRelativeRotation(RingRotation);
+	}
+
 	// [E: Como OnRegister ya lo creó, aquí solo actualizamos escala y variables / I: Since OnRegister created it, here we only update scale and variables]
 	if (MacroDiskComponent && DynamicRingMat)
 	{
 		double CurrentScale = OuterRadiusKM * 2000.0;
 		MacroDiskComponent->SetRelativeScale3D(FVector(CurrentScale, CurrentScale, 1.0f));
-
 		UpdateShaderParameters();
 	}
 
