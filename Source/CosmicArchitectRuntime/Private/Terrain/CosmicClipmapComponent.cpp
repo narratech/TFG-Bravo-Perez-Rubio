@@ -197,7 +197,7 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
 {
     if (!FarLevel) return;
 
-    // --- Actualización permanente del FarLevel (rendimiento) ---
+    // Actualización permanente del FarLevel (rendimiento) 
     if (!bPerformanceBuild)
     {
         FarLevel->RequestMeshUpdate(NoiseGenerationStrategy);
@@ -206,20 +206,20 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
 
     if (!UseClipmap) return;
 
-    // --- Detección de cambio de modo ---
+    // Detección de cambio de modo 
     bool bPrevPerformanceMode = bPerformaceMode;
     bPerformaceMode = DistanceToSurface > PlanetRadius * HeightVisibility;
 
-    // --- Crear niveles normales si es necesario y no estamos en rendimiento ---
+    // Crear niveles normales si es necesario y no estamos en rendimiento 
     if (!bInit && !bPerformaceMode)
     {
         CreateLevels();
     }
 
-    // --- Manejar transiciones de modo ---
+    // Manejar transiciones de modo
     if (bPrevPerformanceMode != bPerformaceMode)
     {
-        if (bPerformaceMode)          // Ir a modo rendimiento (esperar tareas pendientes)
+        if (bPerformaceMode) // Ir a modo rendimiento (esperar tareas pendientes)
         {
             // Activar FarLevel inmediatamente (ya está construido)
             FarLevel->SetMeshActive(true);
@@ -231,13 +231,23 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
             // Iniciar espera para ocultar niveles cuando sus tareas terminen
             bWaitingForPerformanceTransition = true;
         }
-        else                           // Ir a modo normal (esperar a que los niveles estén listos)
+        else // Ir a modo normal (esperar a que los niveles estén listos)
         {
             bWaitingForNormalTransition = true;
+
+            const FRotator Rotation = GetPatchRotation(N);
+
+            for (size_t i = 0; i < Levels.Num(); i++)
+            {
+                Levels[i]->SetPositionAndRotation(SurfacePos - CurrentActorPosition, Rotation);
+                Levels[i]->RequestMeshUpdate(NoiseGenerationStrategy);
+            }
+
+            return;
         }
     }
 
-    // --- Si estamos en espera de transición a rendimiento ---
+    // Si estamos en espera de transición a rendimiento
     if (bWaitingForPerformanceTransition)
     {
         bool allTasksDone = true;
@@ -265,7 +275,7 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
         return;  // No continuar con la lógica normal
     }
 
-    // --- Si estamos en espera de transición a normal ---
+    // Si estamos en espera de transición a normal
     if (bWaitingForNormalTransition)
     {
         bool allTasksDone = true;
@@ -284,8 +294,6 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
         }
 
         // Todas las tareas terminadas: aplicar resultados y mostrar niveles
-        UE_LOG(LogTemp, Warning, TEXT("Haciendo visible niveles (primera actualización completada)"));
-
         for (size_t i = 0; i < Levels.Num(); i++)
         {
             Levels[i]->CheckAndApplyMeshUpdate();
@@ -296,7 +304,7 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
         bWaitingForNormalTransition = false;
     }
 
-    // --- Si estamos en modo rendimiento o congelado, no continuar ---
+    // Si estamos en modo rendimiento o congelado, no continuar 
     if (bPerformaceMode || FreezeGeneration) return;
 
     // Verificar si las actualizaciones han terminado
@@ -318,7 +326,7 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
         Levels[i]->CheckAndApplyMeshUpdate();
     }
 
-    // --- Lógica normal de clipmap (modo normal ya establecido) ---
+    // Lógica normal de clipmap (modo normal ya establecido) 
 
     // Verificar si hay que reducir o incrementar niveles del clipmap
     bool UpdateClipmapLevels = false;
