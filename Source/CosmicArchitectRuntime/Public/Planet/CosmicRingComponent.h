@@ -77,18 +77,18 @@ public:
 
 	// [E: Escala mínima de las rocas espaciales / I: Minimum scale of space rocks]
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
-	float MinScale = 1.0f;
+	float MinScale = 0.01;
 
 	// [E: Escala máxima de las rocas espaciales / I: Maximum scale of space rocks]
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
-	float MaxScale = 10.0f;
+	float MaxScale = 0.05;
 
 	// [E: Distancia límite para desvanecer el shader (KM) / I: Threshold distance to fade shader (KM)]
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
-	double FadeMinDistanceKM = 0.01;
+	double FadeMinDistanceKM = 1.0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
-	double FadeMaxDistanceKM = 0.05;
+	double FadeMaxDistanceKM = 8.0;
 
 	// -------------------------------------------------------------------------
 	// [E: OPTIMIZACIÓN Y RENDIMIENTO (Sectorización) / I: OPTIMIZATION & PERFORMANCE (Sectorization)]
