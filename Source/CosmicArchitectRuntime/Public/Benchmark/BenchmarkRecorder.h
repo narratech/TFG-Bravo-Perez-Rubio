@@ -4,6 +4,24 @@
 
 #include "CoreMinimal.h"
 
+
+struct FBenchmarkCSVRow
+{
+    FString TestName;
+    int32 NumObjects = 0;
+
+    float AvgFPS = 0.0f;
+    float Low1FPS = 0.0f;
+
+    float FrameTimeMs = 0.0f;
+    float GameThreadTimeMs = 0.0f;
+    float RenderThreadTimeMs = 0.0f;
+    float GPUTimeMs = 0.0f;
+
+    float RAM = 0.0f;
+    float VRAM = 0.0f;
+};
+
 struct FBenchmarkData
 {
     int32 NumObjects;
@@ -25,6 +43,9 @@ public:
     static FBenchmarkData GetCurrentData();
     static void LogCurrentData(const FString& Label = TEXT(""));
     static void RecordFrame(float DeltaTime);
+    static void AddCSVResult(const FString& Label);
+    static void ExportCSV(const FString& FileName);
+    static void ClearCSVResults();
 
 private:
     static bool bIsRecording;
@@ -36,4 +57,5 @@ private:
     static float AccumulatedGPUTime;
     static int32 FrameCount;
     static TArray<float> FrameTimes;
+    static TArray<FBenchmarkCSVRow> CSVResults;
 };

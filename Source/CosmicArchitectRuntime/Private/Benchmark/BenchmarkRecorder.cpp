@@ -4,6 +4,9 @@
 #include "Engine/Engine.h"
 #include "HAL/PlatformMemory.h"
 #include "HAL/PlatformTime.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
+#include "HAL/PlatformFilemanager.h"
 
 // Para VRAM en Windows
 #if PLATFORM_WINDOWS
@@ -22,6 +25,7 @@ float FBenchmarkRecorder::AccumulatedRenderThreadTime = 0.0f;
 float FBenchmarkRecorder::AccumulatedGPUTime = 0.0f;
 int32 FBenchmarkRecorder::FrameCount = 0;
 TArray<float> FBenchmarkRecorder::FrameTimes;
+TArray<FBenchmarkCSVRow> FBenchmarkRecorder::CSVResults;
 
 static float GetVRAMUsageGB()
 {
@@ -260,4 +264,81 @@ void FBenchmarkRecorder::RecordFrame(float DeltaTime)
     AccumulatedRenderThreadTime += EstimatedRenderThread;
     AccumulatedGPUTime += EstimatedGPU;
 #endif
+}
+
+void FBenchmarkRecorder::AddCSVResult(const FString& Label)
+{
+    FBenchmarkData Data = GetCurrentData();
+
+    FBenchmarkCSVRow Row;
+
+    Row.TestName = Label;
+    Row.NumObjects = Data.NumObjects;
+
+    Row.AvgFPS = Data.AvgFPS;
+    Row.Low1FPS = Data.Low1FPS;
+
+    Row.FrameTimeMs = Data.FrameTimeMs;
+    Row.GameThreadTimeMs = Data.GameThreadTimeMs;
+    Row.RenderThreadTimeMs = Data.RenderThreadTimeMs;
+    Row.GPUTimeMs = Data.GPUTimeMs;
+
+    Row.RAM = Data.RAM;
+    Row.VRAM = Data.VRAM;
+
+    CSVResults.Add(Row);
+}
+
+void FBenchmarkRecorder::ExportCSV(const FString& FileName)
+{
+    FString CSV;
+
+    // Header
+    CSV += TEXT("TestName,NumObjects,AvgFPS,Low1FPS,FrameTimeMs,GameThreadMs,RenderThreadMs,GPUTimeMs,RAM_GB,VRAM_GB\n");
+
+    // Rows
+    for (const FBenchmarkCSVRow& Row : CSVResults)
+    {
+        CSV += FString::Printf(
+            TEXT("%s,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n"),
+            *Row.TestName,
+            Row.NumObjects,
+            Row.AvgFPS,
+            Row.Low1FPS,
+            Row.FrameTimeMs,
+            Row.GameThreadTimeMs,
+            Row.RenderThreadTimeMs,
+            Row.GPUTimeMs,
+            Row.RAM,
+            Row.VRAM
+        );
+    }
+
+    FString Directory = FPaths::ProjectSavedDir() / TEXT("Benchmarks/");
+
+    IPlatformFile& PlatformFile =
+        FPlatformFileManager::Get().GetPlatformFile();
+
+    if (!PlatformFile.DirectoryExists(*Directory))
+    {
+        PlatformFile.CreateDirectoryTree(*Directory);
+    }
+
+    FString FullPath = Directory + FileName + TEXT(".csv");
+
+    bool bSuccess = FFileHelper::SaveStringToFile(CSV, *FullPath);
+
+    if (bSuccess)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("CSV exported: %s"), *FullPath);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("Failed to export CSV"));
+    }
+}
+
+void FBenchmarkRecorder::ClearCSVResults()
+{
+    CSVResults.Empty();
 }

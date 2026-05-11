@@ -291,6 +291,8 @@ void UBenchmarkManager::RunPlanetScalingTest()
     ClearSimBodies();
     ClearPlanets();
 
+    FBenchmarkRecorder::ClearCSVResults();
+
     // Configurar test secuencial
     SequentialTestSteps = { 1, 2, 4, 8, 16, 32, 64 };
     CurrentSequentialStepIndex = 0;
@@ -424,12 +426,58 @@ void UBenchmarkManager::RunNextSequentialStep()
 
 void UBenchmarkManager::OnSequentialTestComplete()
 {
-    bIsRunningSequentialTest = false;
-    CurrentSequentialTestType = ESequentialTestType::None;
+    bIsRunningSequentialTest = false; 
     SequentialTestSteps.Empty();
 
     ClearPlanets();
     ClearSimBodies();
+
+    FString CSVName;
+
+    switch (CurrentSequentialTestType)
+    {
+    case ESequentialTestType::PlanetScaling:
+        CSVName = TEXT("PlanetScaling");
+        break;
+
+    case ESequentialTestType::ClosePlanetScaling:
+        CSVName = TEXT("ClosePlanetScaling");
+        break;
+
+    case ESequentialTestType::FoliagePerFrame:
+        CSVName = TEXT("FoliagePerFrame");
+        break;
+
+    case ESequentialTestType::FoliageViewDistance:
+        CSVName = TEXT("FoliageRadius");
+        break;
+
+    case ESequentialTestType::ClipmapResolution:
+        CSVName = TEXT("ClipmapResolution");
+        break;
+
+    case ESequentialTestType::ClipmapLevels:
+        CSVName = TEXT("ClipmapLevels");
+        break;
+
+    case ESequentialTestType::OrbitSimulation:
+        CSVName = TEXT("OrbitSimulation");
+        break;
+
+    case ESequentialTestType::NBodySimulation:
+        CSVName = TEXT("NBodySimulation");
+        break;
+
+    default:
+        CSVName = TEXT("Benchmark");
+        break;
+    }
+
+    CurrentSequentialTestType = ESequentialTestType::None;
+
+    CSVName += TEXT("_") + FDateTime::Now().ToString(TEXT("%Y%m%d_%H%M%S"));
+
+    FBenchmarkRecorder::ExportCSV(CSVName);
 
     UE_LOG(LogTemp, Warning, TEXT(""));
     UE_LOG(LogTemp, Warning, TEXT("=== Sequential Test Complete ==="));
@@ -476,9 +524,12 @@ void UBenchmarkManager::OnBenchmarkCaptureComplete()
     // Detener y mostrar resultados
     FBenchmarkRecorder::StopRecording();
     FBenchmarkRecorder::LogCurrentData(CurrentTestName);
+    FBenchmarkRecorder::AddCSVResult(CurrentTestName);
 
     UE_LOG(LogTemp, Warning, TEXT("Capture completed for test: %s (%.1f seconds)"),
         *CurrentTestName, AccumulatedCaptureTime);
+
+    
 
     // Si estamos en un test secuencial, programar el siguiente paso
     if (bIsRunningSequentialTest)
@@ -510,6 +561,8 @@ void UBenchmarkManager::RunClosePlanetTest()
     CurrentSequentialTestType = ESequentialTestType::ClosePlanetScaling;
     bIsRunningSequentialTest = true;
 
+    FBenchmarkRecorder::ClearCSVResults();
+
     RunNextSequentialStep();
 }
 
@@ -534,6 +587,8 @@ void UBenchmarkManager::SetFoliageConfig(int32 InFoliageInstancesPerFrame, float
 
 void UBenchmarkManager::RunFoliagePerFrameTest(int32 MaxInstancesPerFrame)
 {
+    FBenchmarkRecorder::ClearCSVResults();
+
     if (MaxInstancesPerFrame <= 0)
     {
         UE_LOG(LogTemp, Warning, TEXT("=== Foliage Per Frame Test (Sequential) ==="));
@@ -572,6 +627,8 @@ void UBenchmarkManager::RunFoliagePerFrameTest(int32 MaxInstancesPerFrame)
 
 void UBenchmarkManager::RunFoliageRadiusTest()
 {
+    FBenchmarkRecorder::ClearCSVResults();
+
     UE_LOG(LogTemp, Warning, TEXT("=== Foliage Radius Test (Sequential) ==="));
 
     if (bIsRunningSequentialTest)
@@ -601,6 +658,8 @@ void UBenchmarkManager::RunFoliageRadiusTest()
 
 void UBenchmarkManager::RunClipmapResolutionTest(int32 Resolution)
 {
+    FBenchmarkRecorder::ClearCSVResults();
+
     if (Resolution <= 0)
     {
         UE_LOG(LogTemp, Warning, TEXT("=== Clipmap Resolution Test (Sequential) ==="));
@@ -635,6 +694,8 @@ void UBenchmarkManager::RunClipmapResolutionTest(int32 Resolution)
 
 void UBenchmarkManager::RunClipmapLevelsTest(int32 Levels)
 {
+    FBenchmarkRecorder::ClearCSVResults();
+
     // Si se llama sin argumento (Levels=0), ejecutar test secuencial automático
     if (Levels <= 0)
     {
@@ -670,6 +731,9 @@ void UBenchmarkManager::RunClipmapLevelsTest(int32 Levels)
 
 void UBenchmarkManager::RunOrbitSimulationTest(int32 NumBodies)
 {
+
+    FBenchmarkRecorder::ClearCSVResults();
+
     // Si NumBodies <= 0, ejecutar test secuencial
     if (NumBodies <= 0)
     {
@@ -704,6 +768,9 @@ void UBenchmarkManager::RunOrbitSimulationTest(int32 NumBodies)
 
 void UBenchmarkManager::RunNBodySimulationTest(int32 NumBodies)
 {
+
+    FBenchmarkRecorder::ClearCSVResults();
+
     // Si NumBodies <= 0, ejecutar test secuencial
     if (NumBodies <= 0)
     {
