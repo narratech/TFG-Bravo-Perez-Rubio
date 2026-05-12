@@ -42,6 +42,7 @@ public:
     static void StopRecording();
     static FBenchmarkData GetCurrentData();
     static void LogCurrentData(const FString& Label = TEXT(""));
+    static void SetCurrentNumObjects(int32 InNumObjects);
     static void RecordFrame(float DeltaTime);
     static void AddCSVResult(const FString& Label);
     static void ExportCSV(const FString& FileName);

@@ -27,6 +27,8 @@ int32 FBenchmarkRecorder::FrameCount = 0;
 TArray<float> FBenchmarkRecorder::FrameTimes;
 TArray<FBenchmarkCSVRow> FBenchmarkRecorder::CSVResults;
 
+static int32 CurrentNumObjects = 0;
+
 static float GetVRAMUsageGB()
 {
 #if PLATFORM_WINDOWS
@@ -106,6 +108,8 @@ FBenchmarkData FBenchmarkRecorder::GetCurrentData()
 {
     FBenchmarkData Data;
     FMemory::Memzero(&Data, sizeof(FBenchmarkData));
+
+    Data.NumObjects = CurrentNumObjects;
 
     if (FrameCount > 0)
     {
@@ -191,6 +195,11 @@ void FBenchmarkRecorder::LogCurrentData(const FString& Label)
     UE_LOG(LogTemp, Warning, TEXT("%s"), *CSVLine);
     UE_LOG(LogTemp, Warning, TEXT("============================================"));
     UE_LOG(LogTemp, Warning, TEXT(""));
+}
+
+void FBenchmarkRecorder::SetCurrentNumObjects(int32 InNumObjects)
+{
+    CurrentNumObjects = InNumObjects;
 }
 
 // Función auxiliar para ser llamada cada frame desde el GameMode o similar

@@ -599,6 +599,8 @@ void UBenchmarkManager::SetCurrentTestParams(int32 NumObjects, const FString& Te
 {
     CurrentNumObjects = NumObjects;
     CurrentTestName = TestName;
+
+    FBenchmarkRecorder::SetCurrentNumObjects(NumObjects);
 }
 
 void UBenchmarkManager::OnWorldEndPlay(UWorld& InWorld)
