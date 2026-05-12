@@ -5,9 +5,18 @@
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "CosmicRingComponent.generated.h"
 
-// [E: Delegado para notificar a Blueprints cuando se termina de generar un sector / I: Delegate to notify Blueprints when a sector generation finishes]
+/** * Delegado para notificar a sistemas externos o Blueprints cuando un
+ * sector de asteroides ha finalizado su generación asíncrona.
+ */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAsteroidFieldGenerated);
 
+/**
+ * UCosmicRingComponent
+ * * Gestiona la representación visual y física de anillos planetarios a escala real.
+ * Implementa un sistema de "Treadmill" (cinta de correr) que segmenta el anillo en sectores
+ * angulares, cargando y reciclando instancias de asteroides (HISM) dinámicamente según
+ * la proximidad del observador para optimizar el rendimiento y la memoria.
+ */
 UCLASS(ClassGroup = (CosmicArchitect), meta = (BlueprintSpawnableComponent),
 	HideCategories = (Rendering, Lighting, Navigation, Replication, Physics, Collision,
 		Activation, AssetUserData, HLOD, Cooking, Tags, ComponentReplication))
@@ -16,121 +25,119 @@ UCLASS(ClassGroup = (CosmicArchitect), meta = (BlueprintSpawnableComponent),
 	GENERATED_BODY()
 
 public:
+	/** Inicialización de subobjetos y configuración por defecto del componente. */
 	UCosmicRingComponent();
 
 protected:
+	/** Inicializa el estado dinámico del material y transformaciones al inicio de la simulación. */
 	virtual void BeginPlay() override;
 
-	// [E: Lógica para actualizar el material en tiempo real dentro del Editor / I: Logic to update material in real-time inside the Editor]
 #if WITH_EDITOR
+	/** Actualiza las propiedades visuales en el viewport del editor al modificar parámetros. */
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 
 public:
+	/** Gestiona el ciclo de vida de los sectores y la detección de la cámara en cada frame. */
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	// [E: Se ejecuta al registrar el componente en el mundo (Editor y Juego) / I: Executes when component is registered in the world (Editor and Game)]
+	/** Configura el componente tras su registro en el mundo, estableciendo escalas y materiales iniciales. */
 	virtual void OnRegister() override;
 
+	/** Garantiza que el componente mantenga su posición relativa neutral respecto al padre. */
 	virtual void OnAttachmentChanged() override;
 
-	// [E: Se ejecuta justo antes de que este componente sea destruido / I: Executes right before this component is destroyed]
+	/** Limpieza de memoria y destrucción de componentes instanciados antes de eliminar el objeto. */
 	virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override;
 
-	// -------------------------------------------------------------------------
-	// [E: PROPIEDADES DE DISEÑO (Expuestas al Usuario) / I: DESIGN PROPERTIES (Exposed to User)]
-	// -------------------------------------------------------------------------
+	// --- PROPIEDADES DE DISEÑO ---
 
-	// [E: Material Macro procedural (Nuestro Shader) / I: Procedural Macro Material (Our Shader)]
+	/** Interfaz del material base para el disco macro (Shader LWC). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Visuals")
 	class UMaterialInterface* MacroRingMaterial;
 
-	// [E: Malla 3D del asteroide para el HISM / I: 3D Asteroid mesh for the HISM]
+	/** Malla estática utilizada para representar cada asteroide individual en los sectores. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Visuals")
 	class UStaticMesh* AsteroidMesh;
 
-	// [E: Color principal del polvo estelar / I: Main color of the stardust]
+	/** Color base para el polvo y los asteroides del anillo. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Visuals")
 	FLinearColor RingColor = FLinearColor(0.2f, 0.3f, 1.0f, 1.0f);
 
-	// [E: Frecuencia (cantidad) de las bandas del anillo / I: Frequency (amount) of the ring bands]
+	/** Frecuencia de las bandas de ruido en el material procedural. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Visuals")
 	double BandFrequency = 50.0;
 
-	// [E: Radio interno en UV (0.0 a 0.5) / I: Inner radius in UV (0.0 to 0.5)]
+	/** Radio de inicio de la máscara UV interna. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
 	double InnerRadiusUV = 0.2;
 
-	// [E: Radio externo en UV (0.0 a 0.5) / I: Outer radius in UV (0.0 to 0.5)]
+	/** Radio de fin de la máscara UV externa. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
 	double OuterRadiusUV = 0.45;
 
-	// [E: Radio interno en Kilómetros (LWC) / I: Inner radius in Kilometers (LWC)]
+	/** Radio interno real del anillo en Kilómetros. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
 	double InnerRadiusKM = 2.0;
 
-	// [E: Radio externo en Kilómetros (LWC) / I: Outer radius in Kilometers (LWC)]
+	/** Radio externo real del anillo en Kilómetros. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
 	double OuterRadiusKM = 5.0;
 
-	// [E: Rotación del plano del anillo / I: Ring plane rotation]
+	/** Rotación orbital del sistema de anillos. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
 	FRotator RingRotation = FRotator::ZeroRotator;
 
-	// [E: Escala mínima de las rocas espaciales / I: Minimum scale of space rocks]
+	/** Tamaño mínimo aleatorio para las instancias de asteroides. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
 	float MinScale = 0.01;
 
-	// [E: Escala máxima de las rocas espaciales / I: Maximum scale of space rocks]
+	/** Tamaño máximo aleatorio para las instancias de asteroides. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
 	float MaxScale = 0.05;
 
-	// [E: Distancia límite para desvanecer el shader (KM) / I: Threshold distance to fade shader (KM)]
+	/** Distancia en KM donde comienza el desvanecimiento del shader. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
 	double FadeMinDistanceKM = 1.0;
 
+	/** Distancia en KM donde el campo de asteroides se oculta totalmente. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
 	double FadeMaxDistanceKM = 8.0;
 
-	// -------------------------------------------------------------------------
-	// [E: OPTIMIZACIÓN Y RENDIMIENTO (Sectorización) / I: OPTIMIZATION & PERFORMANCE (Sectorization)]
-	// -------------------------------------------------------------------------
+	// --- OPTIMIZACIÓN Y RENDIMIENTO ---
 
-	// [E: Tamaño en grados de cada porción generada / I: Size in degrees of each generated slice]
+	/** Amplitud angular de cada sector generado (en grados). */
 	UPROPERTY(EditAnywhere, Category = "Cosmic Architect | Optimization")
 	float SectorAngleDegrees = 15.0f;
 
-	// [E: Sectores cargados a cada lado del jugador / I: Sectors loaded on each side of the player]
+	/** Cantidad de sectores adyacentes a la posición del observador que se mantienen activos. */
 	UPROPERTY(EditAnywhere, Category = "Cosmic Architect | Optimization")
 	int32 VisibleSectors = 2;
 
-	// [E: Control de densidad de rocas por sector / I: Rock density control per sector]
+	/** Cantidad de asteroides individuales a generar por cada sector activo. */
 	UPROPERTY(EditAnywhere, Category = "Cosmic Architect | Optimization")
 	int32 AsteroidsPerSector = 500;
 
-	// -------------------------------------------------------------------------
-	// [E: COMPONENTES INTERNOS / I: INTERNAL COMPONENTS]
-	// -------------------------------------------------------------------------
 private:
-	// [E: Plano visual para el material LWC / I: Visual plane for the LWC material]
+	/** Componente que renderiza el material macro del anillo. */
 	UPROPERTY(VisibleAnywhere, Category = "Cosmic Architect | Internal")
 	class UStaticMeshComponent* MacroDiskComponent;
 
-	// [E: Referencia al material dinámico para modificar parámetros / I: Reference to dynamic material to modify parameters]
+	/** Puntero a la instancia dinámica para manipular parámetros de shader en tiempo real. */
 	UPROPERTY()
 	class UMaterialInstanceDynamic* DynamicRingMat;
 
-	// [E: Diccionario de Sectores Activos (Clave: ID, Valor: HISM) / I: Active Sectors Dictionary (Key: ID, Value: HISM)]
+	/** Mapa que asocia IDs de sector con sus respectivos componentes HISM activos. */
 	UPROPERTY()
 	TMap<int32, UHierarchicalInstancedStaticMeshComponent*> ActiveSectors;
 
-	// [E: Almacén de componentes inactivos para reciclar / I: Inactive components pool for recycling]
+	/** Repositorio de componentes HISM inactivos para su reutilización inmediata (Pooling). */
 	UPROPERTY()
 	TArray<UHierarchicalInstancedStaticMeshComponent*> HISMPool;
 
-	// [E: Función auxiliar para reciclar o crear HISMs / I: Helper function to recycle or create HISMs]
+	/** Recupera un componente HISM del pool o crea uno nuevo si no hay disponibles. */
 	UHierarchicalInstancedStaticMeshComponent* GetOrCreateHISM();
 
-	// [E: Función auxiliar para inyectar datos al Shader / I: Helper function to inject data into Shader]
+	/** Sincroniza los valores de las propiedades C++ con los parámetros del Material Instance. */
 	void UpdateShaderParameters();
 };
