@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -7,128 +7,212 @@
 #include "GameFramework/Actor.h"
 #include "CosmicGravityComponent.generated.h"
 
-// E: Enumeraci�n que define los diferentes modos de simulaci�n gravitacional.
-// I: Enumeration defining the different gravitational simulation modes.
+/**
+ * Define los modos de simulación gravitacional disponibles para el componente.
+ *
+ * Cada modo determina qué cuerpos celestes influyen sobre el actor propietario
+ * y cómo se calculan las fuerzas resultantes en cada frame de simulación.
+ *
+ * Modos disponibles:
+ *   - None          → Sin ningún efecto gravitacional activo.
+ *   - NearestPlanet → Atracción exclusiva hacia el planeta más cercano en escena.
+ *   - SpecificPlanet→ Atracción hacia un actor planeta definido manualmente.
+ *   - AllPlanets    → Suma de fuerzas gravitacionales de todos los planetas en escena.
+ *   - NBody         → Simulación N-cuerpos: todos los objetos registrados se atraen mutuamente.
+ */
 UENUM(BlueprintType)
 enum class ECosmicGravityMode : uint8
 {
-    // E: Sin efecto de gravedad.
-    // I: No gravity effect.
     None           UMETA(DisplayName = "None"),
-
-    // E: Se siente atra�do �nicamente por el planeta m�s cercano.
-    // I: Attracted only by the nearest planet.
     NearestPlanet  UMETA(DisplayName = "Nearest Planet"),
-
-    // E: Se siente atra�do por un actor espec�fico marcado como planeta.
-    // I: Attracted by a specific actor marked as a planet.
     SpecificPlanet UMETA(DisplayName = "Specific Planet"),
-
-    // E: Afectado por la gravedad de todos los planetas de la escena.
-    // I: Affected by the gravity of all planets in the scene.
     AllPlanets     UMETA(DisplayName = "All Planets"),
-
-    // E: Simulaci�n de N-cuerpos donde todos los objetos se afectan mutuamente.
-    // I: N-body simulation where all objects affect each other mutually.
     NBody          UMETA(DisplayName = "N-Body")
 };
 
-// E: Componente que maneja f�sicas gravitacionales personalizadas.
-// I: Component handling custom gravitational physics.
+/**
+ * Gestiona la física gravitacional personalizada de un actor dentro del sistema Cosmic Architect.
+ *
+ * Este componente puede actuar en dos roles excluyentes según el valor de IsPlanet:
+ *
+ *   ROL PLANETA:
+ *     Genera un campo gravitacional basado en su masa, calculada a partir de
+ *     RadiusKm y SurfaceGravity. No aplica físicas de motor sobre sí mismo.
+ *
+ *   ROL CUERPO ORBITAL:
+ *     Reacciona a los campos gravitacionales de los planetas registrados.
+ *     Activa la simulación de físicas del motor y desactiva la gravedad interna de Unreal.
+ *
+ * Responsabilidades principales:
+ *   - Registrarse y desregistrarse en UCosmicGravitySubsystem al iniciar y terminar.
+ *   - Acumular fuerzas gravitacionales por frame mediante AccumulatedForce.
+ *   - Integrar velocidad y posición (o aplicar AddForce si usa físicas del motor).
+ *   - Exponer configuración editable desde el editor para diseño de niveles.
+ *
+ * Restricciones y contratos de uso:
+ *   - Requiere que UCosmicGravitySubsystem esté activo en el World.
+ *   - El actor propietario debe tener un UPrimitiveComponent como componente raíz.
+ *   - No debe usarse junto con la gravedad interna de Unreal Engine (SetEnableGravity = false).
+ *   - SetIsPlanet() debe usarse en runtime para cambiar de rol de forma segura.
+ */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent),
     HideCategories = (Activation, AssetUserData, Cooking, Tags, Navigation))
-class COSMICARCHITECTRUNTIME_API UCosmicGravityComponent : public UActorComponent
+    class COSMICARCHITECTRUNTIME_API UCosmicGravityComponent : public UActorComponent
 {
     GENERATED_BODY()
 
 public:
     UCosmicGravityComponent();
 
-    // E: Funci�n de ayuda para obtener la transformaci�n espacial del actor propietario.
-    // I: Helper function to get the spatial transform of the owning actor.
+    /**
+     * Devuelve la transformación espacial completa del actor propietario.
+     * Utilizada por el subsistema para calcular distancias y direcciones gravitacionales.
+     */
     FTransform getTransform() const { return GetOwner()->GetActorTransform(); }
 
-    // E: Modo de gravedad asignado a este componente (siempre visible en el editor).
-    // I: Gravity mode assigned to this component (always visible in the editor).
+    /**
+     * Modo de gravedad activo para este componente.
+     * Determina qué planetas se tienen en cuenta al calcular las fuerzas sobre este cuerpo.
+     * Siempre visible en el editor independientemente del rol del objeto.
+     */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config")
     ECosmicGravityMode GravityMode = ECosmicGravityMode::NearestPlanet;
 
-    // E: Masa del objeto (visible en el editor SOLO cuando NO es un planeta).
-    // I: Object mass (visible in the editor ONLY when it is NOT a planet).
+    /**
+     * Masa del cuerpo orbital en kilogramos.
+     * Se usa para calcular la aceleración resultante (F = m·a) en cada integración.
+     * Solo visible en el editor cuando IsPlanet es false.
+     * En planetas, la masa se calcula automáticamente desde RadiusKm y SurfaceGravity.
+     */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config",
         meta = (EditCondition = "!IsPlanet", EditConditionHides))
     double Mass = 100.0f;
 
-    // E: Radio f�sico del planeta en kil�metros (visible SOLO cuando es planeta).
-    // I: Physical radius of the planet in kilometers (visible ONLY when it is a planet).
+    /**
+     * Radio físico del planeta expresado en kilómetros.
+     * Se combina con SurfaceGravity para calcular la masa gravitacional del planeta.
+     * Solo visible en el editor cuando IsPlanet es true.
+     */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config",
         meta = (EditCondition = "IsPlanet", EditConditionHides, ClampMin = "0.001",
             UIMin = "0.001", UIMax = "1000000",
-            ToolTip = "Radio del planeta en kil�metros"))
+            ToolTip = "Radio del planeta en kilómetros"))
     float RadiusKm = 1.0f;
 
-    // E: Aceleraci�n de la gravedad en la superficie (visible SOLO cuando es planeta).
-    // I: Gravity acceleration on the surface (visible ONLY when it is a planet).
+    /**
+     * Aceleración gravitacional en la superficie del planeta (m/s²).
+     * Junto con RadiusKm, define la masa del planeta al iniciarse el juego.
+     * Solo visible en el editor cuando IsPlanet es true.
+     */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config",
         meta = (EditCondition = "IsPlanet", EditConditionHides, ClampMin = "0.0"))
     float SurfaceGravity = 9.8f;
 
-    // E: Determina si este objeto genera un campo gravitatorio que afecta a otros.
-    // I: Determines if this object generates a gravitational field that affects others.
+    /**
+     * Indica si este objeto genera un campo gravitacional sobre otros cuerpos registrados.
+     * Si es false, el subsistema ignorará este objeto como fuente de gravedad.
+     */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config")
     bool AffectsOthers = true;
 
-    // E: Determina si este objeto reacciona a la gravedad generada por otros.
-    // I: Determines if this object reacts to the gravity generated by others.
+    /**
+     * Indica si este objeto reacciona a los campos gravitacionales generados por otros.
+     * Si es false, el subsistema no aplicará fuerzas externas sobre este objeto.
+     */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config")
     bool IsAffectedByOthers = true;
 
-    // E: Bandera que indica si este objeto act�a como un cuerpo planetario.
-    // I: Flag indicating whether this object acts as a planetary body.
+    /**
+     * Define si este actor actúa como cuerpo planetario dentro de la simulación.
+     *
+     * true  → Actúa como planeta: genera gravedad, no recibe físicas del motor.
+     * false → Actúa como cuerpo orbital: recibe físicas y reacciona a campos gravitacionales.
+     *
+     * Para cambiar este valor en runtime, usar SetIsPlanet() en lugar de modificarlo directamente,
+     * ya que es necesario actualizar el registro en el subsistema.
+     */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Gravity Config")
     bool IsPlanet = false;
 
-    // E: Referencia al actor que ejerce gravedad si el modo es "Planeta Espec�fico".
-    // I: Reference to the actor exerting gravity if the mode is "Specific Planet".
+    /**
+     * Actor que actúa como fuente de gravedad exclusiva cuando el modo es SpecificPlanet.
+     * El actor referenciado debe tener también un UCosmicGravityComponent activo.
+     * Solo visible en el editor cuando GravityMode == SpecificPlanet.
+     */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Gravity Config",
         meta = (EditCondition = "GravityMode == ECosmicGravityMode::SpecificPlanet", EditConditionHides))
     AActor* SpecificGravitySource = nullptr;
 
-    // E: Referencia al componente primitivo principal (suele ser la malla para f�sicas).
-    // I: Reference to the root primitive component (usually the mesh for physics).
+    /**
+     * Referencia al componente primitivo raíz del actor propietario.
+     * Se cachea en BeginPlay para aplicar físicas (AddForce, SetMass, etc.) sin búsquedas repetidas.
+     */
     UPROPERTY()
     UPrimitiveComponent* RootPrimitive = nullptr;
 
-    // E: Vector que almacena la velocidad actual del objeto.
-    // I: Vector storing the current velocity of the object.
+    /** Velocidad actual del cuerpo en el espacio de simulación (cm/s en Unreal). */
     FVector Velocity = FVector::ZeroVector;
 
-    // E: Vector que acumula todas las fuerzas gravitacionales en el frame actual.
-    // I: Vector accumulating all gravitational forces in the current frame.
+    /** Acumulador de fuerzas gravitacionales recibidas durante el frame actual (N). Se resetea tras cada integración. */
     FVector AccumulatedForce = FVector::ZeroVector;
 
-    // E: Vector que guarda la direcci�n de la gravedad de este frame para ser le�da por otros.
-    // I: Vector storing this frame's gravity direction to be read by others.
+    /**
+     * Dirección normalizada de la gravedad dominante del frame anterior.
+     * Puede ser leída por otros sistemas (orientación del personaje, efectos visuales, etc.)
+     * para conocer hacia dónde "apunta" la gravedad desde este objeto.
+     */
     FVector CurrentGravityDirection = FVector::DownVector;
 
-    // E: Calcula y aplica el movimiento basado en las fuerzas y el tiempo delta.
-    // I: Calculates and applies movement based on forces and delta time.
+    /**
+     * Aplica las fuerzas acumuladas e integra la posición o velocidad del cuerpo.
+     *
+     * Si el RootPrimitive está simulando físicas (cuerpos orbitales estándar),
+     * delega la aplicación en AddForce del motor. En caso contrario, integra
+     * manualmente velocidad y posición usando integración de Euler.
+     *
+     * Debe llamarse una vez por frame desde el subsistema, después de acumular
+     * todas las fuerzas gravitacionales del frame.
+     *
+     * @param DeltaTime Tiempo transcurrido desde el último frame, en segundos.
+     */
     void Integrate(double DeltaTime);
 
-    // E: Funci�n para actualizar din�micamente si el objeto es un planeta o no.
-    // I: Function to dynamically update whether the object is a planet or not.
+    /**
+     * Cambia el rol del objeto entre planeta y cuerpo orbital de forma segura en runtime.
+     *
+     * Gestiona automáticamente el desregistro y re-registro en el subsistema
+     * para que las listas internas de planetas y cuerpos se mantengan coherentes.
+     * No realiza ninguna operación si el valor nuevo es igual al actual.
+     *
+     * @param bNewIsPlanet true para convertir en planeta, false para cuerpo orbital.
+     */
     void SetIsPlanet(bool bNewIsPlanet);
 
 protected:
-    // E: Se ejecuta cuando el juego comienza o se genera el actor.
-    // I: Executed when the game starts or the actor is spawned.
+    /**
+     * Inicializa el componente al comenzar el juego.
+     *
+     * Responsabilidades:
+     *   - Cachear RootPrimitive y configurar su movilidad y físicas según el rol.
+     *   - Calcular la masa del planeta si IsPlanet es true.
+     *   - Registrar este componente en UCosmicGravitySubsystem.
+     */
     virtual void BeginPlay() override;
 
-    // E: Se ejecuta cuando el actor es destruido o termina el juego.
-    // I: Executed when the actor is destroyed or the game ends.
+    /**
+     * Limpia el componente al destruirse el actor o finalizar el juego.
+     * Desregistra este componente del subsistema para evitar referencias colgantes.
+     *
+     * @param EndPlayReason Motivo por el que se invoca EndPlay.
+     */
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-    // E: Calcula y devuelve el radio en unidades de Unreal seg�n la escala del objeto.
-    // I: Calculates and returns the radius in Unreal units based on the object's scale.
+    /**
+     * Calcula el radio aproximado del actor en unidades Unreal (cm) a partir de su bounding box.
+     * Devuelve la mayor de las tres semi-extensiones del box, asumiendo geometría roughly esférica.
+     * Usado para cálculos de colisión o detección de superficie en planetas no perfectamente esféricos.
+     *
+     * @return Radio aproximado en centímetros (unidades Unreal).
+     */
     float GetObjectRadius() const;
 };

@@ -6,76 +6,141 @@
 #include "Subsystems/WorldSubsystem.h"
 #include "CosmicGravitySubsystem.generated.h"
 
-// E: Declaración anticipada de la clase UGravityComponent.
-// I: Forward declaration of the UGravityComponent class.
 class UCosmicGravityComponent;
 
-// E: Subsistema del mundo encargado de gestionar, calcular y aplicar la simulación de gravedad a todos los cuerpos.
-// I: World subsystem in charge of managing, calculating, and applying the gravity simulation to all bodies.
+/**
+ * Subsistema de mundo responsable de gestionar la simulacion gravitacional completa del nivel.
+ *
+ * Actua como coordinador central de todos los cuerpos registrados, calculando y distribuyendo
+ * fuerzas gravitacionales cada frame segun el modo configurado en cada UCosmicGravityComponent.
+ *
+ * Responsabilidades principales:
+ *   - Mantener dos listas internas: Bodies (todos los cuerpos) y Planets (solo planetas).
+ *   - Calcular fuerzas gravitacionales en Tick() y acumularlas en cada componente.
+ *   - Invocar Integrate() en cada cuerpo activo tras acumular todas las fuerzas del frame.
+ *   - Proveer RegisterBody() y UnregisterBody() como punto de entrada para los componentes.
+ *
+ * Restricciones y contratos de uso:
+ *   - Solo se activa el Tick cuando hay cuerpos registrados (optimizacion automatica).
+ *   - No debe modificarse Bodies ni Planets directamente desde fuera del subsistema.
+ *   - Los componentes deben registrarse en BeginPlay y desregistrarse en EndPlay.
+ */
 UCLASS()
 class COSMICARCHITECTRUNTIME_API UCosmicGravitySubsystem : public UWorldSubsystem, public FTickableGameObject
 {
     GENERATED_BODY()
 
 public:
-    // E: Inicializa el subsistema cuando el mundo (nivel) se crea o carga.
-    // I: Initializes the subsystem when the world (level) is created or loaded.
+    /**
+     * Inicializa el subsistema al crearse o cargarse el nivel.
+     * Punto de entrada para inicializaciones futuras que dependan del World.
+     */
     virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 
-    // E: Limpia y reinicia las listas del subsistema cuando el mundo se destruye.
-    // I: Cleans up and resets the subsystem's lists when the world is destroyed.
+    /**
+     * Vacia las listas internas y libera referencias al destruirse el nivel.
+     * Garantiza que no queden referencias colgantes a componentes destruidos.
+     */
     virtual void Deinitialize() override;
 
-    // E: Función principal de actualización llamada cada frame para calcular las fuerzas físicas.
-    // I: Main update function called every frame to calculate physics forces.
+    /**
+     * Nucleo de la simulacion. Se ejecuta una vez por frame mientras haya cuerpos registrados.
+     *
+     * Fase 1: Acumulacion de fuerzas.
+     *   Recorre todos los cuerpos y calcula las fuerzas gravitacionales segun su GravityMode,
+     *   acumulandolas en AccumulatedForce de cada componente afectado.
+     *
+     * Fase 2: Integracion.
+     *   Invoca Integrate(DeltaTime) en cada cuerpo activo para aplicar el movimiento resultante.
+     *
+     * @param DeltaTime Tiempo en segundos transcurrido desde el ultimo frame.
+     */
     virtual void Tick(float DeltaTime) override;
 
-    // E: Determina si este subsistema debe ejecutar su función Tick (útil para optimización).
-    // I: Determines if this subsystem should execute its Tick function (useful for optimization).
+    /**
+     * Indica si el subsistema debe ejecutar Tick este frame.
+     * Retorna false si no hay cuerpos registrados o si el World no es valido,
+     * evitando coste de CPU cuando la simulacion esta inactiva.
+     */
     virtual bool IsTickable() const override;
 
-    // E: Obtiene el ID de estadísticas utilizado por el profiler de rendimiento de Unreal.
-    // I: Gets the stat ID used by the Unreal performance profiler.
+    /**
+     * Identificador de estadisticas requerido por FTickableGameObject.
+     * Permite al profiler de Unreal medir el coste de este subsistema por separado.
+     */
     virtual TStatId GetStatId() const override
     {
         RETURN_QUICK_DECLARE_CYCLE_STAT(UGravitySubsystem, STATGROUP_Tickables);
     }
 
-    // E: Devuelve la lista optimizada de planetas registrados para lectura.
-    // I: Returns the optimized list of registered planets for reading.
+    /**
+     * Devuelve la lista de planetas registrados para lectura externa.
+     * Permite a otros sistemas consultar los planetas activos sin acceder a Bodies completo.
+     */
     const TArray<UCosmicGravityComponent*>& GetPlanets() const { return Planets; }
 
-    // E: Registra un nuevo cuerpo en la simulación (lo añade a las listas internas).
-    // I: Registers a new body into the simulation (adds it to the internal lists).
+    /**
+     * Registra un componente en la simulacion gravitacional.
+     * Si el componente es un planeta, tambien se anade a la sublista Planets.
+     * Usa AddUnique para evitar duplicados en caso de llamadas multiples.
+     *
+     * @param Body Componente a registrar. Se ignora si es nullptr.
+     */
     void RegisterBody(UCosmicGravityComponent* Body);
 
-    // E: Elimina un cuerpo de la simulación para que deje de ser afectado por la gravedad.
-    // I: Removes a body from the simulation so it is no longer affected by gravity.
+    /**
+     * Elimina un componente de la simulacion gravitacional.
+     * Si el componente era un planeta, tambien se elimina de la sublista Planets.
+     *
+     * @param Body Componente a desregistrar. Se ignora si es nullptr.
+     */
     void UnregisterBody(UCosmicGravityComponent* Body);
 
-    // E: Devuelve el valor de la constante gravitacional base de la simulación.
-    // I: Returns the value of the base gravitational constant of the simulation.
+    /**
+     * Devuelve la constante gravitacional G en unidades SI (m3 / kg * s2).
+     * Usada por UCosmicGravityComponent para calcular la masa de los planetas en BeginPlay.
+     */
     double GetGravityConstant() const;
 
-    // E: Devuelve el contexto del mundo en el que este objeto tickeable está operando.
-    // I: Returns the world context in which this tickable object is operating.
+    /**
+     * Devuelve el World en el que opera este objeto tickeable.
+     * Requerido por la interfaz FTickableGameObject para validar el contexto de ejecucion.
+     */
     virtual UWorld* GetTickableGameObjectWorld() const override;
 
 private:
-    // E: Calcula y aplica la fuerza gravitacional del cuerpo B sobre el cuerpo A (unidireccional).
-    // I: Calculates and applies the gravitational force of body B onto body A (unidirectional).
+    /**
+     * Calcula la fuerza gravitacional que BodyB ejerce sobre BodyA y la acumula en BodyA.
+     * Operacion unidireccional: solo BodyA recibe la fuerza resultante.
+     * Usada por los modos NearestPlanet, SpecificPlanet y AllPlanets.
+     *
+     * @param BodyA Cuerpo que recibe la fuerza gravitacional.
+     * @param BodyB Cuerpo que actua como fuente de gravedad.
+     */
     void BodyAddForce(UCosmicGravityComponent* BodyA, UCosmicGravityComponent* BodyB);
 
-    // E: Calcula y aplica las fuerzas gravitacionales entre dos cuerpos mutuamente (N-Cuerpos).
-    // I: Calculates and applies gravitational forces between two bodies mutually (N-Body).
+    /**
+     * Calcula y aplica fuerzas gravitacionales mutuas entre dos cuerpos (Tercera Ley de Newton).
+     * BodyA recibe fuerza hacia BodyB y BodyB recibe fuerza hacia BodyA en el mismo calculo.
+     * Usada exclusivamente por el modo NBody para evitar calculos redundantes (j > i).
+     *
+     * @param BodyA Primer cuerpo del par.
+     * @param BodyB Segundo cuerpo del par.
+     */
     void ApplyMutualForce(UCosmicGravityComponent* BodyA, UCosmicGravityComponent* BodyB);
 
-    // E: Lista general de todos los cuerpos con gravedad registrados en este nivel.
-    // I: General list of all gravity bodies registered in this level.
+    /**
+     * Lista de todos los cuerpos activos registrados en la simulacion del nivel actual.
+     * Incluye tanto planetas como cuerpos orbitales. Se marca con UPROPERTY para
+     * que el recolector de basura de Unreal no invalide las referencias.
+     */
     UPROPERTY()
     TArray<UCosmicGravityComponent*> Bodies;
 
-    // E: Sublista optimizada que contiene exclusivamente los cuerpos clasificados como planetas.
-    // I: Optimized sublist containing exclusively the bodies classified as planets.
+    /**
+     * Sublista optimizada que contiene unicamente los cuerpos con IsPlanet == true.
+     * Permite a los modos NearestPlanet, SpecificPlanet y AllPlanets iterar solo sobre
+     * planetas sin filtrar Bodies completo en cada frame.
+     */
     TArray<UCosmicGravityComponent*> Planets;
 };

@@ -1,135 +1,317 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+
+
+// ============================================================
+// Cosmic Architect
+// Archivo: CosmicOrbitComponent.h
+// Módulo: CosmicArchitectRuntime
+//
+// Descripción:
+//     Componente encargado de simular órbitas keplerianas
+//     simples alrededor de un cuerpo padre.
+//
+// Responsabilidades:
+//     - Movimiento orbital elíptico
+//     - Rotación axial del actor
+//     - Inicialización orbital
+//     - Visualización debug de órbitas
+//     - Previsualización en editor
+//
+// Notas:
+//     - Utiliza una aproximación basada en anomalía excéntrica.
+//     - La simulación es relativa al actor padre.
+//     - El sistema está diseñado para visualización y gameplay,
+//       no para simulación astrofísica precisa.
+//
+// ============================================================
+
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "CosmicOrbitComponent.generated.h"
 
-// E: Componente que maneja el movimiento orbital y la rotación de un cuerpo celeste.
-// I: Component that handles the orbital movement and rotation of a celestial body.
+/**
+ * Componente responsable de simular movimiento orbital
+ * y rotación axial para cuerpos celestes.
+ *
+ * El sistema implementa:
+ * - Órbitas elípticas básicas
+ * - Rotación local del actor
+ * - Inclinación orbital tridimensional
+ * - Visualización debug en editor
+ *
+ * La órbita se calcula utilizando una aproximación
+ * kepleriana basada en anomalía media y anomalía excéntrica.
+ */
 UCLASS(ClassGroup = (Cosmic), meta = (BlueprintSpawnableComponent),
 	HideCategories = (Navigation, Replication, Activation, AssetUserData, Cooking, Tags))
-class COSMICARCHITECTRUNTIME_API UCosmicOrbitComponent : public UActorComponent
+	class COSMICARCHITECTRUNTIME_API UCosmicOrbitComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
 public:
-	// E: Constructor: Establece los valores predeterminados de las propiedades de este componente.
-	// I: Constructor: Sets default values for this component's properties.
+
+	// ============================================================
+	// CONSTRUCTION
+	// ============================================================
+
+	/**
+	 * Inicializa el componente orbital con valores por defecto.
+	 *
+	 * Configura:
+	 * - Tick en tiempo real
+	 * - Simulación en editor
+	 * - Estado inicial orbital
+	 */
 	UCosmicOrbitComponent();
 
 #if WITH_EDITOR
-	// E: Se llama cuando cambia una propiedad en el editor (útil para actualizar visualizaciones).
-	// I: Called when a property is changed in the editor (useful for updating visualizations).
+
+	/**
+	 * Responde a cambios de propiedades desde el editor.
+	 *
+	 * Actualiza automáticamente:
+	 * - Posición orbital inicial
+	 * - Visualización debug
+	 * - Relaciones de attachment
+	 *
+	 * @param PropertyChangedEvent Información sobre la propiedad modificada.
+	 */
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+
 #endif
 
 protected:
-	// E: Se ejecuta cuando el juego comienza o se genera el actor.
-	// I: Executed when the game starts or the actor is spawned.
+
+	// ============================================================
+	// ENGINE LIFECYCLE
+	// ============================================================
+
+	/**
+	 * Inicializa el estado orbital al comenzar la simulación.
+	 */
 	virtual void BeginPlay() override;
 
 public:
-	// E: Función llamada cada frame para actualizar la posición y rotación del actor.
-	// I: Function called every frame to update the actor's position and rotation.
+
+	// ============================================================
+	// RUNTIME UPDATE
+	// ============================================================
+
+	/**
+	 * Actualiza la simulación orbital cada frame.
+	 *
+	 * Responsabilidades:
+	 * - Integración temporal orbital
+	 * - Resolución de anomalía excéntrica
+	 * - Actualización de posición relativa
+	 * - Rotación axial del actor
+	 * - Visualización debug en editor
+	 *
+	 * @param DeltaTime Tiempo transcurrido desde el frame anterior.
+	 * @param TickType Tipo de actualización actual.
+	 * @param ThisTickFunction Información del tick actual.
+	 */
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	// E: Referencia al cuerpo central alrededor del cual orbita este actor.
-	// I: Reference to the central body around which this actor orbits.
+	// ============================================================
+	// ORBIT STATE
+	// ============================================================
+
+	/**
+	 * Cuerpo central alrededor del cual orbita este actor.
+	 *
+	 * El actor propietario se moverá utilizando coordenadas
+	 * relativas respecto a este cuerpo padre.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit State")
 	AActor* ParentBody;
 
-	// E: Tiempo actual transcurrido en la simulación de la órbita.
-	// I: Current time elapsed in the orbit simulation.
+	/**
+	 * Tiempo orbital acumulado actual.
+	 *
+	 * Expresado en segundos simulados.
+	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Orbit State")
 	float CurrentOrbitTime = 0.0f;
 
-	// E: Semieje mayor de la órbita en kilómetros (define el tamaño general de la órbita).
-	// I: Semi-major axis of the orbit in kilometers (defines the overall size of the orbit).
+	// ============================================================
+	// ORBIT PARAMETERS
+	// ============================================================
+
+	/**
+	 * Semieje mayor de la órbita.
+	 *
+	 * Define el tamaño general de la trayectoria orbital.
+	 *
+	 * Unidad: kilómetros.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit Params")
 	float SemiMajorAxisKm = 1.0f;
 
-	// E: Excentricidad de la órbita (0 = círculo perfecto, >0 a <1 = elipse).
-	// I: Eccentricity of the orbit (0 = perfect circle, >0 to <1 = ellipse).
+	/**
+	 * Excentricidad orbital.
+	 *
+	 * Valores:
+	 * - 0.0  -> órbita circular
+	 * - 0-1  -> órbita elíptica
+	 *
+	 * Valores cercanos a 1 producen órbitas extremadamente elongadas.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit Params", meta = (ClampMin = "0", ClampMax = "1"))
-	float Eccentricity = 0.0f; // 0 círculo, 0.99 elipse extrema
+	float Eccentricity = 0.0f;
 
-	// E: Posición inicial en la órbita como fracción del periodo (0 a 1).
-	// I: Initial position in the orbit as a fraction of the period (0 to 1).
+	/**
+	 * Posición inicial sobre la órbita.
+	 *
+	 * Representa una fracción normalizada del periodo orbital.
+	 *
+	 * Rango:
+	 * - 0.0 -> inicio de órbita
+	 * - 1.0 -> órbita completa
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit Params", meta = (ClampMin = "0", ClampMax = "1"))
 	float InitialPosition = 0.0f;
 
-	// E: Tiempo en segundos que tarda en completar una órbita entera.
-	// I: Time in seconds it takes to complete a full orbit.
+	/**
+	 * Tiempo necesario para completar una órbita completa.
+	 *
+	 * Unidad: segundos.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit Params")
 	float OrbitalPeriod = 10.0f;
 
-	// E: Inclinación de la órbita sobre el eje X (en grados).
-	// I: Inclination of the orbit on the X axis (in degrees).
+	/**
+	 * Inclinación orbital sobre el eje X.
+	 *
+	 * Unidad: grados.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit Params", meta = (ClampMin = "0", ClampMax = "360"))
 	float InclinationX = 0.0f;
 
-	// E: Inclinación de la órbita sobre el eje Y (en grados).
-	// I: Inclination of the orbit on the Y axis (in degrees).
+	/**
+	 * Inclinación orbital sobre el eje Y.
+	 *
+	 * Unidad: grados.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit Params", meta = (ClampMin = "0", ClampMax = "360"))
 	float InclinationY = 0.0f;
 
-	// E: Inclinación de la órbita sobre el eje Z (en grados).
-	// I: Inclination of the orbit on the Z axis (in degrees).
+	/**
+	 * Inclinación orbital sobre el eje Z.
+	 *
+	 * Unidad: grados.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit Params", meta = (ClampMin = "0", ClampMax = "360"))
 	float InclinationZ = 0.0f;
 
-	// E: Velocidad a la que el objeto rota sobre su propio eje Z (grados por segundo).
-	// I: Speed at which the object rotates around its own Z axis (degrees per second).
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rotation")
-	float SpinSpeed = 0.0f; // Grados por segundo en el eje Z (Yaw)
+	// ============================================================
+	// ROTATION
+	// ============================================================
 
-	// E: Indica si el generador está simulando órbitas en el editor.
-    // I: Indicates whether the generator is simulating orbits in the editor.
+	/**
+	 * Velocidad de rotación axial del actor.
+	 *
+	 * Controla la rotación local aplicada sobre el eje yaw.
+	 *
+	 * Unidad: grados por segundo.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rotation")
+	float SpinSpeed = 0.0f;
+
+	// ============================================================
+	// EDITOR STATE
+	// ============================================================
+
+	/**
+	 * Indica si el sistema orbital está siendo simulado en editor.
+	 */
 	UPROPERTY()
 	bool bEditorSimulating = false;
 
-	// E: Multiplicador de velocidad orbital inyectado desde el generador.
-	// I: Orbital speed multiplier injected from the generator.
+	/**
+	 * Multiplicador global de velocidad orbital.
+	 *
+	 * Utilizado principalmente para previsualización
+	 * y control temporal desde herramientas editoriales.
+	 */
 	UPROPERTY()
 	float EditorSpeedMultiplier = 1.0f;
 
-	// E: Inicializa los parámetros visuales básicos de la órbita (color, grosor).
-	// I: Initializes the basic visual parameters of the orbit (color, thickness).
+	// ============================================================
+	// INITIALIZATION
+	// ============================================================
+
+	/**
+	 * Inicializa los parámetros visuales básicos de la órbita.
+	 *
+	 * @param color Color utilizado para la visualización debug.
+	 */
 	void InitOrbit(FColor color = FColor::Cyan);
 
 protected:
-	// E: Bandera interna que indica si el componente se está previsualizando en el editor.
-	// I: Internal flag indicating if the component is being previewed in the editor.
+
+	// ============================================================
+	// INTERNAL STATE
+	// ============================================================
+
+	/**
+	 * Indica si el componente está siendo previsualizado en editor.
+	 */
 	bool bIsInEditorPreview = false;
 
-	// E: Calcula y aplica la posición inicial en la órbita basándose en InitialPosition.
-	// I: Calculates and applies the starting position in the orbit based on InitialPosition.
+	/**
+	 * Calcula y aplica la posición orbital inicial.
+	 *
+	 * La posición se obtiene utilizando:
+	 * - periodo orbital
+	 * - excentricidad
+	 * - posición inicial normalizada
+	 */
 	void UpdateInitialOrbitPosition();
 
 private:
-	// E: Función para generar/actualizar el dibujo (Debug Lines) de la órbita en el editor.
-	// I: Function to generate/update the drawing (Debug Lines) of the orbit in the editor.
+
+	// ============================================================
+	// ORBIT VISUALIZATION
+	// ============================================================
+
+	/**
+	 * Genera la representación visual debug de la órbita.
+	 *
+	 * La órbita se dibuja mediante segmentos lineales
+	 * aproximando una trayectoria elíptica.
+	 *
+	 * @note Solo disponible en editor.
+	 */
 	void UpdateOrbitVisualization();
 
-	// E: Número de segmentos o líneas rectas usadas para dibujar la forma de la órbita.
-	// I: Number of segments or straight lines used to draw the shape of the orbit.
+	/**
+	 * Número de segmentos utilizados para aproximar la órbita.
+	 *
+	 * Valores elevados producen órbitas visualmente más suaves
+	 * a costa de mayor coste de debug rendering.
+	 */
 	UPROPERTY(EditAnywhere, Category = "Orbit Visualization", meta = (ClampMin = "8", ClampMax = "360"))
 	int32 OrbitSegments = 72;
 
-	// E: Color de la línea de la órbita al visualizarse en el editor.
-	// I: Color of the orbit line when visualized in the editor.
+	/**
+	 * Color utilizado para representar la órbita en editor.
+	 */
 	UPROPERTY(EditAnywhere, Category = "Orbit Visualization")
 	FColor OrbitColor = FColor::White;
 
-	// E: Grosor de las líneas dibujadas para representar la órbita.
-	// I: Thickness of the lines drawn to represent the orbit.
+	/**
+	 * Grosor visual de las líneas debug orbitales.
+	 */
 	UPROPERTY(EditAnywhere, Category = "Orbit Visualization", meta = (ClampMin = "0.1", ClampMax = "100000"))
 	float OrbitThickness = 5000.0f;
 
-	// E: Define si se debe dibujar o no la órbita en el visor del editor.
-	// I: Defines whether or not the orbit should be drawn in the editor viewport.
+	/**
+	 * Activa o desactiva la visualización orbital en editor.
+	 */
 	UPROPERTY(EditAnywhere, Category = "Orbit Visualization")
 	bool bShowOrbitInEditor = true;
 };
