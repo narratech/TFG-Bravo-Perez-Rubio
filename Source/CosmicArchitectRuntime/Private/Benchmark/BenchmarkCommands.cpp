@@ -4,8 +4,27 @@
 #include "Benchmark/BenchmarkManager.h"
 #include "Benchmark/BenchmarkRecorder.h"
 #include "Engine/World.h"
+#include "TimerManager.h"
 
 // COMANDOS BÁSICOS
+
+
+
+static FAutoConsoleCommandWithWorldAndArgs CmdRunAllTests(
+    TEXT("bm.run_all"),
+    TEXT("Run ALL benchmark tests in sequence (9 tests total)"),
+    FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(
+        [](const TArray<FString>& Args, UWorld* World)
+        {
+            if (!World) return;
+
+            if (UBenchmarkManager* Manager = UBenchmarkManager::Get(World))
+            {
+                Manager->RunAllTests();
+            }
+        }
+    )
+);
 
 static FAutoConsoleCommandWithWorldAndArgs CmdSpawnPlanets(
     TEXT("bm.spawn_planets"),

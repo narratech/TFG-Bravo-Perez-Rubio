@@ -52,6 +52,91 @@ void UBenchmarkManager::InitializeAssets(UMaterialInstance* InBaseMaterial, UMat
     UE_LOG(LogTemp, Log, TEXT("BenchmarkManager: Assets inicializados"));
 }
 
+void UBenchmarkManager::RunAllTests()
+{
+    if (bIsRunningAllTests)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("All tests already running"));
+        return;
+    }
+
+    UE_LOG(LogTemp, Warning, TEXT(""));
+    UE_LOG(LogTemp, Warning, TEXT("========================================"));
+    UE_LOG(LogTemp, Warning, TEXT("  STARTING ALL BENCHMARK TESTS"));
+    UE_LOG(LogTemp, Warning, TEXT("========================================"));
+    UE_LOG(LogTemp, Warning, TEXT(""));
+
+    bIsRunningAllTests = true;
+    AllTestsCurrentIndex = 0;
+    RunNextAllTest();
+}
+
+void UBenchmarkManager::RunNextAllTest()
+{
+    if (!bIsRunningAllTests) return;
+
+    // Si ya terminamos todos los tests
+    if (AllTestsCurrentIndex >= 9)
+    {
+        bIsRunningAllTests = false;
+        UE_LOG(LogTemp, Warning, TEXT(""));
+        UE_LOG(LogTemp, Warning, TEXT("========================================"));
+        UE_LOG(LogTemp, Warning, TEXT("  ALL BENCHMARK TESTS COMPLETED!"));
+        UE_LOG(LogTemp, Warning, TEXT("========================================"));
+        UE_LOG(LogTemp, Warning, TEXT(""));
+        return;
+    }
+
+    // Limpiar estado previo
+    StopBenchmark();
+    ClearPlanets();
+    ClearSimBodies();
+
+    UE_LOG(LogTemp, Warning, TEXT("----------------------------------------"));
+    UE_LOG(LogTemp, Warning, TEXT("  Test %d/9"), AllTestsCurrentIndex + 1);
+    UE_LOG(LogTemp, Warning, TEXT("----------------------------------------"));
+
+    // Ejecutar el test correspondiente
+    switch (AllTestsCurrentIndex)
+    {
+    case 0: RunPlanetScalingTest(); break;
+    case 1: RunClosePlanetTest(); break;
+    case 2: RunFoliagePerFrameTest(); break;
+    case 3: RunFoliageRadiusTest(); break;
+    case 4: RunClipmapResolutionTest(); break;
+    case 5: RunClipmapLevelsTest(); break;
+    case 6: RunOrbitSimulationTest(); break;
+    case 7: RunNBodySimulationTest(); break;
+    case 8:
+        // SystemGeneratorTest es síncrono, avanzar inmediatamente después
+        RunSystemGeneratorTest();
+        AllTestsCurrentIndex++;
+        OnAllTestsStepComplete();
+        return; // No continuar, OnAllTestsStepComplete ya programa el siguiente
+    }
+
+    // NO incrementar el índice aquí
+    // Se incrementará cuando el test secuencial termine
+}
+
+// Este método se llama cuando un test secuencial termina
+void UBenchmarkManager::OnAllTestsStepComplete()
+{
+    if (!bIsRunningAllTests) return;
+
+    UWorld* World = GetWorld();
+    if (!World) return;
+
+    // Pequeño delay para estabilización entre tests
+    World->GetTimerManager().SetTimer(
+        AllTestsTimerHandle,
+        this,
+        &UBenchmarkManager::RunNextAllTest,
+        2.0f,  // 2 segundos de pausa entre tests
+        false
+    );
+}
+
 void UBenchmarkManager::StartBenchmark()
 {
     UE_LOG(LogTemp, Warning, TEXT("Benchmark started"));
@@ -481,6 +566,12 @@ void UBenchmarkManager::OnSequentialTestComplete()
 
     UE_LOG(LogTemp, Warning, TEXT(""));
     UE_LOG(LogTemp, Warning, TEXT("=== Sequential Test Complete ==="));
+
+    if (bIsRunningAllTests)
+    {
+        AllTestsCurrentIndex++;
+        OnAllTestsStepComplete();
+    }
 }
 
 

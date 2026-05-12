@@ -12,6 +12,8 @@ class UCosmicNoiseClass;
 class UCosmicFoliageCollection;
 class ACosmicSystemGenerator;
 
+DECLARE_DELEGATE(FOnBenchmarkTestComplete);
+
 /**
  *
  */
@@ -67,28 +69,33 @@ public:
         float MediumLayerRadiusKm = 0.2f,
         float FarLayerRadiusKm = 0.5f
     );
-    void RunFoliagePerFrameTest(int32 MaxInstancesPerFrame);
+    void RunFoliagePerFrameTest(int32 MaxInstancesPerFrame = 0);
     void RunFoliageRadiusTest();
 
     // --- Clipmap Tests ---
-    void RunClipmapResolutionTest(int32 Resolution);
-    void RunClipmapLevelsTest(int32 Levels);
+    void RunClipmapResolutionTest(int32 Resolution = 0);
+    void RunClipmapLevelsTest(int32 Levels = 0);
 
     // --- Simulation Tests ---
-    void RunOrbitSimulationTest(int32 NumBodies);
-    void RunNBodySimulationTest(int32 NumBodies);
+    void RunOrbitSimulationTest(int32 NumBodies = 0);
+    void RunNBodySimulationTest(int32 NumBodies = 0);
     void SpawnSimBodies(int32 NumBodies, bool bNBodySimulation);
     void ClearSimBodies();
 
     // --- System Generator Test ---
-    void RunSystemGeneratorTest(int32 NumBodies);
+    void RunSystemGeneratorTest(int32 NumBodies = 0);
 
     // --- Métricas ---
     void BeginCapture(float DurationSeconds = 5.0f);
     void EndCapture();
     void SetCurrentTestParams(int32 NumObjects, const FString& TestName);
 
+    void RunAllTests();
+
+    FOnBenchmarkTestComplete OnSequentialTestCompleteDelegate;
+
 protected:
+
 
     virtual void OnWorldEndPlay(UWorld& InWorld) override;
 
@@ -168,6 +175,13 @@ private:
         None
     };
     ESequentialTestType CurrentSequentialTestType = ESequentialTestType::None;
+
+    int32 AllTestsCurrentIndex;
+    bool bIsRunningAllTests;
+    FTimerHandle AllTestsTimerHandle;
+
+    void RunNextAllTest();
+    void OnAllTestsStepComplete();
 
     void OnBenchmarkCaptureComplete();
     void RunNextSequentialStep();
