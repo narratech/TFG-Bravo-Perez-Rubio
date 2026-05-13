@@ -19,61 +19,70 @@ ACosmicSpherePlayer::ACosmicSpherePlayer()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	// E: Usamos PostPhysics para que la cámara y el modelo se alineen después de que Chaos calcule la colisión.
-	// I: We use PostPhysics so the camera and model align after Chaos calculates the collision.
+	// Ejecuta Tick después de la simulación física
+	// para alinear correctamente cámara y visuales.
 	PrimaryActorTick.TickGroup = TG_PostPhysics;
+
+	// Asigna automáticamente el control
+	// al jugador local principal.
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
 
 	// =========================================================================
 	// CREACIÓN DE COMPONENTES
 	// =========================================================================
 
+	// Cápsula principal utilizada para:
+	// - Colisiones
+	// - Movimiento físico
+	// - Interacción gravitacional
 	CapsuleComp = CreateDefaultSubobject<UCapsuleComponent>(TEXT("CapsuleComp"));
 	RootComponent = CapsuleComp;
 	CapsuleComp->InitCapsuleSize(40.0f, 90.0f);
 
-	// E: Habilitamos las físicas y deshabilitamos la gravedad por defecto de Unreal (Z- constante).
-	// I: Enable physics and disable Unreal's default gravity (constant Z-).
+	// Activa simulación física personalizada.
 	CapsuleComp->SetSimulatePhysics(true);
+
+	// Desactiva gravedad estándar de Unreal
+	// para utilizar gravedad esférica personalizada.
 	CapsuleComp->SetEnableGravity(false);
+
 	CapsuleComp->SetCollisionProfileName(TEXT("Pawn"));
 
-	// E: 2. Raíz visual estabilizada (Alineada estrictamente con el planeta).
-	// I: 2. Stabilized visual root (Strictly aligned with the planet).
+	// Nodo visual alineado estrictamente
+	// con la normal gravitacional local.
 	VisualRoot = CreateDefaultSubobject<USceneComponent>(TEXT("VisualRoot"));
 	VisualRoot->SetupAttachment(RootComponent);
 
-	// E: 3. Brazo de Cámara.
-	// I: 3. Camera Spring Arm.
+	// Sistema de cámara orbital desacoplada.
 	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp"));
 	SpringArmComp->SetupAttachment(VisualRoot);
 	SpringArmComp->TargetArmLength = 400.0f;
 	SpringArmComp->bUsePawnControlRotation = false;
 	SpringArmComp->bEnableCameraLag = true;
 
-	// E: 4. Cámara del Jugador.
-	// I: 4. Player Camera.
+	// Cámara principal controlada por el jugador.
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->SetupAttachment(SpringArmComp, USpringArmComponent::SocketName);
 	CameraComp->bUsePawnControlRotation = false;
 
-	// E: 5. Pivote para rotar al personaje hacia la dirección de movimiento.
-	// I: 5. Pivot to rotate the character towards the movement direction.
+	// Nodo utilizado para orientar visualmente
+	// el personaje hacia la dirección de movimiento.
 	MeshRoot = CreateDefaultSubobject<USceneComponent>(TEXT("MeshRoot"));
 	MeshRoot->SetupAttachment(VisualRoot);
 
-	// E: 6. Malla 3D del Jugador.
-	// I: 6. Player's 3D Mesh.
+	// Malla esquelética principal del jugador.
 	PlayerMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("PlayerMesh"));
 	PlayerMesh->SetupAttachment(MeshRoot);
-	PlayerMesh->SetRelativeLocation(FVector(0.0f, 0.0f, -40.0f)); // E: Compensa el radio de la esfera. I: Compensates for the sphere's radius.
 
-	// E: 7. Componente Gravitatorio del Plugin Cosmic Architect.
-	// I: 7. Cosmic Architect Plugin's Gravity Component.
+	// Compensa visualmente la altura
+	// respecto a la cápsula física.
+	PlayerMesh->SetRelativeLocation(FVector(0.0f, 0.0f, -40.0f));
+
+	// Componente responsable de calcular
+	// gravedad planetaria personalizada.
 	GravityComp = CreateDefaultSubobject<UCosmicGravityComponent>(TEXT("GravityComp"));
 
-	// E: Valores iniciales de cámara.
-	// I: Initial camera values.
+	// Estado inicial de orientación de cámara.
 	CameraYaw = 0.0f;
 	CameraPitch = -20.0f;
 }
@@ -82,8 +91,8 @@ void ACosmicSpherePlayer::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// E: Inicialización del sistema de inputs moderno de Unreal 5.
-	// I: Initialization of Unreal 5's modern input system.
+	// Inicializa el sistema moderno
+	// Enhanced Input de Unreal Engine 5.
 	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
 	{
 		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
@@ -95,6 +104,8 @@ void ACosmicSpherePlayer::BeginPlay()
 		}
 	}
 
+	// Sincroniza la masa física con el
+	// componente gravitacional personalizado.
 	CapsuleComp->SetMassOverrideInKg(NAME_None, GravityComp->Mass, true);
 }
 
@@ -102,6 +113,8 @@ void ACosmicSpherePlayer::SetupPlayerInputComponent(UInputComponent* PlayerInput
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
+	// Vincula acciones Enhanced Input
+	// con lógica C++ runtime.
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
 		if (IA_PlayerMove) { EnhancedInputComponent->BindAction(IA_PlayerMove, ETriggerEvent::Triggered, this, &ACosmicSpherePlayer::Move); }
@@ -115,12 +128,12 @@ void ACosmicSpherePlayer::SetupPlayerInputComponent(UInputComponent* PlayerInput
 //{
 //	Super::Tick(DeltaTime);
 //
-//	// E: Prevención de errores si faltan componentes clave.
-//	// I: Error prevention if key components are missing.
+//	// Validación de seguridad para evitar
+//	// acceso a componentes inválidos.
 //	if (!GravityComp || !VisualRoot || !MeshRoot) return;
 //
 //	// =========================================================================
-//	// 1. OBTENCIÓN DE GRAVEDAD (GRAVITY FETCHING)
+//	// 1. OBTENCIÓN DE GRAVEDAD
 //	// =========================================================================
 //
 //	FVector GravityDown = GravityComp->CurrentGravityDirection;
@@ -129,84 +142,101 @@ void ACosmicSpherePlayer::SetupPlayerInputComponent(UInputComponent* PlayerInput
 //	FVector TargetUp = -GravityDown;
 //
 //	// =========================================================================
-//	// 2. ALINEACIÓN INSTANTÁNEA (INSTANT ALIGNMENT)
+//	// 2. ALINEACIÓN INSTANTÁNEA
 //	// =========================================================================
 //
-//	// E: Proyectamos el vector frontal en el plano de la gravedad para evitar que el personaje se ladee ("Efecto Torre de Pisa").
-//	// I: We project the forward vector on the gravity plane to prevent the character from tilting ("Leaning Tower effect").
+//	// Proyecta el vector frontal sobre el plano
+//	// gravitacional para evitar inclinaciones laterales.
 //	FVector StableForward = FVector::VectorPlaneProject(VisualRoot->GetForwardVector(), TargetUp).GetSafeNormal();
 //	if (StableForward.IsNearlyZero()) {
 //		StableForward = FVector::CrossProduct(VisualRoot->GetRightVector(), TargetUp).GetSafeNormal();
 //	}
 //
-//	// E: Aplicamos la rotación estable al VisualRoot (Cámara y contenedor general).
-//	// I: Apply the stable rotation to the VisualRoot (Camera and general container).
+//	// Alineación gravitacional del contenedor visual.
 //	FQuat TargetVisualQuat = FRotationMatrix::MakeFromXZ(StableForward, TargetUp).ToQuat();
 //	VisualRoot->SetWorldRotation(TargetVisualQuat);
 //
 //	// =========================================================================
-//	// 3. PARENTESCO DINÁMICO (DYNAMIC PARENTING)
+//	// 3. PARENTESCO DINÁMICO
 //	// =========================================================================
 //
 //	HandleDynamicParenting();
 //
 //	// =========================================================================
-//	// 4. ROTACIÓN SUAVE DEL MODELO 3D (SMOOTH MESH ROTATION)
+//	// 4. ROTACIÓN SUAVE DEL MODELO 3D
 //	// =========================================================================
 //
 //	FVector MeshDesiredForward;
 //	if (!TargetFacingDirection.IsNearlyZero())
 //	{
-//		// E: Si nos estamos moviendo, queremos mirar hacia esa dirección de forma segura.
-//		// I: If we are moving, we want to face that direction safely.
+//		// Orienta el personaje hacia
+//		// la dirección de desplazamiento.
 //		MeshDesiredForward = FVector::VectorPlaneProject(TargetFacingDirection, TargetUp).GetSafeNormal();
 //	}
 //	else
 //	{
-//		// E: Si estamos quietos, mantenemos la orientación actual proyectada correctamente.
-//		// I: If standing still, we keep the current correctly projected orientation.
+//		// Mantiene orientación estable
+//		// mientras el jugador está quieto.
 //		MeshDesiredForward = FVector::VectorPlaneProject(MeshRoot->GetForwardVector(), TargetUp).GetSafeNormal();
 //	}
 //
 //	if (!MeshDesiredForward.IsNearlyZero())
 //	{
-//		// E: Interpolación suave (QInterpTo) para que el personaje gire la cintura con naturalidad.
-//		// I: Smooth interpolation (QInterpTo) so the character twists its waist naturally.
+//		// Interpolación suave para obtener
+//		// rotación visual natural.
 //		FQuat TargetMeshQuat = FRotationMatrix::MakeFromXZ(MeshDesiredForward, TargetUp).ToQuat();
 //		MeshRoot->SetWorldRotation(FMath::QInterpTo(MeshRoot->GetComponentQuat(), TargetMeshQuat, DeltaTime, 15.0f));
 //	}
 //}
+
 void ACosmicSpherePlayer::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	// Validación de seguridad para evitar
+	// acceso a componentes inválidos.
 	if (!VisualRoot || !MeshRoot || !CapsuleComp) return;
 
-	FVector GravityDown = GravityComp ? GravityComp->CurrentGravityDirection : FVector::DownVector * GravityAcceleration * 100; // Gravedad por defecto
+	// Obtiene gravedad personalizada activa
+	// o utiliza gravedad fallback por defecto.
+	FVector GravityDown = GravityComp ? GravityComp->CurrentGravityDirection : FVector::DownVector * GravityAcceleration * 100;
 
+	// Aplicación física de gravedad.
 	CapsuleComp->AddForce(GravityDown, NAME_None, true);
-	
+
+	// Vector Up gravitacional local.
 	FVector TargetUp = -GravityDown.GetSafeNormal();
 
+	// Proyecta el forward sobre el plano local
+	// para evitar inclinaciones laterales.
 	FVector StableForward = FVector::VectorPlaneProject(VisualRoot->GetForwardVector(), TargetUp).GetSafeNormal();
+
 	if (StableForward.IsNearlyZero()) {
 		StableForward = FVector::CrossProduct(VisualRoot->GetRightVector(), TargetUp).GetSafeNormal();
 	}
 
+	// Alineación gravitacional del contenedor visual.
 	FQuat TargetVisualQuat = FRotationMatrix::MakeFromXZ(StableForward, TargetUp).ToQuat();
 	VisualRoot->SetWorldRotation(TargetVisualQuat);
 
+	// Dirección objetivo utilizada para orientar
+	// visualmente el personaje.
 	FVector MeshDesiredForward = TargetFacingDirection.IsNearlyZero() ?
 		FVector::VectorPlaneProject(MeshRoot->GetForwardVector(), TargetUp).GetSafeNormal() :
 		FVector::VectorPlaneProject(TargetFacingDirection, TargetUp).GetSafeNormal();
 
 	if (!MeshDesiredForward.IsNearlyZero())
 	{
+		// Interpolación suave de orientación visual.
 		FQuat TargetMeshQuat = FRotationMatrix::MakeFromXZ(MeshDesiredForward, TargetUp).ToQuat();
 		MeshRoot->SetWorldRotation(FMath::QInterpTo(MeshRoot->GetComponentQuat(), TargetMeshQuat, DeltaTime, 15.0f));
 	}
 
+	// Actualización del estado de suelo.
 	bIsGroundedState = IsGrounded();
+
+	// Velocidad vertical relativa respecto
+	// al eje gravitacional local.
 	VerticalVelocity = FVector::DotProduct(CapsuleComp->GetComponentVelocity(), VisualRoot->GetUpVector());
 }
 
@@ -214,7 +244,9 @@ void ACosmicSpherePlayer::HandleDynamicParenting()
 {
 	AActor* NearestPlanet = nullptr;
 	float MinDist = TNumericLimits<float>::Max();
-	int32 CheckedPlanetsCount = 0; // E: Variable temporal para Debug. I: Temporary variable for Debug.
+
+	// Variable auxiliar utilizada para debugging.
+	int32 CheckedPlanetsCount = 0;
 
 	if (UCosmicGravitySubsystem* Subsystem = GetWorld()->GetSubsystem<UCosmicGravitySubsystem>())
 	{
@@ -224,12 +256,15 @@ void ACosmicSpherePlayer::HandleDynamicParenting()
 			{
 				if (ACosmicPlanet* PlanetActor = Cast<ACosmicPlanet>(PlanetComp->GetOwner()))
 				{
-					CheckedPlanetsCount++; // Contamos cuántos planetas reales estamos evaluando
+					// Contador de planetas válidos evaluados.
+					CheckedPlanetsCount++;
 
 					float Dist = FVector::Dist(GetActorLocation(), PlanetActor->GetActorLocation());
 					float RealRadiusCm = PlanetActor->RadiusKm * 100000.0f;
 					float DistToSurface = Dist - RealRadiusCm;
 
+					// Selecciona el planeta más cercano
+					// respecto a su superficie real.
 					if (DistToSurface < MinDist)
 					{
 						MinDist = DistToSurface;
@@ -241,73 +276,39 @@ void ACosmicSpherePlayer::HandleDynamicParenting()
 	}
 
 	// =========================================================================
-	// ZONA DE DEBUG (MUESTRA LA INFORMACIÓN EN PANTALLA CADA FRAME)
+	// ZONA DE DEBUG
 	// =========================================================================
-	//if (GEngine)
-	//{
-	//	// 1. Ver cuántos planetas hay registrados en tu mapa
-	//	GEngine->AddOnScreenDebugMessage(10, 0.0f, FColor::Cyan, FString::Printf(TEXT("Planetas evaluados: %d"), CheckedPlanetsCount));
 
-	//	if (NearestPlanet)
-	//	{
-	//		// 2. Ver a qué planeta estamos apuntando
-	//		GEngine->AddOnScreenDebugMessage(11, 0.0f, FColor::Yellow, FString::Printf(TEXT("Planeta más cercano: %s"), *NearestPlanet->GetName()));
+	// Debug visual runtime para:
+	// - Número de planetas evaluados
+	// - Planeta más cercano
+	// - Distancia a superficie
+	// - Estado de parenting dinámico
 
-	//		// 3. Ver la distancia matemática vs el Threshold (Si es menor, se pone verde. Si es mayor, naranja)
-	//		FColor DistColor = (MinDist <= ParentingDistanceThreshold) ? FColor::Green : FColor::Orange;
-	//		GEngine->AddOnScreenDebugMessage(12, 0.0f, DistColor, FString::Printf(TEXT("Distancia a Superficie: %.2f cm | Límite: %.2f cm"), MinDist, ParentingDistanceThreshold));
-	//	}
-	//	else
-	//	{
-	//		GEngine->AddOnScreenDebugMessage(11, 0.0f, FColor::Red, TEXT("No se encontró ningún planeta cercano."));
-	//	}
-	//}
-	//// =========================================================================
-
-	//if (NearestPlanet && MinDist <= ParentingDistanceThreshold)
-	//{
-	//	if (CurrentParentPlanet != NearestPlanet)
-	//	{
-	//		CurrentParentPlanet = NearestPlanet;
-	//		FAttachmentTransformRules AttachRules(EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld, false);
-	//		//SphereComp->SetSimulatePhysics(false);
-	//		AttachToActor(NearestPlanet, AttachRules);
-
-	//		// DEBUG: Aviso de que nos hemos pegado (Dura 3 segundos en pantalla)
-	//		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Emerald, FString::Printf(TEXT(">>> ATTACHED AL PLANETA %s <<<"), *NearestPlanet->GetName()));
-	//	}
-	//}
-	//else if (CurrentParentPlanet != nullptr)
-	//{
-	//	FDetachmentTransformRules DetachRules(EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, EDetachmentRule::KeepWorld, false);
-	//	DetachFromActor(DetachRules);
-	//	CurrentParentPlanet = nullptr;
-
-	//	// DEBUG: Aviso de que nos hemos soltado (Dura 3 segundos en pantalla)
-	//	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red, TEXT(">>> DETACHED (LIBRE EN EL ESPACIO) <<<"));
-	//}
+	// =========================================================================
 }
 
 void ACosmicSpherePlayer::Move(const FInputActionValue& Value)
 {
 	FVector2D MovementVector = Value.Get<FVector2D>();
 
-	// E: Si no hay input, reseteamos la dirección objetivo para que el modelo deje de intentar rotar.
-	// I: If no input, reset the target direction so the model stops trying to rotate.
+	// Reinicia la orientación objetivo cuando
+	// no existe movimiento activo.
 	if (MovementVector.IsNearlyZero()) { TargetFacingDirection = FVector::ZeroVector; return; }
 
 	if (VisualRoot && CameraComp && CapsuleComp)
 	{
 		FVector UpVector = VisualRoot->GetUpVector();
 
-		// E: Calculamos hacia dónde mira la cámara, ignorando si miramos hacia el cielo o el suelo.
-		// I: Calculate where the camera is looking, ignoring if we look at the sky or the ground.
+		// Proyección horizontal de orientación
+		// de cámara sobre la superficie local.
 		FVector ForwardOnGround = FVector::VectorPlaneProject(CameraComp->GetForwardVector(), UpVector).GetSafeNormal();
 		FVector RightOnGround = FVector::VectorPlaneProject(CameraComp->GetRightVector(), UpVector).GetSafeNormal();
 
-		// E: Creamos el vector direccional y aplicamos fuerza a la esfera para rodar.
-		// I: Create the directional vector and apply force to the sphere to roll.
-		TargetFacingDirection = (ForwardOnGround * MovementVector.Y) + (RightOnGround * MovementVector.X);
+		// Construye dirección final de movimiento
+		// relativa a la orientación de cámara.
+		TargetFacingDirection = ((ForwardOnGround * MovementVector.Y) + (RightOnGround * MovementVector.X)).GetSafeNormal();
+		// Aplicación física de movimiento.
 		CapsuleComp->AddForce(TargetFacingDirection * MovementForce);
 	}
 }
@@ -318,10 +319,13 @@ void ACosmicSpherePlayer::Look(const FInputActionValue& Value)
 
 	if (SpringArmComp)
 	{
-		// E: Actualizamos las rotaciones puras del brazo de la cámara.
-		// I: Update the pure rotations of the camera spring arm.
+		// Actualización acumulativa de rotación
+		// orbital de cámara.
 		CameraYaw += LookAxisVector.X;
-		CameraPitch = FMath::Clamp(CameraPitch + LookAxisVector.Y, -85.0f, 85.0f); // Evitamos dar volteretas. I: Prevent somersaults.
+
+		// Limita rotación vertical para evitar
+		// inversión completa de cámara.
+		CameraPitch = FMath::Clamp(CameraPitch + LookAxisVector.Y, -85.0f, 85.0f);
 
 		SpringArmComp->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.0f));
 	}
@@ -329,12 +333,14 @@ void ACosmicSpherePlayer::Look(const FInputActionValue& Value)
 
 void ACosmicSpherePlayer::Jump(const FInputActionValue& Value)
 {
-	// E: Solo saltamos si estamos en el suelo.
-	// I: Only jump if we are grounded.
+	// El salto únicamente puede ejecutarse
+	// mientras el jugador está en el suelo.
 	if (!IsGrounded()) return;
 
 	if (CapsuleComp && VisualRoot)
 	{
+		// Impulso aplicado sobre el eje Up
+		// gravitacional local.
 		CapsuleComp->AddImpulse(VisualRoot->GetUpVector() * 800.0f, NAME_None, true);
 	}
 }
@@ -343,30 +349,32 @@ bool ACosmicSpherePlayer::IsGrounded() const
 {
 	if (!CapsuleComp || !VisualRoot) return false;
 
-	// E: El rayo sale desde el centro de la cápsula hacia el suelo local (opuesto a UpVector).
-	// I: The ray starts from the capsule center towards the local ground (opposite to UpVector).
+	// Punto inicial del raycast de suelo.
 	FVector Start = GetActorLocation();
+
+	// Dirección gravitacional descendente local.
 	FVector Down = -VisualRoot->GetUpVector();
 
-	// E: La longitud del rayo = mitad de la cápsula + un pequeño margen de 15 cm.
-	// I: Ray length = half capsule height + a small 15 cm margin.
+	// Longitud del raycast utilizada para
+	// detectar superficies cercanas.
 	float HalfHeight = CapsuleComp->GetScaledCapsuleHalfHeight();
 	FVector End = Start + Down * (HalfHeight + 15.0f);
 
 	FHitResult Hit;
 	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(this); // E: Ignoramos al propio jugador. I: Ignore the player itself.
+
+	// Ignora colisiones contra el propio actor.
+	Params.AddIgnoredActor(this);
 
 	bool bHit = GetWorld()->LineTraceSingleByChannel(
 		Hit,
 		Start,
 		End,
-		ECC_Visibility, // E: Canal estándar; cámbialo a WorldStatic si prefieres. I: Standard channel; swap to WorldStatic if preferred.
+		ECC_Visibility,
 		Params
 	);
 
-	// E: (Opcional) Dibuja el rayo en pantalla para depuración. Comenta en producción.
-	// I: (Optional) Draw the ray on screen for debugging. Comment out in production.
+	// Debug visual opcional del raycast de suelo.
 	// DrawDebugLine(GetWorld(), Start, End, bHit ? FColor::Green : FColor::Red, false, -1.0f, 0, 2.0f);
 
 	return bHit;

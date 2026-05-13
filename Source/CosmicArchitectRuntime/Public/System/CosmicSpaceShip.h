@@ -1,4 +1,24 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+// ============================================================
+// Cosmic Architect
+// Archivo: CosmicSpaceShip.h
+// Módulo: CosmicArchitectRuntime
+//
+// Descripción:
+//     Pawn espacial diseñado para navegación 6DOF.
+//
+// Responsabilidades:
+//     - Movimiento espacial libre
+//     - Rotación física de la nave
+//     - Gestión de boost interestelar
+//     - Integración con Enhanced Input
+//     - Control de cámara del jugador
+//
+// Notas:
+//     - Utiliza simulación física basada en fuerzas.
+//     - El movimiento se implementa mediante thrust
+//       y torque aplicados sobre el mesh principal.
+//     - Diseñado para navegación espacial sin gravedad.
+// ============================================================
 
 #pragma once
 
@@ -7,113 +27,227 @@
 #include "InputActionValue.h"
 #include "CosmicSpaceShip.generated.h"
 
-// E: Clase principal de la nave espacial para el plugin CosmicArchitect.
-// I: Main spaceship class for the CosmicArchitect plugin.
+/**
+ * Pawn principal utilizado para navegación espacial 6DOF.
+ *
+ * Este Pawn implementa un sistema de control espacial basado en físicas:
+ *
+ * - Movimiento mediante fuerzas (thrusters)
+ * - Rotación mediante torque aplicado al cuerpo físico
+ * - Sistema de boost con modificación temporal de parámetros físicos
+ * - Cámara desacoplada mediante spring arm
+ * - Integración completa con Enhanced Input
+ *
+ * Está diseñado específicamente para entornos de simulación espacial
+ * sin gravedad o con gravedad mínima.
+ */
 UCLASS(Blueprintable, BlueprintType)
 class COSMICARCHITECTRUNTIME_API ACosmicSpaceShip : public APawn
 {
 	GENERATED_BODY()
 
 public:
-	// E: Constructor para inicializar componentes.
-	// I: Constructor to initialize components.
+
+	// ============================================================
+	// CONSTRUCTORA
+	// ============================================================
+
+	/**
+	 * Constructor de la nave espacial.
+	 *
+	 * Inicializa componentes, configuración física y estado base del Pawn.
+	 */
 	ACosmicSpaceShip();
 
 protected:
-	// E: Llamado al iniciar el juego.
-	// I: Called when the game starts.
+
+	/**
+	 * Inicialización del juego.
+	 *
+	 * Se encarga de configurar el estado inicial del Pawn
+	 * una vez comienza la simulación.
+	 */
 	virtual void BeginPlay() override;
 
-	// E: Configuración de los vínculos de entrada (teclado/ratón).
-	// I: Setup for input bindings (keyboard/mouse).
+	// ============================================================
+	// SISTEMA DE INPUT
+	// ============================================================
+
+	/**
+	 * Configura el sistema de input del jugador usando Enhanced Input.
+	 *
+	 * Responsabilidades:
+	 * - Movimiento 6DOF
+	 * - Control de orientación
+	 * - Alabeo (roll)
+	 * - Activación y gestión del boost
+	 *
+	 * @param PlayerInputComponent Componente de input del jugador.
+	 */
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	// E: Componente de malla que servirá como raíz física.
-	// I: Mesh component that will serve as the physical root.
+	// ============================================================
+	// COMPONENTES
+	// ============================================================
+
+	/**
+	 * Mesh principal de la nave.
+	 *
+	 * Responsable de:
+	 * - Simulación física
+	 * - Colisiones
+	 * - Aplicación de fuerzas y torque
+	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Componentes")
 	class UStaticMeshComponent* ShipMesh;
 
-	// E: Brazo elástico para la cámara que suaviza el movimiento.
-	// I: Spring arm for the camera that smoothes movement.
+	/**
+	 * Spring Arm para la cámara.
+	 *
+	 * Permite suavizar el movimiento de cámara
+	 * y desacoplarla parcialmente de la nave.
+	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Componentes")
 	class USpringArmComponent* SpringArmComp;
 
-	// E: Cámara principal del jugador.
-	// I: Main player camera.
+	/**
+	 * Cámara principal del jugador.
+	 *
+	 * Representa la vista principal en primera/tercera persona espacial.
+	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Componentes")
 	class UCameraComponent* CameraComp;
 
-	// E: Multiplicador de fuerza para el movimiento lineal.
-	// I: Force multiplier for linear movement.
+	// ============================================================
+	// VARIABLES DE MOVIMIENTO
+	// ============================================================
+
+	/**
+	 * Fuerza base aplicada por los propulsores.
+	 *
+	 * A mayor valor, mayor aceleración lineal de la nave.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Fisicas")
 	float ThrusterForce = 500000.0f;
 
-	// E: Multiplicador de fuerza para el giro de la nave.
-	// I: Force multiplier for ship rotation.
+	/**
+	 * Torque base para rotación (pitch/yaw).
+	 *
+	 * Controla la sensibilidad de giro de la nave.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Fisicas")
 	float RotationTorque = 300000.0f;
 
-	// E: Multiplicador de fuerza para el alabeo de la nave.
-	// I: Force multiplier for ship rotation.
+	/**
+	 * Torque aplicado para el alabeo (roll).
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Fisicas")
 	float AlabeoTorque = 300000.0f;
 
+	/**
+	 * Multiplicador de potencia durante el boost.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Fisicas")
 	float BoostIncreasePower = 50.0f;
 
-	// E: Contexto que define qué teclas activan qué acciones.
-	// I: Context defining which keys trigger which actions.
+	// ============================================================
+	// CONFIGURACIÓN DE INPUT
+	// ============================================================
+
+	/**
+	 * Contexto de input por defecto (Enhanced Input).
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
 	class UInputMappingContext* DefaultMappingContext;
 
-	// E: Acción de entrada para traslación (W,A,S,D,Q,E).
-	// I: Input action for translation (W,A,S,D,Q,E).
+	/**
+	 * Acción de input para traslación 3D.
+	 *
+	 * Ejes:
+	 * - Forward / Backward
+	 * - Right / Left
+	 * - Up / Down
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
 	class UInputAction* IA_Traslacion;
 
-	// E: Acción de entrada para mirar (Ratón X/Y).
-	// I: Input action for looking (Mouse X/Y).
+	/**
+	 * Acción de input para orientación de la nave.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
 	class UInputAction* IA_Orientacion;
 
-	// E: Acción de entrada para giro lateral (Roll).
-	// I: Input action for lateral roll.
+	/**
+	 * Acción de input para alabeo (roll).
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
 	class UInputAction* IA_Alabeo;
 
-	// E: Acción de entrada para modo velocidad interestelar.
-	// I: Input action for interstelar speed.
+	/**
+	 * Acción de input para activar boost.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
 	class UInputAction* IA_Boost;
-	
 
 private:
-	// E: Lógica para mover la nave en el espacio.
-	// I: Logic to move the ship in space.
+
+	// ============================================================
+	// SISTEMA DE MOVIMIENTO
+	// ============================================================
+
+	/**
+	 * Aplica traslación mediante fuerzas físicas.
+	 *
+	 * @param Value Vector de entrada del jugador.
+	 */
 	void AplicarTraslacion(const FInputActionValue& Value);
 
-	// E: Lógica para rotar el morro de la nave.
-	// I: Logic to rotate the ship's nose.
+	/**
+	 * Aplica torque para orientación de la nave.
+	 *
+	 * @param Value Entrada de rotación del jugador.
+	 */
 	void AplicarOrientacion(const FInputActionValue& Value);
 
-	// E: Lógica para inclinar la nave lateralmente.
-	// I: Logic to tilt the ship laterally.
+	/**
+	 * Aplica torque de alabeo (roll).
+	 *
+	 * @param Value Entrada de roll del jugador.
+	 */
 	void AplicarAlabeo(const FInputActionValue& Value);
 
+	/**
+	 * Activa el sistema de boost.
+	 */
 	void StartBoost(const FInputActionValue& Value);
 
+	/**
+	 * Desactiva el boost y restaura parámetros físicos.
+	 */
 	void EndBoost(const FInputActionValue& Value);
 
-	// E: Velocidad de frenado cuando se suelta el boost
-    // I: Braking speed when boost is released
+	// ============================================================
+	// SISTEMA DE BOOST
+	// ============================================================
+
+	/**
+	 * Velocidad de frenado al salir del boost.
+	 */
 	UPROPERTY(EditAnywhere, Category = "Movement")
 	float BrakingSpeed;
 
-	// E: Damping lineal original para restaurar después del boost
-	// I: Original linear damping to restore after boost
+	/**
+	 * Damping lineal original para restauración tras boost.
+	 */
 	float OriginalLinearDamping;
 
+	/**
+	 * Gestiona el estado interno del sistema de boost.
+	 */
 	void SetBoost(const FInputActionValue& Value);
 
+	/**
+	 * Indica si el boost está activo.
+	 */
 	bool bBoostMode = false;
 };

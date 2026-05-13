@@ -15,10 +15,16 @@
 #include "Engine/DirectionalLight.h"
 #include "Materials/MaterialInstance.h"
 
+/**
+ * Constructor del generador del sistema cósmico.
+ *
+ * Inicializa la configuración base del actor y los parámetros
+ * necesarios para la generación procedural del sistema.
+ */
 ACosmicSystemGenerator::ACosmicSystemGenerator()
 {
-    // E: Desactivamos el Tick porque no necesitamos actualizaciones por frame.
-    // I: Disable Tick as we don't need per-frame updates.
+
+    // Tick habilitado para depuración en editor.
 
     PrimaryActorTick.bCanEverTick = true;
 #if !WITH_EDITOR
@@ -28,14 +34,16 @@ ACosmicSystemGenerator::ACosmicSystemGenerator()
     Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
     RootComponent = Root;
 
-    // E: Inicialización de variables por defecto.
-    // I: Default variable initialization.
+    // Tamaño del volumen del sistema en kilómetros.
+
     VolumeSizeKm = FVector(2000.0f, 2000.0f, 5.0f); // 20 Km
+
+    // Número de cuerpos celestes a generar.
+
     NumberOfBodies = 5;
     Seed = 12345;
 
-    // E: Rango de diámetro por defecto: entre 100 metros (0.1 km) y 500 metros (0.5 km).
-    // I: Default diameter range: between 100 meters (0.1 km) and 500 meters (0.5 km).
+    // Rango de diámetro por defecto: entre 100 metros (0.1 km) y 500 metros (0.5 km).
     BodyDiameterRangeKm = FVector2D(0.1f, 0.5f);
 
     MinDistanceBetweenBodies = 1.0f; // 1 Km
@@ -463,8 +471,7 @@ void ACosmicSystemGenerator::GenerateBodies()
 
 void ACosmicSystemGenerator::GenerateWithRandomSeed()
 {
-    // E: Generar semilla basada en tiempo del sistema y dirección de memoria.
-    // I: Generate seed based on system time and memory address.
+    //Generar semilla basada en tiempo del sistema y dirección de memoria.
     int32 RandomSeed = 0;
     RandomSeed += static_cast<int32>(FDateTime::Now().GetTicks());
     RandomSeed += static_cast<int32>(FPlatformTime::Cycles());
@@ -477,8 +484,8 @@ void ACosmicSystemGenerator::GenerateWithRandomSeed()
 
 void ACosmicSystemGenerator::ClearBodies()
 {
-    // E: Recorremos el array y destruimos los actores válidos.
-    // I: Iterate through the array and destroy valid actors.
+    //Recorremos el array y destruimos los actores válidos.
+
     for (AActor* Actor : GeneratedBodies)
     {
         if (ACosmicPlanet* Planet = Cast<ACosmicPlanet>(Actor))

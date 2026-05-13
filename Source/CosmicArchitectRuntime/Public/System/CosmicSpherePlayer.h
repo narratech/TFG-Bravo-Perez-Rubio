@@ -14,141 +14,262 @@ class USkeletalMeshComponent;
 class USpringArmComponent;
 class UCameraComponent;
 
-// E: Peón principal del plugin Cosmic Architect. Utiliza un colisionador esférico para evitar problemas de rotación física en planetas curvos.
-// I: Main pawn of the Cosmic Architect plugin. Uses a spherical collider to prevent physical rotation issues on curved planets.
+/**
+ * Pawn principal utilizado para navegación planetaria.
+ *
+ * Este Pawn implementa un sistema de movimiento basado en superficies esféricas:
+ *
+ * - Movimiento sobre planetas con gravedad personalizada
+ * - Alineación automática con el vector de gravedad
+ * - Sistema de cámara desacoplada tipo orbital
+ * - Parenting dinámico a cuerpos planetarios
+ * - Integración con sistema de gravedad propio
+ *
+ * La arquitectura está diseñada para evitar problemas de rotación
+ * en superficies curvas o planetas dinámicos.
+ */
 UCLASS(Blueprintable, BlueprintType)
 class COSMICARCHITECTRUNTIME_API ACosmicSpherePlayer : public APawn
 {
 	GENERATED_BODY()
 
 public:
-	// E: Constructor por defecto. Configura la jerarquía de componentes inicial.
-	// I: Default constructor. Sets up the initial component hierarchy.
+
+	/**
+	 * Constructor del jugador planetario.
+	 *
+	 * Inicializa la jerarquía de componentes y configuración base.
+	 */
 	ACosmicSpherePlayer();
 
-	// E: Gestiona la alineación gravitacional del modelo 3D frame a frame.
-	// I: Manages the gravitational alignment of the 3D model frame by frame.
+	/**
+	 * Tick principal del Pawn.
+	 *
+	 * Se encarga de:
+	 * - Actualizar alineación con gravedad
+	 * - Ajustar orientación visual
+	 * - Gestionar lógica runtime del jugador
+	 *
+	 * @param DeltaTime Tiempo entre frames.
+	 */
 	virtual void Tick(float DeltaTime) override;
 
 protected:
+
+	/**
+	 * Inicialización del Pawn al comenzar el juego.
+	 */
 	virtual void BeginPlay() override;
 
-	// E: Vincula los controles del jugador (Enhanced Input System).
-	// I: Binds the player controls (Enhanced Input System).
+	/**
+	 * Configuración del sistema Enhanced Input.
+	 *
+	 * @param PlayerInputComponent Componente de input del jugador.
+	 */
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	// =========================================================================
+	// ESTADO DEL MOVIMIENTO
+	// =========================================================================
+
+	/**
+	 * Indica si el jugador está apoyado sobre una superficie válida.
+	 */
 	UPROPERTY(BlueprintReadOnly, Category = "CosmicArchitect|Movement")
 	bool bIsGroundedState;
 
+	/**
+	 * Velocidad vertical acumulada sobre el eje de gravedad.
+	 */
 	UPROPERTY(BlueprintReadOnly, Category = "CosmicArchitect|Movement")
 	float VerticalVelocity;
 
 	// =========================================================================
-	// COMPONENTES DE JERARQUÍA (HIERARCHY COMPONENTS)
+	// COMPONENTES
 	// =========================================================================
 
+	/**
+	 * Componente de colisión principal del jugador.
+	 *
+	 * Responsable de:
+	 * - Colisiones físicas
+	 * - Interacción con el entorno
+	 * - Base del movimiento
+	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Componentes")
 	UCapsuleComponent* CapsuleComp;
 
-	// E: Nodo que no rota con la esfera física, sino que se alinea estrictamente con la gravedad (Eje Z siempre hacia "Arriba").
-	// I: Node that does not rotate with the physics sphere, but aligns strictly with gravity (Z axis always "Up").
+	/**
+	 * Raíz visual alineada con la gravedad local.
+	 *
+	 * Mantiene el eje Z orientado al vector Up gravitacional.
+	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Components")
 	USceneComponent* VisualRoot;
 
-	// E: Nodo responsable de rotar al personaje suavemente hacia donde camina.
-	// I: Node responsible for smoothly rotating the character towards where it walks.
+	/**
+	 * Nodo de orientación del mesh del jugador.
+	 *
+	 * Responsable de ajustar la dirección visual del personaje.
+	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Components")
 	USceneComponent* MeshRoot;
 
-	// E: La malla 3D de tu personaje.
-	// I: The 3D mesh of your character.
+	/**
+	 * Malla esquelética del personaje jugador.
+	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Components")
 	USkeletalMeshComponent* PlayerMesh;
 
-	// E: Brazo de la cámara.
-	// I: Camera spring arm.
+	/**
+	 * Spring arm para control de cámara.
+	 *
+	 * Permite suavizado y separación entre cámara y personaje.
+	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Components")
 	USpringArmComponent* SpringArmComp;
 
-	// E: Cámara del jugador.
-	// I: Player camera.
+	/**
+	 * Cámara principal del jugador.
+	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Components")
 	UCameraComponent* CameraComp;
 
-	// E: Componente del plugin responsable de recibir la atracción gravitacional.
-	// I: Plugin component responsible for receiving gravitational pull.
+	/**
+	 * Componente de gravedad personalizada.
+	 *
+	 * Calcula la fuerza gravitacional aplicada al jugador.
+	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Components")
 	UCosmicGravityComponent* GravityComp;
 
 	// =========================================================================
-	// PARÁMETROS CONFIGURABLES (CONFIGURABLE PARAMETERS)
+	// PARÁMETROS DE MOVIMIENTO
 	// =========================================================================
 
-	// E: Fuerza base aplicada a la esfera para moverse. Auméntala si incrementas la masa del jugador.
-	// I: Base force applied to the sphere to move. Increase it if you increase the player's mass.
+	/**
+	 * Fuerza base de movimiento en superficie.
+	 *
+	 * Debe escalarse según la masa del personaje.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Movement")
 	float MovementForce = 350000.0f;
 
+	/**
+	 * Intensidad de la gravedad aplicada al jugador.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Movement")
 	float GravityAcceleration = 9.8f;
 
-	// E: Sensibilidad de la cámara al mover el ratón o el joystick.
-	// I: Camera sensitivity when moving the mouse or joystick.
+	// =========================================================================
+	// CONFIGURACIÓN DE INPUT
+	// =========================================================================
+
+	/**
+	 * Sensibilidad del mouse para cámara.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Input")
 	float MouseSensitivity = 1.0f;
 
-	// E: Distancia (en unidades) a la superficie de un planeta a partir de la cual el jugador se hace hijo dinámico de este. Útil para planetas en movimiento.
-	// I: Distance (in units) to a planet's surface at which the player becomes its dynamic child. Useful for moving planets.
+	/**
+	 * Distancia máxima para activar parenting planetario.
+	 *
+	 * Permite heredar:
+	 * - Movimiento orbital
+	 * - Rotación del planeta
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Parenting")
 	float ParentingDistanceThreshold = 150.0f;
 
-	// E: Muestra en el editor el planeta al que el jugador está anclado actualmente. (Solo lectura).
-	// I: Shows in the editor the planet the player is currently attached to. (Read-only).
+	/**
+	 * Planeta actualmente asignado como referencia de parenting.
+	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Parenting")
 	AActor* CurrentParentPlanet;
 
 	// =========================================================================
-	// ENHANCED INPUT SYSTEM (NUEVO SISTEMA DE CONTROLES)
+	// ENHANCED INPUT SYSTEM
 	// =========================================================================
 
-	// E: Asigna aquí tu Input Mapping Context desde el Blueprint.
-	// I: Assign your Input Mapping Context here from the Blueprint.
+	/**
+	 * Contexto principal de input (Enhanced Input).
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
 	class UInputMappingContext* DefaultMappingContext;
 
-	// E: Acción para Caminar (Generalmente WASD / Joystick izquierdo).
-	// I: Action for Walking (Usually WASD / Left Joystick).
+	/**
+	 * Acción de movimiento del jugador.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
 	class UInputAction* IA_PlayerMove;
 
-	// E: Acción para Mirar (Ratón / Joystick derecho).
-	// I: Action for Looking (Mouse / Right Joystick).
+	/**
+	 * Acción de control de cámara.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
 	class UInputAction* IA_PlayerLook;
 
-	// E: Acción para Saltar (Barra espaciadora / Botón frontal inferior).
-	// I: Action for Jumping (Spacebar / Bottom face button).
+	/**
+	 * Acción de salto del jugador.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
 	class UInputAction* IA_PlayerJump;
 
 private:
-	// E: Funciones internas ejecutadas por los Inputs.
-	// I: Internal functions executed by the Inputs.
+
+	// =========================================================================
+	// SISTEMA DE MOVIMIENTO
+	// =========================================================================
+
+	/**
+	 * Aplica movimiento sobre la superficie planetaria.
+	 *
+	 * @param Value Entrada del jugador.
+	 */
 	void Move(const FInputActionValue& Value);
+
+	/**
+	 * Controla la rotación de cámara y orientación del jugador.
+	 *
+	 * @param Value Entrada del jugador.
+	 */
 	void Look(const FInputActionValue& Value);
+
+	/**
+	 * Ejecuta salto basado en el eje gravitacional.
+	 *
+	 * @param Value Entrada del jugador.
+	 */
 	void Jump(const FInputActionValue& Value);
 
-	// E: Comprueba si el jugador está tocando el suelo mediante un Raycast.
-	// I: Checks if the player is touching the ground via Raycast.
+	/**
+	 * Comprueba si el jugador está en contacto con el suelo.
+	 *
+	 * @return True si está en superficie válida.
+	 */
 	bool IsGrounded() const;
 
-	// E: Lógica que evalúa si el jugador debe anclarse a un planeta cercano para heredar su movimiento/rotación.
-	// I: Logic that evaluates if the player should attach to a nearby planet to inherit its movement/rotation.
+	/**
+	 * Gestiona el parenting dinámico sobre planetas cercanos.
+	 */
 	void HandleDynamicParenting();
 
-	// E: Variables de control de cámara.
-	// I: Camera control variables.
+	// =========================================================================
+	// ESTADO DE CÁMARA
+	// =========================================================================
+
+	/**
+	 * Rotación acumulada en eje Yaw de la cámara.
+	 */
 	float CameraYaw;
+
+	/**
+	 * Rotación acumulada en eje Pitch de la cámara.
+	 */
 	float CameraPitch;
+
+	/**
+	 * Dirección hacia la que se orienta el personaje.
+	 */
 	FVector TargetFacingDirection;
 };
