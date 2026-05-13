@@ -153,20 +153,17 @@ void UCosmicOrbitComponent::TickComponent(
 	// orbital desde herramientas editoriales.
 	const float ScaledDelta = DeltaTime * EditorSpeedMultiplier;
 
+	AActor* Owner = GetOwner();
+
 	// Evita cálculos inválidos o degenerados.
-	if (!ParentBody || OrbitalPeriod <= 0.0f || ScaledDelta <= KINDA_SMALL_NUMBER)
+	if (!ParentBody || OrbitalPeriod <= 0.0f || ScaledDelta <= KINDA_SMALL_NUMBER || !Owner)
 	{
 		return;
 	}
 
-	if (AActor* Owner = GetOwner())
-	{
-		// Rotación axial local aplicada independientemente
-		// del movimiento orbital.
-		FRotator DeltaRotation = FRotator(0.0f, SpinSpeed * ScaledDelta, 0.0f);
+	FRotator DeltaRotation = FRotator(0.0f, SpinSpeed * ScaledDelta, 0.0f);
 
-		Owner->AddActorLocalRotation(DeltaRotation);
-	}
+	Owner->AddActorLocalRotation(DeltaRotation);
 
 	// Avanza el tiempo orbital acumulado.
 	CurrentOrbitTime += ScaledDelta;
@@ -220,11 +217,8 @@ void UCosmicOrbitComponent::TickComponent(
 
 	FVector RotatedPos = OrbitTilt.RotateVector(OrbitalPos);
 
-	if (AActor* Owner = GetOwner())
-	{
-		// Movimiento relativo al cuerpo padre.
-		Owner->SetActorRelativeLocation(RotatedPos);
-	}
+	Owner->SetActorRelativeLocation(RotatedPos);
+
 }
 
 
