@@ -104,8 +104,6 @@ void FBenchmarkRunner::OnTestComplete()
     CurrentManager = nullptr;
 }
 
-// ==================== FUNCIONES DE PRUEBA ADICIONALES ====================
-
 void FBenchmarkRunner::RunClosePlanetScaling(UBenchmarkManager* Manager)
 {
     if (!Manager) return;
@@ -235,23 +233,23 @@ void FBenchmarkRunner::RunFullBenchmarkSuite(UBenchmarkManager* Manager)
     UE_LOG(LogTemp, Warning, TEXT("=== FULL BENCHMARK SUITE STARTING ==="));
     UE_LOG(LogTemp, Warning, TEXT("========================================"));
 
-    // 1. Planet Scaling
+    // Planet Scaling
     UE_LOG(LogTemp, Warning, TEXT("\n[1/5] Planet Scaling Test"));
     RunPlanetScaling(Manager);
 
-    // 2. Close Planets
+    // Close Planets
     UE_LOG(LogTemp, Warning, TEXT("\n[2/5] Close Planet Test"));
     RunClosePlanetScaling(Manager);
 
-    // 3. Foliage
+    // Foliage
     UE_LOG(LogTemp, Warning, TEXT("\n[3/5] Foliage Test"));
     RunFoliageBenchmark(Manager);
 
-    // 4. Clipmap
+    // Clipmap
     UE_LOG(LogTemp, Warning, TEXT("\n[4/5] Clipmap Test"));
     RunClipmapBenchmark(Manager);
 
-    // 5. Simulation
+    // Simulation
     UE_LOG(LogTemp, Warning, TEXT("\n[5/5] Simulation Test"));
     RunSimulationBenchmark(Manager);
 

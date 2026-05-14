@@ -36,7 +36,7 @@ ABenchmarkSimBody::ABenchmarkSimBody()
 	MeshComponent->SetCastShadow(false);
 	MeshComponent->SetReceivesDecals(false);
 
-	// IMPORTANTE: Hacerlo movable
+	// Hacerlo movable
 	MeshComponent->SetMobility(EComponentMobility::Movable);
 
 	// Crear componente orbital

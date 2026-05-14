@@ -46,24 +46,24 @@ public:
         UCosmicFoliageCollection* InFoliageCollection
     );
 
-    // --- Control general ---
+    // Control general
     void StartBenchmark();
     void StopBenchmark();
 
-    // --- Planets ---
+    // Planets
     void SetClipmapConfig(int32 BaseRes, int32 Levels);
     void SpawnPlanets(int32 NumPlanets, bool UseFoliage = false);
     void SpawnPlanetsNear(int32 NumPlanets, bool UseFoliage = true);
     void SpawnPlanetsFar(int32 NumPlanets, bool UseFoliage = false);
     void ClearPlanets();
 
-    // --- Tests ---
+    // Tests
     void RunPlanetScalingTest();
     void RunClosePlanetTest();
     void RunFoliageTest();
     void RunSimulationTest();
 
-    // --- Foliage Tests ---
+    // Foliage Tests
     void SetFoliageConfig(
         int32 InFoliageInstancesPerFrame = 50.f,
         float NearLayerRadiusKm = 0.05f,
@@ -73,20 +73,20 @@ public:
     void RunFoliagePerFrameTest(int32 MaxInstancesPerFrame = 0);
     void RunFoliageRadiusTest();
 
-    // --- Clipmap Tests ---
+    // Clipmap Tests
     void RunClipmapResolutionTest(int32 Resolution = 0);
     void RunClipmapLevelsTest(int32 Levels = 0);
 
-    // --- Simulation Tests ---
+    // Simulation Tests
     void RunOrbitSimulationTest(int32 NumBodies = 0);
     void RunNBodySimulationTest(int32 NumBodies = 0);
     void SpawnSimBodies(int32 NumBodies, bool bNBodySimulation);
     void ClearSimBodies();
 
-    // --- System Generator Test ---
+    // System Generator Test
     void RunSystemGeneratorTest(int32 NumBodies = 0);
 
-    // --- Métricas ---
+    // Métricas
     void BeginCapture(float DurationSeconds = 5.0f);
     void EndCapture();
     void SetCurrentTestParams(int32 NumObjects, const FString& TestName);

@@ -118,8 +118,7 @@ void UBenchmarkManager::RunNextAllTest()
         return; // No continuar, OnAllTestsStepComplete ya programa el siguiente
     }
 
-    // NO incrementar el índice aquí
-    // Se incrementará cuando el test secuencial termine
+    // No incrementar el índice aquí, se incrementará cuando el test secuencial termine
 }
 
 // Este método se llama cuando un test secuencial termina
@@ -743,7 +742,6 @@ void UBenchmarkManager::RunFoliageRadiusTest()
     };
 
     // Este test variará los radios de las capas
-    // Usaremos pasos predefinidos para las 3 capas
     SequentialTestSteps = { 0, 1, 2, 3, 4, 5 }; // Índices para diferentes configuraciones
     CurrentSequentialStepIndex = 0;
     CurrentSequentialTestType = ESequentialTestType::FoliageViewDistance;
@@ -803,7 +801,6 @@ void UBenchmarkManager::RunClipmapLevelsTest(int32 Levels)
             return;
         }
 
-        // Pasos de niveles a probar: 1, 2, 4, 6, 8
         SequentialTestSteps = { 1, 2, 4, 6, 8 };
         CurrentSequentialStepIndex = 0;
         CurrentSequentialTestType = ESequentialTestType::ClipmapLevels;
@@ -840,8 +837,6 @@ void UBenchmarkManager::RunOrbitSimulationTest(int32 NumBodies)
             UE_LOG(LogTemp, Warning, TEXT("Test already running. Stop it first."));
             return;
         }
-
-        // Pasos: 10, 50, 100, 200, 500 cuerpos
         SequentialTestSteps = { 10, 50, 100, 200, 500, 1000 };
         CurrentSequentialStepIndex = 0;
         CurrentSequentialTestType = ESequentialTestType::OrbitSimulation;
@@ -877,8 +872,6 @@ void UBenchmarkManager::RunNBodySimulationTest(int32 NumBodies)
             UE_LOG(LogTemp, Warning, TEXT("Test already running. Stop it first."));
             return;
         }
-
-        // Pasos: 10, 20, 50, 100, 200 cuerpos
         SequentialTestSteps = { 10, 20, 50, 100, 200 };
         CurrentSequentialStepIndex = 0;
         CurrentSequentialTestType = ESequentialTestType::NBodySimulation;

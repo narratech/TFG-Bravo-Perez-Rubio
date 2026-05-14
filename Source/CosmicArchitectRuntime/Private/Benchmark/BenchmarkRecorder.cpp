@@ -83,8 +83,7 @@ void FBenchmarkRecorder::StartRecording()
     FrameTimes.Empty();
     FrameTimes.Reserve(1000); // Reservar espacio para evitar realocaciones
 
-    // Activar stats del motor - forma correcta en UE5
-    // Los stats se activan mediante comandos de consola
+    // Activar stats del motor 
     if (GEngine && GEngine->GameViewport)
     {
         GEngine->Exec(GEngine->GameViewport->GetWorld(), TEXT("stat unit"));
@@ -122,13 +121,11 @@ FBenchmarkData FBenchmarkRecorder::GetCurrentData()
         Data.RenderThreadTimeMs = AccumulatedRenderThreadTime / FrameCount;
         Data.GPUTimeMs = AccumulatedGPUTime / FrameCount;
 
-        // El "1% low FPS" es el FPS promedio del 1% de los PEORES frames
-        // (los frames más LENTOS, con mayor tiempo en ms)
-        // ============================================================
+        // FPS promedio del 1% de frames más lentos
 
         if (FrameTimes.Num() >= 100) // Necesitamos al menos 100 frames
         {
-            // Ordenar de MAYOR a MENOR tiempo (los peores primero)
+            // Mayor tiempo primero
             TArray<float> SortedTimes = FrameTimes;
             SortedTimes.Sort([](float A, float B) { return A > B; }); // Descendente
 
@@ -180,7 +177,7 @@ void FBenchmarkRecorder::LogCurrentData(const FString& Label)
     UE_LOG(LogTemp, Warning, TEXT("VRAM:            %.2f GB"), Data.VRAM);
     UE_LOG(LogTemp, Warning, TEXT("============================================"));
 
-    // Formato CSV para fácil importación a Excel/Google Sheets
+    // Formato CSV
     FString CSVLine = FString::Printf(
         TEXT("CSV,%s,%d,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f"),
         *Label,
@@ -234,10 +231,10 @@ void FBenchmarkRecorder::RecordFrame(float DeltaTime)
     AccumulatedRenderThreadTime += RenderThreadTime;
 
     // GPU Time - Se obtiene consultando las estadísticas del frame anterior
-   // En UE5, el GPU time del frame N se reporta en el frame N+1 o N+2
+    // En UE5, el GPU time del frame N se reporta en el frame N+1 o N+2
     float GPUTimeMs = 0.0f;
 
-    // Método 1: Usando las estadísticas de RHI (más preciso)
+    // Usando las estadísticas de RHI
     if (GDynamicRHI)
     {
         // Obtener tiempo de GPU del último frame completado
@@ -249,8 +246,7 @@ void FBenchmarkRecorder::RecordFrame(float DeltaTime)
         }
     }
 
-    // Método 2 (fallback): Estimar GPU time basado en Frame Time total
-    // Si no se pudo obtener el tiempo real de GPU
+    // Estimar GPU time basado en Frame Time total si no se pudo obtener el tiempo real de GPU
     if (GPUTimeMs <= 0.0f)
     {
         // El GPU time suele ser similar al Render Thread time
@@ -267,7 +263,7 @@ void FBenchmarkRecorder::RecordFrame(float DeltaTime)
 
     AccumulatedGPUTime += GPUTimeMs;
 #else
-    // Sin STATS, usamos el frame time total dividido
+    // Sin stats, usamos el frame time total dividido
     float EstimatedGameThread = FrameTimeMs * 0.4f;
     float EstimatedRenderThread = FrameTimeMs * 0.3f;
     float EstimatedGPU = FrameTimeMs * 0.3f;
