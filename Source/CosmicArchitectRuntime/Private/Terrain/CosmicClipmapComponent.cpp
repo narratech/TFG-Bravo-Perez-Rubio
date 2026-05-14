@@ -635,40 +635,6 @@ void UCosmicClipmapComponent::ClearLevels()
     //UE_LOG(LogTemp, Warning, TEXT("UCosmicClipmapComponent::ClearLevels() - Limpiando %d niveles"), LevelsCleared);
 }
 
-void UCosmicClipmapComponent::ReasignLevels()
-{
-    int LevelsReasigned = 0;
-
-    //double UpdateMeshStartTime = FPlatformTime::Seconds();
-
-    if (ParentRoot)
-    {
-        // Obtenemos una copia de los hijos para evitar problemas al modificar el array mientras iteramos
-        TArray<USceneComponent*> Children = ParentRoot->GetAttachChildren();
-
-        for (USceneComponent* Child : Children)
-        {
-            if (UCosmicMeshComponent* TargetMesh = Cast<UCosmicMeshComponent>(Child))
-            {
-                if (TargetMesh->GetName().Contains("TerrainClipmapMesh"))
-                {
-                    if (!FarLevel) { FarLevel = TargetMesh; }
-                    else { Levels.Add(TargetMesh); }
-
-                    //if() TargetMesh
-                }
-            }
-        }
-    }
-
-    /*double UpdateMeshEndTime = FPlatformTime::Seconds();
-    double UpdateMeshTime = UpdateMeshEndTime - UpdateMeshStartTime;
-
-    UE_LOG(LogTemp, Warning, TEXT("Mallas reasignada en %.4f ms"), UpdateMeshTime * 1000.0);*/
-
-    //UE_LOG(LogTemp, Warning, TEXT("UCosmicClipmapComponent::ReasignLevels() - Reasignando %d niveles"), LevelsReasigned);
-}
-
 void UCosmicClipmapComponent::SetMaterialData(FColor Color1, FColor Color2, FColor ColorCold, FColor ColorHot,
     FColor ColorSlope, float ScaleL, float ScaleM, float ScaleS)
 {

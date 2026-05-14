@@ -26,7 +26,6 @@ public:
     void CreatePerformanceLevel(bool bActive);
 
     void ClearLevels();
-    void ReasignLevels();
     void SetMaterialData(FColor Color1, FColor Color2, FColor ColorCold, FColor ColorHot,
         FColor ColorSlope, float ScaleL, float ScaleM, float ScaleS);
     void RequestCompleteMeshUpdate();

@@ -503,7 +503,7 @@ void UBenchmarkManager::RunNextSequentialStep()
                 }
 
                 SetCurrentTestParams(CurrentStep, TestName);
-                BeginCapture(5.0f);
+                BeginCapture(8.0f);
             },
             1.5f, // Tiempo de estabilización
             false
@@ -872,7 +872,9 @@ void UBenchmarkManager::RunNBodySimulationTest(int32 NumBodies)
             UE_LOG(LogTemp, Warning, TEXT("Test already running. Stop it first."));
             return;
         }
-        SequentialTestSteps = { 10, 20, 50, 100, 200 };
+
+        // Pasos: 10, 50, 100, 200, 500, 1000, 2000 cuerpos
+        SequentialTestSteps = { 10, 50, 100, 200, 500, 1000, 2000 };
         CurrentSequentialStepIndex = 0;
         CurrentSequentialTestType = ESequentialTestType::NBodySimulation;
         bIsRunningSequentialTest = true;
