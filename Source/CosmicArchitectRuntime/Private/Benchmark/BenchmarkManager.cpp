@@ -425,14 +425,14 @@ void UBenchmarkManager::RunNextSequentialStep()
         break;
     case ESequentialTestType::FoliagePerFrame:
         SetFoliageConfig(CurrentStep);
-        SpawnPlanetsNear(1);
+        SpawnPlanets(1, true);
         break;
     case ESequentialTestType::FoliageViewDistance:
         if (CurrentStep < RadiusConfigs.Num())
         {
             FVector Radii = RadiusConfigs[CurrentStep];
             SetFoliageConfig(100, Radii.X, Radii.Y, Radii.Z);
-            SpawnPlanetsNear(1);
+            SpawnPlanets(1, true);
         }
         break;
     case ESequentialTestType::ClipmapResolution:
@@ -659,16 +659,6 @@ void UBenchmarkManager::RunClosePlanetTest()
     FBenchmarkRecorder::ClearCSVResults();
 
     RunNextSequentialStep();
-}
-
-void UBenchmarkManager::RunFoliageTest()
-{
-    UE_LOG(LogTemp, Warning, TEXT("RunFoliageTest - Not implemented yet"));
-}
-
-void UBenchmarkManager::RunSimulationTest()
-{
-    UE_LOG(LogTemp, Warning, TEXT("RunSimulationTest - Not implemented yet"));
 }
 
 

@@ -60,8 +60,6 @@ public:
     // Tests
     void RunPlanetScalingTest();
     void RunClosePlanetTest();
-    void RunFoliageTest();
-    void RunSimulationTest();
 
     // Foliage Tests
     void SetFoliageConfig(
