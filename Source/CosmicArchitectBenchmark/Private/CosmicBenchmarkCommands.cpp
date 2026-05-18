@@ -1,8 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "HAL/IConsoleManager.h"
-#include "Benchmark/BenchmarkManager.h"
-#include "Benchmark/BenchmarkRecorder.h"
+#include "CosmicBenchmarkManager.h"
+#include "CosmicBenchmarkRecorder.h"
 #include "Engine/World.h"
 #include "TimerManager.h"
 #include "Misc/Paths.h"
@@ -19,7 +19,7 @@ static FAutoConsoleCommandWithWorldAndArgs CmdRunAllTests(
         {
             if (!World) return;
 
-            if (UBenchmarkManager* Manager = UBenchmarkManager::Get(World))
+            if (UCosmicBenchmarkManager* Manager = UCosmicBenchmarkManager::Get(World))
             {
                 Manager->RunAllTests();
             }
@@ -35,7 +35,7 @@ static FAutoConsoleCommandWithWorldAndArgs CmdSpawnPlanets(
         {
             if (!World || Args.Num() == 0) return;
             int32 Num = FCString::Atoi(*Args[0]);
-            if (UBenchmarkManager* Manager = UBenchmarkManager::Get(World))
+            if (UCosmicBenchmarkManager* Manager = UCosmicBenchmarkManager::Get(World))
             {
                 Manager->SpawnPlanets(Num);
             }
@@ -61,7 +61,7 @@ static FAutoConsoleCommandWithWorldAndArgs CmdSetClipmap(
                     if (Key == "levels") Levels = FCString::Atoi(*Value);
                 }
             }
-            if (UBenchmarkManager* Manager = UBenchmarkManager::Get(World))
+            if (UCosmicBenchmarkManager* Manager = UCosmicBenchmarkManager::Get(World))
             {
                 Manager->SetClipmapConfig(BaseRes, Levels);
             }
@@ -76,7 +76,7 @@ static FAutoConsoleCommandWithWorldAndArgs CmdClear(
         [](const TArray<FString>& Args, UWorld* World)
         {
             if (!World) return;
-            if (UBenchmarkManager* Manager = UBenchmarkManager::Get(World))
+            if (UCosmicBenchmarkManager* Manager = UCosmicBenchmarkManager::Get(World))
             {
                 Manager->ClearPlanets();
             }
@@ -93,7 +93,7 @@ static FAutoConsoleCommandWithWorldAndArgs CmdRunPlanetTest(
         [](const TArray<FString>& Args, UWorld* World)
         {
             if (!World) return;
-            if (UBenchmarkManager* Manager = UBenchmarkManager::Get(World))
+            if (UCosmicBenchmarkManager* Manager = UCosmicBenchmarkManager::Get(World))
             {
                 Manager->RunPlanetScalingTest();
             }
@@ -108,7 +108,7 @@ static FAutoConsoleCommandWithWorldAndArgs CmdRunClosePlanetTest(
         [](const TArray<FString>& Args, UWorld* World)
         {
             if (!World) return;
-            if (UBenchmarkManager* Manager = UBenchmarkManager::Get(World))
+            if (UCosmicBenchmarkManager* Manager = UCosmicBenchmarkManager::Get(World))
             {
                 Manager->RunClosePlanetTest();
             }
@@ -128,7 +128,7 @@ static FAutoConsoleCommandWithWorldAndArgs CmdFoliagePerFrameTest(
         {
             if (!World) return;
             int32 MaxPerFrame = (Args.Num() > 0) ? FCString::Atoi(*Args[0]) : 0;
-            if (UBenchmarkManager* Manager = UBenchmarkManager::Get(World))
+            if (UCosmicBenchmarkManager* Manager = UCosmicBenchmarkManager::Get(World))
             {
                 Manager->RunFoliagePerFrameTest(MaxPerFrame);
             }
@@ -144,7 +144,7 @@ static FAutoConsoleCommandWithWorldAndArgs CmdFoliageRadiusTest(
         [](const TArray<FString>& Args, UWorld* World)
         {
             if (!World) return;
-            if (UBenchmarkManager* Manager = UBenchmarkManager::Get(World))
+            if (UCosmicBenchmarkManager* Manager = UCosmicBenchmarkManager::Get(World))
             {
                 Manager->RunFoliageRadiusTest();
             }
@@ -170,7 +170,7 @@ static FAutoConsoleCommandWithWorldAndArgs CmdClipmapResolutionTest(
                 Resolution = FCString::Atoi(*Args[0]);
             }
 
-            if (UBenchmarkManager* Manager = UBenchmarkManager::Get(World))
+            if (UCosmicBenchmarkManager* Manager = UCosmicBenchmarkManager::Get(World))
             {
                 Manager->RunClipmapResolutionTest(Resolution);
             }
@@ -190,7 +190,7 @@ static FAutoConsoleCommandWithWorldAndArgs CmdClipmapLevelsTest(
 
             int32 Levels = (Args.Num() > 0) ? FCString::Atoi(*Args[0]) : 0;
 
-            if (UBenchmarkManager* Manager = UBenchmarkManager::Get(World))
+            if (UCosmicBenchmarkManager* Manager = UCosmicBenchmarkManager::Get(World))
             {
                 Manager->RunClipmapLevelsTest(Levels);
             }
@@ -210,7 +210,7 @@ static FAutoConsoleCommandWithWorldAndArgs CmdOrbitSimTest(
         {
             if (!World) return;
             int32 NumBodies = (Args.Num() > 0) ? FCString::Atoi(*Args[0]) : 0;
-            if (UBenchmarkManager* Manager = UBenchmarkManager::Get(World))
+            if (UCosmicBenchmarkManager* Manager = UCosmicBenchmarkManager::Get(World))
             {
                 Manager->RunOrbitSimulationTest(NumBodies);
             }
@@ -228,7 +228,7 @@ static FAutoConsoleCommandWithWorldAndArgs CmdNBodySimTest(
         {
             if (!World) return;
             int32 NumBodies = (Args.Num() > 0) ? FCString::Atoi(*Args[0]) : 0;
-            if (UBenchmarkManager* Manager = UBenchmarkManager::Get(World))
+            if (UCosmicBenchmarkManager* Manager = UCosmicBenchmarkManager::Get(World))
             {
                 Manager->RunNBodySimulationTest(NumBodies);
             }
@@ -248,7 +248,7 @@ static FAutoConsoleCommandWithWorldAndArgs CmdSystemGenTest(
         {
             if (!World) return;
             int32 NumBodies = (Args.Num() > 0) ? FCString::Atoi(*Args[0]) : 0;
-            if (UBenchmarkManager* Manager = UBenchmarkManager::Get(World))
+            if (UCosmicBenchmarkManager* Manager = UCosmicBenchmarkManager::Get(World))
             {
                 Manager->RunSystemGeneratorTest(NumBodies);
             }
@@ -267,7 +267,7 @@ static FAutoConsoleCommandWithWorldAndArgs CmdBeginCapture(
             if (!World) return;
             float Duration = 5.0f;
             if (Args.Num() > 0) Duration = FCString::Atof(*Args[0]);
-            if (UBenchmarkManager* Manager = UBenchmarkManager::Get(World))
+            if (UCosmicBenchmarkManager* Manager = UCosmicBenchmarkManager::Get(World))
             {
                 Manager->BeginCapture(Duration);
             }
@@ -282,7 +282,7 @@ static FAutoConsoleCommandWithWorldAndArgs CmdEndCapture(
         [](const TArray<FString>& Args, UWorld* World)
         {
             if (!World) return;
-            if (UBenchmarkManager* Manager = UBenchmarkManager::Get(World))
+            if (UCosmicBenchmarkManager* Manager = UCosmicBenchmarkManager::Get(World))
             {
                 Manager->EndCapture();
             }
@@ -298,7 +298,7 @@ static FAutoConsoleCommandWithWorldAndArgs CmdExportResults(
     FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(
         [](const TArray<FString>& Args, UWorld* World)
         {
-            FBenchmarkData Data = FBenchmarkRecorder::GetCurrentData();
+            FBenchmarkData Data = FCosmicBenchmarkRecorder::GetCurrentData();
 
             // Formato CSV
             FString CSVLine = FString::Printf(

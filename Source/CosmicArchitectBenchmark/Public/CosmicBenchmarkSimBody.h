@@ -4,19 +4,19 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "BenchmarkSimBody.generated.h"
+#include "CosmicBenchmarkSimBody.generated.h"
 
 class UCosmicOrbitComponent;
 class UCosmicGravityComponent;
 class UStaticMeshComponent;
 
 UCLASS()
-class COSMICARCHITECTRUNTIME_API ABenchmarkSimBody : public AActor
+class COSMICARCHITECTBENCHMARK_API ACosmicBenchmarkSimBody : public AActor
 {
 	GENERATED_BODY()
-	
+
 public:
-	ABenchmarkSimBody();
+	ACosmicBenchmarkSimBody();
 
 	// Componente de malla básico (esfera simple)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")

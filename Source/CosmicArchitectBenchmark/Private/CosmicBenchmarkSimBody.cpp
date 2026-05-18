@@ -1,6 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Benchmark/BenchmarkSimBody.h"
+#include "CosmicBenchmarkSimBody.h"
 #include "Simulation/CosmicOrbitComponent.h"
 #include "Simulation/CosmicGravityComponent.h"
 #include "Simulation/CosmicGravitySubsystem.h"
@@ -8,7 +8,7 @@
 #include "Engine/StaticMesh.h"
 #include "UObject/ConstructorHelpers.h"
 
-ABenchmarkSimBody::ABenchmarkSimBody()
+ACosmicBenchmarkSimBody::ACosmicBenchmarkSimBody()
 {
 	PrimaryActorTick.bCanEverTick = false; // El OrbitComponent ya hace tick
 
@@ -45,7 +45,7 @@ ABenchmarkSimBody::ABenchmarkSimBody()
 	GravityComponent = CreateDefaultSubobject<UCosmicGravityComponent>(TEXT("GravityComponent"));
 }
 
-void ABenchmarkSimBody::InitRandomOrbit(AActor* InParentBody, float InSemiMajorAxisKm)
+void ACosmicBenchmarkSimBody::InitRandomOrbit(AActor* InParentBody, float InSemiMajorAxisKm)
 {
 	if (!OrbitComponent) return;
 
@@ -62,7 +62,7 @@ void ABenchmarkSimBody::InitRandomOrbit(AActor* InParentBody, float InSemiMajorA
 	OrbitComponent->SpinSpeed = FMath::FRandRange(-45.0f, 45.0f);
 }
 
-void ABenchmarkSimBody::InitGravityComponent(bool Nbody)
+void ACosmicBenchmarkSimBody::InitGravityComponent(bool Nbody)
 {
 	if (!GravityComponent) return;
 
@@ -72,7 +72,7 @@ void ABenchmarkSimBody::InitGravityComponent(bool Nbody)
 	GravityComponent->RadiusKm = 0.01f;
 }
 
-void ABenchmarkSimBody::InitAsCentralBody()
+void ACosmicBenchmarkSimBody::InitAsCentralBody()
 {
 	if (OrbitComponent)
 	{

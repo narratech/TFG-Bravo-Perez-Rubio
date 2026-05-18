@@ -20,6 +20,10 @@ public class CosmicArchitectBenchmark : ModuleRules
             {        
                 "Core",
                 "CosmicArchitectRuntime",
+                "CosmicArchitectFoliage",
+                "CosmicArchitectNoise",
+                "RHI",
+                "RenderCore"
             }
             );
 
@@ -29,7 +33,20 @@ public class CosmicArchitectBenchmark : ModuleRules
             {
 				"CoreUObject",
                 "Engine",
+                "Slate",
+                "SlateCore"
             }
             );
+
+        if (Target.Platform == UnrealTargetPlatform.Win64)
+        {
+            PublicSystemLibraries.Add("DXGI.lib");
+            PublicSystemLibraries.Add("D3D11.lib");
+        }
+
+        if (Target.bBuildEditor)
+        {
+            PrivateDependencyModuleNames.AddRange(new string[] { "UnrealEd" });
+        }
     }
 }
