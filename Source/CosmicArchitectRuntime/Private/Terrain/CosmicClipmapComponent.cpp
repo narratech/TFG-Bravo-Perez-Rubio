@@ -20,11 +20,9 @@
 #include "ModulesBridge/CosmicBenchmarkBridge.h"
 
 
-// Sets default values for this component's properties
 UCosmicClipmapComponent::UCosmicClipmapComponent()
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
+
     bTickInEditor = true;
 
 	PrimaryComponentTick.bCanEverTick = true;
@@ -61,7 +59,7 @@ bool UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePo
     return false;
 }
 
-// Called when the game starts
+
 void UCosmicClipmapComponent::BeginPlay()
 {
 
@@ -100,7 +98,7 @@ void UCosmicClipmapComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) 
 }
 
 
-// Called every frame
+
 void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
