@@ -16,6 +16,9 @@ public:
 	int32 Seed;
 
 	UPROPERTY(EditAnywhere, Category = "Noise Settings")
+	float HeightNormalizationScale = 1.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Noise Settings")
 	FCosmicNoiseDataLayer ContinentalLayer;
 
 	UPROPERTY(EditAnywhere, Category = "Noise Settings")
@@ -34,6 +37,7 @@ public:
 	FCosmicNoiseBiomeParameters BiomeParameters;
 
 	void Initialize(int32 InSeed,
+		float InHeightNormalizationScale,
 		FCosmicNoiseBiomeParameters InBiomeParameters,
 		FCosmicNoiseDataLayer InContinental,
 		FCosmicNoiseDataLayer InMountain,

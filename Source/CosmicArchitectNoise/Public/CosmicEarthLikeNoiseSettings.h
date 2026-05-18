@@ -17,6 +17,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Noise Settings")
 	int32 Seed;
 
+	UPROPERTY(EditAnywhere, Category = "Noise Settings", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float HeightNormalizationScale = 1.0f;
+
 	UPROPERTY(EditAnywhere, Category = "Noise Settings")
 	FCosmicNoiseDataLayer ContinentalLayer;
 

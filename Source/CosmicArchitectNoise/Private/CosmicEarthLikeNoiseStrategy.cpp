@@ -5,6 +5,7 @@
 
 void FCosmicEarthLikeNoiseStrategy::Initialize(
     int32 InSeed,
+    float InHeightNormalizationScale,
     FCosmicNoiseBiomeParameters InBiomeParameters,
     FCosmicNoiseDataLayer InContinental,
     FCosmicNoiseDataLayer InMountain,
@@ -13,6 +14,7 @@ void FCosmicEarthLikeNoiseStrategy::Initialize(
     FCosmicNoiseDataLayer InRiver)
 {
     Seed = InSeed;
+    HeightNormalizationScale = InHeightNormalizationScale;
     BiomeParameters = InBiomeParameters;
 
     ContinentalLayer = InContinental;
@@ -89,7 +91,8 @@ void FCosmicEarthLikeNoiseStrategy::EvaluatePoint(
     float BaseHeight = (Continent - 0.5f) * ContinentalLayer.Amplitude;
 
     // MONTANAS
-    float Mountain = FMath::Max(0.0f, MountainNoise.GetNoise(X, Y, Z));
+    float MountainValue = MountainNoise.GetNoise(X, Y, Z);
+    float Mountain = FMath::Max(0.0f, MountainValue);
     float MountainMask = FMath::SmoothStep(0.4f, 0.6f, Continent);
     float MountainHeight = Mountain * MountainLayer.Amplitude;
 
@@ -133,18 +136,22 @@ void FCosmicEarthLikeNoiseStrategy::EvaluatePoint(
 
     float Temperature = FMath::Clamp(BaseTemp + TempVar, 0.0f, 1.0f);
 
-    // HIELO (polar)
-    float IceMask = FMath::SmoothStep(0.6f, 1.0f, Latitude);
-
     // NORMALIZACION ALTURA
-    float MaxHeight = FMath::Max(
-        ContinentalLayer.Amplitude +
-        MountainLayer.Amplitude +
-        HillLayer.Amplitude,
-        1.0f
-    );
+    // Calcular el rango teórico verdadero (sin escala)
+    float TrueMinHeight = -0.5f * ContinentalLayer.Amplitude;
+    float TrueMaxHeight = 0.5f * ContinentalLayer.Amplitude
+        + MountainLayer.Amplitude
+        + HillLayer.Amplitude
+        + DetailLayer.Amplitude;   // Detail puede llegar hasta +Amplitude
 
-    float AltitudeNormalized = FMath::Clamp(Height / MaxHeight, 0.0f, 1.0f);
+    // Aplicar tu factor de escala configurable (opcional)
+    // Estrecha o ensancha el rango percibido en la visualización.
+    float NormalizedMin = TrueMinHeight * HeightNormalizationScale; // normalmente 0
+    float NormalizedMax = TrueMaxHeight * HeightNormalizationScale;
+
+    // Normalizar con desplazamiento
+    float AltitudeNormalized = (Height - NormalizedMin) / (NormalizedMax - NormalizedMin);
+    AltitudeNormalized = FMath::Clamp(AltitudeNormalized + Hills * 0.2f, 0.0f, 1.0f);
 
     float VisualTemp = FMath::Clamp(
         Temperature - (AltitudeNormalized * BiomeParameters.AltitudeTemperaturePenalty),
@@ -159,6 +166,6 @@ void FCosmicEarthLikeNoiseStrategy::EvaluatePoint(
         AltitudeNormalized,  // R
         VisualTemp,          // G
         Humidity,            // B     
-        IceMask              // A 
+        1.0f             // A 
     );
 }
