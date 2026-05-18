@@ -483,7 +483,7 @@ void UCosmicMeshComponent::RequestMeshUpdate(TSharedPtr<ICosmicNoiseStrategy> No
     // Centro del planeta 
     FVector PlanetCenter = GetOwner()->GetActorLocation();
 
-    NoiseTask = new FAsyncTask<FCosmicArchitectNoiseGenerator>(
+    NoiseTask = new FAsyncTask<FCosmicNoiseGenerationTask>(
         BaseVertices,
         PatchTransform,
         PlanetCenter,
@@ -531,19 +531,6 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
         CurrentColors,
         TArray<FProcMeshTangent>()
     );
-
-    /*UpdateMeshSection_LinearColor(
-        0,
-        CurrentVertices,
-        BaseNormals,
-        UVs,
-        CurrentColors,
-        BaseTangents
-    );*/
-
-    //double CreateEndTime = FPlatformTime::Seconds();
-    //UE_LOG(LogTemp, Warning, TEXT("UpdateMeshSelection: %.4f ms"), (CreateEndTime - CreateStartTime) * 1000.0);
-    
 
     SetCollisionEnabled(ECollisionEnabled::NoCollision);
 

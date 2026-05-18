@@ -4,75 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "CosmicOctree.h"
 #include "CosmicFoliageGenerationTask.h"
 #include "CosmicFoliageSpawner.generated.h"
 
 class UCosmicFoliageCollection;
 class ICosmicNoiseStrategy;
-
-USTRUCT()
-struct FCosmicHISMKey
-{
-    GENERATED_BODY()
-
-    UStaticMesh* Mesh = nullptr;
-    bool         bHasCollision = true;
-
-    bool operator==(const FCosmicHISMKey& Other) const
-    {
-        return Mesh == Other.Mesh && bHasCollision == Other.bHasCollision;
-    }
-};
-
-FORCEINLINE uint32 GetTypeHash(const FCosmicHISMKey& Key)
-{
-    return HashCombine(GetTypeHash(Key.Mesh), GetTypeHash(Key.bHasCollision));
-}
-
-USTRUCT()
-struct FCosmicFoliageCellData
-{
-    GENERATED_BODY()
-
-    TMap<FCosmicHISMKey, UHierarchicalInstancedStaticMeshComponent*> MeshComponents;
-};
-
-// Estructura para almacenar celdas por capa
-USTRUCT()
-struct FCosmicFoliageLayerCells
-{
-    GENERATED_BODY()
-
-    // Mapa de celda: datos de componentes para esta capa específica
-    TMap<FCubeMapCell, FCosmicFoliageCellData> ActiveCells;
-};
-
-USTRUCT()
-struct FCosmicHISMPoolList
-{
-    GENERATED_BODY()
-
-    TArray<UHierarchicalInstancedStaticMeshComponent*> Components;
-};
-
-struct FCosmicHISMPoolKey
-{
-    UStaticMesh* Mesh;
-    ECosmicFoliageLayer Layer;
-
-    bool operator==(const FCosmicHISMPoolKey& Other) const
-    {
-        return Mesh == Other.Mesh && Layer == Other.Layer;
-    }
-};
-
-FORCEINLINE uint32 GetTypeHash(const FCosmicHISMPoolKey& Key)
-{
-    return HashCombine(GetTypeHash(Key.Mesh), (uint32)Key.Layer);
-}
-
 
 /**
  * Componente que gestiona el spawning de foliage cerca del jugador

@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "ProceduralMeshComponent.h"
-#include "CosmicArchitectNoiseGenerator.h"
+#include "CosmicNoiseGenerationTask.h"
 #include "CosmicMeshComponent.generated.h"
 
 class ICosmicNoiseStrategy;
@@ -59,7 +59,7 @@ public:
     void CancelAsyncWork();
 
 protected:
-    FAsyncTask<FCosmicArchitectNoiseGenerator>* NoiseTask = nullptr;
+    FAsyncTask<FCosmicNoiseGenerationTask>* NoiseTask = nullptr;
     bool bIsGeneratingNoise = false;
 };
 
