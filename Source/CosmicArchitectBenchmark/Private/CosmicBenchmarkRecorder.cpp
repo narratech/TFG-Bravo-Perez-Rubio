@@ -254,6 +254,8 @@ void FCosmicBenchmarkRecorder::RecordEvent(const FString& EventName,
     const FString& Description,
     float          NumericValue)
 {
+    if (!bIsRecording) return;
+
     FBenchmarkEvent Evt;
     Evt.EventName = EventName;
     Evt.Description = Description;
@@ -263,8 +265,8 @@ void FCosmicBenchmarkRecorder::RecordEvent(const FString& EventName,
 
     Events.Add(Evt);
 
-    UE_LOG(LogTemp, Log, TEXT("[BenchmarkEvent] [%.2fs | %s] %s — %s (value=%.4f)"),
-        Evt.TimestampSec, *Evt.TestContext, *Evt.EventName, *Evt.Description, Evt.NumericValue);
+    /*UE_LOG(LogTemp, Log, TEXT("[BenchmarkEvent] [%.2fs | %s] %s — %s (value=%.4f)"),
+        Evt.TimestampSec, *Evt.TestContext, *Evt.EventName, *Evt.Description, Evt.NumericValue);*/
 }
 
 void FCosmicBenchmarkRecorder::ClearEvents()

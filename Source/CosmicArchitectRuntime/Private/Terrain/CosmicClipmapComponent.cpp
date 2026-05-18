@@ -17,7 +17,7 @@
 #include "DrawDebugHelpers.h"
 #include "ModulesBridge/CosmicCameraBridge.h"
 #include "GameFramework/Pawn.h"
-//#include "CosmicArchitectBenchmark/Public/CosmicBenchmarkManager.h"
+#include "ModulesBridge/CosmicBenchmarkBridge.h"
 
 
 // Sets default values for this component's properties
@@ -158,16 +158,16 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         float PhaseMs = (float)((FPlatformTime::Seconds() - PhaseStart) * 1000.0);
 
-        //if (UCosmicBenchmarkManager* BM = UCosmicBenchmarkManager::Get(GetWorld()))
-        //{
-        //    static const FString PhaseNames[] = {
-        //        TEXT("Phase_Foliage"),
-        //        TEXT("Phase_Collision"),
-        //        TEXT("Phase_Mesh")
-        //    };
-        //    BM->RecordEvent(PhaseNames[(uint8)CurrentPhase], TEXT(""), PhaseMs);
-        //}
-
+        if (CurrentPhase == EUpdatePhase::Mesh)
+        {
+            static const FString PhaseNames[] = {
+                TEXT("Phase_Foliage"),
+                TEXT("Phase_Collision"),
+                TEXT("Phase_Mesh")
+            };
+            FCosmicBenchmarkBridge::RecordEvent(PhaseNames[(uint8)CurrentPhase], TEXT("Ms"), PhaseMs);
+        }
+        
         CurrentPhase = (EUpdatePhase)(((uint8)CurrentPhase + 1) % 3);
     }
     else

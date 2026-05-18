@@ -1,12 +1,17 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "CosmicArchitectBenchmark.h"
+#include "CosmicBenchmarkRecorder.h"
+#include "CosmicArchitectRuntime/Public/ModulesBridge/CosmicBenchmarkBridge.h"
 
 #define LOCTEXT_NAMESPACE "FCosmicArchitectBenchmarkModule"
 
 void FCosmicArchitectBenchmarkModule::StartupModule()
 {
-	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
+	FCosmicBenchmarkBridge::OnRecordEvent = [](const FString& Name, const FString& Desc, float Value)
+		{
+			FCosmicBenchmarkRecorder::RecordEvent(Name, Desc, Value);
+		};
 }
 
 void FCosmicArchitectBenchmarkModule::ShutdownModule()
