@@ -129,7 +129,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         bool UpdateFoliageExtra = false;
         DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
 
-        double PhaseStart = FPlatformTime::Seconds();
+        //double PhaseStart = FPlatformTime::Seconds();
 
         // EJECUCION POR FASE
         switch (CurrentPhase)
@@ -154,9 +154,9 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             UpdateFoliagePhase(DeltaTime, SurfacePos + N * DistanceToSurface, DistanceToSurface);
         }
 
-        float PhaseMs = (float)((FPlatformTime::Seconds() - PhaseStart) * 1000.0);
+        //float PhaseMs = (float)((FPlatformTime::Seconds() - PhaseStart) * 1000.0);
 
-        if (CurrentPhase == EUpdatePhase::Mesh)
+        /*if (CurrentPhase == EUpdatePhase::Mesh)
         {
             static const FString PhaseNames[] = {
                 TEXT("Phase_Foliage"),
@@ -164,7 +164,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
                 TEXT("Phase_Mesh")
             };
             FCosmicBenchmarkBridge::RecordEvent(PhaseNames[(uint8)CurrentPhase], TEXT("Ms"), PhaseMs);
-        }
+        }*/
         
         CurrentPhase = (EUpdatePhase)(((uint8)CurrentPhase + 1) % 3);
     }
