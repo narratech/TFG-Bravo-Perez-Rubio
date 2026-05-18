@@ -31,6 +31,11 @@
 			"LoadingPhase": "Default"
 		},
 		{
+			"Name": "CosmicArchitectBenchmark",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
 			"Name": "CosmicArchitectFactory",
 			"Type": "Editor",
 			"LoadingPhase": "Default"
