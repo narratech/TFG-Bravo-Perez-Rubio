@@ -15,8 +15,9 @@
 #include "Engine/Texture2D.h"
 #include "Engine/Texture.h"
 #include "DrawDebugHelpers.h"
-#include "CosmicCameraBridge.h"
+#include "ModulesBridge/CosmicCameraBridge.h"
 #include "GameFramework/Pawn.h"
+//#include "CosmicArchitectBenchmark/Public/CosmicBenchmarkManager.h"
 
 
 // Sets default values for this component's properties
@@ -130,6 +131,8 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         bool UpdateFoliageExtra = false;
         DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
 
+        double PhaseStart = FPlatformTime::Seconds();
+
         // EJECUCION POR FASE
         switch (CurrentPhase)
         {
@@ -149,8 +152,21 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         //Si no hay que actualizar colisión pedimos actualizar foliage
         if (UpdateFoliageExtra)
         {
+            //CurrentPhase = EUpdatePhase::Foliage;
             UpdateFoliagePhase(DeltaTime, SurfacePos + N * DistanceToSurface, DistanceToSurface);
         }
+
+        float PhaseMs = (float)((FPlatformTime::Seconds() - PhaseStart) * 1000.0);
+
+        //if (UCosmicBenchmarkManager* BM = UCosmicBenchmarkManager::Get(GetWorld()))
+        //{
+        //    static const FString PhaseNames[] = {
+        //        TEXT("Phase_Foliage"),
+        //        TEXT("Phase_Collision"),
+        //        TEXT("Phase_Mesh")
+        //    };
+        //    BM->RecordEvent(PhaseNames[(uint8)CurrentPhase], TEXT(""), PhaseMs);
+        //}
 
         CurrentPhase = (EUpdatePhase)(((uint8)CurrentPhase + 1) % 3);
     }
@@ -159,10 +175,6 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         DistanceToSurface = GetFastDistanceToSurface(ViewerPos, SurfacePos, N);
         UpdateMeshPhase(ViewerPos, SurfacePos, N, DistanceToSurface);
     }
-
-    
-    
-    
 
     //double TotalEndTime = FPlatformTime::Seconds();
 

@@ -2,7 +2,7 @@
 
 
 #include "CameraViewportDataUpdater.h"
-#include "CosmicCameraBridge.h"
+#include "ModulesBridge/CosmicCameraBridge.h"
 #include "Editor.h"
 #include "EditorViewportClient.h"
 

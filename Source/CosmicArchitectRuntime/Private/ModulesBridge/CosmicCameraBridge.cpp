@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "CosmicCameraBridge.h"
+#include "ModulesBridge/CosmicCameraBridge.h"
 
 
 FVector FCosmicCameraBridge::CameraLocation = FVector::ZeroVector;

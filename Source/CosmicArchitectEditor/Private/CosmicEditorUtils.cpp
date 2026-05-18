@@ -2,7 +2,7 @@
 
 
 #include "CosmicEditorUtils.h"
-#include "CosmicCameraBridge.h"
+#include "ModulesBridge/CosmicCameraBridge.h"
 
 #if WITH_EDITOR
 #include "Editor.h"
