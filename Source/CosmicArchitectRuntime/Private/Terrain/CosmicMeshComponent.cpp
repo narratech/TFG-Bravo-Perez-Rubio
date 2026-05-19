@@ -3,6 +3,7 @@
 
 #include "Terrain/CosmicMeshComponent.h"
 #include "ICosmicNoiseStrategy.h"
+#include "ModulesBridge/CosmicBenchmarkBridge.h"
 
 
 void UCosmicMeshComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {
@@ -506,13 +507,19 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
     if (!NoiseTask) return true;
     // Si no ha terminado, devolvemos false
     if (!NoiseTask->IsDone()) return false;
-  
+
+    double PhaseStart = FPlatformTime::Seconds();
+
     TArray<FVector> CurrentVertices = NoiseTask->GetTask().CalculatedVertices;
     TArray<FLinearColor> CurrentColors = NoiseTask->GetTask().CalculatedColors;
 
     if (bIsPlanet || bIsSphereMesh) {
         BaseNormals = NoiseTask->GetTask().CalculatedNormals;
     }
+
+    float PhaseMs = (float)((FPlatformTime::Seconds() - PhaseStart) * 1000.0);
+
+    FCosmicBenchmarkBridge::RecordEvent("GetVector", TEXT("Ms"), PhaseMs);
     
     // Limpiamos la memoria de la tarea
     delete NoiseTask;
@@ -521,6 +528,8 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
     bIsGeneratingNoise = false;
 
     //double CreateStartTime = FPlatformTime::Seconds();
+
+    double UpdateStart = FPlatformTime::Seconds();
 
     // Actualizamos la sección de la malla (No subimos informacion irrelevante)
     UpdateMeshSection_LinearColor(
@@ -531,6 +540,11 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
         CurrentColors,
         TArray<FProcMeshTangent>()
     );
+
+    float UpdateTime = (float)((FPlatformTime::Seconds() - UpdateStart) * 1000.0);
+
+    FCosmicBenchmarkBridge::RecordEvent("UpdateLinear", TEXT("Ms"), UpdateTime);
+
 
     SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
