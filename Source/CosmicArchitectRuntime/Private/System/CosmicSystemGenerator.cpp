@@ -389,8 +389,6 @@ void ACosmicSystemGenerator::GenerateBodies()
 
             Ring->InnerRadiusKM = PlanetRadiusKm * 1.4f;
             Ring->OuterRadiusKM = PlanetRadiusKm * 2.8f;
-            Ring->InnerRadiusUV = 0.2;
-            Ring->OuterRadiusUV = 0.45;
             Ring->BandFrequency = Stream.FRandRange(20.f, 60.f);
             Ring->RingRotation = FRotator(Stream.FRandRange(-15.f, 15.f), 0.f, 0.f);
             Ring->RingColor = FLinearColor(

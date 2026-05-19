@@ -5,14 +5,16 @@
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "CosmicRingComponent.generated.h"
 
-/** * Delegado para notificar a sistemas externos o Blueprints cuando un
+/**
+ * Delegado para notificar a sistemas externos o Blueprints cuando un
  * sector de asteroides ha finalizado su generación asíncrona.
  */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAsteroidFieldGenerated);
 
 /**
  * UCosmicRingComponent
- * * Gestiona la representación visual y física de anillos planetarios a escala real.
+ *
+ * Gestiona la representación visual y física de anillos planetarios a escala real.
  * Implementa un sistema de "Treadmill" (cinta de correr) que segmenta el anillo en sectores
  * angulares, cargando y reciclando instancias de asteroides (HISM) dinámicamente según
  * la proximidad del observador para optimizar el rendimiento y la memoria.
@@ -68,39 +70,47 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Visuals")
 	double BandFrequency = 50.0;
 
-	/** Radio de inicio de la máscara UV interna. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
-	double InnerRadiusUV = 0.2;
+	// --- DIMENSIONES ---
 
-	/** Radio de fin de la máscara UV externa. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
-	double OuterRadiusUV = 0.45;
-
-	/** Radio interno real del anillo en Kilómetros. */
+	/** Radio interno real del anillo en Kilómetros. También determina la máscara UV interna del shader. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
 	double InnerRadiusKM = 2.0;
 
-	/** Radio externo real del anillo en Kilómetros. */
+	/** Radio externo real del anillo en Kilómetros. Determina la escala del disco macro y la máscara UV externa. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
 	double OuterRadiusKM = 5.0;
+
+	/** Espesor total vertical del anillo en Kilómetros. Controla la dispersión Z de los asteroides y la detección de proximidad. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
+	double RingThicknessKM = 0.4;
 
 	/** Rotación orbital del sistema de anillos. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
 	FRotator RingRotation = FRotator::ZeroRotator;
 
+	// --- LOD ---
+
 	/** Tamaño mínimo aleatorio para las instancias de asteroides. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
-	float MinScale = 0.01;
+	float MinScale = 0.01f;
 
 	/** Tamaño máximo aleatorio para las instancias de asteroides. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
-	float MaxScale = 0.05;
+	float MaxScale = 0.05f;
 
-	/** Distancia en KM donde comienza el desvanecimiento del shader. */
+	/**
+	 * Distancia en KM desde el punto más cercano del anillo (borde o superficie) a la que
+	 * los asteroides 3D comienzan a generarse. Se evalúa sobre la geometría real del anillo
+	 * (annulus + espesor), no desde el centro del componente.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
+	double AsteroidActivationDistanceKM = 8.0;
+
+	/** Distancia en KM donde comienza el desvanecimiento del shader macro. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
 	double FadeMinDistanceKM = 1.0;
 
-	/** Distancia en KM donde el campo de asteroides se oculta totalmente. */
+	/** Distancia en KM donde el shader macro se oculta totalmente. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
 	double FadeMaxDistanceKM = 8.0;
 
@@ -117,6 +127,14 @@ public:
 	/** Cantidad de asteroides individuales a generar por cada sector activo. */
 	UPROPERTY(EditAnywhere, Category = "Cosmic Architect | Optimization")
 	int32 AsteroidsPerSector = 500;
+
+	/**
+	 * Límite de instancias (asteroides) procesadas por segundo entre creación y destrucción de sectores.
+	 * Un sector en curso siempre se completa aunque se supere el límite en ese frame.
+	 * Los sectores pendientes se procesan en el frame siguiente.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Cosmic Architect | Optimization")
+	int32 MaxInstancesPerSecond = 5000;
 
 private:
 	/** Componente que renderiza el material macro del anillo. */
@@ -138,6 +156,21 @@ private:
 	/** Recupera un componente HISM del pool o crea uno nuevo si no hay disponibles. */
 	UHierarchicalInstancedStaticMeshComponent* GetOrCreateHISM();
 
-	/** Sincroniza los valores de las propiedades C++ con los parámetros del Material Instance. */
+	/**
+	 * Sincroniza los valores de las propiedades C++ con los parámetros del Material Instance.
+	 * Los radios UV se calculan automáticamente a partir de InnerRadiusKM y OuterRadiusKM.
+	 */
 	void UpdateShaderParameters();
+
+	/**
+	 * Invalida todos los sectores activos devolviéndolos al pool para forzar su regeneración
+	 * en el siguiente tick. Se llama cuando propiedades que afectan la geometría cambian en el editor.
+	 */
+	void InvalidateAllSectors();
+
+	/**
+	 * Calcula la distancia en centímetros desde una posición (en espacio local del componente)
+	 * hasta el punto más cercano del volumen del anillo (annulus + espesor vertical).
+	 */
+	float ComputeDistanceToRing(const FVector& LocalPosition) const;
 };
