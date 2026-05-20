@@ -135,20 +135,27 @@ void UCosmicRingComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
  */
 UHierarchicalInstancedStaticMeshComponent* UCosmicRingComponent::GetOrCreateHISM()
 {
-	if (HISMPool.Num() > 0)
+	while (HISMPool.Num() > 0)
 	{
-		return HISMPool.Pop();
+		UHierarchicalInstancedStaticMeshComponent* PooledHISM = HISMPool.Pop();
+
+		// IsValid comprueba de forma segura que no sea nullptr ni esté destruido
+		if (IsValid(PooledHISM))
+		{
+			return PooledHISM;
+		}
 	}
 
+	// Si el pool estaba vacío (o lleno de punteros muertos), creamos uno nuevo de forma segura
 	UHierarchicalInstancedStaticMeshComponent* NewHISM = NewObject<UHierarchicalInstancedStaticMeshComponent>(
 		this,
 		NAME_None,
-		RF_Transient | RF_DuplicateTransient  // Marcar como transitorio
+		RF_Transient | RF_DuplicateTransient
 	);
-	NewHISM->SetStaticMesh(AsteroidMesh);
-	NewHISM->SetupAttachment(this);
 
+	NewHISM->SetupAttachment(this);
 	NewHISM->RegisterComponent();
+
 	return NewHISM;
 }
 
