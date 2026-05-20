@@ -358,6 +358,7 @@ protected:
      */
     void IncreaseClipmapLevelFull(int32 Steps = 1);
 
+
 private:
 
     /** Material dinámico utilizado por el planeta */
