@@ -53,6 +53,9 @@ void UCosmicBenchmarkManager::InitializeAssets(UMaterialInstance* InBaseMaterial
     NoiseClass = InNoiseClass;
     FoliageCollection = InFoliageCollection;
 
+    FCosmicBenchmarkRecorder::ClearCSVResults();
+    FCosmicBenchmarkRecorder::ClearEvents();
+
     UE_LOG(LogTemp, Log, TEXT("BenchmarkManager: Assets inicializados"));
 }
 
@@ -934,9 +937,19 @@ void UCosmicBenchmarkManager::RunSystemGeneratorTest(int32 NumBodies)
 
         SequentialTestSteps = { 1, 2, 5, 10, 20, 50 };
 
+        
+
         for (size_t i = 0; i < SequentialTestSteps.Num(); i++)
         {
+            FCosmicBenchmarkRecorder::StartRecording();
+
+            FString TestName = FString::Printf(TEXT("SystemGeneration_%d"), SequentialTestSteps[i]);
+
             SystemGenerator->SetNumBodies(SequentialTestSteps[i]);
+            
+            SetCurrentTestParams(SequentialTestSteps[i], TestName);
+
+            FCosmicBenchmarkRecorder::SetCurrentNumObjects(SequentialTestSteps[i]);
 
             double StartTime = FPlatformTime::Seconds();
 
@@ -945,11 +958,19 @@ void UCosmicBenchmarkManager::RunSystemGeneratorTest(int32 NumBodies)
             double EndTime = FPlatformTime::Seconds();
             double GenerationTime = EndTime - StartTime;
 
-            UE_LOG(LogTemp, Warning, TEXT("System generation time for %d bodies: %.3f seconds"),
-                SequentialTestSteps[i], GenerationTime);
+            FCosmicBenchmarkRecorder::RecordEvent("GenerationTime", "Seconds", GenerationTime);
+            FCosmicBenchmarkRecorder::RecordFrame(0);
+            FCosmicBenchmarkRecorder::AddCSVResult(TestName);
 
             SystemGenerator->ClearBodies();
         }
+
+        FString CSVName = TEXT("SystemGenerator_") + FDateTime::Now().ToString(TEXT("%Y%m%d_%H%M%S"));
+
+        FCosmicBenchmarkRecorder::ExportCSV(CSVName);
+
+        FCosmicBenchmarkRecorder::ClearCSVResults();
+        FCosmicBenchmarkRecorder::ClearEvents();
 
     }
     else

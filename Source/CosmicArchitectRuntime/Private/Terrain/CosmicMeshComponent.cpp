@@ -3,7 +3,6 @@
 
 #include "Terrain/CosmicMeshComponent.h"
 #include "ICosmicNoiseStrategy.h"
-#include "ModulesBridge/CosmicBenchmarkBridge.h"
 
 
 void UCosmicMeshComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {
