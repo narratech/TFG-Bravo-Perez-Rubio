@@ -151,7 +151,7 @@ void FCosmicEarthLikeNoiseStrategy::EvaluatePoint(
 
     // Normalizar con desplazamiento
     float AltitudeNormalized = (Height - NormalizedMin) / (NormalizedMax - NormalizedMin);
-    AltitudeNormalized = FMath::Clamp(AltitudeNormalized + Hills * 0.2f, 0.0f, 1.0f);
+    AltitudeNormalized = FMath::Clamp(AltitudeNormalized, 0.0f, 1.0f);
 
     float VisualTemp = FMath::Clamp(
         Temperature - (AltitudeNormalized * BiomeParameters.AltitudeTemperaturePenalty),
