@@ -372,12 +372,6 @@ UCosmicDefaultNoiseSettings* ACosmicSystemGenerator::CreateOrReusePersistentRand
         return ExistingAsset;
     }
 
-    if (FPackageName::DoesPackageExist(PackageName))
-    {
-        UE_LOG(LogTemp, Warning, TEXT("CosmicSystemGenerator: package '%s' exists but is not a UCosmicDefaultNoiseSettings asset. Using transient noise settings."), *PackageName);
-        return nullptr;
-    }
-
     UPackage* Package = CreatePackage(*PackageName);
     if (!Package)
     {
@@ -385,6 +379,22 @@ UCosmicDefaultNoiseSettings* ACosmicSystemGenerator::CreateOrReusePersistentRand
     }
 
     Package->FullyLoad();
+
+    if (UObject* ExistingObject = StaticFindObjectFast(UObject::StaticClass(), Package, *AssetName))
+    {
+        if (UCosmicDefaultNoiseSettings* ExistingNoiseSettings = Cast<UCosmicDefaultNoiseSettings>(ExistingObject))
+        {
+            if (GeneratedNoiseSettingsAssets.Num() <= AssetIndex)
+            {
+                GeneratedNoiseSettingsAssets.SetNum(AssetIndex + 1);
+            }
+            GeneratedNoiseSettingsAssets[AssetIndex] = ExistingNoiseSettings;
+            return ExistingNoiseSettings;
+        }
+
+        UE_LOG(LogTemp, Warning, TEXT("CosmicSystemGenerator: object '%s' already exists but is not a UCosmicDefaultNoiseSettings asset. Using transient noise settings."), *ObjectPath);
+        return nullptr;
+    }
     UCosmicDefaultNoiseSettings* NewAsset = NewObject<UCosmicDefaultNoiseSettings>(
         Package,
         UCosmicDefaultNoiseSettings::StaticClass(),
@@ -776,38 +786,6 @@ void ACosmicSystemGenerator::ClearBodies()
         }
     }
     GeneratedBodies.Empty();
-}
-
-void ACosmicSystemGenerator::DeleteGeneratedNoiseSettingsAssets()
-{
-    ClearBodies();
-
-#if WITH_EDITORONLY_DATA
-    const FString Folder = GetGeneratedNoiseSettingsFolder();
-    if (Folder.IsEmpty())
-    {
-        GeneratedNoiseSettingsAssets.Empty();
-        return;
-    }
-
-    LoadGeneratedNoiseSettingsAssets();
-
-    TArray<UObject*> ObjectsToDelete;
-    for (TObjectPtr<UCosmicDefaultNoiseSettings> NoiseSettings : GeneratedNoiseSettingsAssets)
-    {
-        if (NoiseSettings)
-        {
-            ObjectsToDelete.Add(NoiseSettings.Get());
-        }
-    }
-
-    if (ObjectsToDelete.Num() > 0)
-    {
-        ObjectTools::DeleteObjectsUnchecked(ObjectsToDelete);
-    }
-
-    GeneratedNoiseSettingsAssets.Empty();
-#endif
 }
 
 void ACosmicSystemGenerator::StartOrbitSimulation()

@@ -112,7 +112,7 @@ protected:
 
     /* Gravedad superficial asignada al radio mínimo y máximo de planetas. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration|Gravity", meta = (ClampMin = "0.0"))
-    FVector2D PlanetSurfaceGravityRange = FVector2D(3.f, 25.f);
+    FVector2D PlanetSurfaceGravityRange = FVector2D(3.f, 10.f);
 
     /* Gravedad superficial asignada al radio mínimo y máximo de lunas. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration|Gravity", meta = (ClampMin = "0.0"))
@@ -335,8 +335,6 @@ public:
     UFUNCTION(CallInEditor, Category = "Actions")
     void ClearBodies();
 
-    UFUNCTION(CallInEditor, Category = "Actions")
-    void DeleteGeneratedNoiseSettingsAssets();
     UFUNCTION(CallInEditor, Category = "Actions")
     void StartOrbitSimulation();
 
