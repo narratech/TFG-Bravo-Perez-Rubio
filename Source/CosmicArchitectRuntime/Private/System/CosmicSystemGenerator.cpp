@@ -452,6 +452,21 @@ UCosmicNoiseClass* ACosmicSystemGenerator::CreateRandomNoiseSettings(FRandomStre
     return NewSettings;
 }
 
+float ACosmicSystemGenerator::CalculateSurfaceGravity(float RadiusKm, const FVector2D& RadiusRangeKm, const FVector2D& GravityRange) const
+{
+    const float MinRadius = FMath::Min(RadiusRangeKm.X, RadiusRangeKm.Y);
+    const float MaxRadius = FMath::Max(RadiusRangeKm.X, RadiusRangeKm.Y);
+    const float MinGravity = FMath::Min(GravityRange.X, GravityRange.Y);
+    const float MaxGravity = FMath::Max(GravityRange.X, GravityRange.Y);
+
+    if (FMath::IsNearlyEqual(MinRadius, MaxRadius))
+    {
+        return MinGravity;
+    }
+
+    const float RadiusAlpha = FMath::Clamp((RadiusKm - MinRadius) / (MaxRadius - MinRadius), 0.0f, 1.0f);
+    return FMath::Lerp(MinGravity, MaxGravity, RadiusAlpha);
+}
 FColor ACosmicSystemGenerator::GetRandomColor(FRandomStream& Stream, int min, int max)
 {
     int minRange = FMath::Max(min, 0);
@@ -635,7 +650,7 @@ void ACosmicSystemGenerator::GenerateBodies()
         Gravity->RegisterComponent();
         Gravity->IsPlanet = true;
         Gravity->RadiusKm = NewRadius;
-        Gravity->SurfaceGravity = Stream.FRandRange(3.f, 25.f);
+        Gravity->SurfaceGravity = CalculateSurfaceGravity(NewRadius, BodyDiameterRangeKm * 0.5f, PlanetSurfaceGravityRange);
         Gravity->GravityMode = ECosmicGravityMode::None;
         Planet->AddInstanceComponent(Gravity);
 
@@ -713,7 +728,7 @@ void ACosmicSystemGenerator::GenerateBodies()
             MoonGravity->RegisterComponent();
             MoonGravity->SetIsPlanet(true);
             MoonGravity->RadiusKm = MoonRadiusKm;
-            MoonGravity->SurfaceGravity = Stream.FRandRange(1.f, 5.f);
+            MoonGravity->SurfaceGravity = CalculateSurfaceGravity(MoonRadiusKm, MoonDiameterRangeKm * 0.5f, MoonSurfaceGravityRange);
             Moon->AddInstanceComponent(MoonGravity);
 
             UCosmicOrbitComponent* MoonOrbit = NewObject<UCosmicOrbitComponent>(Moon);

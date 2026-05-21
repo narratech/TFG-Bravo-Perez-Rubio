@@ -110,6 +110,13 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration", meta = (ClampMin = "0.001"))
     FVector2D MoonDiameterRangeKm = FVector2D(2.f, 7.f);
 
+    /* Gravedad superficial asignada al radio mínimo y máximo de planetas. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration|Gravity", meta = (ClampMin = "0.0"))
+    FVector2D PlanetSurfaceGravityRange = FVector2D(3.f, 25.f);
+
+    /* Gravedad superficial asignada al radio mínimo y máximo de lunas. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration|Gravity", meta = (ClampMin = "0.0"))
+    FVector2D MoonSurfaceGravityRange = FVector2D(1.f, 5.f);
     /** Fracción del radio del sistema que ocupa la estrella. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration|Star", meta = (ClampMin = "0.01", ClampMax = "0.9"))
     float StarRadiusFraction = 0.1f;
@@ -273,6 +280,7 @@ private:
 
     FColor GetRandomColor(FRandomStream& Stream, int min, int max);
 
+    float CalculateSurfaceGravity(float RadiusKm, const FVector2D& RadiusRangeKm, const FVector2D& GravityRange) const;
 #if WITH_EDITOR
     UCosmicDefaultNoiseSettings* CreateOrReusePersistentRandomNoiseSettingsAsset();
 
