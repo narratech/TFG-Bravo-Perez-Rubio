@@ -7,6 +7,7 @@
 #include "CosmicSystemGenerator.generated.h"
 
 class UCosmicNoiseClass;
+class UCosmicDefaultNoiseSettings;
 class UMaterialInstance;
 
 /**
@@ -61,6 +62,19 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Debug")
     FColor BoxColor = FColor::Blue;
 
+#if WITH_EDITORONLY_DATA
+    /* Guarda en disco los Noise Settings generados desde el editor. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Persistence")
+    bool bSaveGeneratedNoiseSettingsAssets = true;
+
+    /* Carpeta base de Content Browser donde cada generador crea su subcarpeta propia. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Persistence", meta = (EditCondition = "bSaveGeneratedNoiseSettingsAssets"))
+    FString GeneratedNoiseSettingsAssetFolder = TEXT("/Game/CosmicArchitect/GeneratedNoiseSettings");
+
+    /* Identificador persistente para separar los assets de este generador de otros. */
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Persistence", meta = (EditCondition = "bSaveGeneratedNoiseSettingsAssets"))
+    FString GeneratedNoiseSettingsFolderId;
+#endif
 protected:
     UPROPERTY(VisibleDefaultsOnly, Category = "Root", BlueprintReadOnly)
     USceneComponent* Root;
@@ -226,6 +240,7 @@ protected:
 #if WITH_EDITOR
     virtual bool ShouldTickIfViewportsOnly() const override { return true; }
     virtual void Tick(float DeltaTime) override;
+    virtual void PostDuplicate(EDuplicateMode::Type Mode) override;
 #endif
 
 private:
@@ -258,6 +273,30 @@ private:
 
     FColor GetRandomColor(FRandomStream& Stream, int min, int max);
 
+#if WITH_EDITOR
+    UCosmicDefaultNoiseSettings* CreateOrReusePersistentRandomNoiseSettingsAsset();
+
+    bool ShouldCreatePersistentNoiseSettingsAssets() const;
+
+    void EnsureGeneratedNoiseSettingsFolderId();
+
+    FString GetGeneratedNoiseSettingsFolder() const;
+
+    FString MakeNoiseAssetName(int32 AssetIndex) const;
+
+    void LoadGeneratedNoiseSettingsAssets();
+
+    void SaveGeneratedNoiseSettingsAsset(UCosmicDefaultNoiseSettings* NoiseSettings) const;
+
+    static void SanitizeObjectName(FString& Name);
+#endif
+
+    int32 GeneratedNoiseAssetCounter = 0;
+
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(Transient)
+    TArray<TObjectPtr<UCosmicDefaultNoiseSettings>> GeneratedNoiseSettingsAssets;
+#endif
     /** Intenta colocar un planeta respetando distancias. Retorna true si se colocó. */
     bool TryPlacePlanet(
         FRandomStream& Stream,
@@ -288,6 +327,8 @@ public:
     UFUNCTION(CallInEditor, Category = "Actions")
     void ClearBodies();
 
+    UFUNCTION(CallInEditor, Category = "Actions")
+    void DeleteGeneratedNoiseSettingsAssets();
     UFUNCTION(CallInEditor, Category = "Actions")
     void StartOrbitSimulation();
 

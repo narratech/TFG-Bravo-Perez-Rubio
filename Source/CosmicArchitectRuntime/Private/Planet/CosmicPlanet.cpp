@@ -256,12 +256,12 @@ void ACosmicPlanet::InitPlanet(
     RadiusKm = InRadiusKm;
 
     // Gestión del objeto de ruido: se destruye si no es un asset de disco.
-    if (NoiseClass && (!NoiseClass->IsAsset() ||
+    /*if (NoiseClass && (!NoiseClass->IsAsset() ||
         NoiseClass->GetOutermost()->HasAnyPackageFlags(PKG_DisallowExport)))
     {
         NoiseClass->ConditionalBeginDestroy();
         NoiseClass = nullptr;
-    }
+    }*/
     if (NewNoiseClass)
         NoiseClass = NewNoiseClass;
 

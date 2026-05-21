@@ -937,7 +937,8 @@ void UCosmicBenchmarkManager::RunSystemGeneratorTest(int32 NumBodies)
 
         SequentialTestSteps = { 1, 2, 5, 10, 20, 50 };
 
-        
+        FCosmicBenchmarkRecorder::ClearCSVResults();
+        FCosmicBenchmarkRecorder::ClearEvents();
 
         for (size_t i = 0; i < SequentialTestSteps.Num(); i++)
         {

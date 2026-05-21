@@ -32,7 +32,7 @@ public class CosmicArchitectRuntime : ModuleRules
 
         if (Target.bBuildEditor)
         {
-            PrivateDependencyModuleNames.AddRange(new string[] { "UnrealEd" });
+            PrivateDependencyModuleNames.AddRange(new string[] { "UnrealEd", "AssetRegistry" });
         }
     }
 }

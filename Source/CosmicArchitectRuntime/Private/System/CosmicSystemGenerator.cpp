@@ -15,6 +15,13 @@
 #include "Engine/DirectionalLight.h"
 #include "Materials/MaterialInstance.h"
 
+#if WITH_EDITOR
+#include "AssetRegistry/AssetRegistryModule.h"
+#include "FileHelpers.h"
+#include "Misc/PackageName.h"
+#include "ObjectTools.h"
+#endif
+
 ACosmicSystemGenerator::ACosmicSystemGenerator()
 {
     PrimaryActorTick.bCanEverTick = true;
@@ -178,10 +185,244 @@ ACosmicSystemGenerator::FPlanetClassification ACosmicSystemGenerator::ClassifyPl
     return Result;
 }
 
+#if WITH_EDITOR
+void ACosmicSystemGenerator::PostDuplicate(EDuplicateMode::Type Mode)
+{
+    Super::PostDuplicate(Mode);
+
+#if WITH_EDITORONLY_DATA
+    GeneratedNoiseSettingsFolderId.Empty();
+    GeneratedNoiseSettingsAssets.Empty();
+#endif
+}
+
+bool ACosmicSystemGenerator::ShouldCreatePersistentNoiseSettingsAssets() const
+{
+#if WITH_EDITORONLY_DATA
+    const UWorld* World = GetWorld();
+    return bSaveGeneratedNoiseSettingsAssets
+        && World
+        && World->WorldType == EWorldType::Editor
+        && !IsTemplate();
+#else
+    return false;
+#endif
+}
+
+void ACosmicSystemGenerator::SanitizeObjectName(FString& Name)
+{
+    for (TCHAR& Character : Name)
+    {
+        if (!FChar::IsAlnum(Character) && Character != TEXT('_'))
+        {
+            Character = TEXT('_');
+        }
+    }
+}
+
+void ACosmicSystemGenerator::EnsureGeneratedNoiseSettingsFolderId()
+{
+#if WITH_EDITORONLY_DATA
+    if (!GeneratedNoiseSettingsFolderId.IsEmpty())
+    {
+        return;
+    }
+
+    FString ActorPart = GetName();
+    const FString GuidPart = FGuid::NewGuid().ToString(EGuidFormats::Digits);
+    SanitizeObjectName(ActorPart);
+    GeneratedNoiseSettingsFolderId = FString::Printf(TEXT("%s_%s"), *ActorPart, *GuidPart);
+    SanitizeObjectName(GeneratedNoiseSettingsFolderId);
+    MarkPackageDirty();
+#endif
+}
+
+FString ACosmicSystemGenerator::GetGeneratedNoiseSettingsFolder() const
+{
+#if WITH_EDITORONLY_DATA
+    FString Folder = GeneratedNoiseSettingsAssetFolder;
+    Folder.TrimStartAndEndInline();
+
+    if (Folder.IsEmpty())
+    {
+        Folder = TEXT("/Game/CosmicArchitect/GeneratedNoiseSettings");
+    }
+    else if (!Folder.StartsWith(TEXT("/")))
+    {
+        Folder = FString::Printf(TEXT("/Game/%s"), *Folder);
+    }
+
+    while (Folder.EndsWith(TEXT("/")))
+    {
+        Folder.LeftChopInline(1);
+    }
+
+    if (!FPackageName::IsValidLongPackageName(Folder, true))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("CosmicSystemGenerator: invalid noise asset folder '%s'. Using transient noise settings."), *Folder);
+        return FString();
+    }
+
+    if (GeneratedNoiseSettingsFolderId.IsEmpty())
+    {
+        return FString();
+    }
+
+    return FString::Printf(TEXT("%s/%s"), *Folder, *GeneratedNoiseSettingsFolderId);
+#else
+    return FString();
+#endif
+}
+
+FString ACosmicSystemGenerator::MakeNoiseAssetName(int32 AssetIndex) const
+{
+    return FString::Printf(TEXT("Noise_%03d"), AssetIndex);
+}
+
+void ACosmicSystemGenerator::LoadGeneratedNoiseSettingsAssets()
+{
+#if WITH_EDITORONLY_DATA
+    GeneratedNoiseSettingsAssets.Empty();
+
+    const FString Folder = GetGeneratedNoiseSettingsFolder();
+    if (Folder.IsEmpty())
+    {
+        return;
+    }
+
+    FARFilter Filter;
+    Filter.PackagePaths.Add(*Folder);
+    Filter.ClassPaths.Add(UCosmicDefaultNoiseSettings::StaticClass()->GetClassPathName());
+    Filter.bRecursivePaths = false;
+
+    TArray<FAssetData> AssetDataList;
+    FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
+    AssetRegistryModule.Get().GetAssets(Filter, AssetDataList);
+
+    for (const FAssetData& AssetData : AssetDataList)
+    {
+        const FString AssetName = AssetData.AssetName.ToString();
+        if (!AssetName.StartsWith(TEXT("Noise_")))
+        {
+            continue;
+        }
+
+        int32 AssetIndex = INDEX_NONE;
+        if (!LexTryParseString(AssetIndex, *AssetName.RightChop(6)) || AssetIndex < 0)
+        {
+            continue;
+        }
+
+        UCosmicDefaultNoiseSettings* NoiseSettings = Cast<UCosmicDefaultNoiseSettings>(AssetData.GetAsset());
+        if (!NoiseSettings)
+        {
+            continue;
+        }
+
+        if (GeneratedNoiseSettingsAssets.Num() <= AssetIndex)
+        {
+            GeneratedNoiseSettingsAssets.SetNum(AssetIndex + 1);
+        }
+
+        GeneratedNoiseSettingsAssets[AssetIndex] = NoiseSettings;
+    }
+#endif
+}
+
+void ACosmicSystemGenerator::SaveGeneratedNoiseSettingsAsset(UCosmicDefaultNoiseSettings* NoiseSettings) const
+{
+    if (!NoiseSettings || !NoiseSettings->IsAsset())
+    {
+        return;
+    }
+
+    NoiseSettings->MarkPackageDirty();
+    TArray<UPackage*> PackagesToSave;
+    PackagesToSave.Add(NoiseSettings->GetOutermost());
+    UEditorLoadingAndSavingUtils::SavePackages(PackagesToSave, false);
+}
+
+UCosmicDefaultNoiseSettings* ACosmicSystemGenerator::CreateOrReusePersistentRandomNoiseSettingsAsset()
+{
+#if WITH_EDITORONLY_DATA
+    const int32 AssetIndex = GeneratedNoiseAssetCounter++;
+
+    if (GeneratedNoiseSettingsAssets.IsValidIndex(AssetIndex) && GeneratedNoiseSettingsAssets[AssetIndex])
+    {
+        return GeneratedNoiseSettingsAssets[AssetIndex].Get();
+    }
+
+    const FString Folder = GetGeneratedNoiseSettingsFolder();
+    if (Folder.IsEmpty())
+    {
+        return nullptr;
+    }
+
+    const FString AssetName = MakeNoiseAssetName(AssetIndex);
+    const FString PackageName = FString::Printf(TEXT("%s/%s"), *Folder, *AssetName);
+    const FString ObjectPath = FString::Printf(TEXT("%s.%s"), *PackageName, *AssetName);
+
+    if (UCosmicDefaultNoiseSettings* ExistingAsset = Cast<UCosmicDefaultNoiseSettings>(StaticLoadObject(UCosmicDefaultNoiseSettings::StaticClass(), nullptr, *ObjectPath)))
+    {
+        if (GeneratedNoiseSettingsAssets.Num() <= AssetIndex)
+        {
+            GeneratedNoiseSettingsAssets.SetNum(AssetIndex + 1);
+        }
+        GeneratedNoiseSettingsAssets[AssetIndex] = ExistingAsset;
+        return ExistingAsset;
+    }
+
+    if (FPackageName::DoesPackageExist(PackageName))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("CosmicSystemGenerator: package '%s' exists but is not a UCosmicDefaultNoiseSettings asset. Using transient noise settings."), *PackageName);
+        return nullptr;
+    }
+
+    UPackage* Package = CreatePackage(*PackageName);
+    if (!Package)
+    {
+        return nullptr;
+    }
+
+    Package->FullyLoad();
+    UCosmicDefaultNoiseSettings* NewAsset = NewObject<UCosmicDefaultNoiseSettings>(
+        Package,
+        UCosmicDefaultNoiseSettings::StaticClass(),
+        *AssetName,
+        RF_Public | RF_Standalone | RF_Transactional);
+
+    if (NewAsset)
+    {
+        FAssetRegistryModule::AssetCreated(NewAsset);
+        if (GeneratedNoiseSettingsAssets.Num() <= AssetIndex)
+        {
+            GeneratedNoiseSettingsAssets.SetNum(AssetIndex + 1);
+        }
+        GeneratedNoiseSettingsAssets[AssetIndex] = NewAsset;
+    }
+
+    return NewAsset;
+#else
+    return nullptr;
+#endif
+}
+#endif
 UCosmicNoiseClass* ACosmicSystemGenerator::CreateRandomNoiseSettings(FRandomStream& Stream, float PlanetRadius)
 {
-    // (sin cambios respecto al original; se podrían exponer rangos en el futuro)
-    UCosmicDefaultNoiseSettings* NewSettings = NewObject<UCosmicDefaultNoiseSettings>(GetTransientPackage(), NAME_None, RF_Transient);
+    UCosmicDefaultNoiseSettings* NewSettings = nullptr;
+
+#if WITH_EDITOR
+    if (ShouldCreatePersistentNoiseSettingsAssets())
+    {
+        NewSettings = Cast<UCosmicDefaultNoiseSettings>(CreateOrReusePersistentRandomNoiseSettingsAsset());
+    }
+#endif
+
+    if (!NewSettings)
+    {
+        NewSettings = NewObject<UCosmicDefaultNoiseSettings>();
+    }
+
     NewSettings->Seed = Stream.RandRange(0, 999999);
 
     const float FeatureScaleKm = FMath::Clamp(PlanetRadius, 5.0f, 500.0f);
@@ -203,6 +444,10 @@ UCosmicNoiseClass* ACosmicSystemGenerator::CreateRandomNoiseSettings(FRandomStre
     Biome.TemperatureFrequency = Stream.FRandRange(0.3f, 1.5f) / FeatureScaleKm;
     Biome.LatitudeEffect = Stream.FRandRange(0.5f, 1.5f);
     Biome.AltitudeTemperaturePenalty = Stream.FRandRange(0.2f, 0.6f);
+
+#if WITH_EDITOR
+    SaveGeneratedNoiseSettingsAsset(NewSettings);
+#endif
 
     return NewSettings;
 }
@@ -227,6 +472,14 @@ void ACosmicSystemGenerator::SetNumBodies(int32 NumBodies)
 void ACosmicSystemGenerator::GenerateBodies()
 {
     ClearBodies();
+    GeneratedNoiseAssetCounter = 0;
+#if WITH_EDITOR
+    if (ShouldCreatePersistentNoiseSettingsAssets())
+    {
+        EnsureGeneratedNoiseSettingsFolderId();
+        LoadGeneratedNoiseSettingsAssets();
+    }
+#endif
     if (!GetWorld()) return;
 
     FRandomStream Stream(Seed);
@@ -498,16 +751,48 @@ void ACosmicSystemGenerator::ClearBodies()
 {
     for (AActor* Actor : GeneratedBodies)
     {
-        if (ACosmicPlanet* Planet = Cast<ACosmicPlanet>(Actor))
+        /*if (ACosmicPlanet* Planet = Cast<ACosmicPlanet>(Actor))
         {
             Planet->CleanupNoiseSettings();
-        }
+        }*/
         if (Actor)
         {
             Actor->Destroy();
         }
     }
     GeneratedBodies.Empty();
+}
+
+void ACosmicSystemGenerator::DeleteGeneratedNoiseSettingsAssets()
+{
+    ClearBodies();
+
+#if WITH_EDITORONLY_DATA
+    const FString Folder = GetGeneratedNoiseSettingsFolder();
+    if (Folder.IsEmpty())
+    {
+        GeneratedNoiseSettingsAssets.Empty();
+        return;
+    }
+
+    LoadGeneratedNoiseSettingsAssets();
+
+    TArray<UObject*> ObjectsToDelete;
+    for (TObjectPtr<UCosmicDefaultNoiseSettings> NoiseSettings : GeneratedNoiseSettingsAssets)
+    {
+        if (NoiseSettings)
+        {
+            ObjectsToDelete.Add(NoiseSettings.Get());
+        }
+    }
+
+    if (ObjectsToDelete.Num() > 0)
+    {
+        ObjectTools::DeleteObjectsUnchecked(ObjectsToDelete);
+    }
+
+    GeneratedNoiseSettingsAssets.Empty();
+#endif
 }
 
 void ACosmicSystemGenerator::StartOrbitSimulation()
