@@ -68,9 +68,7 @@ protected:
 	 */
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	// =========================================================================
 	// ESTADO DEL MOVIMIENTO
-	// =========================================================================
 
 	/**
 	 * Indica si el jugador está apoyado sobre una superficie válida.
@@ -84,9 +82,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "CosmicArchitect|Movement")
 	float VerticalVelocity;
 
-	// =========================================================================
 	// COMPONENTES
-	// =========================================================================
 
 	/**
 	 * Componente de colisión principal del jugador.
@@ -143,9 +139,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Components")
 	UCosmicGravityComponent* GravityComp;
 
-	// =========================================================================
 	// PARÁMETROS DE MOVIMIENTO
-	// =========================================================================
 
 	/**
 	 * Fuerza base de movimiento en superficie.
@@ -161,9 +155,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Movement")
 	float GravityAcceleration = 9.8f;
 
-	// =========================================================================
 	// CONFIGURACIÓN DE INPUT
-	// =========================================================================
 
 	/**
 	 * Sensibilidad del mouse para cámara.
@@ -187,9 +179,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Parenting")
 	AActor* CurrentParentPlanet;
 
-	// =========================================================================
 	// ENHANCED INPUT SYSTEM
-	// =========================================================================
 
 	/**
 	 * Contexto principal de input (Enhanced Input).
@@ -217,9 +207,7 @@ protected:
 
 private:
 
-	// =========================================================================
 	// SISTEMA DE MOVIMIENTO
-	// =========================================================================
 
 	/**
 	 * Aplica movimiento sobre la superficie planetaria.
@@ -249,14 +237,7 @@ private:
 	 */
 	bool IsGrounded() const;
 
-	/**
-	 * Gestiona el parenting dinámico sobre planetas cercanos.
-	 */
-	void HandleDynamicParenting();
-
-	// =========================================================================
 	// ESTADO DE CÁMARA
-	// =========================================================================
 
 	/**
 	 * Rotación acumulada en eje Yaw de la cámara.

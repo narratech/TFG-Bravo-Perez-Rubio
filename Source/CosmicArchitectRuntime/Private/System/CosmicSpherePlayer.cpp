@@ -27,9 +27,7 @@ ACosmicSpherePlayer::ACosmicSpherePlayer()
 	// al jugador local principal.
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
 
-	// =========================================================================
 	// CREACIÓN DE COMPONENTES
-	// =========================================================================
 
 	// Cápsula principal utilizada para:
 	// - Colisiones
@@ -124,71 +122,6 @@ void ACosmicSpherePlayer::SetupPlayerInputComponent(UInputComponent* PlayerInput
 	}
 }
 
-//void ACosmicSpherePlayer::Tick(float DeltaTime)
-//{
-//	Super::Tick(DeltaTime);
-//
-//	// Validación de seguridad para evitar
-//	// acceso a componentes inválidos.
-//	if (!GravityComp || !VisualRoot || !MeshRoot) return;
-//
-//	// =========================================================================
-//	// 1. OBTENCIÓN DE GRAVEDAD
-//	// =========================================================================
-//
-//	FVector GravityDown = GravityComp->CurrentGravityDirection;
-//	if (GravityDown.IsNearlyZero()) return;
-//
-//	FVector TargetUp = -GravityDown;
-//
-//	// =========================================================================
-//	// 2. ALINEACIÓN INSTANTÁNEA
-//	// =========================================================================
-//
-//	// Proyecta el vector frontal sobre el plano
-//	// gravitacional para evitar inclinaciones laterales.
-//	FVector StableForward = FVector::VectorPlaneProject(VisualRoot->GetForwardVector(), TargetUp).GetSafeNormal();
-//	if (StableForward.IsNearlyZero()) {
-//		StableForward = FVector::CrossProduct(VisualRoot->GetRightVector(), TargetUp).GetSafeNormal();
-//	}
-//
-//	// Alineación gravitacional del contenedor visual.
-//	FQuat TargetVisualQuat = FRotationMatrix::MakeFromXZ(StableForward, TargetUp).ToQuat();
-//	VisualRoot->SetWorldRotation(TargetVisualQuat);
-//
-//	// =========================================================================
-//	// 3. PARENTESCO DINÁMICO
-//	// =========================================================================
-//
-//	HandleDynamicParenting();
-//
-//	// =========================================================================
-//	// 4. ROTACIÓN SUAVE DEL MODELO 3D
-//	// =========================================================================
-//
-//	FVector MeshDesiredForward;
-//	if (!TargetFacingDirection.IsNearlyZero())
-//	{
-//		// Orienta el personaje hacia
-//		// la dirección de desplazamiento.
-//		MeshDesiredForward = FVector::VectorPlaneProject(TargetFacingDirection, TargetUp).GetSafeNormal();
-//	}
-//	else
-//	{
-//		// Mantiene orientación estable
-//		// mientras el jugador está quieto.
-//		MeshDesiredForward = FVector::VectorPlaneProject(MeshRoot->GetForwardVector(), TargetUp).GetSafeNormal();
-//	}
-//
-//	if (!MeshDesiredForward.IsNearlyZero())
-//	{
-//		// Interpolación suave para obtener
-//		// rotación visual natural.
-//		FQuat TargetMeshQuat = FRotationMatrix::MakeFromXZ(MeshDesiredForward, TargetUp).ToQuat();
-//		MeshRoot->SetWorldRotation(FMath::QInterpTo(MeshRoot->GetComponentQuat(), TargetMeshQuat, DeltaTime, 15.0f));
-//	}
-//}
-
 void ACosmicSpherePlayer::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -238,54 +171,6 @@ void ACosmicSpherePlayer::Tick(float DeltaTime)
 	// Velocidad vertical relativa respecto
 	// al eje gravitacional local.
 	VerticalVelocity = FVector::DotProduct(CapsuleComp->GetComponentVelocity(), VisualRoot->GetUpVector());
-}
-
-void ACosmicSpherePlayer::HandleDynamicParenting()
-{
-	AActor* NearestPlanet = nullptr;
-	float MinDist = TNumericLimits<float>::Max();
-
-	// Variable auxiliar utilizada para debugging.
-	int32 CheckedPlanetsCount = 0;
-
-	if (UCosmicGravitySubsystem* Subsystem = GetWorld()->GetSubsystem<UCosmicGravitySubsystem>())
-	{
-		for (UCosmicGravityComponent* PlanetComp : Subsystem->GetPlanets())
-		{
-			if (PlanetComp && PlanetComp->GetOwner() && PlanetComp->GetOwner() != this)
-			{
-				if (ACosmicPlanet* PlanetActor = Cast<ACosmicPlanet>(PlanetComp->GetOwner()))
-				{
-					// Contador de planetas válidos evaluados.
-					CheckedPlanetsCount++;
-
-					float Dist = FVector::Dist(GetActorLocation(), PlanetActor->GetActorLocation());
-					float RealRadiusCm = PlanetActor->RadiusKm * 100000.0f;
-					float DistToSurface = Dist - RealRadiusCm;
-
-					// Selecciona el planeta más cercano
-					// respecto a su superficie real.
-					if (DistToSurface < MinDist)
-					{
-						MinDist = DistToSurface;
-						NearestPlanet = PlanetActor;
-					}
-				}
-			}
-		}
-	}
-
-	// =========================================================================
-	// ZONA DE DEBUG
-	// =========================================================================
-
-	// Debug visual runtime para:
-	// - Número de planetas evaluados
-	// - Planeta más cercano
-	// - Distancia a superficie
-	// - Estado de parenting dinámico
-
-	// =========================================================================
 }
 
 void ACosmicSpherePlayer::Move(const FInputActionValue& Value)
