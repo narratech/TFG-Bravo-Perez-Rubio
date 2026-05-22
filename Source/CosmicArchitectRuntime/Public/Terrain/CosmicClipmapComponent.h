@@ -273,11 +273,6 @@ protected:
     bool UpdateCollisionNearPlayer(const FVector& SurfacePos, const FVector& SurfaceNormal, const double DistanceToSurface);
 
     /**
-     * Actualiza la transformación de todos los patches.
-     */
-    void UpdatePatchTransform(const FVector& SurfacePos, const FVector& N);
-
-    /**
      * Construye la instancia dinámica del material planetario.
      */
     void BuildDynamicMaterial();

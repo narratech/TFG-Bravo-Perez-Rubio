@@ -265,7 +265,7 @@ void FFoliageGenerationTask::CalculateSlopeAndNormal(
         MaxSlope = FMath::Max(MaxSlope, SlopeAngle);
     }
 
-    // Normal — misma lógica que GetTerrainNormal
+    // Normal
     FVector V1 = Positions[0] - Positions[1];
     FVector V2 = Positions[2] - Positions[3];
     FVector Normal = FVector::CrossProduct(V1, V2).GetSafeNormal();

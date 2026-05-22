@@ -17,7 +17,6 @@
 #include "DrawDebugHelpers.h"
 #include "ModulesBridge/CosmicCameraBridge.h"
 #include "GameFramework/Pawn.h"
-#include "ModulesBridge/CosmicBenchmarkBridge.h"
 
 
 UCosmicClipmapComponent::UCosmicClipmapComponent()
@@ -97,8 +96,6 @@ void UCosmicClipmapComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) 
     Super::EndPlay(EndPlayReason);
 }
 
-
-
 void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
@@ -116,8 +113,6 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         return;
 
     ElapsedTime = ElapsedTime - TimeToRefresh;
-
-    //double TotalStartTime = FPlatformTime::Seconds();
 
     FVector SurfacePos;
     FVector N;
@@ -153,13 +148,6 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             //CurrentPhase = EUpdatePhase::Foliage;
             UpdateFoliagePhase(DeltaTime, SurfacePos + N * DistanceToSurface, DistanceToSurface);
         }
-
-        float PhaseMs = (float)((FPlatformTime::Seconds() - PhaseStart) * 1000.0);
-
-        if (CurrentPhase == EUpdatePhase::Foliage || UpdateFoliageExtra)
-        {
-            FCosmicBenchmarkBridge::RecordEvent(TEXT("Phase_Foliage"), TEXT("Ms"), PhaseMs);
-        }
         
         CurrentPhase = (EUpdatePhase)(((uint8)CurrentPhase + 1) % 3);
     }
@@ -168,10 +156,6 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         DistanceToSurface = GetFastDistanceToSurface(ViewerPos, SurfacePos, N);
         UpdateMeshPhase(ViewerPos, SurfacePos, N, DistanceToSurface);
     }
-
-    //double TotalEndTime = FPlatformTime::Seconds();
-
-    //UE_LOG(LogTemp, Warning, TEXT("Tiempo: %.4f, fase: %d"), (TotalEndTime - TotalStartTime) * 1000, (uint8)CurrentPhase);
 }
 
 void UCosmicClipmapComponent::UpdateFoliagePhase(float DeltaTime, const FVector& ViewerPos, float DistanceToSurface)
@@ -384,10 +368,9 @@ void UCosmicClipmapComponent::PostEditChangeProperty(FPropertyChangedEvent& Prop
         ? PropertyChangedEvent.Property->GetFName()
         : NAME_None;
 
-    // REBUILD COMPLETO (estructura)
+    // REBUILD COMPLETO 
     if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, BaseResolution) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, NumLevels) /*||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, IsPlanet)*/)
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, NumLevels))
     {
         ClearLevels();
 
@@ -437,10 +420,7 @@ void UCosmicClipmapComponent::CreateLevels()
         CollisionComponent->GenerateCollisionMesh(PlanetRadius);
     }
 
-    
-    //UE_LOG(LogTemp, Warning, TEXT("No entra"));
-
-    // 2. Validar parámetros
+    // Validar parámetros
     if (NumLevels <= 0 || BaseResolution <= 0 || PlanetRadius <= 0)
     {
         UE_LOG(LogTemp, Error, TEXT("Parámetros inválidos para CreateLevels"));
@@ -453,9 +433,6 @@ void UCosmicClipmapComponent::CreateLevels()
         BaseResolution += 4 - Remainder;
     }
 
-    //UE_LOG(LogTemp, Warning, TEXT("UCosmicClipmapComponent::CreateLevels() - Creando %d niveles"), NumLevels);
-
-    // 3. Inicializar array
     Levels.Empty();
     Levels.SetNum(NumLevels);
 
@@ -467,8 +444,6 @@ void UCosmicClipmapComponent::CreateLevels()
         
     BaseGridSpacing = BaseSpacing = (PlanetRadius * 2.0f) / (BaseResolution * FMath::Pow(2.0f, NumLevels - 1));
      
-    //UE_LOG(LogTemp, Error, TEXT("BaseGridSpacing %.4f"), BaseGridSpacing);
-
     FVector SurfacePos;
     FVector N;
     FVector ViewerPos;
@@ -476,13 +451,10 @@ void UCosmicClipmapComponent::CreateLevels()
     if (IsPlanet) {
         GetDistanceToSurface(ViewerPos, SurfacePos, N);
     }
-    /*else {
-        GetDistanceToPlainSurface(ViewerPos, SurfacePos, N);
-    }*/
 
     FRotator PatchRotation = GetPatchRotation(N);
 
-    // 4. Crear cada nivel
+    // Crear cada nivel
     for (int32 L = 0; L < NumLevels; ++L)
     {
         // Crear nombre único para el componente
@@ -518,10 +490,6 @@ void UCosmicClipmapComponent::CreateLevels()
         Mesh->PlanetRadius = PlanetRadius;
         Mesh->bIsPlanet = true;
 
-        /*if (IsPlanet) {
-            Mesh->SetPositionAndRotation(SurfacePos, PatchRotation);
-        }*/
-
         Mesh->SetPositionAndRotation(SurfacePos - CurrentActorPosition, PatchRotation);
 
         // Construir malla
@@ -537,13 +505,9 @@ void UCosmicClipmapComponent::CreateLevels()
 
         // Guardar referencia
         Levels[L] = Mesh;
-
-        //UE_LOG(LogTemp, Warning, TEXT("  Nivel %d creado: GridSpacing=%.2f, bIsRing=%s"),
-        //    L, Mesh->GridSpacing, Mesh->bIsRing ? TEXT("true") : TEXT("false"));
     }
    
     bInit = true;
-    //UE_LOG(LogTemp, Warning, TEXT("CreateLevels completado. Niveles totales: %d"), Levels.Num());
 }
 
 void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
@@ -598,31 +562,25 @@ void UCosmicClipmapComponent::ClearLevels()
 
     TotalShift = FIntPoint::ZeroValue;
 
-    // 1. Destruir componentes del array Levels
+    // Destruir componentes del array Levels
     for (UCosmicMeshComponent* Mesh : Levels)
     {
-        //UE_LOG(LogTemp, Warning, TEXT("  Destruyendo nivel %d"), Mesh->LevelIndex);
-
         // Desactivar y limpiar la malla
         Mesh->ClearAllMeshSections();
         Mesh->CancelAsyncWork();
-        // Destruir el componente
         Mesh->DestroyComponent();
         Mesh = nullptr;
-        //LevelsCleared++;
     }
 
-    // 2. Destruir nivel exterior
+    // Destruir nivel exterior
     if (FarLevel)
     {
-        //UE_LOG(LogTemp, Warning, TEXT("  Destruyendo nivel exterior"));
         FarLevel->ClearAllMeshSections();
         FarLevel->CancelAsyncWork();
         FarLevel->DestroyComponent();
         FarLevel = nullptr;
     }
 
-    // 3. Limpiar arrays
     Levels.Empty();
 
     if (CollisionComponent && CollisionComponent->IsBuilt())
@@ -636,8 +594,6 @@ void UCosmicClipmapComponent::ClearLevels()
     }
 
     bPerformanceBuild = false;
-
-    //UE_LOG(LogTemp, Warning, TEXT("UCosmicClipmapComponent::ClearLevels() - Limpiando %d niveles"), LevelsCleared);
 }
 
 void UCosmicClipmapComponent::SetMaterialData(FColor Color1, FColor Color2, FColor ColorCold, FColor ColorHot,
@@ -713,8 +669,6 @@ void UCosmicClipmapComponent::UpdateNoiseEvaluator()
 
 void UCosmicClipmapComponent::RequestCompleteMeshUpdate()
 {
-    //UE_LOG(LogTemp, Warning, TEXT("Aplicando ruido nuevo"));
-
     bPerformanceBuild = false;
 
     UpdateNoiseEvaluator();
@@ -731,46 +685,6 @@ void UCosmicClipmapComponent::RequestCompleteMeshUpdate()
     {
         FoliageSpawnerComponent->ClearFoliage();
     } 
-}
-
-
-void UCosmicClipmapComponent::UpdatePatchTransform(const FVector& SurfacePos, const FVector& N)
-{
-    const FVector Up = N;
-
-    // Elegimos un vector no colineal (branch barato)
-    const FVector Tangent = (FMath::Abs(Up.Z) < 0.99f)
-        ? FVector(0, 0, 1)
-        : FVector(1, 0, 0);
-
-    // Right sale normalizado si Up y Tangent son unitarios
-    FVector Right = FVector::CrossProduct(Tangent, Up);
-    Right.Normalize(); // solo UNA normalización
-
-    const FVector Forward = FVector::CrossProduct(Up, Right); // ya unitario
-
-    const FRotator PatchRotation =
-        FRotationMatrix::MakeFromXZ(Forward, Up).Rotator();
-
-    /*FVector Up = N;
-    FVector Arbitrary = (FMath::Abs(Up.Z) < 0.99f) ? FVector::UpVector : FVector::ForwardVector;
-    FVector Right = FVector::CrossProduct(Arbitrary, Up).GetSafeNormal();
-    FVector Forward = FVector::CrossProduct(Up, Right).GetSafeNormal();
-    FRotator PatchRotation = FRotationMatrix::MakeFromXZ(Forward, Up).Rotator();*/
-
-
-    for (UCosmicMeshComponent* Mesh : Levels)
-    {
-        if (!Mesh) continue;
-
-        // Mover la malla procedimental
-        Mesh->SetWorldLocationAndRotation(SurfacePos, PatchRotation);
-    }
-
-    if (CollisionComponent) {
-        CollisionComponent->SetWorldLocationAndRotation(SurfacePos, PatchRotation);
-    }
-   
 }
 
 FRotator UCosmicClipmapComponent::GetPatchRotation(const FVector& N) const

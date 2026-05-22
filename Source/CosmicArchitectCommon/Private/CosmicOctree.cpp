@@ -198,45 +198,6 @@ float FCosmicOctree::GetCellRadius(const FCubeMapCell& Cell) const
     return MaxRadius;
 }
 
-//int32 FCosmicOctree::GetDesiredDepth(float DistanceKm) const
-//{
-//    // Convertir distancia a angulo
-//    float DistanceCm = DistanceKm * 100000.0f;
-//    float AngleRad = DistanceCm / SphereRadius;
-//
-//    // Queremos celdas cuyo tamano angular sea aproximadamente la mitad del angulo de visión
-//    float TargetAngularSize = AngleRad * 0.5f;
-//
-//    // Encontrar el depth que da un tamano angular cercano al objetivo
-//    for (int32 Depth = 0; Depth <= MaxDepth; Depth++)
-//    {
-//        FCubeMapCell TestCell;
-//        TestCell.Face = 0;
-//        TestCell.X = 0;
-//        TestCell.Y = 0;
-//        TestCell.Depth = Depth;
-//
-//        float CellAngle = GetCellAngularSize(TestCell);
-//        if (CellAngle <= TargetAngularSize)
-//        {
-//            return FMath::Max(0, Depth - 1);
-//        }
-//    }
-//
-//    return MaxDepth;
-//}
-
-//int32 FCosmicOctree::GetMaxDepthFromDistance(float DistanceToSurfaceCm) const
-//{
-//    // A mayor distancia a la superficie, menor profundidad
-//    if (DistanceToSurfaceCm > 1000000.0f) return 0;      // > 10km -> solo raíz
-//    if (DistanceToSurfaceCm > 100000.0f) return 1;       // > 1km
-//    if (DistanceToSurfaceCm > 10000.0f) return 2;        // > 100m
-//    if (DistanceToSurfaceCm > 1000.0f) return 3;         // > 10m
-//    if (DistanceToSurfaceCm > 100.0f) return 4;          // > 1m
-//    return 5;                                             // muy cerca
-//}
-
 void FCosmicOctree::TraverseCell(
     const FCubeMapCell& Cell,
     const FVector& PlayerPos,

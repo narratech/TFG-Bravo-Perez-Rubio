@@ -330,7 +330,7 @@ void UCosmicMeshComponent::BuildSphereMesh()
     BaseTangents.Reserve(TotalVertices);
     UVs.Reserve(TotalVertices);
 
-    // 1. VÉRTICES
+    // VÉRTICES
     for (int32 y = 0; y < VertResY; ++y)
     {
         float V = (float)y / LatSegments;
@@ -366,7 +366,7 @@ void UCosmicMeshComponent::BuildSphereMesh()
         }
     }
 
-    // 2. TRIÁNGULOS
+    // TRIÁNGULOS
     for (int32 y = 0; y < LatSegments; ++y)
     {
         for (int32 x = 0; x < LonSegments; ++x)
@@ -398,11 +398,10 @@ void UCosmicMeshComponent::BuildSphereMesh()
         false      // Crear colisión
     );
 
-    // 7. VERIFICAR que se creó correctamente
+    // VERIFICAR que se creó correctamente
     if (GetNumSections() > 0)
     {
         bMeshCreated = true;
-        //UE_LOG(LogTemp, Warning, TEXT("Malla creada exitosamente. Secciones: %d"), GetNumSections());
     }
     else
     {
@@ -507,28 +506,18 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
     // Si no ha terminado, devolvemos false
     if (!NoiseTask->IsDone()) return false;
 
-    //double PhaseStart = FPlatformTime::Seconds();
-
     TArray<FVector> CurrentVertices = NoiseTask->GetTask().CalculatedVertices;
     TArray<FLinearColor> CurrentColors = NoiseTask->GetTask().CalculatedColors;
 
     if (bIsPlanet || bIsSphereMesh) {
         BaseNormals = NoiseTask->GetTask().CalculatedNormals;
     }
-
-    //float PhaseMs = (float)((FPlatformTime::Seconds() - PhaseStart) * 1000.0);
-
-    //FCosmicBenchmarkBridge::RecordEvent("GetVector", TEXT("Ms"), PhaseMs);
     
     // Limpiamos la memoria de la tarea
     delete NoiseTask;
     NoiseTask = nullptr;
 
     bIsGeneratingNoise = false;
-
-    //double CreateStartTime = FPlatformTime::Seconds();
-
-    //double UpdateStart = FPlatformTime::Seconds();
 
     // Actualizamos la sección de la malla (No subimos informacion irrelevante)
     UpdateMeshSection_LinearColor(
@@ -539,11 +528,6 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
         CurrentColors,
         TArray<FProcMeshTangent>()
     );
-
-    //float UpdateTime = (float)((FPlatformTime::Seconds() - UpdateStart) * 1000.0);
-
-    //FCosmicBenchmarkBridge::RecordEvent("UpdateLinear", TEXT("Ms"), UpdateTime);
-
 
     SetCollisionEnabled(ECollisionEnabled::NoCollision);
 

@@ -264,9 +264,6 @@ void FCosmicBenchmarkRecorder::RecordEvent(const FString& EventName,
     Evt.TestContext = CurrentTestNameContext;
 
     Events.Add(Evt);
-
-    /*UE_LOG(LogTemp, Log, TEXT("[BenchmarkEvent] [%.2fs | %s] %s — %s (value=%.4f)"),
-        Evt.TimestampSec, *Evt.TestContext, *Evt.EventName, *Evt.Description, Evt.NumericValue);*/
 }
 
 void FCosmicBenchmarkRecorder::ClearEvents()

@@ -57,9 +57,6 @@ void UCosmicFoliageSpawner::UpdateFoliageSpawner(float DeltaTime, const FVector&
     UpdateFoliageGeneration();
     ProcessApplyQueue();
     ProcessDeactivationQueue();
-
-    // Debug: Dibujar celdas
-    //DrawDebugCells(PlanetCenter, PlanetRadius);
 }
 
 void UCosmicFoliageSpawner::CancelAsyncWork()
@@ -235,13 +232,8 @@ void UCosmicFoliageSpawner::DrawDebugCells(const FVector& PlanetCenter, double P
 
 void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocation, double DistanceToSurface, const FVector& PlanetCenter, double PlanetRadius, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy)
 {
-    //double TotalStart = FPlatformTime::Seconds();
-
     if (!FoliageCollection)
         return;
-
-    // ------------------ UNIQUE LAYERS ------------------
-    //double UniqueStart = FPlatformTime::Seconds();
 
     TSet<ECosmicFoliageLayer> UniqueLayers;
 
@@ -253,46 +245,21 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
         }
     }
 
-    //double UniqueEnd = FPlatformTime::Seconds();
-
-
-    // ------------------ POR LAYER ------------------
-    //
-    // double LayersTotalTime = 0.0;
-
     for (size_t i = 0; i < 3; i++)
     {
-        //double LayerStart = FPlatformTime::Seconds();
 
         ECosmicFoliageLayer CurrentLayer = GetLayerFromIndex(i);
 
         if (!UniqueLayers.Find(CurrentLayer)) continue;
 
-        // -------- OCTREE QUERY --------
-        //double OctreeStart = FPlatformTime::Seconds();
-
         TArray<FCubeMapCell> VisibleNodes;
         if (DistanceToSurface < GetLayerRadius(CurrentLayer) * 100000)
-        {           
+        {
             Octree.GetNodesInRadius(ViewerLocation, PlanetCenter, GetLayerRadius(CurrentLayer), VisibleNodes);
-            //UE_LOG(LogTemp, Warning, TEXT("ViewerLocaction: %s, PlanetCenter: %s, LayerRadius: %.4f"), *ViewerLocation.ToString(), *PlanetCenter.ToString(), GetLayerRadius(CurrentLayer));
         }
-        
-        //double OctreeEnd = FPlatformTime::Seconds();
-
-        //UE_LOG(LogTemp, Warning, TEXT("UpdateOctree Layer %d , %.3f ms"), i, (OctreeEnd - OctreeStart) * 1000.0);
-    
-
-        // -------- SET BUILD --------
-        //double SetStart = FPlatformTime::Seconds();
 
         TSet<FCubeMapCell> VisibleSet(VisibleNodes);
         CurrentVisibleCells[i] = VisibleSet;
-
-        //double SetEnd = FPlatformTime::Seconds();
-
-        // -------- ACTIVATE --------
-        //double ActivateStart = FPlatformTime::Seconds();
 
         for (const FCubeMapCell& Node : VisibleNodes)
         {
@@ -302,11 +269,6 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
                 GenerateCellFoliage(Node, PlanetCenter, PlanetRadius, CurrentLayer, NoiseGenerationStrategy);
             }
         }
-
-        //double ActivateEnd = FPlatformTime::Seconds();
-
-        // -------- DEACTIVATE --------
-        //double DeactivateStart = FPlatformTime::Seconds();
 
         TArray<FCubeMapCell> ToRemove;
 
@@ -321,37 +283,9 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
 
         for (const FCubeMapCell& Node : ToRemove)
         {
-            //LayerCells[i].ActiveCells.Remove(Node);
             PendingCells[i].Remove(Node);
         }
-
-        //double DeactivateEnd = FPlatformTime::Seconds();
-
-        //double LayerEnd = FPlatformTime::Seconds();
-
-        //LayersTotalTime += (LayerEnd - LayerStart);
-
-        /*UE_LOG(LogTemp, Warning, TEXT(
-            "Layer %d | Total=%.3f ms | Octree=%.3f | Set=%.3f | Activate=%.3f | Deactivate=%.3f | Visible=%d"),
-            i,
-            (LayerEnd - LayerStart) * 1000.0,
-            (OctreeEnd - OctreeStart) * 1000.0,
-            (SetEnd - SetStart) * 1000.0,
-            (ActivateEnd - ActivateStart) * 1000.0,
-            (DeactivateEnd - DeactivateStart) * 1000.0,
-            VisibleNodes.Num()
-        );*/
     }
-
-    // ------------------ TOTAL ------------------
-    //double TotalEnd = FPlatformTime::Seconds();
-
-    /*UE_LOG(LogTemp, Warning, TEXT(
-        "UpdateOctree TOTAL=%.3f ms | UniqueLayers=%.3f | Layers=%.3f"),
-        (TotalEnd - TotalStart) * 1000.0,
-        (UniqueEnd - UniqueStart) * 1000.0,
-        LayersTotalTime * 1000.0
-    );*/
 }
 
 void UCosmicFoliageSpawner::GenerateCellFoliage(
