@@ -11,8 +11,8 @@
 #include "DrawDebugHelpers.h"
 #include "Simulation/CosmicOrbitComponent.h"
 #include "Simulation/CosmicGravityComponent.h"
-#include "Components/DirectionalLightComponent.h"
-#include "Engine/DirectionalLight.h"
+#include "Components/PointLightComponent.h"
+#include "Engine/PointLight.h"
 #include "Materials/MaterialInstance.h"
 
 #if WITH_EDITOR
@@ -544,17 +544,32 @@ void ACosmicSystemGenerator::GenerateBodies()
     Star->AddInstanceComponent(StarGravity);
     GeneratedBodies.Add(Star);
 
-    // Luz direccional
-    ADirectionalLight* NuevaLuz = GetWorld()->SpawnActor<ADirectionalLight>(
-        ADirectionalLight::StaticClass(),
+    // Luz puntual de la estrella, con alcance suficiente para todo el sistema generado.
+    APointLight* PointLight = GetWorld()->SpawnActor<APointLight>(
+        APointLight::StaticClass(),
         Star->GetActorLocation(), Star->GetActorRotation(), SpawnParams);
-    NuevaLuz->AttachToActor(Star, FAttachmentTransformRules::KeepWorldTransform);
-    if (UDirectionalLightComponent* DL = Cast<UDirectionalLightComponent>(NuevaLuz->GetLightComponent()))
+    if (PointLight)
     {
-        DL->AtmosphereSunLightIndex = 0;
-        DL->Intensity = 50.f;
+        PointLight->AttachToActor(Star, FAttachmentTransformRules::KeepWorldTransform);
+        if (UPointLightComponent* PL = Cast<UPointLightComponent>(PointLight->GetLightComponent()))
+        {
+            const float MaxBodyRadiusKm = FMath::Max3(
+                (float)BodyDiameterRangeKm.Y * 0.5f,
+                (float)MoonDiameterRangeKm.Y * 0.5f,
+                GasGiantRadiusMax);
+            const float MaxMoonReachKm = MaxBodyRadiusKm * MoonOrbitDistanceFactorMax + (MoonDiameterRangeKm.Y * 0.5f);
+            const float MaxRingReachKm = MaxBodyRadiusKm * 2.8f;
+            const float LightRangeKm = FMath::Max(SystemRadiusKm + FMath::Max(MaxMoonReachKm, MaxRingReachKm), SystemRadiusKm * 1.1f);
+
+            PL->AttenuationRadius = LightRangeKm * 100000.0f;
+            PL->Intensity = 50.f;
+            PL->bUseInverseSquaredFalloff = false;
+            PL->LightFalloffExponent = 1.0f;
+
+            PL->MarkRenderStateDirty();
+        }
+        GeneratedBodies.Add(PointLight);
     }
-    GeneratedBodies.Add(NuevaLuz);
 
     // Contador de cuerpos: la estrella y la luz no cuentan para NumberOfBodies (sólo planetas y lunas)
     int32 BodiesSpawned = 0;
