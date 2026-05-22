@@ -213,9 +213,7 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Classification", meta = (ClampMin = "0.0", ClampMax = "1.0"))
     float TelluricOceanProbability = 0.7f;
 
-    // =========================================================================
     // GENERATION RULES – RANGOS DE LUNAS
-    // =========================================================================
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Moons", meta = (ClampMin = "0", ClampMax = "20"))
     int32 GasGiantMoonMin = 1;
@@ -227,9 +225,7 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Moons", meta = (ClampMin = "0", ClampMax = "20"))
     int32 TelluricMoonMax = 3;
 
-    // =========================================================================
     // GENERATION RULES – RESOLUCIONES
-    // =========================================================================
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Graphics", meta = (ClampMin = "16", ClampMax = "512"))
     int32 GasGiantClipResolution = 64;
@@ -295,6 +291,8 @@ private:
     void LoadGeneratedNoiseSettingsAssets();
 
     void SaveGeneratedNoiseSettingsAsset(UCosmicDefaultNoiseSettings* NoiseSettings) const;
+
+    void UpdateBodiesOrbitalPeriod();
 
     static void SanitizeObjectName(FString& Name);
 #endif

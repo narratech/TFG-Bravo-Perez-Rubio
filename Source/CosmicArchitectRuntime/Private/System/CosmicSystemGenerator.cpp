@@ -775,6 +775,11 @@ void ACosmicSystemGenerator::GenerateBodies()
     {
         StartOrbitSimulation();
     }
+    else
+    {
+        UpdateBodiesOrbitalPeriod();
+    }
+    
 }
 
 void ACosmicSystemGenerator::GenerateWithRandomSeed()
@@ -819,6 +824,8 @@ void ACosmicSystemGenerator::StartOrbitSimulation()
     }
 }
 
+
+
 void ACosmicSystemGenerator::StopOrbitSimulation()
 {
     bIsSimulatingOrbits = false;
@@ -830,6 +837,20 @@ void ACosmicSystemGenerator::StopOrbitSimulation()
         for (UCosmicOrbitComponent* Orbit : Orbits)
         {
             Orbit->bEditorSimulating = false;
+        }
+    }
+}
+
+void ACosmicSystemGenerator::UpdateBodiesOrbitalPeriod()
+{
+    for (AActor* Actor : GeneratedBodies)
+    {
+        if (!Actor) continue;
+        TArray<UCosmicOrbitComponent*> Orbits;
+        Actor->GetComponents<UCosmicOrbitComponent>(Orbits);
+        for (UCosmicOrbitComponent* Orbit : Orbits)
+        {
+            Orbit->EditorSpeedMultiplier = OrbitSpeedMultiplier;
         }
     }
 }
