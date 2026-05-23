@@ -357,7 +357,7 @@ protected:
 private:
 
     /** Material dinámico utilizado por el planeta */
-    UPROPERTY()
+    UPROPERTY(Transient, DuplicateTransient)
     UMaterialInstanceDynamic* DynamicPlanetMat;
 
     /** Última posición conocida sobre la superficie */

@@ -588,10 +588,9 @@ void UCosmicClipmapComponent::ClearLevels()
         CollisionComponent->ClearCollision();
     }
 
-    if (DynamicPlanetMat)
-    {
-        DynamicPlanetMat = nullptr;
-    }
+
+    DynamicPlanetMat = nullptr;
+    
 
     bPerformanceBuild = false;
 }
