@@ -134,7 +134,7 @@ public:
 	 * Los sectores pendientes se procesan en el frame siguiente.
 	 */
 	UPROPERTY(EditAnywhere, Category = "Cosmic Architect | Optimization")
-	int32 MaxInstancesPerSecond = 5000;
+	int32 MaxInstancesPerSecond = 500;
 
 private:
 	/** Componente que renderiza el material macro del anillo. */

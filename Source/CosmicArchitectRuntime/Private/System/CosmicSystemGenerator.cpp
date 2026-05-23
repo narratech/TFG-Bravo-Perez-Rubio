@@ -562,7 +562,7 @@ void ACosmicSystemGenerator::GenerateBodies()
             const float LightRangeKm = FMath::Max(SystemRadiusKm + FMath::Max(MaxMoonReachKm, MaxRingReachKm), SystemRadiusKm * 1.1f);
 
             PL->AttenuationRadius = LightRangeKm * 100000.0f;
-            PL->Intensity = 50.f;
+            PL->Intensity = 5.f;
             PL->bUseInverseSquaredFalloff = false;
             PL->LightFalloffExponent = 1.0f;
 
