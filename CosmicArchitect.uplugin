@@ -32,7 +32,7 @@
 		},
 		{
 			"Name": "CosmicArchitectBenchmark",
-			"Type": "Runtime",
+			"Type": "DeveloperTool",
 			"LoadingPhase": "Default"
 		},
 		{

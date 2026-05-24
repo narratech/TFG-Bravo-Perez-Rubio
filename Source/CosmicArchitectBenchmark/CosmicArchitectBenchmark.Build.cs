@@ -8,17 +8,14 @@ public class CosmicArchitectBenchmark : ModuleRules
     {
         PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 
-        if (Target.Configuration == UnrealTargetConfiguration.Shipping)
-        {
-            // No compilar en Shipping
-            return; 
-        }
-
 
         PublicDependencyModuleNames.AddRange(
             new string[]
             {        
                 "Core",
+                "CoreUObject",
+                "Engine",
+                "InputCore",
                 "CosmicArchitectRuntime",
                 "CosmicArchitectFoliage",
                 "CosmicArchitectNoise",
