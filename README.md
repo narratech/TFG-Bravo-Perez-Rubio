@@ -5,7 +5,7 @@
 * David Rubio Moreno
 * Sergio Pérez Robledano
 
-### Resumen
+### Resumen 
 
 El presente Trabajo de Fin de Grado tiene como objetivo el desarrollo
 e implementación de un plugin para Unreal Engine 5 (UE5) que facilite la
@@ -18,10 +18,8 @@ that facilitates the creation of custom planetary systems. This plugin seeks to 
 procedural generation and advanced simulation tools, offering a modular and flexible environment for
 designing fully configurable planets and celestial bodies.
 
-### Memoria del proyecto: 
-
 [Documentación oficial de Unreal Engine / Unreal Engine Documentation](https://docs.unrealengine.com/)
 
-[Cosmic Architect Documentation and Instructions](https://tfg-bravoperezrubio.gitbook.io/cosmicarchitectdocumentation/)
+[Cosmic Architect Documentation and Install Instructions](https://tfg-bravoperezrubio.gitbook.io/cosmicarchitectdocumentation/)
 
 Versión soportada actualmente 5.7 / Soported version 5.7
