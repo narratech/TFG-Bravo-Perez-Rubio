@@ -17,4 +17,4 @@ void FCosmicArchitectCommonModule::ShutdownModule()
 
 #undef LOCTEXT_NAMESPACE
 	
-IMPLEMENT_MODULE(FCosmicArchitectCommonModule, CosmicArchitectCommon)
+IMPLEMENT_MODULE(FCosmicArchitectCommonModule, CosmicArchitectCommon) 

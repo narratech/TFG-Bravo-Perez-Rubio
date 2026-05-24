@@ -15,7 +15,7 @@ USTRUCT()
 struct COSMICARCHITECTCOMMON_API FCubeMapCell
 {
     GENERATED_BODY()
-
+     
     /**
      * Cara del cubo a la que pertenece la celda.
      *
@@ -34,7 +34,7 @@ struct COSMICARCHITECTCOMMON_API FCubeMapCell
     int32 Y = 0;
 
     /**
-     * Nivel de subdivisión de la celda.
+     * Nivel de subdivisiÃ³n de la celda.
      *
      * Un valor de 0 representa la cara completa.
      */

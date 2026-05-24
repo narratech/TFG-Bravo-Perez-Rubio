@@ -6,20 +6,20 @@
 #include "CosmicCubeMapCell.h"
 
 /**
- * Gestor encargado de administrar la subdivisiÛn espacial esfÈrica
- * mediante una proyecciÛn CubeMap.
+ * Gestor encargado de administrar la subdivisi√≥n espacial esf√©rica
+ * mediante una proyecci√≥n CubeMap.
  *
  * Esta clase permite:
  * - Obtener nodos visibles dentro de una distancia.
- * - Calcular relaciones jer·rquicas entre celdas.
- * - Convertir posiciones entre espacio c˙bico y esfÈrico.
+ * - Calcular relaciones jer√°rquicas entre celdas.
+ * - Convertir posiciones entre espacio c√∫bico y esf√©rico.
  * - Determinar celdas a partir de posiciones del mundo.
- * - Obtener informaciÛn geomÈtrica y de depuraciÛn.
+ * - Obtener informaci√≥n geom√©trica y de depuraci√≥n.
  */
 class COSMICARCHITECTCOMMON_API FCosmicOctree
 {
 public:
-
+     
     /**
      * Constructor por defecto.
      */
@@ -31,19 +31,19 @@ public:
     ~FCosmicOctree();
 
     /**
-     * Inicializa el octree esfÈrico.
+     * Inicializa el octree esf√©rico.
      *
-     * @param InPlanetRadius Radio del planeta en centÌmetros.
-     * @param InMaxDepth Profundidad m·xima permitida para subdivisiÛn.
+     * @param InPlanetRadius Radio del planeta en cent√≠metros.
+     * @param InMaxDepth Profundidad m√°xima permitida para subdivisi√≥n.
      */
     void Initialize(float InPlanetRadius, int32 InMaxDepth = 8);
 
     /**
      * Obtiene todos los nodos visibles dentro de un radio sobre la superficie.
      *
-     * @param ViewerLocation PosiciÛn del observador en el mundo.
+     * @param ViewerLocation Posici√≥n del observador en el mundo.
      * @param PlanetCenter Centro del planeta.
-     * @param ViewDistanceKm Distancia de visiÛn en kilÛmetros.
+     * @param ViewDistanceKm Distancia de visi√≥n en kil√≥metros.
      * @param OutNodes Array de salida con las celdas visibles.
      */
     void GetNodesInRadius(
@@ -53,36 +53,36 @@ public:
         TArray<FCubeMapCell>& OutNodes) const;
 
     /**
-     * Obtiene los lÌmites geomÈtricos de una celda.
+     * Obtiene los l√≠mites geom√©tricos de una celda.
      *
      * @param Cell Celda objetivo.
-     * @return InformaciÛn de lÌmites de la celda.
+     * @return Informaci√≥n de l√≠mites de la celda.
      */
     FNodeBounds GetNodeBounds(const FCubeMapCell& Cell) const;
 
     /**
-     * Obtiene la direcciÛn normalizada del centro de una celda.
+     * Obtiene la direcci√≥n normalizada del centro de una celda.
      *
      * @param Cell Celda objetivo.
-     * @return DirecciÛn normalizada en espacio esfÈrico.
+     * @return Direcci√≥n normalizada en espacio esf√©rico.
      */
     FVector GetNodeCenter(const FCubeMapCell& Cell) const;
 
     /**
-     * Obtiene la direcciÛn normalizada del centro de una celda.
+     * Obtiene la direcci√≥n normalizada del centro de una celda.
      *
      * @param Cell Celda objetivo.
-     * @return Vector direcciÛn normalizado.
+     * @return Vector direcci√≥n normalizado.
      */
     FVector GetNodeCenterDirection(const FCubeMapCell& Cell) const;
 
     /**
-     * Obtiene la posiciÛn del centro de una celda en coordenadas del mundo.
+     * Obtiene la posici√≥n del centro de una celda en coordenadas del mundo.
      *
      * @param Cell Celda objetivo.
      * @param InPlanetCenter Centro del planeta.
      * @param InPlanetRadius Radio del planeta.
-     * @return PosiciÛn del centro en el mundo.
+     * @return Posici√≥n del centro en el mundo.
      */
     FVector GetNodeCenterWorld(
         const FCubeMapCell& Cell,
@@ -90,10 +90,10 @@ public:
         float InPlanetRadius) const;
 
     /**
-     * Calcula el ·rea aproximada de una celda en kilÛmetros cuadrados.
+     * Calcula el √°rea aproximada de una celda en kil√≥metros cuadrados.
      *
      * @param Cell Celda objetivo.
-     * @return ¡rea aproximada en km≤.
+     * @return √Årea aproximada en km¬≤.
      */
     float GetNodeAreaKm2(const FCubeMapCell& Cell) const;
 
@@ -114,12 +114,12 @@ public:
     FCubeMapCell GetParent(const FCubeMapCell& Child) const;
 
     /**
-     * Encuentra la celda que contiene una posiciÛn del mundo.
+     * Encuentra la celda que contiene una posici√≥n del mundo.
      *
-     * @param WorldPosition PosiciÛn en el mundo.
+     * @param WorldPosition Posici√≥n en el mundo.
      * @param PlanetCenter Centro del planeta.
-     * @param TargetDepth Profundidad deseada de b˙squeda.
-     * @return Celda correspondiente a la posiciÛn indicada.
+     * @param TargetDepth Profundidad deseada de b√∫squeda.
+     * @return Celda correspondiente a la posici√≥n indicada.
      */
     FCubeMapCell FindCellAtLocation(
         const FVector& WorldPosition,
@@ -127,22 +127,22 @@ public:
         int32 TargetDepth = -1) const;
 
     /**
-     * Obtiene vÈrtices de depuraciÛn para representar visualmente la celda.
+     * Obtiene v√©rtices de depuraci√≥n para representar visualmente la celda.
      *
      * @param Cell Celda objetivo.
-     * @return Lista de vÈrtices para depuraciÛn.
+     * @return Lista de v√©rtices para depuraci√≥n.
      */
     TArray<FVector> GetDebugVertices(const FCubeMapCell& Cell) const;
 
 private:
 
     /**
-     * Radio de la esfera en centÌmetros.
+     * Radio de la esfera en cent√≠metros.
      */
     float SphereRadius;
 
     /**
-     * Profundidad m·xima permitida para el octree.
+     * Profundidad m√°xima permitida para el octree.
      */
     int32 MaxDepth;
 
@@ -160,7 +160,7 @@ private:
      * @param Face Cara del cubo.
      * @param U Coordenada U normalizada.
      * @param V Coordenada V normalizada.
-     * @return Punto en espacio c˙bico.
+     * @return Punto en espacio c√∫bico.
      */
     FVector UVToCubePoint(int32 Face, float U, float V) const;
 
@@ -168,23 +168,23 @@ private:
      * Proyecta un punto del cubo sobre la esfera.
      *
      * @param CubePoint Punto en el cubo.
-     * @return DirecciÛn normalizada sobre la esfera.
+     * @return Direcci√≥n normalizada sobre la esfera.
      */
     FVector CubePointToDirection(const FVector& CubePoint) const;
 
     /**
-     * Calcula el radio m·ximo aproximado de una celda sobre la esfera.
+     * Calcula el radio m√°ximo aproximado de una celda sobre la esfera.
      *
      * @param Cell Celda objetivo.
-     * @return Radio m·ximo en centÌmetros.
+     * @return Radio m√°ximo en cent√≠metros.
      */
     float GetCellRadius(const FCubeMapCell& Cell) const;
 
     /**
-     * Obtiene el tamaÒo angular de una celda en radianes.
+     * Obtiene el tama√±o angular de una celda en radianes.
      *
      * @param Cell Celda objetivo.
-     * @return TamaÒo angular en radianes.
+     * @return Tama√±o angular en radianes.
      */
     float GetCellAngularSize(const FCubeMapCell& Cell) const;
 
@@ -192,9 +192,9 @@ private:
      * Recorre recursivamente una celda y sus subdivisiones visibles.
      *
      * @param Cell Celda actual.
-     * @param PlayerPos PosiciÛn del observador.
+     * @param PlayerPos Posici√≥n del observador.
      * @param PlanetCenter Centro del planeta.
-     * @param ViewDistanceCm Distancia m·xima de visiÛn en centÌmetros.
+     * @param ViewDistanceCm Distancia m√°xima de visi√≥n en cent√≠metros.
      * @param RequiredDepth Profundidad requerida.
      * @param OutNodes Array de salida con nodos visibles.
      */

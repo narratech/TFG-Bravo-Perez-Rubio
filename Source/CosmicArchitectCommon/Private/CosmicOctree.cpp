@@ -20,7 +20,7 @@ void FCosmicOctree::Initialize(float InPlanetRadius, int32 InMaxDepth)
 FVector FCosmicOctree::UVToCubePoint(int32 Face, float U, float V) const
 {
     // U y V estan en [0, 1]
-    // Convertir a coordenadas en el cubo [-1, 1]
+    // Convertir a coordenadas en el cubo [-1, 1] 
     float X = U * 2.0f - 1.0f;
     float Y = V * 2.0f - 1.0f;
 
@@ -156,13 +156,13 @@ FCubeMapCell FCosmicOctree::GetParent(const FCubeMapCell& Child) const
 
 float FCosmicOctree::GetCellAngularSize(const FCubeMapCell& Cell) const
 {
-    // Obtener los lÌmites reales de la celda en el cubo
+    // Obtener los l√≠mites reales de la celda en el cubo
     FNodeBounds Bounds = GetNodeBounds(Cell);
 
     // Calcular los 4 vectores de las esquinas en la esfera
-    TArray<FVector> Corners = Bounds.GetSphereCorners(1.0f); // Radio unitario para ·ngulos
+    TArray<FVector> Corners = Bounds.GetSphereCorners(1.0f); // Radio unitario para √°ngulos
 
-    // Encontrar la distancia angular m·xima entre cualquier par de esquinas
+    // Encontrar la distancia angular m√°xima entre cualquier par de esquinas
     float MaxAngularDist = 0.0f;
     for (int32 i = 0; i < Corners.Num(); i++)
     {
@@ -175,19 +175,19 @@ float FCosmicOctree::GetCellAngularSize(const FCubeMapCell& Cell) const
         }
     }
 
-    return MaxAngularDist; // Di·metro angular m·ximo real de la celda en radianes
+    return MaxAngularDist; // Di√°metro angular m√°ximo real de la celda en radianes
 }
 
 float FCosmicOctree::GetCellRadius(const FCubeMapCell& Cell) const
 {
-    // MÈtodo mejorado: calcular el radio real del parche en la esfera
+    // M√©todo mejorado: calcular el radio real del parche en la esfera
     FNodeBounds Bounds = GetNodeBounds(Cell);
     TArray<FVector> SphereCorners = Bounds.GetSphereCorners(SphereRadius);
 
     // Centro de la celda en la esfera
     FVector Center = GetNodeCenterWorld(Cell, FVector::ZeroVector, SphereRadius);
 
-    // Encontrar la distancia m·xima al centro
+    // Encontrar la distancia m√°xima al centro
     float MaxRadius = 0.0f;
     for (const FVector& Corner : SphereCorners)
     {
@@ -208,19 +208,19 @@ void FCosmicOctree::TraverseCell(
 {
     // 1. Calcular el centro del parche en el mundo y su radio aproximado
     FVector CellWorldCenter = GetNodeCenterWorld(Cell, PlanetCenter, SphereRadius);
-    float CellRadius = GetCellRadius(Cell); // Radio m·ximo del parche en cm
+    float CellRadius = GetCellRadius(Cell); // Radio m√°ximo del parche en cm
 
-    // 2. Test de intersecciÛn esfera (visiÛn) esfera (celda)
+    // 2. Test de intersecci√≥n esfera (visi√≥n) esfera (celda)
     float DistToCellCenter = FVector::Dist(PlayerPos, CellWorldCenter);
     if (DistToCellCenter > ViewDistanceCm + CellRadius)
     {
-        return; // La celda est· completamente fuera de la vista
+        return; // La celda est√° completamente fuera de la vista
     }
 
-    // 3. Si ya alcanzamos la profundidad requerida, aÒadirla
+    // 3. Si ya alcanzamos la profundidad requerida, a√±adirla
     if (Cell.Depth >= RequiredDepth)
     {
-        // Si intersecta, es visible (incluso si sus esquinas est·n fuera)
+        // Si intersecta, es visible (incluso si sus esquinas est√°n fuera)
         OutNodes.Add(Cell);
         return;
     }
@@ -253,7 +253,7 @@ void FCosmicOctree::GetNodesInRadius(
         FCubeMapCell TestCell;
         TestCell.Face = 0;
         TestCell.Depth = Depth;
-        // Elegir la celda m·s cercana al centro de la cara (peor distorsiÛn)
+        // Elegir la celda m√°s cercana al centro de la cara (peor distorsi√≥n)
         if (Depth == 0)
         {
             TestCell.X = 0;
@@ -283,10 +283,10 @@ void FCosmicOctree::GetNodesInRadius(
         Root.Y = 0;
         Root.Depth = 0;
 
-        // øPuede esta cara intersectar la esfera de visiÛn?
+        // ¬øPuede esta cara intersectar la esfera de visi√≥n?
         FVector FaceCenter = GetNodeCenterWorld(Root, PlanetCenter, SphereRadius);
         float DistToFace = FVector::Dist(ViewerLocation, FaceCenter);
-        float FaceRadius = PI * SphereRadius / 2.0f; // 90∫ en cm
+        float FaceRadius = PI * SphereRadius / 2.0f; // 90¬∫ en cm
         if (DistToFace > ViewDistanceCm + FaceRadius)
         {
             continue;
@@ -361,7 +361,7 @@ TArray<FVector> FCosmicOctree::GetDebugVertices(const FCubeMapCell& Cell) const
     FNodeBounds Bounds = GetNodeBounds(Cell);
     TArray<FVector> SphereCorners = Bounds.GetSphereCorners(SphereRadius);
 
-    // Crear lineas conectando los vÈrtices
+    // Crear lineas conectando los v√©rtices
     TArray<FVector> Vertices;
 
     // Indices de las aristas del cubo
