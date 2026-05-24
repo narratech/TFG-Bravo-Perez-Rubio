@@ -22,15 +22,6 @@ designing fully configurable planets and celestial bodies.
 
 [Documentación oficial de Unreal Engine / Unreal Engine Documentation](https://docs.unrealengine.com/)
 
-[Cosmic Architect Documentation](https://docs.google.com/document/d/1nTUq8mMyP60DMGDs75PBsOVbHoGotzx37cwT9NiQ0js/edit?usp=sharing)
+[Cosmic Architect Documentation and Instructions](https://tfg-bravoperezrubio.gitbook.io/cosmicarchitectdocumentation/)
 
 Versión soportada actualmente 5.7 / Soported version 5.7
-
-Instrucciones de uso:
-
-Para ampliar funcionalidades del plugin, crea una carpeta Plugins en la raíz de tu proyecto c++ y clona este repositorio dentro.
-Después haz click derecho en el .uproject de tu proyecto y dale a Generate Visual Studio project files. A continuación habre la solución
-de tu proyecto y compilalo.
-
-To expand the plugin's functionality, create a Plugins folder in the root of your C++ project and clone this repository into it.
-Also, right-click on your project's .uproject file and select Generate Visual Studio project files.
