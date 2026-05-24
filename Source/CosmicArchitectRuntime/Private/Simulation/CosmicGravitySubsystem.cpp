@@ -18,7 +18,7 @@ void UCosmicGravitySubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
     Super::Initialize(Collection);
 }
-
+ 
 void UCosmicGravitySubsystem::Deinitialize()
 {
     Bodies.Empty();

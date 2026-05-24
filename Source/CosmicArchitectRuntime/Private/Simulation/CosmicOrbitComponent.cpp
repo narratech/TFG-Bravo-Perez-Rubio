@@ -11,18 +11,18 @@
 
 
 
-// Inicializa el componente orbital con configuraciÛn por defecto.
+// Inicializa el componente orbital con configuraci√≥n por defecto.
 //
 // Configura:
 // - Tick runtime
 // - Tick en editor
-// - Estado inicial de simulaciÛn
+// - Estado inicial de simulaci√≥n
 UCosmicOrbitComponent::UCosmicOrbitComponent()
 {
-	// Permite actualizaciÛn continua tanto en runtime
-	// como durante previsualizaciÛn en editor.
+	// Permite actualizaci√≥n continua tanto en runtime
+	// como durante previsualizaci√≥n en editor.
 	bTickInEditor = true;
-
+     
 	PrimaryComponentTick.bCanEverTick = true;
 }
 
@@ -34,10 +34,10 @@ UCosmicOrbitComponent::UCosmicOrbitComponent()
 // desde el editor.
 //
 // Responsabilidades:
-// - ValidaciÛn del cuerpo padre
-// - ActualizaciÛn de attachments
+// - Validaci√≥n del cuerpo padre
+// - Actualizaci√≥n de attachments
 // - Reposicionamiento orbital
-// - Refresco visual de Ûrbitas
+// - Refresco visual de √≥rbitas
 void UCosmicOrbitComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
@@ -48,7 +48,7 @@ void UCosmicOrbitComponent::PostEditChangeProperty(FPropertyChangedEvent& Proper
 		: NAME_None;
 
 	// Determina si el cambio requiere recalcular
-	// la posiciÛn orbital o visualizaciÛn.
+	// la posici√≥n orbital o visualizaci√≥n.
 	bool bNeedsUpdate = (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOrbitComponent, ParentBody) ||
 		PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOrbitComponent, SemiMajorAxisKm) ||
 		PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOrbitComponent, Eccentricity) ||
@@ -69,7 +69,7 @@ void UCosmicOrbitComponent::PostEditChangeProperty(FPropertyChangedEvent& Proper
 			if (ParentBody)
 			{
 				// Evita referencias circulares donde
-				// el actor intenta orbitarse a sÌ mismo.
+				// el actor intenta orbitarse a s√≠ mismo.
 				if (ParentBody == Owner)
 				{
 					ParentBody = nullptr;
@@ -77,14 +77,14 @@ void UCosmicOrbitComponent::PostEditChangeProperty(FPropertyChangedEvent& Proper
 				}
 
 				// Mantiene coordenadas globales al actualizar
-				// la jerarquÌa de attachment.
+				// la jerarqu√≠a de attachment.
 				Owner->AttachToActor(
 					ParentBody,
 					FAttachmentTransformRules::KeepWorldTransform);
 			}
 			else
 			{
-				// Elimina relaciÛn jer·rquica manteniendo
+				// Elimina relaci√≥n jer√°rquica manteniendo
 				// transform global estable.
 				Owner->DetachFromActor(
 					FDetachmentTransformRules::KeepWorldTransform);
@@ -92,8 +92,8 @@ void UCosmicOrbitComponent::PostEditChangeProperty(FPropertyChangedEvent& Proper
 		}
 	}
 
-	// Actualiza inmediatamente la Ûrbita cuando
-	// se modifica desde editor fuera de simulaciÛn.
+	// Actualiza inmediatamente la √≥rbita cuando
+	// se modifica desde editor fuera de simulaci√≥n.
 	UWorld* World = GetWorld();
 
 	if (bNeedsUpdate && World && World->WorldType == EWorldType::Editor)
@@ -107,26 +107,26 @@ void UCosmicOrbitComponent::PostEditChangeProperty(FPropertyChangedEvent& Proper
 
 
 // Inicializa el estado temporal orbital al comenzar
-// la simulaciÛn runtime.
+// la simulaci√≥n runtime.
 void UCosmicOrbitComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Convierte la posiciÛn inicial normalizada
+	// Convierte la posici√≥n inicial normalizada
 	// en tiempo orbital absoluto.
 	CurrentOrbitTime = OrbitalPeriod * InitialPosition;
 }
 
 
 
-// Actualiza la simulaciÛn orbital cada frame.
+// Actualiza la simulaci√≥n orbital cada frame.
 //
 // El sistema:
 // - Integra tiempo orbital
-// - Resuelve anomalÌa excÈntrica
-// - Calcula posiciÛn elÌptica
-// - Aplica inclinaciÛn orbital
-// - Actualiza rotaciÛn axial
+// - Resuelve anomal√≠a exc√©ntrica
+// - Calcula posici√≥n el√≠ptica
+// - Aplica inclinaci√≥n orbital
+// - Actualiza rotaci√≥n axial
 void UCosmicOrbitComponent::TickComponent(
 	float DeltaTime,
 	ELevelTick TickType,
@@ -140,8 +140,8 @@ void UCosmicOrbitComponent::TickComponent(
 
 	UWorld* World = GetWorld();
 
-	// Evita simulaciÛn orbital cuando el editor
-	// no est· ejecutando simulaciÛn activa.
+	// Evita simulaci√≥n orbital cuando el editor
+	// no est√° ejecutando simulaci√≥n activa.
 	if (!World || (World->WorldType == EWorldType::Editor && !bEditorSimulating))
 	{
 		return;
@@ -149,13 +149,13 @@ void UCosmicOrbitComponent::TickComponent(
 
 #endif
 
-	// Permite acelerar o ralentizar la simulaciÛn
+	// Permite acelerar o ralentizar la simulaci√≥n
 	// orbital desde herramientas editoriales.
 	const float ScaledDelta = DeltaTime * EditorSpeedMultiplier;
 
 	AActor* Owner = GetOwner();
 
-	// Evita c·lculos inv·lidos o degenerados.
+	// Evita c√°lculos inv√°lidos o degenerados.
 	if (!ParentBody || OrbitalPeriod <= 0.0f || ScaledDelta <= KINDA_SMALL_NUMBER || !Owner)
 	{
 		return;
@@ -168,26 +168,26 @@ void UCosmicOrbitComponent::TickComponent(
 	// Avanza el tiempo orbital acumulado.
 	CurrentOrbitTime += ScaledDelta;
 
-	// Mantiene el tiempo dentro de un ciclo orbital v·lido.
+	// Mantiene el tiempo dentro de un ciclo orbital v√°lido.
 	CurrentOrbitTime = FMath::Fmod(CurrentOrbitTime, OrbitalPeriod);
 
-	// Movimiento angular medio de la Ûrbita.
+	// Movimiento angular medio de la √≥rbita.
 	float MeanMotion = (2.0f * PI) / OrbitalPeriod;
 
-	// AnomalÌa media basada en tiempo orbital actual.
+	// Anomal√≠a media basada en tiempo orbital actual.
 	float MeanAnomaly = MeanMotion * CurrentOrbitTime;
 
-	// AproximaciÛn inicial para Newton-Raphson.
+	// Aproximaci√≥n inicial para Newton-Raphson.
 	float E = MeanAnomaly;
 
-	// ResoluciÛn iterativa de la ecuaciÛn de Kepler:
+	// Resoluci√≥n iterativa de la ecuaci√≥n de Kepler:
 	//
 	//     E - e*sin(E) = M
 	//
 	// donde:
-	// - E = anomalÌa excÈntrica
+	// - E = anomal√≠a exc√©ntrica
 	// - e = excentricidad
-	// - M = anomalÌa media
+	// - M = anomal√≠a media
 	for (int32 i = 0; i < 5; ++i)
 	{
 		float DeltaE =
@@ -197,11 +197,11 @@ void UCosmicOrbitComponent::TickComponent(
 		E -= DeltaE;
 	}
 
-	// ConversiÛn desde kilÛmetros a centÌmetros
+	// Conversi√≥n desde kil√≥metros a cent√≠metros
 	// para compatibilidad con Unreal Engine units.
 	float SemiMajorAxisCm = SemiMajorAxisKm * 100000;
 
-	// Coordenadas orbitales sobre el plano elÌptico local.
+	// Coordenadas orbitales sobre el plano el√≠ptico local.
 	float X = SemiMajorAxisCm * (FMath::Cos(E) - Eccentricity);
 
 	float Y =
@@ -211,7 +211,7 @@ void UCosmicOrbitComponent::TickComponent(
 
 	FVector OrbitalPos(X, Y, 0.0f);
 
-	// RotaciÛn tridimensional de la Ûrbita
+	// Rotaci√≥n tridimensional de la √≥rbita
 	// respecto al sistema de referencia local.
 	FRotator OrbitTilt(InclinationX, InclinationY, InclinationZ);
 
@@ -223,8 +223,8 @@ void UCosmicOrbitComponent::TickComponent(
 
 
 
-// Inicializa par·metros visuales b·sicos
-// utilizados por la visualizaciÛn orbital.
+// Inicializa par√°metros visuales b√°sicos
+// utilizados por la visualizaci√≥n orbital.
 void UCosmicOrbitComponent::InitOrbit(FColor color)
 {
 	OrbitThickness = 5000.0f;
@@ -233,15 +233,15 @@ void UCosmicOrbitComponent::InitOrbit(FColor color)
 	UpdateInitialOrbitPosition();
 }
 
-// Calcula y aplica la posiciÛn orbital inicial.
+// Calcula y aplica la posici√≥n orbital inicial.
 //
 // Utilizado principalmente:
 // - En editor
-// - Durante inicializaciÛn
-// - Tras cambios de par·metros orbitales
+// - Durante inicializaci√≥n
+// - Tras cambios de par√°metros orbitales
 void UCosmicOrbitComponent::UpdateInitialOrbitPosition()
 {
-	// Convierte la posiciÛn inicial normalizada
+	// Convierte la posici√≥n inicial normalizada
 	// en tiempo orbital absoluto.
 	CurrentOrbitTime = OrbitalPeriod * InitialPosition;
 
@@ -250,19 +250,19 @@ void UCosmicOrbitComponent::UpdateInitialOrbitPosition()
 		return;
 	}
 
-	// Mantiene el tiempo dentro de un ciclo orbital v·lido.
+	// Mantiene el tiempo dentro de un ciclo orbital v√°lido.
 	CurrentOrbitTime = FMath::Fmod(CurrentOrbitTime, OrbitalPeriod);
 
 	// Movimiento angular medio orbital.
 	float MeanMotion = (2.0f * PI) / OrbitalPeriod;
 
-	// AnomalÌa media correspondiente al instante actual.
+	// Anomal√≠a media correspondiente al instante actual.
 	float MeanAnomaly = MeanMotion * CurrentOrbitTime;
 
 	float E = MeanAnomaly;
 
-	// ResoluciÛn iterativa de la ecuaciÛn de Kepler
-	// ˙nicamente para Ûrbitas elÌpticas.
+	// Resoluci√≥n iterativa de la ecuaci√≥n de Kepler
+	// √∫nicamente para √≥rbitas el√≠pticas.
 	if (Eccentricity > 0.0f)
 	{
 		for (int32 i = 0; i < 5; ++i)
@@ -278,10 +278,10 @@ void UCosmicOrbitComponent::UpdateInitialOrbitPosition()
 		}
 	}
 
-	// ConversiÛn desde kilÛmetros a centÌmetros.
+	// Conversi√≥n desde kil√≥metros a cent√≠metros.
 	float SemiMajorAxisCm = SemiMajorAxisKm * 100000.0f;
 
-	// PosiciÛn orbital sobre el plano local elÌptico.
+	// Posici√≥n orbital sobre el plano local el√≠ptico.
 	float X = SemiMajorAxisCm * (FMath::Cos(E) - Eccentricity);
 
 	float Y =
@@ -291,12 +291,12 @@ void UCosmicOrbitComponent::UpdateInitialOrbitPosition()
 
 	FVector OrbitalPos(X, Y, 0.0f);
 
-	// OrientaciÛn tridimensional de la Ûrbita.
+	// Orientaci√≥n tridimensional de la √≥rbita.
 	FRotator OrbitTilt(InclinationX, InclinationY, InclinationZ);
 
 	FVector RotatedPos = OrbitTilt.RotateVector(OrbitalPos);
 
-	// PosiciÛn relativa final respecto al cuerpo padre.
+	// Posici√≥n relativa final respecto al cuerpo padre.
 	FVector FinalLocation = RotatedPos;
 
 	if (AActor* Owner = GetOwner())
@@ -307,10 +307,10 @@ void UCosmicOrbitComponent::UpdateInitialOrbitPosition()
 
 
 
-// Genera la representaciÛn visual debug de la Ûrbita.
+// Genera la representaci√≥n visual debug de la √≥rbita.
 //
 // La trayectoria se aproxima mediante segmentos lineales
-// utilizando la ecuaciÛn polar de una elipse.
+// utilizando la ecuaci√≥n polar de una elipse.
 void UCosmicOrbitComponent::UpdateOrbitVisualization()
 {
 	if (!bShowOrbitInEditor || !ParentBody || !GetOwner())
@@ -325,10 +325,10 @@ void UCosmicOrbitComponent::UpdateOrbitVisualization()
 		return;
 	}
 
-	// ConversiÛn desde kilÛmetros a centÌmetros.
+	// Conversi√≥n desde kil√≥metros a cent√≠metros.
 	float SemiMajorAxisCm = SemiMajorAxisKm * 100000.0f;
 
-	// ResoluciÛn geomÈtrica utilizada para aproximar
+	// Resoluci√≥n geom√©trica utilizada para aproximar
 	// la trayectoria orbital.
 	int32 NumPoints = OrbitSegments;
 
@@ -340,27 +340,27 @@ void UCosmicOrbitComponent::UpdateOrbitVisualization()
 	{
 		float Angle = (2.0f * PI * i) / NumPoints;
 
-		// EcuaciÛn polar de una Ûrbita elÌptica:
+		// Ecuaci√≥n polar de una √≥rbita el√≠ptica:
 		//
-		//     r = a(1 - e≤) / (1 + e*cos(theta))
+		//     r = a(1 - e¬≤) / (1 + e*cos(theta))
 		//
 		// donde:
 		// - a = semieje mayor
 		// - e = excentricidad
-		// - theta = ·ngulo orbital
+		// - theta = √°ngulo orbital
 		float Radius =
 			SemiMajorAxisCm *
 			(1.0f - Eccentricity * Eccentricity) /
 			(1.0f + Eccentricity * FMath::Cos(Angle));
 
-		// PosiciÛn local sobre el plano orbital.
+		// Posici√≥n local sobre el plano orbital.
 		FVector LocalPos(
 			Radius * FMath::Cos(Angle),
 			Radius * FMath::Sin(Angle),
 			0.0f
 		);
 
-		// AplicaciÛn de inclinaciÛn orbital tridimensional.
+		// Aplicaci√≥n de inclinaci√≥n orbital tridimensional.
 		FRotator OrbitTilt(InclinationX, InclinationY, InclinationZ);
 
 		FVector RotatedPos = OrbitTilt.RotateVector(LocalPos);
@@ -368,7 +368,7 @@ void UCosmicOrbitComponent::UpdateOrbitVisualization()
 		Points.Add(BodyLocation + RotatedPos);
 	}
 
-	// ConstrucciÛn visual de la Ûrbita mediante
+	// Construcci√≥n visual de la √≥rbita mediante
 	// segmentos lineales consecutivos.
 	for (int32 i = 0; i < Points.Num() - 1; ++i)
 	{

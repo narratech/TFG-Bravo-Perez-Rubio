@@ -4,3 +4,4 @@
 #include "ModulesBridge/CosmicBenchmarkBridge.h"
 
 TFunction<void(const FString&, const FString&, float)> FCosmicBenchmarkBridge::OnRecordEvent;
+ 

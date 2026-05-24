@@ -23,7 +23,7 @@ void UCosmicOceanComponent::RegenerateOcean()
 {
     // Limpiar oceano anterior antes de regenerar
     if (bInit)
-    {
+    { 
         ClearOcean();
     }
 

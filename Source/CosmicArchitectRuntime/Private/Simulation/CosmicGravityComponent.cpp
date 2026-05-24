@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "Simulation/CosmicGravityComponent.h"
@@ -14,7 +14,7 @@ UCosmicGravityComponent::UCosmicGravityComponent()
 
 void UCosmicGravityComponent::BeginPlay()
 {
-    Super::BeginPlay();
+    Super::BeginPlay(); 
 
     if (AActor* Owner = GetOwner())
     {

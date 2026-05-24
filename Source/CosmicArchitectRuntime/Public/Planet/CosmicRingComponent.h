@@ -7,16 +7,16 @@
 
 /**
  * Delegado para notificar a sistemas externos o Blueprints cuando un
- * sector de asteroides ha finalizado su generaci髇 as韓crona.
+ * sector de asteroides ha finalizado su generaci贸n as铆ncrona.
  */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAsteroidFieldGenerated);
 
 /**
  * UCosmicRingComponent
  *
- * Gestiona la representaci髇 visual y f韘ica de anillos planetarios a escala real.
+ * Gestiona la representaci贸n visual y f铆sica de anillos planetarios a escala real.
  * Implementa un sistema de "Treadmill" (cinta de correr) que segmenta el anillo en sectores
- * angulares, cargando y reciclando instancias de asteroides (HISM) din醡icamente seg鷑
+ * angulares, cargando y reciclando instancias de asteroides (HISM) din谩micamente seg煤n
  * la proximidad del observador para optimizar el rendimiento y la memoria.
  */
 UCLASS(ClassGroup = (CosmicArchitect), meta = (BlueprintSpawnableComponent),
@@ -27,38 +27,38 @@ UCLASS(ClassGroup = (CosmicArchitect), meta = (BlueprintSpawnableComponent),
 	GENERATED_BODY()
 
 public:
-	/** Inicializaci髇 de subobjetos y configuraci髇 por defecto del componente. */
+	/** Inicializaci贸n de subobjetos y configuraci贸n por defecto del componente. */
 	UCosmicRingComponent();
 
 protected:
-	/** Inicializa el estado din醡ico del material y transformaciones al inicio de la simulaci髇. */
+	/** Inicializa el estado din谩mico del material y transformaciones al inicio de la simulaci贸n. */
 	virtual void BeginPlay() override;
 
 #if WITH_EDITOR
-	/** Actualiza las propiedades visuales en el viewport del editor al modificar par醡etros. */
+	/** Actualiza las propiedades visuales en el viewport del editor al modificar par谩metros. */
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 
 public:
-	/** Gestiona el ciclo de vida de los sectores y la detecci髇 de la c醡ara en cada frame. */
+	/** Gestiona el ciclo de vida de los sectores y la detecci贸n de la c谩mara en cada frame. */
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	/** Configura el componente tras su registro en el mundo, estableciendo escalas y materiales iniciales. */
 	virtual void OnRegister() override;
 
-	/** Garantiza que el componente mantenga su posici髇 relativa neutral respecto al padre. */
+	/** Garantiza que el componente mantenga su posici贸n relativa neutral respecto al padre. */
 	virtual void OnAttachmentChanged() override;
 
-	/** Limpieza de memoria y destrucci髇 de componentes instanciados antes de eliminar el objeto. */
+	/** Limpieza de memoria y destrucci贸n de componentes instanciados antes de eliminar el objeto. */
 	virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override;
 
-	// --- PROPIEDADES DE DISE袿 ---
+	// --- PROPIEDADES DE DISE脩O ---
 
 	/** Interfaz del material base para el disco macro (Shader LWC). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Visuals")
 	class UMaterialInterface* MacroRingMaterial;
 
-	/** Malla est醫ica utilizada para representar cada asteroide individual en los sectores. */
+	/** Malla est谩tica utilizada para representar cada asteroide individual en los sectores. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Visuals")
 	class UStaticMesh* AsteroidMesh;
 
@@ -72,35 +72,35 @@ public:
 
 	// --- DIMENSIONES ---
 
-	/** Radio interno real del anillo en Kil髆etros. Tambi閚 determina la m醩cara UV interna del shader. */
+	/** Radio interno real del anillo en Kil贸metros. Tambi茅n determina la m谩scara UV interna del shader. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
 	double InnerRadiusKM = 2.0;
 
-	/** Radio externo real del anillo en Kil髆etros. Determina la escala del disco macro y la m醩cara UV externa. */
+	/** Radio externo real del anillo en Kil贸metros. Determina la escala del disco macro y la m谩scara UV externa. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
 	double OuterRadiusKM = 5.0;
 
-	/** Espesor total vertical del anillo en Kil髆etros. Controla la dispersi髇 Z de los asteroides y la detecci髇 de proximidad. */
+	/** Espesor total vertical del anillo en Kil贸metros. Controla la dispersi贸n Z de los asteroides y la detecci贸n de proximidad. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
 	double RingThicknessKM = 0.4;
 
-	/** Rotaci髇 orbital del sistema de anillos. */
+	/** Rotaci贸n orbital del sistema de anillos. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | Dimensions")
 	FRotator RingRotation = FRotator::ZeroRotator;
 
 	// --- LOD ---
 
-	/** Tama駉 m韓imo aleatorio para las instancias de asteroides. */
+	/** Tama帽o m铆nimo aleatorio para las instancias de asteroides. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
 	float MinScale = 0.01f;
 
-	/** Tama駉 m醲imo aleatorio para las instancias de asteroides. */
+	/** Tama帽o m谩ximo aleatorio para las instancias de asteroides. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
 	float MaxScale = 0.05f;
 
 	/**
-	 * Distancia en KM desde el punto m醩 cercano del anillo (borde o superficie) a la que
-	 * los asteroides 3D comienzan a generarse. Se eval鷄 sobre la geometr韆 real del anillo
+	 * Distancia en KM desde el punto m谩s cercano del anillo (borde o superficie) a la que
+	 * los asteroides 3D comienzan a generarse. Se eval煤a sobre la geometr铆a real del anillo
 	 * (annulus + espesor), no desde el centro del componente.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
@@ -114,13 +114,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Cosmic Architect | LOD")
 	double FadeMaxDistanceKM = 8.0;
 
-	// --- OPTIMIZACI覰 Y RENDIMIENTO ---
+	// --- OPTIMIZACI脫N Y RENDIMIENTO ---
 
 	/** Amplitud angular de cada sector generado (en grados). */
 	UPROPERTY(EditAnywhere, Category = "Cosmic Architect | Optimization")
 	float SectorAngleDegrees = 15.0f;
 
-	/** Cantidad de sectores adyacentes a la posici髇 del observador que se mantienen activos. */
+	/** Cantidad de sectores adyacentes a la posici贸n del observador que se mantienen activos. */
 	UPROPERTY(EditAnywhere, Category = "Cosmic Architect | Optimization")
 	int32 VisibleSectors = 2;
 
@@ -129,8 +129,8 @@ public:
 	int32 AsteroidsPerSector = 500;
 
 	/**
-	 * L韒ite de instancias (asteroides) procesadas por segundo entre creaci髇 y destrucci髇 de sectores.
-	 * Un sector en curso siempre se completa aunque se supere el l韒ite en ese frame.
+	 * L铆mite de instancias (asteroides) procesadas por segundo entre creaci贸n y destrucci贸n de sectores.
+	 * Un sector en curso siempre se completa aunque se supere el l铆mite en ese frame.
 	 * Los sectores pendientes se procesan en el frame siguiente.
 	 */
 	UPROPERTY(EditAnywhere, Category = "Cosmic Architect | Optimization")
@@ -141,7 +141,7 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "Cosmic Architect | Internal")
 	class UStaticMeshComponent* MacroDiskComponent;
 
-	/** Puntero a la instancia din醡ica para manipular par醡etros de shader en tiempo real. */
+	/** Puntero a la instancia din谩mica para manipular par谩metros de shader en tiempo real. */
 	UPROPERTY()
 	class UMaterialInstanceDynamic* DynamicRingMat;
 
@@ -149,7 +149,7 @@ private:
 	UPROPERTY()
 	TMap<int32, UHierarchicalInstancedStaticMeshComponent*> ActiveSectors;
 
-	/** Repositorio de componentes HISM inactivos para su reutilizaci髇 inmediata (Pooling). */
+	/** Repositorio de componentes HISM inactivos para su reutilizaci贸n inmediata (Pooling). */
 	UPROPERTY()
 	TArray<UHierarchicalInstancedStaticMeshComponent*> HISMPool;
 
@@ -157,20 +157,20 @@ private:
 	UHierarchicalInstancedStaticMeshComponent* GetOrCreateHISM();
 
 	/**
-	 * Sincroniza los valores de las propiedades C++ con los par醡etros del Material Instance.
-	 * Los radios UV se calculan autom醫icamente a partir de InnerRadiusKM y OuterRadiusKM.
+	 * Sincroniza los valores de las propiedades C++ con los par谩metros del Material Instance.
+	 * Los radios UV se calculan autom谩ticamente a partir de InnerRadiusKM y OuterRadiusKM.
 	 */
 	void UpdateShaderParameters();
 
 	/**
-	 * Invalida todos los sectores activos devolvi閚dolos al pool para forzar su regeneraci髇
-	 * en el siguiente tick. Se llama cuando propiedades que afectan la geometr韆 cambian en el editor.
+	 * Invalida todos los sectores activos devolvi茅ndolos al pool para forzar su regeneraci贸n
+	 * en el siguiente tick. Se llama cuando propiedades que afectan la geometr铆a cambian en el editor.
 	 */
 	void InvalidateAllSectors();
 
 	/**
-	 * Calcula la distancia en cent韒etros desde una posici髇 (en espacio local del componente)
-	 * hasta el punto m醩 cercano del volumen del anillo (annulus + espesor vertical).
+	 * Calcula la distancia en cent铆metros desde una posici贸n (en espacio local del componente)
+	 * hasta el punto m谩s cercano del volumen del anillo (annulus + espesor vertical).
 	 */
 	float ComputeDistanceToRing(const FVector& LocalPosition) const;
 };

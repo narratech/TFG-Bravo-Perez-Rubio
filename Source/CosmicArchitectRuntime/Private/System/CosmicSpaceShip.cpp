@@ -15,22 +15,22 @@
 
 ACosmicSpaceShip::ACosmicSpaceShip()
 {
-	// Permite actualizaciÛn runtime continua para:
-	// - SimulaciÛn fÌsica
+	// Permite actualizaci√≥n runtime continua para:
+	// - Simulaci√≥n f√≠sica
 	// - Frenado espacial
 	// - Sistemas de boost
 	PrimaryActorTick.bCanEverTick = true;
 
-	// Asigna autom·ticamente el control
+	// Asigna autom√°ticamente el control
 	// al jugador local principal.
-	AutoPossessPlayer = EAutoReceiveInput::Player0;
+	AutoPossessPlayer = EAutoReceiveInput::Player0; 
 
-	// ConfiguraciÛn del rigid body principal
-	// utilizado para navegaciÛn espacial.
+	// Configuraci√≥n del rigid body principal
+	// utilizado para navegaci√≥n espacial.
 	ShipMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ShipMesh"));
 	RootComponent = ShipMesh;
 
-	// Activa simulaciÛn fÌsica completa.
+	// Activa simulaci√≥n f√≠sica completa.
 	ShipMesh->SetSimulatePhysics(true);
 
 	// Desactiva gravedad para movimiento espacial.
@@ -39,24 +39,24 @@ ACosmicSpaceShip::ACosmicSpaceShip()
 	// Reduce resistencia lineal para conservar inercia.
 	ShipMesh->SetLinearDamping(0.0f);
 
-	// Estabiliza parcialmente la rotaciÛn angular.
+	// Estabiliza parcialmente la rotaci√≥n angular.
 	ShipMesh->SetAngularDamping(0.5f);
 
-	// Sistema de c·mara desacoplada
+	// Sistema de c√°mara desacoplada
 	// mediante spring arm.
 	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp"));
 	SpringArmComp->SetupAttachment(ShipMesh);
 	SpringArmComp->TargetArmLength = 800.0f;
 	SpringArmComp->bEnableCameraRotationLag = true;
 
-	// Evita colisiones de c·mara en espacio abierto.
+	// Evita colisiones de c√°mara en espacio abierto.
 	SpringArmComp->bDoCollisionTest = false;
 
-	// C·mara principal controlada por el jugador.
+	// C√°mara principal controlada por el jugador.
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->SetupAttachment(SpringArmComp);
 
-	// ConfiguraciÛn inicial del sistema de frenado.
+	// Configuraci√≥n inicial del sistema de frenado.
 	BrakingSpeed = 5.0f;
 }
 
@@ -64,8 +64,8 @@ void ACosmicSpaceShip::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Elimina restricciones de lÌmites globales
-	// para navegaciÛn a gran escala.
+	// Elimina restricciones de l√≠mites globales
+	// para navegaci√≥n a gran escala.
 	if (UWorld* World = GetWorld())
 	{
 		if (AWorldSettings* WorldSettings = World->GetWorldSettings())
@@ -93,7 +93,7 @@ void ACosmicSpaceShip::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	}
 
 	// Vincula acciones Enhanced Input
-	// con lÛgica C++ runtime.
+	// con l√≥gica C++ runtime.
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
 		if (IA_Traslacion) { EnhancedInputComponent->BindAction(IA_Traslacion, ETriggerEvent::Triggered, this, &ACosmicSpaceShip::AplicarTraslacion); }
@@ -114,8 +114,8 @@ void ACosmicSpaceShip::AplicarTraslacion(const FInputActionValue& Value)
 
 	if (!MovementVector.IsNearlyZero() && ShipMesh)
 	{
-		// Durante boost ˙nicamente se permite
-		// aceleraciÛn frontal estabilizada.
+		// Durante boost √∫nicamente se permite
+		// aceleraci√≥n frontal estabilizada.
 		if (bBoostMode)
 		{
 			// Bloquea desplazamientos laterales
@@ -130,18 +130,18 @@ void ACosmicSpaceShip::AplicarTraslacion(const FInputActionValue& Value)
 		// al input y delta temporal.
 		FVector LocalForce = MovementVector * ThrusterForce * GetWorld()->GetDeltaSeconds();
 
-		// Incrementa potencia de propulsiÛn
-		// mientras el boost est· activo.
+		// Incrementa potencia de propulsi√≥n
+		// mientras el boost est√° activo.
 		if (bBoostMode)
 		{
 			LocalForce *= BoostIncreasePower;
 		}
 
-		// ConversiÛn desde espacio local
+		// Conversi√≥n desde espacio local
 		// hacia coordenadas globales.
 		FVector WorldForce = ShipMesh->GetComponentRotation().RotateVector(LocalForce);
 
-		// AplicaciÛn fÌsica final sobre el rigid body.
+		// Aplicaci√≥n f√≠sica final sobre el rigid body.
 		ShipMesh->AddForce(WorldForce, NAME_None, true);
 	}
 }
@@ -157,11 +157,11 @@ void ACosmicSpaceShip::AplicarOrientacion(const FInputActionValue& Value)
 		// - Yaw
 		FVector LocalTorque = FVector(0.0f, LookAxisVector.Y * -1.0f, LookAxisVector.X) * RotationTorque * GetWorld()->GetDeltaSeconds();
 
-		// ConversiÛn desde espacio local
+		// Conversi√≥n desde espacio local
 		// hacia espacio global.
 		FVector WorldTorque = ShipMesh->GetComponentRotation().RotateVector(LocalTorque);
 
-		// AplicaciÛn fÌsica de torque angular.
+		// Aplicaci√≥n f√≠sica de torque angular.
 		ShipMesh->AddTorqueInDegrees(WorldTorque, NAME_None, true);
 	}
 }
@@ -176,10 +176,10 @@ void ACosmicSpaceShip::AplicarAlabeo(const FInputActionValue& Value)
 		// longitudinal frontal de la nave.
 		FVector LocalTorque = FVector(RollValue, 0.0f, 0.0f) * AlabeoTorque * GetWorld()->GetDeltaSeconds();
 
-		// ConversiÛn hacia coordenadas globales.
+		// Conversi√≥n hacia coordenadas globales.
 		FVector WorldTorque = ShipMesh->GetComponentRotation().RotateVector(LocalTorque);
 
-		// AplicaciÛn fÌsica del torque de roll.
+		// Aplicaci√≥n f√≠sica del torque de roll.
 		ShipMesh->AddTorqueInDegrees(WorldTorque, NAME_None, true);
 	}
 }
@@ -189,7 +189,7 @@ void ACosmicSpaceShip::StartBoost(const FInputActionValue& Value)
 	bBoostMode = true;
 
 	// Incrementa estabilidad lineal durante
-	// navegaciÛn a alta velocidad.
+	// navegaci√≥n a alta velocidad.
 	if (ShipMesh)
 	{
 		// Guarda damping original para restaurarlo
@@ -205,13 +205,13 @@ void ACosmicSpaceShip::EndBoost(const FInputActionValue& Value)
 {
 	bBoostMode = false;
 
-	// Restaura configuraciÛn fÌsica original
+	// Restaura configuraci√≥n f√≠sica original
 	// tras abandonar el boost.
 	if (ShipMesh)
 	{
 		ShipMesh->SetLinearDamping(OriginalLinearDamping);
 	}
 
-	// El frenado residual ser· gestionado
+	// El frenado residual ser√° gestionado
 	// posteriormente mediante Tick/runtime.
 }

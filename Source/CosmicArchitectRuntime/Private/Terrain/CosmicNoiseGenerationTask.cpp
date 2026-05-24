@@ -24,7 +24,7 @@ FCosmicNoiseGenerationTask::FCosmicNoiseGenerationTask(
 {
     // Reservamos memoria sin inicializar los elementos para optimizar rendimiento (SetNumUninitialized)
     CalculatedVertices.SetNumUninitialized(BaseVertices.Num());
-    CalculatedColors.SetNumUninitialized(BaseVertices.Num());
+    CalculatedColors.SetNumUninitialized(BaseVertices.Num()); 
     CalculatedNormals.SetNumUninitialized(BaseVertices.Num());
 }
 
@@ -44,7 +44,7 @@ void FCosmicNoiseGenerationTask::DoWork()
         }
     }
 
-    // Loop de vértices
+    // Loop de vÃ©rtices
     for (int32 i = 0; i < VertexCount; i++)
     {
         FVector WorldPos = IsPlanet ? CalculatedVertices[i] : BaseVertices[i];
@@ -62,7 +62,7 @@ void FCosmicNoiseGenerationTask::DoWork()
         FVector Normal;
 
         if (IsPlanet || IsSphere) {
-            // Crear dos vectores perpendiculares a la dirección
+            // Crear dos vectores perpendiculares a la direcciÃ³n
             FVector Tangent1, Tangent2;
             NoiseDir.FindBestAxisVectors(Tangent1, Tangent2);
 
@@ -93,7 +93,7 @@ void FCosmicNoiseGenerationTask::DoWork()
 
         NoiseGenerationStrategy->EvaluatePoint(NoiseDir, FinalHeight, FinalColor);
 
-        // Calcular posición final del vértice
+        // Calcular posiciÃ³n final del vÃ©rtice
         if (IsPlanet || IsSphere) {
             CalculatedNormals[i] = Normal;
             CalculatedVertices[i] += (NoiseDir * FinalHeight);

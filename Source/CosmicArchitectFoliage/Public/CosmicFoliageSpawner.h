@@ -10,16 +10,16 @@
 
 class UCosmicFoliageCollection;
 class ICosmicNoiseStrategy;
-
+ 
 /**
- * Componente encargado de gestionar la generaci髇 y streaming de foliage
+ * Componente encargado de gestionar la generaci贸n y streaming de foliage
  * alrededor del jugador utilizando un sistema de CubeMap + Octree.
  *
  * Controla:
- * - Activaci髇/desactivaci髇 de celdas por distancia.
- * - Ejecuci髇 de tareas as韓cronas de generaci髇.
- * - Aplicaci髇 de instancias mediante HISM.
- * - Gesti髇 de capas de vegetaci髇.
+ * - Activaci贸n/desactivaci贸n de celdas por distancia.
+ * - Ejecuci贸n de tareas as铆ncronas de generaci贸n.
+ * - Aplicaci贸n de instancias mediante HISM.
+ * - Gesti贸n de capas de vegetaci贸n.
  */
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent), 
     HideCategories = (Rendering, Lighting, Navigation, Replication, Physics,Collision,
@@ -42,10 +42,10 @@ public:
     void InitFoliageSpawner(float PlanetRadius);
 
     /**
-     * Actualiza el sistema de foliage seg鷑 la posici髇 del jugador.
+     * Actualiza el sistema de foliage seg煤n la posici贸n del jugador.
      *
      * @param DeltaTime Tiempo entre frames.
-     * @param ViewerLocation Posici髇 del observador.
+     * @param ViewerLocation Posici贸n del observador.
      * @param PlanetCenter Centro del planeta.
      * @param PlanetRadius Radio del planeta.
      * @param DistanceToSurface Distancia a la superficie.
@@ -54,7 +54,7 @@ public:
     void UpdateFoliageSpawner(float DeltaTime, const FVector& ViewerLocation, const FVector& PlanetCenter, double PlanetRadius, double DistanceToSurface, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy);
 
     /**
-     * Cancela todas las tareas as韓cronas activas.
+     * Cancela todas las tareas as铆ncronas activas.
      */
     void CancelAsyncWork();
 
@@ -63,23 +63,23 @@ public:
      */
     void ClearFoliage();
 
-    /** Colecci髇 de foliage utilizada para la generaci髇 */
+    /** Colecci贸n de foliage utilizada para la generaci贸n */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
     UCosmicFoliageCollection* FoliageCollection;
 
-    /** Radio de activaci髇 de capa cercana */
+    /** Radio de activaci贸n de capa cercana */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage", meta = (ClampMin = "0.02"))
     float NearLayerRadiusKm = 0.05f;
 
-    /** Radio de activaci髇 de capa media */
+    /** Radio de activaci贸n de capa media */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage", meta = (ClampMin = "0.02"))
     float MediumLayerRadiusKm = 0.2f;
 
-    /** Radio de activaci髇 de capa lejana */
+    /** Radio de activaci贸n de capa lejana */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage", meta = (ClampMin = "0.02"))
     float FarLayerRadiusKm = 0.5f;
 
-    /** M醲imo de instancias procesadas por frame */
+    /** M谩ximo de instancias procesadas por frame */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
     int32 MaxInstancesPerFrame = 100;
 
@@ -87,7 +87,7 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Debug")
     bool bDrawDebugCells = false;
 
-    /** Grosor de l韓eas de debug */
+    /** Grosor de l铆neas de debug */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Debug")
     float DebugCellThickness = 20.0f;
 
@@ -101,7 +101,7 @@ protected:
 #endif
 
     /**
-     * Octree responsable de la subdivisi髇 espacial del planeta.
+     * Octree responsable de la subdivisi贸n espacial del planeta.
      */
     FCosmicOctree Octree;
 

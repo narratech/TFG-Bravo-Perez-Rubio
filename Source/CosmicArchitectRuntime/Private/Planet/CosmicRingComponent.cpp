@@ -14,11 +14,11 @@
 #endif
 
 /**
- * ConfiguraciÛn del objeto en tiempo de construcciÛn.
- * Establece la jerarquÌa base y realiza la b˙squeda de assets esenciales del plugin.
+ * Configuraci√≥n del objeto en tiempo de construcci√≥n.
+ * Establece la jerarqu√≠a base y realiza la b√∫squeda de assets esenciales del plugin.
  */
 UCosmicRingComponent::UCosmicRingComponent()
-{
+{ 
 	PrimaryComponentTick.bCanEverTick = true;
 	bTickInEditor = true;
 
@@ -27,7 +27,7 @@ UCosmicRingComponent::UCosmicRingComponent()
 	MacroDiskComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	MacroDiskComponent->SetCastShadow(false);
 
-	// ConversiÛn de escala: Transforma el radio de KilÛmetros a unidades de Unreal (CentÌmetros).
+	// Conversi√≥n de escala: Transforma el radio de Kil√≥metros a unidades de Unreal (Cent√≠metros).
 	// Un radio de 50 unidades base en el plano requiere un factor de 2000 para igualar la escala KM.
 	double InitialScale = OuterRadiusKM * 2000.0;
 	MacroDiskComponent->SetRelativeScale3D(FVector(InitialScale, InitialScale, 1.0f));
@@ -56,7 +56,7 @@ void UCosmicRingComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Asegurar que las pools est·n vacÌas (pueden quedar restos del editor)
+	// Asegurar que las pools est√°n vac√≠as (pueden quedar restos del editor)
 	ActiveSectors.Empty();
 	HISMPool.Empty();
 
@@ -130,8 +130,8 @@ void UCosmicRingComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
 }
 
 /**
- * GestiÛn de Pooling: Extrae componentes del pool o crea nuevos HISMs.
- * Es vital para evitar los picos de frame (stutter) asociados a la instanciaciÛn de objetos.
+ * Gesti√≥n de Pooling: Extrae componentes del pool o crea nuevos HISMs.
+ * Es vital para evitar los picos de frame (stutter) asociados a la instanciaci√≥n de objetos.
  */
 UHierarchicalInstancedStaticMeshComponent* UCosmicRingComponent::GetOrCreateHISM()
 {
@@ -139,14 +139,14 @@ UHierarchicalInstancedStaticMeshComponent* UCosmicRingComponent::GetOrCreateHISM
 	{
 		UHierarchicalInstancedStaticMeshComponent* PooledHISM = HISMPool.Pop();
 
-		// IsValid comprueba de forma segura que no sea nullptr ni estÈ destruido
+		// IsValid comprueba de forma segura que no sea nullptr ni est√© destruido
 		if (IsValid(PooledHISM))
 		{
 			return PooledHISM;
 		}
 	}
 
-	// Si el pool estaba vacÌo (o lleno de punteros muertos), creamos uno nuevo de forma segura
+	// Si el pool estaba vac√≠o (o lleno de punteros muertos), creamos uno nuevo de forma segura
 	UHierarchicalInstancedStaticMeshComponent* NewHISM = NewObject<UHierarchicalInstancedStaticMeshComponent>(
 		this,
 		NAME_None,
@@ -160,11 +160,11 @@ UHierarchicalInstancedStaticMeshComponent* UCosmicRingComponent::GetOrCreateHISM
 }
 
 /**
- * Devuelve la distancia en centÌmetros desde LocalPosition hasta el punto m·s cercano
+ * Devuelve la distancia en cent√≠metros desde LocalPosition hasta el punto m√°s cercano
  * del volumen del anillo (annulus en el plano XY + espesor vertical RingThicknessKM).
  *
- * El c·lculo se realiza en espacio local del componente para ser independiente de la
- * rotaciÛn/traslaciÛn mundial, lo que garantiza coherencia con la geometrÌa real del plano.
+ * El c√°lculo se realiza en espacio local del componente para ser independiente de la
+ * rotaci√≥n/traslaci√≥n mundial, lo que garantiza coherencia con la geometr√≠a real del plano.
  */
 float UCosmicRingComponent::ComputeDistanceToRing(const FVector& LocalPosition) const
 {
@@ -175,10 +175,10 @@ float UCosmicRingComponent::ComputeDistanceToRing(const FVector& LocalPosition) 
 	// Distancia radial desde el eje Z del anillo en el plano XY.
 	const float RadialDist = FMath::Sqrt(LocalPosition.X * LocalPosition.X + LocalPosition.Y * LocalPosition.Y);
 
-	// Punto m·s cercano dentro del rango radial del annulus.
+	// Punto m√°s cercano dentro del rango radial del annulus.
 	const float ClampedRadial = FMath::Clamp(RadialDist, InnerCm, OuterCm);
 
-	// DirecciÛn radial normalizada (evitar divisiÛn por cero en el origen).
+	// Direcci√≥n radial normalizada (evitar divisi√≥n por cero en el origen).
 	float NX, NY;
 	if (RadialDist > KINDA_SMALL_NUMBER)
 	{
@@ -191,7 +191,7 @@ float UCosmicRingComponent::ComputeDistanceToRing(const FVector& LocalPosition) 
 		NY = 0.f;
 	}
 
-	// Punto m·s cercano en Z dentro del espesor del anillo.
+	// Punto m√°s cercano en Z dentro del espesor del anillo.
 	const float NZ = FMath::Clamp(LocalPosition.Z, -HalfThickCm, HalfThickCm);
 
 	const FVector NearestRingPoint(NX, NY, NZ);
@@ -199,9 +199,9 @@ float UCosmicRingComponent::ComputeDistanceToRing(const FVector& LocalPosition) 
 }
 
 /**
- * Sincroniza las propiedades C++ con el Material Instance Din·mico.
+ * Sincroniza las propiedades C++ con el Material Instance Din√°mico.
  *
- * Los radios UV se derivan autom·ticamente de los radios en KM:
+ * Los radios UV se derivan autom√°ticamente de los radios en KM:
  *   - El plano (Plane) tiene UV 0-1 con el centro en UV(0.5, 0.5).
  *   - El radio UV hasta el borde del plano es 0.5 (radio normalizado = 1.0).
  *   - OuterRadiusUV = 0.5 siempre (la malla escala para coincidir con OuterRadiusKM).
@@ -211,7 +211,7 @@ void UCosmicRingComponent::UpdateShaderParameters()
 {
 	if (!DynamicRingMat) return;
 
-	// C·lculo autom·tico de UVs a partir de los radios reales.
+	// C√°lculo autom√°tico de UVs a partir de los radios reales.
 	const float OuterRadiusUV = 0.49f;
 	const float InnerRadiusUV = (OuterRadiusKM > 0.0)
 		? (float)(0.5 * InnerRadiusKM / OuterRadiusKM)
@@ -236,13 +236,13 @@ void UCosmicRingComponent::PostEditChangeProperty(FPropertyChangedEvent& Propert
 		? PropertyChangedEvent.Property->GetFName()
 		: NAME_None;
 
-	// Actualizar rotaciÛn si cambiÛ.
+	// Actualizar rotaci√≥n si cambi√≥.
 	if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicRingComponent, RingRotation))
 	{
 		SetRelativeRotation(RingRotation);
 	}
 
-	// Actualizar escala y shader si cambiÛ cualquier propiedad dimensional o visual.
+	// Actualizar escala y shader si cambi√≥ cualquier propiedad dimensional o visual.
 	if (MacroDiskComponent && DynamicRingMat)
 	{
 		const double CurrentScale = OuterRadiusKM * 2000.0;
@@ -266,8 +266,8 @@ void UCosmicRingComponent::PostEditChangeProperty(FPropertyChangedEvent& Propert
 		}
 	}
 
-	// Propiedades que afectan la distribuciÛn geomÈtrica de los asteroides:
-	// invalidar todos los sectores para forzar regeneraciÛn en el siguiente tick.
+	// Propiedades que afectan la distribuci√≥n geom√©trica de los asteroides:
+	// invalidar todos los sectores para forzar regeneraci√≥n en el siguiente tick.
 	static const TArray<FName> RegenerationTriggers = {
 		GET_MEMBER_NAME_CHECKED(UCosmicRingComponent, InnerRadiusKM),
 		GET_MEMBER_NAME_CHECKED(UCosmicRingComponent, OuterRadiusKM),
@@ -288,7 +288,7 @@ void UCosmicRingComponent::PostEditChangeProperty(FPropertyChangedEvent& Propert
 
 /**
  * Devuelve todos los sectores activos al pool sin destruir los componentes HISM.
- * El siguiente tick detectar· los sectores que faltan y los regenerar· con los par·metros actuales.
+ * El siguiente tick detectar√° los sectores que faltan y los regenerar√° con los par√°metros actuales.
  */
 void UCosmicRingComponent::InvalidateAllSectors()
 {
@@ -308,14 +308,14 @@ void UCosmicRingComponent::InvalidateAllSectors()
 }
 
 /**
- * LÛgica principal de sectorizaciÛn din·mica.
+ * L√≥gica principal de sectorizaci√≥n din√°mica.
  *
- * Calcula la posiciÛn polar del observador para determinar quÈ cuÒas del anillo deben
- * renderizarse con mallas 3D. La detecciÛn de proximidad usa la distancia real al punto
- * m·s cercano del volumen del anillo (no al centro del componente).
+ * Calcula la posici√≥n polar del observador para determinar qu√© cu√±as del anillo deben
+ * renderizarse con mallas 3D. La detecci√≥n de proximidad usa la distancia real al punto
+ * m√°s cercano del volumen del anillo (no al centro del componente).
  *
- * La generaciÛn y destrucciÛn de sectores est· presupuestada por MaxInstancesPerSecond:
- * se procesa un sector completo aunque supere el lÌmite en ese frame, y los sectores
+ * La generaci√≥n y destrucci√≥n de sectores est√° presupuestada por MaxInstancesPerSecond:
+ * se procesa un sector completo aunque supere el l√≠mite en ese frame, y los sectores
  * pendientes se aplazan al frame siguiente.
  */
 void UCosmicRingComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -324,7 +324,7 @@ void UCosmicRingComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 
 	if (!GetWorld() || !AsteroidMesh) return;
 
-	// 1. Obtener la posiciÛn del observador (juego o editor).
+	// 1. Obtener la posici√≥n del observador (juego o editor).
 	FVector CameraLocation = FVector::ZeroVector;
 	bool bGotCameraLocation = false;
 
@@ -355,8 +355,8 @@ void UCosmicRingComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 	if (!bGotCameraLocation) return;
 
 
-	// Calcular distancia al punto m·s cercano del anillo (espacio local).
-	// Esto garantiza que la activaciÛn se dispare cuando el observador se
+	// Calcular distancia al punto m√°s cercano del anillo (espacio local).
+	// Esto garantiza que la activaci√≥n se dispare cuando el observador se
 	// aproxima al borde real del annulus, no al centro del componente.
 	const FVector LocalCamLoc = GetComponentTransform().InverseTransformPosition(CameraLocation);
 	const float   DistToRing  = ComputeDistanceToRing(LocalCamLoc);
@@ -389,7 +389,7 @@ void UCosmicRingComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 		const int32 MaxInstancesThisFrame  = FMath::Max(AsteroidsPerSector, FMath::RoundToInt(MaxInstancesPerSecond * DeltaTime));
 		int32       InstancesThisFrame     = 0;
 
-		// DestrucciÛn de sectores obsoletos (throttled).
+		// Destrucci√≥n de sectores obsoletos (throttled).
 		// Se procesan hasta agotar el presupuesto; el resto, al frame siguiente.
 		TArray<int32> ActiveKeys;
 		ActiveSectors.GetKeys(ActiveKeys);
@@ -409,14 +409,14 @@ void UCosmicRingComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 				}
 				ActiveSectors.Remove(ActiveID);
 
-				// Contabilizar DESPU…S de completar el sector.
+				// Contabilizar DESPU√âS de completar el sector.
 				InstancesThisFrame += AsteroidsPerSector;
 			}
 		}
 
 
-		// GeneraciÛn asÌncrona de nuevos sectores (throttled).
-		// El presupuesto es compartido con la destrucciÛn del paso anterior.
+		// Generaci√≥n as√≠ncrona de nuevos sectores (throttled).
+		// El presupuesto es compartido con la destrucci√≥n del paso anterior.
 		const double InnerCm         = InnerRadiusKM  * 99000.0;
 		const double OuterCm         = OuterRadiusKM  * 99000.0;
 		const float  HalfThicknessCm = (float)(RingThicknessKM * 49500.0);
@@ -445,17 +445,17 @@ void UCosmicRingComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 			const float EndAngleRad   = FMath::DegreesToRadians((ReqID + 1) * SectorAngleDegrees);
 
 			/**
-			 * EjecuciÛn en segundo plano para evitar bloqueos del Game Thread.
+			 * Ejecuci√≥n en segundo plano para evitar bloqueos del Game Thread.
 			 *
 			 * Se usa FRandomStream con semilla derivada del ReqID para que el mismo sector
-			 * genere siempre exactamente la misma distribuciÛn de asteroides,
-			 * independientemente del orden de carga o regeneraciÛn.
+			 * genere siempre exactamente la misma distribuci√≥n de asteroides,
+			 * independientemente del orden de carga o regeneraci√≥n.
 			 */
 			AsyncTask(ENamedThreads::AnyBackgroundThreadNormalTask,
 				[SectorHISM, StartAngleRad, EndAngleRad, InnerCm, OuterCm,
 				 Density, LocalMinScale, LocalMaxScale, HalfThicknessCm, ReqID]()
 				{
-					FRandomStream SectorStream(ReqID * 2654435761); // Multiplicador primo para mejor distribuciÛn.
+					FRandomStream SectorStream(ReqID * 2654435761); // Multiplicador primo para mejor distribuci√≥n.
 
 					TArray<FTransform> NewTransforms;
 					NewTransforms.Reserve(Density);
@@ -494,7 +494,7 @@ void UCosmicRingComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 		}
 	}
 
-	// Limpieza total (throttled) si el observador abandona la zona de activaciÛn.
+	// Limpieza total (throttled) si el observador abandona la zona de activaci√≥n.
 	else if (ActiveSectors.Num() > 0)
 	{
 		const int32 MaxInstancesThisFrame = FMath::Max(AsteroidsPerSector, FMath::RoundToInt(MaxInstancesPerSecond * DeltaTime));

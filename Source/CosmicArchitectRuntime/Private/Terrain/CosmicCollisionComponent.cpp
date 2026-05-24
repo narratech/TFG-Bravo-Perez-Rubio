@@ -24,7 +24,7 @@ void UCosmicCollisionComponent::EndPlay(const EEndPlayReason::Type EndPlayReason
 
 void UCosmicCollisionComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
-    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+    Super::TickComponent(DeltaTime, TickType, ThisTickFunction); 
 
     if (bShowCollisionMesh) {
         DrawDebugCollisionMesh();
@@ -90,7 +90,7 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(double Radius)
     BaseVertices.Reserve(TotalVertices);
     BaseNormals.Reserve(TotalVertices);
 
-    // 3. CALCULAR V…RTICES
+    // 3. CALCULAR V√âRTICES
     int32 ActualVerticesCalculated = 0;
 
     for (int32 y = 0; y < VertRes; ++y)
@@ -100,12 +100,12 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(double Radius)
             double WorldX = (x - HalfRes) * CollisionTriangleSize;
             double WorldY = (y - HalfRes) * CollisionTriangleSize;
 
-            // Calcular posiciÛn en esfera
+            // Calcular posici√≥n en esfera
             FVector SphereCenter = FVector(0, 0, -Radius);
             double Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
             FVector BasePosition;
 
-            if (Distance2D <= Radius && Distance2D > 0.001f) // Evitar divisiÛn por 0
+            if (Distance2D <= Radius && Distance2D > 0.001f) // Evitar divisi√≥n por 0
             {
                 double ZOffset = FMath::Sqrt(Radius * Radius - Distance2D * Distance2D);
                 BasePosition = FVector(WorldX, WorldY, -Radius + ZOffset);
@@ -140,7 +140,7 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(double Radius)
 
     //UE_LOG(LogTemp, Warning, TEXT("Creando colision"));
 
-    // 4. CALCULAR TRI¡NGULOS (CORREGIDO)
+    // 4. CALCULAR TRI√ÅNGULOS (CORREGIDO)
     Tris.Empty();
     int32 TriangleCount = 0;
 
@@ -148,7 +148,7 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(double Radius)
     {
         for (int32 x = 0; x < CollisionResolution; ++x)
         {
-            // Õndices de vÈrtices
+            // √çndices de v√©rtices
             int32 i0 = y * VertRes + x;
             int32 i1 = i0 + 1;
             int32 i2 = i0 + VertRes;
@@ -157,7 +157,7 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(double Radius)
             if (i0 >= TotalVertices || i1 >= TotalVertices ||
                 i2 >= TotalVertices || i3 >= TotalVertices)
             {
-                UE_LOG(LogTemp, Error, TEXT("Õndice de tri·ngulo inv·lido en [%d,%d]"), x, y);
+                UE_LOG(LogTemp, Error, TEXT("√çndice de tri√°ngulo inv√°lido en [%d,%d]"), x, y);
                 continue;
             }
 
@@ -222,7 +222,7 @@ void UCosmicCollisionComponent::ClearCollision()
         BodySetup = nullptr;
     }
 
-    // Quitar del sistema de fÌsicas
+    // Quitar del sistema de f√≠sicas
     DestroyPhysicsState();
 
     // Limpiar datos

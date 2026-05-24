@@ -15,17 +15,17 @@
 
 /**
  * Constructor de la clase ACosmicPlanet.
- * Establece la estructura de componentes necesaria para la generaci髇 del planeta.
+ * Establece la estructura de componentes necesaria para la generaci贸n del planeta.
  */
 ACosmicPlanet::ACosmicPlanet()
 {
-    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bCanEverTick = true; 
 
-    // Inicializaci髇 del SceneComponent ra韟.
+    // Inicializaci贸n del SceneComponent ra铆z.
     Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
     RootComponent = Root;
 
-    // Inicializaci髇 de componentes especializados en terreno, oc閍nos y follaje.
+    // Inicializaci贸n de componentes especializados en terreno, oc茅anos y follaje.
     CollisionComponent = CreateDefaultSubobject<UCosmicCollisionComponent>(TEXT("CollisionComponent"));
     ClipmapComponent = CreateDefaultSubobject<UCosmicClipmapComponent>(TEXT("ClipmapComponent"));
     OceanComponent = CreateDefaultSubobject<UCosmicOceanComponent>(TEXT("OceanComponent"));
@@ -33,7 +33,7 @@ ACosmicPlanet::ACosmicPlanet()
 }
 
 /**
- * Fase posterior a la inicializaci髇 de componentes.
+ * Fase posterior a la inicializaci贸n de componentes.
  * Sincroniza los datos entre los distintos sistemas del planeta antes de que comience el Tick.
  */
 void ACosmicPlanet::PostInitializeComponents()
@@ -58,7 +58,7 @@ void ACosmicPlanet::BeginPlay()
 
 #if WITH_EDITOR
 /**
- * L骻ica para manejar la duplicaci髇 de planetas en el Editor.
+ * L贸gica para manejar la duplicaci贸n de planetas en el Editor.
  * Asegura que el nuevo planeta tenga sus radios y sistemas de follaje correctamente inicializados.
  */
 void ACosmicPlanet::PostDuplicate(EDuplicateMode::Type Mode)
@@ -67,7 +67,7 @@ void ACosmicPlanet::PostDuplicate(EDuplicateMode::Type Mode)
 
     if (!GetWorld()->IsGameWorld())
     {
-        // Escalamiento del radio a unidades de Unreal (Cent韒etros).
+        // Escalamiento del radio a unidades de Unreal (Cent铆metros).
         ClipmapComponent->PlanetRadius = RadiusKm * 100000;
         if (FoliageSpawnerComponent)
         {
@@ -99,8 +99,8 @@ void ACosmicPlanet::EndPlay(const EEndPlayReason::Type EndPlayReason)
 }
 
 /**
- * Configura los par醡etros del componente de Clipmap.
- * Establece la jerarqu韆, radios y activa la generaci髇 de los niveles de detalle.
+ * Configura los par谩metros del componente de Clipmap.
+ * Establece la jerarqu铆a, radios y activa la generaci贸n de los niveles de detalle.
  */
 void ACosmicPlanet::InitClipmap()
 {
@@ -119,7 +119,7 @@ void ACosmicPlanet::InitClipmap()
 }
 
 /**
- * Funci髇 de conveniencia para reconstruir totalmente la presencia f韘ica del planeta.
+ * Funci贸n de conveniencia para reconstruir totalmente la presencia f铆sica del planeta.
  */
 void ACosmicPlanet::RebuildPlanet()
 {
@@ -129,7 +129,7 @@ void ACosmicPlanet::RebuildPlanet()
 }
 
 /**
- * Actualiza los par醡etros del material del terreno sin reconstruir la geometr韆.
+ * Actualiza los par谩metros del material del terreno sin reconstruir la geometr铆a.
  */
 void ACosmicPlanet::UpdateMaterialOnly()
 {
@@ -160,7 +160,7 @@ void ACosmicPlanet::ClearData()
 
 /**
  * Actualiza el sistema de ruido.
- * Vincula el delegado de cambio de ruido para permitir actualizaciones autom醫icas cuando se modifican los settings.
+ * Vincula el delegado de cambio de ruido para permitir actualizaciones autom谩ticas cuando se modifican los settings.
  */
 void ACosmicPlanet::UpdateNoiseSettings()
 {
@@ -184,7 +184,7 @@ void ACosmicPlanet::UpdateNoiseSettings()
 }
 
 /**
- * Reinicializa el sistema de distribuci髇 de follaje procedural.
+ * Reinicializa el sistema de distribuci贸n de follaje procedural.
  */
 void ACosmicPlanet::UpdateFoliage()
 {
@@ -196,7 +196,7 @@ void ACosmicPlanet::UpdateFoliage()
 }
 
 /**
- * Sincroniza el oc閍no con el estado actual del planeta.
+ * Sincroniza el oc茅ano con el estado actual del planeta.
  */
 void ACosmicPlanet::UpdateOcean()
 {
@@ -210,7 +210,7 @@ void ACosmicPlanet::UpdateOcean()
 
 #if WITH_EDITOR
 /**
- * L骻ica de construcci髇 para el editor. Asegura que el planeta sea visible nada m醩 soltarlo en el nivel.
+ * L贸gica de construcci贸n para el editor. Asegura que el planeta sea visible nada m谩s soltarlo en el nivel.
  */
 void ACosmicPlanet::OnConstruction(const FTransform& Transform)
 {
@@ -228,8 +228,8 @@ void ACosmicPlanet::OnConstruction(const FTransform& Transform)
 #endif
 
 /**
- * Inicializaci髇 masiva de par醡etros planetarios.
- * Gestiona tambi閚 el ciclo de vida de los objetos de ruido internos para evitar redundancia de memoria.
+ * Inicializaci贸n masiva de par谩metros planetarios.
+ * Gestiona tambi茅n el ciclo de vida de los objetos de ruido internos para evitar redundancia de memoria.
  */
 void ACosmicPlanet::InitPlanet(
     float InRadiusKm,
@@ -258,7 +258,7 @@ void ACosmicPlanet::InitPlanet(
     if (NewNoiseClass)
         NoiseClass = NewNoiseClass;
 
-    // Configuraci髇 del componente de Clipmap.
+    // Configuraci贸n del componente de Clipmap.
     if (ClipmapComponent)
     {
         ClipmapComponent->BaseMaterial = BaseMaterial;
@@ -270,7 +270,7 @@ void ACosmicPlanet::InitPlanet(
         ClipmapComponent->UseClipmap = UseClipmap;
     }
 
-    // Configuraci髇 del oc閍no.
+    // Configuraci贸n del oc茅ano.
     if (OceanComponent)
     {
         OceanComponent->bHasOcean = bInHasOcean;
@@ -281,11 +281,11 @@ void ACosmicPlanet::InitPlanet(
         UpdateOcean();
     }
 
-    // Configuraci髇 del follaje.
+    // Configuraci贸n del follaje.
     if (FoliageSpawnerComponent && InFoliageCollection)
         FoliageSpawnerComponent->FoliageCollection = InFoliageCollection;
 
-    // Asignaci髇 de colores y escalas para el shader de terreno.
+    // Asignaci贸n de colores y escalas para el shader de terreno.
     PlanetMainColor1 = Color1;
     PlanetMainColor2 = Color2;
     PlanetColdColor = ColorCold;
@@ -295,7 +295,7 @@ void ACosmicPlanet::InitPlanet(
     NoiseScaleMedium = ScaleM;
     NoiseScaleSmall = ScaleS;
 
-    // Activaci髇 de la reconstrucci髇 de sistemas tras la carga de datos.
+    // Activaci贸n de la reconstrucci贸n de sistemas tras la carga de datos.
     InitClipmap();
     UpdateFoliage();
     UpdateNoiseSettings();
@@ -317,7 +317,7 @@ void ACosmicPlanet::SetFoliageParams(int32 InFoliageInstancesPerFrame, float InN
 }
 
 /**
- * Limpieza de objetos de ruido generados de forma vol醫il (no assets).
+ * Limpieza de objetos de ruido generados de forma vol谩til (no assets).
  */
 void ACosmicPlanet::CleanupNoiseSettings()
 {
@@ -341,7 +341,7 @@ void ACosmicPlanet::PostEditChangeProperty(FPropertyChangedEvent& PropertyChange
         ? PropertyChangedEvent.Property->GetFName()
         : NAME_None;
 
-    // Categor韆: Actualizaci髇 visual r醦ida de materiales.
+    // Categor铆a: Actualizaci贸n visual r谩pida de materiales.
     if (PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, PlanetMainColor1) ||
         PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, PlanetMainColor2) ||
         PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, PlanetColdColor) ||
@@ -355,14 +355,14 @@ void ACosmicPlanet::PostEditChangeProperty(FPropertyChangedEvent& PropertyChange
         return;
     }
 
-    // Categor韆: Cambios en el generador de ruido.
+    // Categor铆a: Cambios en el generador de ruido.
     if (PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, NoiseClass))
     {
         UpdateNoiseSettings();
         return;
     }
 
-    // Categor韆: Cambios estructurales que requieren reconstrucci髇 total.
+    // Categor铆a: Cambios estructurales que requieren reconstrucci贸n total.
     if (PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, RadiusKm))
     {
         RebuildPlanet();

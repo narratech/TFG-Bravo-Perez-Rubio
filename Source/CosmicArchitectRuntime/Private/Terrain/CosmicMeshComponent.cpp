@@ -27,7 +27,7 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
 
     BaseVertices.Empty(TotalVertices);
     BaseNormals.Empty(TotalVertices);
-    
+     
     TArray<FVector2D> UVs;
     TArray<FProcMeshTangent> BaseTangents;
 
@@ -43,12 +43,12 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
             double WorldX = (x - HalfRes) * GridSpacing;
             double WorldY = (y - HalfRes) * GridSpacing;
 
-            // Calcular posiciÛn en esfera
+            // Calcular posici√≥n en esfera
             FVector SphereCenter = FVector(0, 0, -PlanetRadius);
             double Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
             FVector BasePosition;
 
-            if (Distance2D <= PlanetRadius && Distance2D > 0.001f) // Evitar divisiÛn por 0
+            if (Distance2D <= PlanetRadius && Distance2D > 0.001f) // Evitar divisi√≥n por 0
             {
                 double ZOffset = FMath::Sqrt(PlanetRadius * PlanetRadius - Distance2D * Distance2D);
                 BasePosition = FVector(WorldX, WorldY, -PlanetRadius + ZOffset);
@@ -98,7 +98,7 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
         }
     }
 
-    // CALCULAR TRI¡NGULOS 
+    // CALCULAR TRI√ÅNGULOS 
     Triangles.Empty();
     int32 TriangleCount = 0;
 
@@ -106,7 +106,7 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
     {
         for (int32 x = 0; x < Resolution; ++x)
         {
-            // Õndices de vÈrtices
+            // √çndices de v√©rtices
             int32 i0 = y * VertRes + x;
             int32 i1 = i0 + 1;
             int32 i2 = i0 + VertRes;
@@ -129,7 +129,7 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
             if (i0 >= TotalVertices || i1 >= TotalVertices ||
                 i2 >= TotalVertices || i3 >= TotalVertices)
             {
-                UE_LOG(LogTemp, Error, TEXT("Õndice de tri·ngulo inv·lido en [%d,%d]"), x, y);
+                UE_LOG(LogTemp, Error, TEXT("√çndice de tri√°ngulo inv√°lido en [%d,%d]"), x, y);
                 continue;
             }
 
@@ -277,11 +277,11 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
 
     CreateMeshSection_LinearColor(
         0,                    // SectionIndex
-        RotatedVertices,      // VÈrtices
-        Triangles,           // Tri·ngulos
+        RotatedVertices,      // V√©rtices
+        Triangles,           // Tri√°ngulos
         BaseNormals,      // Normales
         UVs,                 // UVs
-        TArray<FLinearColor>(),    // Colores de vÈrtice
+        TArray<FLinearColor>(),    // Colores de v√©rtice
         BaseTangents,     // Tangentes
         false
     );
@@ -293,7 +293,7 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
     }
     else
     {
-        UE_LOG(LogTemp, Error, TEXT("FALL” la creaciÛn de la malla!"));
+        UE_LOG(LogTemp, Error, TEXT("FALL√ì la creaci√≥n de la malla!"));
     }
 
 
@@ -314,7 +314,7 @@ void UCosmicMeshComponent::BuildSphereMesh()
 
     bIsSphereMesh = true;
 
-    // Aseguramos m˙ltiplo de 2
+    // Aseguramos m√∫ltiplo de 2
     Resolution = FMath::Max(4, Resolution & ~1);
 
     const int32 LatSegments = Resolution;
@@ -330,7 +330,7 @@ void UCosmicMeshComponent::BuildSphereMesh()
     BaseTangents.Reserve(TotalVertices);
     UVs.Reserve(TotalVertices);
 
-    // V…RTICES
+    // V√âRTICES
     for (int32 y = 0; y < VertResY; ++y)
     {
         float V = (float)y / LatSegments;
@@ -366,7 +366,7 @@ void UCosmicMeshComponent::BuildSphereMesh()
         }
     }
 
-    // TRI¡NGULOS
+    // TRI√ÅNGULOS
     for (int32 y = 0; y < LatSegments; ++y)
     {
         for (int32 x = 0; x < LonSegments; ++x)
@@ -389,23 +389,23 @@ void UCosmicMeshComponent::BuildSphereMesh()
 
     CreateMeshSection_LinearColor(
         0,                    // SectionIndex
-        BaseVertices,      // VÈrtices
-        Triangles,           // Tri·ngulos
+        BaseVertices,      // V√©rtices
+        Triangles,           // Tri√°ngulos
         BaseNormals,      // Normales
         UVs,                 // UVs
-        TArray<FLinearColor>(),    // Colores de vÈrtice
+        TArray<FLinearColor>(),    // Colores de v√©rtice
         BaseTangents,     // Tangentes
-        false      // Crear colisiÛn
+        false      // Crear colisi√≥n
     );
 
-    // VERIFICAR que se creÛ correctamente
+    // VERIFICAR que se cre√≥ correctamente
     if (GetNumSections() > 0)
     {
         bMeshCreated = true;
     }
     else
     {
-        UE_LOG(LogTemp, Error, TEXT("FALL” la creaciÛn de la malla!"));
+        UE_LOG(LogTemp, Error, TEXT("FALL√ì la creaci√≥n de la malla!"));
     }
 
 
@@ -432,12 +432,12 @@ void UCosmicMeshComponent::ReScaleLevel(int64 NewGridSpacing)
             double WorldX = (x - HalfRes) * GridSpacing;
             double WorldY = (y - HalfRes) * GridSpacing;
 
-            // Calcular posiciÛn en esfera
+            // Calcular posici√≥n en esfera
             FVector SphereCenter = FVector(0, 0, -PlanetRadius);
             double Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
             FVector Position;
 
-            if (Distance2D <= PlanetRadius && Distance2D > 0.001f) // Evitar divisiÛn por 0
+            if (Distance2D <= PlanetRadius && Distance2D > 0.001f) // Evitar divisi√≥n por 0
             {
                 double ZOffset = FMath::Sqrt(PlanetRadius * PlanetRadius - Distance2D * Distance2D);
                 Position = FVector(WorldX, WorldY, -PlanetRadius + ZOffset);
@@ -519,7 +519,7 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
 
     bIsGeneratingNoise = false;
 
-    // Actualizamos la secciÛn de la malla (No subimos informacion irrelevante)
+    // Actualizamos la secci√≥n de la malla (No subimos informacion irrelevante)
     UpdateMeshSection_LinearColor(
         0,
         CurrentVertices,

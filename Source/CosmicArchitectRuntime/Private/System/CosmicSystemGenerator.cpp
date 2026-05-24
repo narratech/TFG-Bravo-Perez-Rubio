@@ -23,7 +23,7 @@
 #endif
 
 ACosmicSystemGenerator::ACosmicSystemGenerator()
-{
+{ 
     PrimaryActorTick.bCanEverTick = true;
 #if !WITH_EDITOR
     PrimaryActorTick.bStartWithTickEnabled = false;
@@ -89,11 +89,11 @@ bool ACosmicSystemGenerator::TryPlacePlanet(
     const float MinDist = StarRadiusKm * OrbitDistanceMinFactor;
     const float MaxDist = SystemRadiusKm;
 
-    // Seleccionar factores de radio según tipo
+    // Seleccionar factores de radio segÃºn tipo
     const float RadiusFactorMin = bIsGasGiant ? GasGiantRadiusFactorMin : PlanetRadiusFactorMin;
     const float RadiusFactorMax = bIsGasGiant ? GasGiantRadiusFactorMax : PlanetRadiusFactorMax;
 
-    // Seleccionar rango de diámetro según tipo
+    // Seleccionar rango de diÃ¡metro segÃºn tipo
     const FVector2D& DiameterRange = BodyDiameterRangeKm;
 
     for (int32 Attempt = 0; Attempt < MaxGenerationAttempts; ++Attempt)
@@ -101,7 +101,7 @@ bool ACosmicSystemGenerator::TryPlacePlanet(
         float Orbit = Stream.FRandRange(MinDist, MaxDist);
         float Radius = Orbit * Stream.FRandRange(RadiusFactorMin, RadiusFactorMax);
 
-        // Aplicar límites de diámetro (convertir a radio)
+        // Aplicar lÃ­mites de diÃ¡metro (convertir a radio)
         Radius = FMath::Clamp(Radius, DiameterRange.X * 0.5f, DiameterRange.Y * 0.5f);
 
         if (!IsOrbitDistanceValid(Orbit, Radius, ExistingOrbitDistances, ExistingPlanetRadii))
@@ -142,10 +142,10 @@ ACosmicSystemGenerator::FPlanetClassification ACosmicSystemGenerator::ClassifyPl
     const bool bInBeltZone = (OrbitalFraction >= BeltZoneInnerFraction &&
         OrbitalFraction <= BeltZoneOuterFraction);
 
-    // Calcular fracción de cuerpos restantes
+    // Calcular fracciÃ³n de cuerpos restantes
     const float RemainingFraction = (float)RemainingBodies / FMath::Max(1, TotalBodies);
 
-    // NUEVA LÓGICA: Gigante gaseoso cuando quedan pocos cuerpos y hay probabilidad
+    // NUEVA LÃ“GICA: Gigante gaseoso cuando quedan pocos cuerpos y hay probabilidad
     if (RemainingFraction <= GasGiantAppearanceThreshold &&
         Stream.FRandRange(0.f, 1.f) < GasGiantProbability)
     {
@@ -165,7 +165,7 @@ ACosmicSystemGenerator::FPlanetClassification ACosmicSystemGenerator::ClassifyPl
     }
     else
     {
-        // Planeta telúrico por defecto
+        // Planeta telÃºrico por defecto
         Result.Type = EPlanetType::Telluric;
         Result.bHasRings = false;
         Result.bHasMoons = true;
@@ -571,13 +571,13 @@ void ACosmicSystemGenerator::GenerateBodies()
         GeneratedBodies.Add(PointLight);
     }
 
-    // Contador de cuerpos: la estrella y la luz no cuentan para NumberOfBodies (sólo planetas y lunas)
+    // Contador de cuerpos: la estrella y la luz no cuentan para NumberOfBodies (sÃ³lo planetas y lunas)
     int32 BodiesSpawned = 0;
     // Listas para mantener distancias orbitales y radios de los planetas ya colocados
     TArray<float> PlanetOrbits;
     TArray<float> PlanetRadii;
 
-    // Generar planetas hasta alcanzar NumberOfBodies o hasta que no se pueda colocar más
+    // Generar planetas hasta alcanzar NumberOfBodies o hasta que no se pueda colocar mÃ¡s
     while (BodiesSpawned < NumberOfBodies)
     {
         const int32 RemainingBodies = NumberOfBodies - BodiesSpawned;
@@ -599,7 +599,7 @@ void ACosmicSystemGenerator::GenerateBodies()
             NewRadius = Stream.FRandRange(GasGiantRadiusMin, GasGiantRadiusMax);
         }
 
-        // Cinturón de asteroides - no cuenta como cuerpo planetario, pero tampoco es una luna.
+        // CinturÃ³n de asteroides - no cuenta como cuerpo planetario, pero tampoco es una luna.
         if (Class.Type == EPlanetType::AsteroidBelt)
         {
             UCosmicRingComponent* Belt = NewObject<UCosmicRingComponent>(Star);
