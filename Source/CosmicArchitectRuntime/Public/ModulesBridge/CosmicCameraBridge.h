@@ -10,3 +10,4 @@ public:
     static FVector CameraLocation;
     static FRotator CameraRotation;
 };
+ 

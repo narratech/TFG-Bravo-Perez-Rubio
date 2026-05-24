@@ -18,7 +18,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAsteroidFieldGenerated);
  * Implementa un sistema de "Treadmill" (cinta de correr) que segmenta el anillo en sectores
  * angulares, cargando y reciclando instancias de asteroides (HISM) dinámicamente según
  * la proximidad del observador para optimizar el rendimiento y la memoria.
- */
+ */ 
 UCLASS(ClassGroup = (CosmicArchitect), meta = (BlueprintSpawnableComponent),
 	HideCategories = (Rendering, Lighting, Navigation, Replication, Physics, Collision,
 		Activation, AssetUserData, HLOD, Cooking, Tags, ComponentReplication))

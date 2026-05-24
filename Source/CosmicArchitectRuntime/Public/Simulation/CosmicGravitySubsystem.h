@@ -18,7 +18,7 @@ class UCosmicGravityComponent;
  *   - Mantener dos listas internas: Bodies (todos los cuerpos) y Planets (solo planetas).
  *   - Calcular fuerzas gravitacionales en Tick() y acumularlas en cada componente.
  *   - Invocar Integrate() en cada cuerpo activo tras acumular todas las fuerzas del frame.
- *   - Proveer RegisterBody() y UnregisterBody() como punto de entrada para los componentes.
+ *   - Proveer RegisterBody() y UnregisterBody() como punto de entrada para los componentes. 
  *
  * Restricciones y contratos de uso:
  *   - Solo se activa el Tick cuando hay cuerpos registrados (optimizacion automatica).

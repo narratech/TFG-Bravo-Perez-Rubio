@@ -15,7 +15,7 @@ public class CosmicArchitectRuntime : ModuleRules
                 "CoreUObject",
                 "Engine",
                 "CosmicArchitectCommon",
-                "ProceduralMeshComponent",
+                "ProceduralMeshComponent", 
                 "CosmicArchitectNoise",
                 "CosmicArchitectFoliage",
                 "InputCore",

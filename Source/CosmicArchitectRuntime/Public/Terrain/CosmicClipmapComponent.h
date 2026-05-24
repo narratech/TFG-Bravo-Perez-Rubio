@@ -16,13 +16,13 @@ class UCosmicNoiseClass;
 /**
  * Componente encargado de gestionar el sistema de clipmaps planetarios.
  *
- * Administra la creaciÛn, actualizaciÛn y destrucciÛn de niveles de detalle
- * din·micos alrededor del jugador, incluyendo:
- * - GeneraciÛn procedural de mallas.
- * - Transiciones entre modo normal y rendimiento.
- * - ActualizaciÛn de colisiÛn cercana.
- * - GeneraciÛn de foliage.
- * - Materiales din·micos del planeta.
+ * Administra la creaci√≥n, actualizaci√≥n y destrucci√≥n de niveles de detalle
+ * din√°micos alrededor del jugador, incluyendo:
+ * - Generaci√≥n procedural de mallas.
+ * - Transiciones entre modo normal y rendimiento. 
+ * - Actualizaci√≥n de colisi√≥n cercana.
+ * - Generaci√≥n de foliage.
+ * - Materiales din√°micos del planeta.
  */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent),
     HideCategories = (Activation, Tags, AssetUserData, Navigation, Rendering, Replication, Input, Actor, Collision, Cooking))
@@ -55,27 +55,27 @@ public:
     void ClearLevels();
 
     /**
-     * Configura los par·metros visuales del material planetario.
+     * Configura los par√°metros visuales del material planetario.
      *
      * @param Color1 Color principal base.
      * @param Color2 Color secundario base.
-     * @param ColorCold Color para zonas frÌas.
-     * @param ColorHot Color para zonas c·lidas.
+     * @param ColorCold Color para zonas fr√≠as.
+     * @param ColorHot Color para zonas c√°lidas.
      * @param ColorSlope Color aplicado a pendientes.
      * @param ScaleL Escala de ruido grande.
      * @param ScaleM Escala de ruido media.
-     * @param ScaleS Escala de ruido pequeÒa.
+     * @param ScaleS Escala de ruido peque√±a.
      */
     void SetMaterialData(FColor Color1, FColor Color2, FColor ColorCold, FColor ColorHot,
         FColor ColorSlope, float ScaleL, float ScaleM, float ScaleS);
 
     /**
-     * Solicita una regeneraciÛn completa de las mallas.
+     * Solicita una regeneraci√≥n completa de las mallas.
      */
     void RequestCompleteMeshUpdate();
 
     /**
-     * Actualiza la estrategia de generaciÛn de ruido activa.
+     * Actualiza la estrategia de generaci√≥n de ruido activa.
      */
     void UpdateNoiseEvaluator();
 
@@ -88,7 +88,7 @@ public:
     /** Radio del planeta */
     double PlanetRadius;
 
-    /** Material base utilizado para generar la instancia din·mica */
+    /** Material base utilizado para generar la instancia din√°mica */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UMaterialInstance* BaseMaterial;
 
@@ -96,19 +96,19 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UTexture2D* DefaultTexture;
 
-    /** ResoluciÛn base de cada nivel del clipmap */
+    /** Resoluci√≥n base de cada nivel del clipmap */
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "8", ClampMax = "256"))
     int32 BaseResolution = 128;
 
-    /** N˙mero total de niveles del clipmap */
+    /** N√∫mero total de niveles del clipmap */
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "1", ClampMax = "10"))
     int32 NumLevels = 4;
 
-    /** TamaÒo mÌnimo permitido para los tri·ngulos */
+    /** Tama√±o m√≠nimo permitido para los tri√°ngulos */
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "10"))
     int32 MinTriangleSize = 100;
 
-    /** Espaciado base actual de la cuadrÌcula */
+    /** Espaciado base actual de la cuadr√≠cula */
     UPROPERTY(VisibleAnywhere, Category = "Clipmap")
     int64 BaseGridSpacing = 200;
 
@@ -120,11 +120,11 @@ public:
     UPROPERTY(EditAnywhere, Category = "Clipmap")
     bool UseClipmap = true;
 
-    /** Congela la generaciÛn din·mica de los niveles */
+    /** Congela la generaci√≥n din√°mica de los niveles */
     UPROPERTY(EditAnywhere, Category = "Clipmap")
     bool FreezeGeneration = false;
 
-    /** Componente encargado de la colisiÛn din·mica */
+    /** Componente encargado de la colisi√≥n din√°mica */
     UCosmicCollisionComponent* CollisionComponent;
 
     /** Componente encargado del foliage procedural */
@@ -138,11 +138,11 @@ protected:
     /** Nivel simplificado utilizado en modo rendimiento */
     UCosmicMeshComponent* FarLevel;
 
-    /** Estrategia activa de generaciÛn procedural */
+    /** Estrategia activa de generaci√≥n procedural */
     TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy;
 
     /**
-     * Fases de actualizaciÛn distribuidas entre frames
+     * Fases de actualizaci√≥n distribuidas entre frames
      * para reducir el coste por tick.
      */
     enum class EUpdatePhase : uint8
@@ -152,13 +152,13 @@ protected:
         Mesh
     };
 
-    /** Tiempo acumulado desde la ˙ltima actualizaciÛn */
+    /** Tiempo acumulado desde la √∫ltima actualizaci√≥n */
     float ElapsedTime = 0;
 
     /** Tiempo de refresco actualmente utilizado */
     float TimeToRefreshActive;
 
-    /** Indica si el sistema est· en modo rendimiento */
+    /** Indica si el sistema est√° en modo rendimiento */
     bool bPerformaceMode = false;
 
     /** Indica si los niveles normales han sido inicializados */
@@ -170,16 +170,16 @@ protected:
     /** Indica si existen tareas pendientes activas */
     bool bPendingTasksRemaining = false;
 
-    /** Esperando transiciÛn hacia modo normal */
+    /** Esperando transici√≥n hacia modo normal */
     bool bWaitingForNormalTransition = false;
 
-    /** Esperando transiciÛn hacia modo rendimiento */
+    /** Esperando transici√≥n hacia modo rendimiento */
     bool bWaitingForPerformanceTransition = false;
 
-    /** Indica si actualmente se est·n construyendo niveles */
+    /** Indica si actualmente se est√°n construyendo niveles */
     bool bBuildingLevels = false;
 
-    /** Indica si el sistema representa un planeta esfÈrico */
+    /** Indica si el sistema representa un planeta esf√©rico */
     bool IsPlanet = true;
 
     /** Espaciado base original */
@@ -191,16 +191,16 @@ protected:
     /** Color secundario del planeta */
     FColor PlanetMainColor2 = FColor::Red;
 
-    /** Color para zonas frÌas */
+    /** Color para zonas fr√≠as */
     FColor PlanetColdColor = FColor::Yellow;
 
-    /** Color para zonas c·lidas */
+    /** Color para zonas c√°lidas */
     FColor PlanetHotColor = FColor::Yellow;
 
     /** Color utilizado en pendientes */
     FColor PlanetSlopeColor = FColor::Yellow;
 
-    /** Escala de ruido pequeÒa */
+    /** Escala de ruido peque√±a */
     float NoiseScaleSmall = 1.f;
 
     /** Escala de ruido media */
@@ -209,16 +209,16 @@ protected:
     /** Escala de ruido grande */
     float NoiseScaleLarge = 1.f;
 
-    /** Intervalo de actualizaciÛn del sistema */
+    /** Intervalo de actualizaci√≥n del sistema */
     float TimeToRefresh = 0.01f;
 
-    /** ⁄ltima posiciÛn conocida del jugador */
+    /** √öltima posici√≥n conocida del jugador */
     FVector LastPlayerPos;
 
-    /** ⁄ltima posiciÛn usada para actualizar colisiÛn */
+    /** √öltima posici√≥n usada para actualizar colisi√≥n */
     FVector LastMeshPlayerPos;
 
-    /** PosiciÛn actual del actor propietario */
+    /** Posici√≥n actual del actor propietario */
     FVector CurrentActorPosition;
 
     /** Delta acumulado en modo plano */
@@ -227,7 +227,7 @@ protected:
     /** Shift total acumulado del clipmap */
     FIntPoint TotalShift = FIntPoint::ZeroValue;
 
-    /** Fase de actualizaciÛn actual */
+    /** Fase de actualizaci√≥n actual */
     EUpdatePhase CurrentPhase = EUpdatePhase::Mesh;
 
     virtual void BeginPlay() override;
@@ -237,7 +237,7 @@ protected:
 #if WITH_EDITOR
 
     /**
-     * Se ejecuta autom·ticamente al modificar propiedades
+     * Se ejecuta autom√°ticamente al modificar propiedades
      * desde el panel de detalles del editor.
      */
     virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
@@ -247,16 +247,16 @@ protected:
     /**
      * Actualiza el sistema de foliage procedural.
      *
-     * @param DeltaTime Tiempo transcurrido desde el ˙ltimo frame.
-     * @param ViewerPos PosiciÛn actual del jugador.
+     * @param DeltaTime Tiempo transcurrido desde el √∫ltimo frame.
+     * @param ViewerPos Posici√≥n actual del jugador.
      * @param DistanceToSurface Distancia a la superficie.
      */
     void UpdateFoliagePhase(float DeltaTime, const FVector& ViewerPos, float DistanceToSurface);
 
     /**
-     * Actualiza la colisiÛn cercana al jugador.
+     * Actualiza la colisi√≥n cercana al jugador.
      *
-     * @return True si hubo actualizaciÛn de colisiÛn.
+     * @return True si hubo actualizaci√≥n de colisi√≥n.
      */
     bool UpdateCollisionPhase(const FVector& ViewerPos, const FVector& SurfacePos,
         const FVector& N, float DistanceToSurface);
@@ -268,17 +268,17 @@ protected:
         const FVector& N, float DistanceToSurface);
 
     /**
-     * Genera o actualiza la colisiÛn cercana al jugador.
+     * Genera o actualiza la colisi√≥n cercana al jugador.
      */
     bool UpdateCollisionNearPlayer(const FVector& SurfacePos, const FVector& SurfaceNormal, const double DistanceToSurface);
 
     /**
-     * Construye la instancia din·mica del material planetario.
+     * Construye la instancia din√°mica del material planetario.
      */
     void BuildDynamicMaterial();
 
     /**
-     * Calcula la rotaciÛn correcta de un patch
+     * Calcula la rotaci√≥n correcta de un patch
      * respecto a la normal de superficie.
      */
     FRotator GetPatchRotation(const FVector& SurfacePos) const;
@@ -299,7 +299,7 @@ protected:
     float GetDistanceToPlainSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N);
 
     /**
-     * Obtiene la posiciÛn actual del jugador o c·mara.
+     * Obtiene la posici√≥n actual del jugador o c√°mara.
      */
     FVector GetPlayerLocation();
 
@@ -309,27 +309,27 @@ protected:
     FIntPoint ComputeGridShiftPlanar(const FVector& PlayerPos, float GridSpacing);
 
     /**
-     * Calcula el desplazamiento del grid sobre superficie esfÈrica.
+     * Calcula el desplazamiento del grid sobre superficie esf√©rica.
      */
     FIntPoint ComputeGridShiftSpherical(const FVector& PlayerPos, const FVector& CurrentSurfacePos, int64 GridSpacing);
 
     /**
-     * Calcula el desplazamiento del grid seg˙n el tipo de superficie.
+     * Calcula el desplazamiento del grid seg√∫n el tipo de superficie.
      */
     FIntPoint ComputeGridShift(const FVector& PlayerPos, const FVector& CurrentSurfacePos, float GridSpacing);
 
     /**
-     * Obtiene los ·ngulos esfÈricos de una posiciÛn de superficie.
+     * Obtiene los √°ngulos esf√©ricos de una posici√≥n de superficie.
      */
     FVector2D GetSurfaceAngles(const FVector& SurfacePos);
 
     /**
-     * Calcula cu·ntos niveles deben reducirse.
+     * Calcula cu√°ntos niveles deben reducirse.
      */
     int32 CalculateDecreaseSteps(const double DistanceToSurface) const;
 
     /**
-     * Calcula cu·ntos niveles deben incrementarse.
+     * Calcula cu√°ntos niveles deben incrementarse.
      */
     int32 CalculateIncreaseSteps(const double DistanceToSurface) const;
 
@@ -356,14 +356,14 @@ protected:
 
 private:
 
-    /** Material din·mico utilizado por el planeta */
+    /** Material din√°mico utilizado por el planeta */
     UPROPERTY(Transient, DuplicateTransient)
     UMaterialInstanceDynamic* DynamicPlanetMat;
 
-    /** ⁄ltima posiciÛn conocida sobre la superficie */
+    /** √öltima posici√≥n conocida sobre la superficie */
     FVector PreviousSurfacePos = FVector::ZeroVector;
 
-    /** ⁄ltimos ·ngulos esfÈricos registrados del jugador */
+    /** √öltimos √°ngulos esf√©ricos registrados del jugador */
     FVector2D LastSurfaceAngles;
 
     /** Delta lineal acumulado sobre la superficie */

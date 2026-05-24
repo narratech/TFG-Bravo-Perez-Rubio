@@ -10,16 +10,16 @@
 class ICosmicNoiseStrategy;
 
 /**
- * Define el cuadrante lÛgico utilizado por el clipmap
+ * Define el cuadrante l√≥gico utilizado por el clipmap
  * para gestionar desplazamientos y reconstrucciones.
  */
 UENUM(BlueprintType)
 enum class EClipmapQuadrant : uint8
 {
-    /** PosiciÛn base inicial */
+    /** Posici√≥n base inicial */
     TopLeft = 0,
 
-    /** Desplazamiento hacia la derecha */
+    /** Desplazamiento hacia la derecha */ 
     TopRight = 1,
 
     /** Desplazamiento hacia abajo */
@@ -34,11 +34,11 @@ enum class EClipmapQuadrant : uint8
  * un nivel individual del sistema clipmap.
  *
  * Funcionalidades principales:
- * - GeneraciÛn de malla procedural proyectada sobre esfera.
- * - GeneraciÛn de mallas esfÈricas simplificadas.
- * - ActualizaciÛn asÌncrona mediante tareas de ruido.
- * - Reescalado din·mico del nivel.
- * - GestiÛn de visibilidad y transformaciones.
+ * - Generaci√≥n de malla procedural proyectada sobre esfera.
+ * - Generaci√≥n de mallas esf√©ricas simplificadas.
+ * - Actualizaci√≥n as√≠ncrona mediante tareas de ruido.
+ * - Reescalado din√°mico del nivel.
+ * - Gesti√≥n de visibilidad y transformaciones.
  */
 UCLASS()
 class UCosmicMeshComponent : public UProceduralMeshComponent
@@ -47,13 +47,13 @@ class UCosmicMeshComponent : public UProceduralMeshComponent
 
 public:
 
-    /** Õndice del nivel dentro del clipmap */
+    /** √çndice del nivel dentro del clipmap */
     int32 LevelIndex;
 
-    /** ResoluciÛn de la cuadrÌcula */
+    /** Resoluci√≥n de la cuadr√≠cula */
     int32 Resolution;
 
-    /** Espaciado entre vÈrtices */
+    /** Espaciado entre v√©rtices */
     int64 GridSpacing;
 
     /** Radio del planeta */
@@ -71,19 +71,19 @@ public:
     /** Indica si la malla es una esfera completa */
     bool bIsSphereMesh = false;
 
-    /** Indica si la malla est· visible actualmente */
+    /** Indica si la malla est√° visible actualmente */
     bool bActiveMesh;
 
-    /** TransformaciÛn actual del patch */
+    /** Transformaci√≥n actual del patch */
     FTransform PatchTransform;
 
     /**
-     * VÈrtices base deformados ˙nicamente sobre la esfera
+     * V√©rtices base deformados √∫nicamente sobre la esfera
      * sin aplicar alturas de ruido adicionales.
      */
     TArray<FVector> BaseVertices;
 
-    /** Normales base de la geometrÌa */
+    /** Normales base de la geometr√≠a */
     TArray<FVector> BaseNormals;
 
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
@@ -104,15 +104,15 @@ public:
     /**
      * Reescala el nivel actual utilizando un nuevo spacing.
      *
-     * @param GridSpacing Nuevo espaciado entre vÈrtices.
+     * @param GridSpacing Nuevo espaciado entre v√©rtices.
      */
     void ReScaleLevel(int64 GridSpacing);
 
     /**
-     * Actualiza la posiciÛn y rotaciÛn del patch.
+     * Actualiza la posici√≥n y rotaci√≥n del patch.
      *
-     * @param SurfacePos PosiciÛn sobre la superficie.
-     * @param PatchRotation RotaciÛn alineada con la normal.
+     * @param SurfacePos Posici√≥n sobre la superficie.
+     * @param PatchRotation Rotaci√≥n alineada con la normal.
      */
     void SetPositionAndRotation(const FVector& SurfacePos, const FRotator& PatchRotation);
 
@@ -124,37 +124,37 @@ public:
     void SetMeshActive(bool active);
 
     /**
-     * Solicita una actualizaciÛn asÌncrona de ruido procedural.
+     * Solicita una actualizaci√≥n as√≠ncrona de ruido procedural.
      *
      * @param NoiseGenerationStrategy Estrategia de ruido activa.
      */
     void RequestMeshUpdate(TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy);
 
     /**
-     * Comprueba si la tarea de generaciÛn terminÛ
-     * y aplica la nueva geometrÌa generada.
+     * Comprueba si la tarea de generaci√≥n termin√≥
+     * y aplica la nueva geometr√≠a generada.
      *
-     * @return True si la malla ya est· actualizada.
+     * @return True si la malla ya est√° actualizada.
      */
     bool CheckAndApplyMeshUpdate();
 
     /**
-     * Comprueba si existe una tarea asÌncrona activa.
+     * Comprueba si existe una tarea as√≠ncrona activa.
      *
-     * @return True si la tarea sigue ejecut·ndose.
+     * @return True si la tarea sigue ejecut√°ndose.
      */
     bool IsTaskActive();
 
     /**
-     * Cancela cualquier tarea asÌncrona activa.
+     * Cancela cualquier tarea as√≠ncrona activa.
      */
     void CancelAsyncWork();
 
 protected:
 
-    /** Tarea asÌncrona utilizada para generar ruido procedural */
+    /** Tarea as√≠ncrona utilizada para generar ruido procedural */
     FAsyncTask<FCosmicNoiseGenerationTask>* NoiseTask = nullptr;
 
-    /** Indica si actualmente se est· generando ruido */
+    /** Indica si actualmente se est√° generando ruido */
     bool bIsGeneratingNoise = false;
 };

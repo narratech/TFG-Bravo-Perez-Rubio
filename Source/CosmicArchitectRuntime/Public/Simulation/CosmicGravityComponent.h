@@ -1,4 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -18,7 +18,7 @@
  *   - NearestPlanet → Atracción exclusiva hacia el planeta más cercano en escena.
  *   - SpecificPlanet→ Atracción hacia un actor planeta definido manualmente.
  *   - AllPlanets    → Suma de fuerzas gravitacionales de todos los planetas en escena.
- *   - NBody         → Simulación N-cuerpos: todos los objetos registrados se atraen mutuamente.
+ *   - NBody         → Simulación N-cuerpos: todos los objetos registrados se atraen mutuamente. 
  */
 UENUM(BlueprintType)
 enum class ECosmicGravityMode : uint8

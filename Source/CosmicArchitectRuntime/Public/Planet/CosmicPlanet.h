@@ -16,9 +16,9 @@ class UMaterialInstance;
 
 /**
  * ACosmicPlanet
- * Actor principal que representa un cuerpo planetario procedural.
- * Orquestra la generaci髇 de terreno mediante Clipmaps, simulaci髇 de oc閍nos,
- * sistemas de colisiones din醡icas y distribuci髇 de follaje a gran escala.
+ * Actor principal que representa un cuerpo planetario procedural. 
+ * Orquestra la generaci贸n de terreno mediante Clipmaps, simulaci贸n de oc茅anos,
+ * sistemas de colisiones din谩micas y distribuci贸n de follaje a gran escala.
  */
 UCLASS(HideCategories = (
 	Replication, Input, Actor, LOD, Activation, Cooking, Networking,
@@ -29,23 +29,23 @@ UCLASS(HideCategories = (
 
 public:
 
-	/** Radio base del planeta en Kil髆etros (soporta Large World Coordinates). */
+	/** Radio base del planeta en Kil贸metros (soporta Large World Coordinates). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Planet")
 	double RadiusKm = 1.0;
 
-	/** Componente ra韟 de la jerarqu韆 del actor. */
+	/** Componente ra铆z de la jerarqu铆a del actor. */
 	UPROPERTY(VisibleAnywhere, Category = "Planet", BlueprintReadOnly)
 	USceneComponent* Root;
 
-	/** Sistema de gesti髇 de terreno basado en niveles de detalle conc閚tricos (Clipmap). */
+	/** Sistema de gesti贸n de terreno basado en niveles de detalle conc茅ntricos (Clipmap). */
 	UPROPERTY(VisibleAnywhere, Category = "Planet", BlueprintReadOnly)
 	TObjectPtr<UCosmicClipmapComponent> ClipmapComponent;
 
-	/** Gestiona la generaci髇 de mallas de colisi髇 en tiempo real alrededor del observador. */
+	/** Gestiona la generaci贸n de mallas de colisi贸n en tiempo real alrededor del observador. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Planet")
 	UCosmicCollisionComponent* CollisionComponent;
 
-	/** Componente encargado de la representaci髇 visual y f韘ica del nivel del mar. */
+	/** Componente encargado de la representaci贸n visual y f铆sica del nivel del mar. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Planet")
 	UCosmicOceanComponent* OceanComponent;
 
@@ -53,17 +53,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Noise")
 	UCosmicNoiseClass* NoiseClass;
 
-	/** Sistema de instanciaci髇 masiva de vegetaci髇 y rocas sobre la superficie. */
+	/** Sistema de instanciaci贸n masiva de vegetaci贸n y rocas sobre la superficie. */
 	UPROPERTY(VisibleAnywhere, Category = "Planet", BlueprintReadOnly)
 	UCosmicFoliageSpawner* FoliageSpawnerComponent;
 
-	// --- CONFIGURACI覰 DE COLORES DEL MATERIAL ---
+	// --- CONFIGURACI脫N DE COLORES DEL MATERIAL ---
 
 	/** Color predominante para las zonas de altitud media. */
 	UPROPERTY(EditAnywhere, Category = "Materials|Color")
 	FColor PlanetMainColor1 = FColor::Red;
 
-	/** Color secundario para variaci髇 crom醫ica del terreno. */
+	/** Color secundario para variaci贸n crom谩tica del terreno. */
 	UPROPERTY(EditAnywhere, Category = "Materials|Color")
 	FColor PlanetMainColor2 = FColor::Orange;
 
@@ -89,22 +89,22 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Materials|Noise", meta = (ClampMin = "0.01"))
 	float NoiseScaleMedium = 3.f;
 
-	/** Detalle macro del terreno (Monta馻s y continentes). */
+	/** Detalle macro del terreno (Monta帽as y continentes). */
 	UPROPERTY(EditAnywhere, Category = "Materials|Noise", meta = (ClampMin = "0.01"))
 	float NoiseScaleLarge = 100.f;
 
 
-	/** Inicializa los componentes por defecto y la estructura b醩ica. */
+	/** Inicializa los componentes por defecto y la estructura b谩sica. */
 	ACosmicPlanet();
 
 #if WITH_EDITOR
-	/** L骻ica de construcci髇 inicial para visualizaci髇 en el Editor. */
+	/** L贸gica de construcci贸n inicial para visualizaci贸n en el Editor. */
 	virtual void OnConstruction(const FTransform& Transform) override;
 #endif
 
 	/**
-	 * Configuraci髇 completa del planeta.
-	 * Se utiliza para inicializar todas las propiedades desde un m醤ager o Blueprint.
+	 * Configuraci贸n completa del planeta.
+	 * Se utiliza para inicializar todas las propiedades desde un m谩nager o Blueprint.
 	 */
 	void InitPlanet(
 		float InRadiusKm,
@@ -128,7 +128,7 @@ public:
 		UCosmicFoliageCollection* InFoliageCollection = nullptr
 	);
 
-	/** Configura el comportamiento y radios de aparici髇 del follaje procedural. */
+	/** Configura el comportamiento y radios de aparici贸n del follaje procedural. */
 	void SetFoliageParams(
 		int32 InFoliageInstancesPerFrame = 50.f,
 		float NearLayerRadiusKm = 0.05f,
@@ -139,42 +139,42 @@ public:
 	void CleanupNoiseSettings();
 
 protected:
-	/** L骻ica de inicio al ejecutar el juego. */
+	/** L贸gica de inicio al ejecutar el juego. */
 	virtual void BeginPlay() override;
 
 #if WITH_EDITOR
-	/** Maneja la duplicaci髇 del actor en el editor asegurando que los componentes se regeneren. */
+	/** Maneja la duplicaci贸n del actor en el editor asegurando que los componentes se regeneren. */
 	virtual void PostDuplicate(EDuplicateMode::Type Mode) override;
 #endif
 
 	/** Limpieza al destruir el actor. */
 	virtual void Destroyed() override;
 
-	/** Fase inicial de destrucci髇 del objeto. */
+	/** Fase inicial de destrucci贸n del objeto. */
 	virtual void BeginDestroy() override;
 
-	/** Inicializaci髇 de datos tras la creaci髇 de todos los sub-componentes. */
+	/** Inicializaci贸n de datos tras la creaci贸n de todos los sub-componentes. */
 	virtual void PostInitializeComponents() override;
 
-	/** Finalizaci髇 de la ejecuci髇 en el mundo. */
+	/** Finalizaci贸n de la ejecuci贸n en el mundo. */
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-	/** Configura y lanza la generaci髇 del sistema de Clipmaps. */
+	/** Configura y lanza la generaci贸n del sistema de Clipmaps. */
 	void InitClipmap();
 
-	/** Fuerza la reconstrucci髇 total de todos los sistemas planetarios. */
+	/** Fuerza la reconstrucci贸n total de todos los sistemas planetarios. */
 	void RebuildPlanet();
 
-	/** Actualiza el sistema de ruido y sus delegados de notificaci髇. */
+	/** Actualiza el sistema de ruido y sus delegados de notificaci贸n. */
 	void UpdateNoiseSettings();
 
-	/** Regenera el sistema de vegetaci髇 y rocas. */
+	/** Regenera el sistema de vegetaci贸n y rocas. */
 	void UpdateFoliage();
 
-	/** Sincroniza el componente oce醤ico con el radio actual del planeta. */
+	/** Sincroniza el componente oce谩nico con el radio actual del planeta. */
 	void UpdateOcean();
 
-	/** Actualiza 鷑icamente los par醡etros visuales del material en el terreno. */
+	/** Actualiza 煤nicamente los par谩metros visuales del material en el terreno. */
 	void UpdateMaterialOnly();
 
 	/** Limpia colisiones y desvincula delegados activos. */

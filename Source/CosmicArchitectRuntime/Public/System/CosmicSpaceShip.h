@@ -1,25 +1,25 @@
 // ============================================================
 // Cosmic Architect
 // Archivo: CosmicSpaceShip.h
-// MÛdulo: CosmicArchitectRuntime
+// M√≥dulo: CosmicArchitectRuntime
 //
-// DescripciÛn:
-//     Pawn espacial diseÒado para navegaciÛn 6DOF.
+// Descripci√≥n:
+//     Pawn espacial dise√±ado para navegaci√≥n 6DOF.
 //
 // Responsabilidades:
 //     - Movimiento espacial libre
-//     - RotaciÛn fÌsica de la nave
-//     - GestiÛn de boost interestelar
-//     - IntegraciÛn con Enhanced Input
-//     - Control de c·mara del jugador
+//     - Rotaci√≥n f√≠sica de la nave
+//     - Gesti√≥n de boost interestelar
+//     - Integraci√≥n con Enhanced Input
+//     - Control de c√°mara del jugador
 //
 // Notas:
-//     - Utiliza simulaciÛn fÌsica basada en fuerzas.
+//     - Utiliza simulaci√≥n f√≠sica basada en fuerzas.
 //     - El movimiento se implementa mediante thrust
 //       y torque aplicados sobre el mesh principal.
-//     - DiseÒado para navegaciÛn espacial sin gravedad.
+//     - Dise√±ado para navegaci√≥n espacial sin gravedad.
 // ============================================================
-
+ 
 #pragma once
 
 #include "CoreMinimal.h"
@@ -28,18 +28,18 @@
 #include "CosmicSpaceShip.generated.h"
 
 /**
- * Pawn principal utilizado para navegaciÛn espacial 6DOF.
+ * Pawn principal utilizado para navegaci√≥n espacial 6DOF.
  *
- * Este Pawn implementa un sistema de control espacial basado en fÌsicas:
+ * Este Pawn implementa un sistema de control espacial basado en f√≠sicas:
  *
  * - Movimiento mediante fuerzas (thrusters)
- * - RotaciÛn mediante torque aplicado al cuerpo fÌsico
- * - Sistema de boost con modificaciÛn temporal de par·metros fÌsicos
- * - C·mara desacoplada mediante spring arm
- * - IntegraciÛn completa con Enhanced Input
+ * - Rotaci√≥n mediante torque aplicado al cuerpo f√≠sico
+ * - Sistema de boost con modificaci√≥n temporal de par√°metros f√≠sicos
+ * - C√°mara desacoplada mediante spring arm
+ * - Integraci√≥n completa con Enhanced Input
  *
- * Est· diseÒado especÌficamente para entornos de simulaciÛn espacial
- * sin gravedad o con gravedad mÌnima.
+ * Est√° dise√±ado espec√≠ficamente para entornos de simulaci√≥n espacial
+ * sin gravedad o con gravedad m√≠nima.
  */
 UCLASS(Blueprintable, BlueprintType)
 class COSMICARCHITECTRUNTIME_API ACosmicSpaceShip : public APawn
@@ -55,17 +55,17 @@ public:
 	/**
 	 * Constructor de la nave espacial.
 	 *
-	 * Inicializa componentes, configuraciÛn fÌsica y estado base del Pawn.
+	 * Inicializa componentes, configuraci√≥n f√≠sica y estado base del Pawn.
 	 */
 	ACosmicSpaceShip();
 
 protected:
 
 	/**
-	 * InicializaciÛn del juego.
+	 * Inicializaci√≥n del juego.
 	 *
 	 * Se encarga de configurar el estado inicial del Pawn
-	 * una vez comienza la simulaciÛn.
+	 * una vez comienza la simulaci√≥n.
 	 */
 	virtual void BeginPlay() override;
 
@@ -78,9 +78,9 @@ protected:
 	 *
 	 * Responsabilidades:
 	 * - Movimiento 6DOF
-	 * - Control de orientaciÛn
+	 * - Control de orientaci√≥n
 	 * - Alabeo (roll)
-	 * - ActivaciÛn y gestiÛn del boost
+	 * - Activaci√≥n y gesti√≥n del boost
 	 *
 	 * @param PlayerInputComponent Componente de input del jugador.
 	 */
@@ -94,24 +94,24 @@ protected:
 	 * Mesh principal de la nave.
 	 *
 	 * Responsable de:
-	 * - SimulaciÛn fÌsica
+	 * - Simulaci√≥n f√≠sica
 	 * - Colisiones
-	 * - AplicaciÛn de fuerzas y torque
+	 * - Aplicaci√≥n de fuerzas y torque
 	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Componentes")
 	class UStaticMeshComponent* ShipMesh;
 
 	/**
-	 * Spring Arm para la c·mara.
+	 * Spring Arm para la c√°mara.
 	 *
-	 * Permite suavizar el movimiento de c·mara
+	 * Permite suavizar el movimiento de c√°mara
 	 * y desacoplarla parcialmente de la nave.
 	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Componentes")
 	class USpringArmComponent* SpringArmComp;
 
 	/**
-	 * C·mara principal del jugador.
+	 * C√°mara principal del jugador.
 	 *
 	 * Representa la vista principal en primera/tercera persona espacial.
 	 */
@@ -125,13 +125,13 @@ protected:
 	/**
 	 * Fuerza base aplicada por los propulsores.
 	 *
-	 * A mayor valor, mayor aceleraciÛn lineal de la nave.
+	 * A mayor valor, mayor aceleraci√≥n lineal de la nave.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Fisicas")
 	float ThrusterForce = 500000.0f;
 
 	/**
-	 * Torque base para rotaciÛn (pitch/yaw).
+	 * Torque base para rotaci√≥n (pitch/yaw).
 	 *
 	 * Controla la sensibilidad de giro de la nave.
 	 */
@@ -151,7 +151,7 @@ protected:
 	float BoostIncreasePower = 50.0f;
 
 	// ============================================================
-	// CONFIGURACI”N DE INPUT
+	// CONFIGURACI√ìN DE INPUT
 	// ============================================================
 
 	/**
@@ -161,7 +161,7 @@ protected:
 	class UInputMappingContext* DefaultMappingContext;
 
 	/**
-	 * AcciÛn de input para traslaciÛn 3D.
+	 * Acci√≥n de input para traslaci√≥n 3D.
 	 *
 	 * Ejes:
 	 * - Forward / Backward
@@ -172,19 +172,19 @@ protected:
 	class UInputAction* IA_Traslacion;
 
 	/**
-	 * AcciÛn de input para orientaciÛn de la nave.
+	 * Acci√≥n de input para orientaci√≥n de la nave.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
 	class UInputAction* IA_Orientacion;
 
 	/**
-	 * AcciÛn de input para alabeo (roll).
+	 * Acci√≥n de input para alabeo (roll).
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
 	class UInputAction* IA_Alabeo;
 
 	/**
-	 * AcciÛn de input para activar boost.
+	 * Acci√≥n de input para activar boost.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
 	class UInputAction* IA_Boost;
@@ -196,16 +196,16 @@ private:
 	// ============================================================
 
 	/**
-	 * Aplica traslaciÛn mediante fuerzas fÌsicas.
+	 * Aplica traslaci√≥n mediante fuerzas f√≠sicas.
 	 *
 	 * @param Value Vector de entrada del jugador.
 	 */
 	void AplicarTraslacion(const FInputActionValue& Value);
 
 	/**
-	 * Aplica torque para orientaciÛn de la nave.
+	 * Aplica torque para orientaci√≥n de la nave.
 	 *
-	 * @param Value Entrada de rotaciÛn del jugador.
+	 * @param Value Entrada de rotaci√≥n del jugador.
 	 */
 	void AplicarOrientacion(const FInputActionValue& Value);
 
@@ -222,7 +222,7 @@ private:
 	void StartBoost(const FInputActionValue& Value);
 
 	/**
-	 * Desactiva el boost y restaura par·metros fÌsicos.
+	 * Desactiva el boost y restaura par√°metros f√≠sicos.
 	 */
 	void EndBoost(const FInputActionValue& Value);
 
@@ -237,7 +237,7 @@ private:
 	float BrakingSpeed;
 
 	/**
-	 * Damping lineal original para restauraciÛn tras boost.
+	 * Damping lineal original para restauraci√≥n tras boost.
 	 */
 	float OriginalLinearDamping;
 
@@ -247,7 +247,7 @@ private:
 	void SetBoost(const FInputActionValue& Value);
 
 	/**
-	 * Indica si el boost est· activo.
+	 * Indica si el boost est√° activo.
 	 */
 	bool bBoostMode = false;
 };

@@ -22,7 +22,7 @@ UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent),
 {
 	GENERATED_BODY()
 
-public:
+public: 
 
 	/**
 	 * Constructor del componente oceano.
@@ -30,7 +30,7 @@ public:
 	UCosmicOceanComponent();
 
 	/**
-	 * Inicializa el sistema oce·nico.
+	 * Inicializa el sistema oce√°nico.
 	 *
 	 * @param PlanetRadiusKm Radio del planeta en kilometros.
 	 * @param Parent Componente padre al que se adjuntara la malla del oceano.
@@ -95,7 +95,7 @@ protected:
 	double PlanetRadiusCm;
 
 	/**
-	 * Indica si el sistema oce·nico ya fue inicializado.
+	 * Indica si el sistema oce√°nico ya fue inicializado.
 	 */
 	bool bInit = false;
 

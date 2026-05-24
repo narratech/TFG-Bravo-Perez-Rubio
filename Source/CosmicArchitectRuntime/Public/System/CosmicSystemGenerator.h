@@ -12,25 +12,25 @@ class UMaterialInstance;
 
 /**
  * Generador procedural de sistemas planetarios.
- * Responsable de crear cuerpos celestes, órbitas,
+ * Responsable de crear cuerpos celestes, Ã³rbitas,
  * materiales y configuraciones orbitales.
  */
 UCLASS(HideCategories = (
     Replication, Input, Collision, Actor, LOD, Cooking, Networking,
     Physics, Navigation, Tags, DataLayers, LevelInstance
     ), AutoExpandCategories = ("Configuration", "Generation Rules", "Actions"))
-    class COSMICARCHITECTRUNTIME_API ACosmicSystemGenerator : public AActor
+    class COSMICARCHITECTRUNTIME_API ACosmicSystemGenerator : public AActor 
 {
     GENERATED_BODY()
 
 public:
     ACosmicSystemGenerator();
 
-    /* Texturas base para variación visual procedural. */
+    /* Texturas base para variaciÃ³n visual procedural. */
     UPROPERTY(EditAnywhere, Category = "Materials")
     TArray<UTexture2D*> PosiblesTexturas;
 
-    /* Material base para planetas terrestres genéricos. */
+    /* Material base para planetas terrestres genÃ©ricos. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UMaterialInstance* BaseMaterial;
 
@@ -38,7 +38,7 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UMaterialInstance* MoonMaterial;
 
-    /* Material oceánico para planetas con masas de agua. */
+    /* Material oceÃ¡nico para planetas con masas de agua. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UMaterialInstance* OceanMaterial;
 
@@ -54,11 +54,11 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UMaterialInstance* RingMaterial;
 
-    /* Grosor de líneas de depuración. */
+    /* Grosor de lÃ­neas de depuraciÃ³n. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Debug")
     float LineWidth = 100;
 
-    /* Color de la caja de depuración. */
+    /* Color de la caja de depuraciÃ³n. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Debug")
     FColor BoxColor = FColor::Blue;
 
@@ -81,7 +81,7 @@ protected:
 
     // CONFIGURATION
 
-    /* Semilla determinista para generación procedural. */
+    /* Semilla determinista para generaciÃ³n procedural. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration")
     int32 Seed = 1337;
 
@@ -90,52 +90,52 @@ protected:
         meta = (ClampMin = "0.0", ClampMax = "100000.0"))
     float OrbitSpeedMultiplier = 1.0f;
 
-    /* ¿Simulación orbital activa en editor? */
+    /* Â¿SimulaciÃ³n orbital activa en editor? */
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Configuration")
     bool bIsSimulatingOrbits = false;
 
-    /** Número total de cuerpos a generar (planetas + lunas, sin contar la estrella). */
+    /** NÃºmero total de cuerpos a generar (planetas + lunas, sin contar la estrella). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration", meta = (ClampMin = "1", ClampMax = "200"))
     int32 NumberOfBodies = 5;
 
-    /* Tamaño del volumen procedural en kilómetros. */
+    /* TamaÃ±o del volumen procedural en kilÃ³metros. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration", meta = (ClampMin = "0.1"))
     FVector VolumeSizeKm = FVector(3000.0f, 3000.0f, 5.0f);
 
-    /* Rango de diámetros para planetas (km). */
+    /* Rango de diÃ¡metros para planetas (km). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration", meta = (ClampMin = "0.001"))
     FVector2D BodyDiameterRangeKm = FVector2D(8.f, 15.f);
 
-    /* Rango de diámetros para lunas (km). */
+    /* Rango de diÃ¡metros para lunas (km). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration", meta = (ClampMin = "0.001"))
     FVector2D MoonDiameterRangeKm = FVector2D(2.f, 7.f);
 
-    /* Gravedad superficial asignada al radio mínimo y máximo de planetas. */
+    /* Gravedad superficial asignada al radio mÃ­nimo y mÃ¡ximo de planetas. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration|Gravity", meta = (ClampMin = "0.0"))
     FVector2D PlanetSurfaceGravityRange = FVector2D(3.f, 10.f);
 
-    /* Gravedad superficial asignada al radio mínimo y máximo de lunas. */
+    /* Gravedad superficial asignada al radio mÃ­nimo y mÃ¡ximo de lunas. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration|Gravity", meta = (ClampMin = "0.0"))
     FVector2D MoonSurfaceGravityRange = FVector2D(1.f, 5.f);
-    /** Fracción del radio del sistema que ocupa la estrella. */
+    /** FracciÃ³n del radio del sistema que ocupa la estrella. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration|Star", meta = (ClampMin = "0.01", ClampMax = "0.9"))
     float StarRadiusFraction = 0.1f;
 
-    // GENERATION RULES – DISTANCIAS Y RADIOS
+    // GENERATION RULES â€“ DISTANCIAS Y RADIOS
 
-    /* Distancia mínima entre centros de cuerpos (km). */
+    /* Distancia mÃ­nima entre centros de cuerpos (km). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Distances", meta = (ClampMin = "0.0"))
     float MinDistanceBetweenBodies = 5.0f;
 
-    /* Distancia máxima al vecino más cercano (0 = sin agrupamiento). */
+    /* Distancia mÃ¡xima al vecino mÃ¡s cercano (0 = sin agrupamiento). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Distances", meta = (ClampMin = "0.0"))
     float MaxDistanceToNearest = 0.0f;
 
-    /* Intentos máximos para encontrar posición válida. */
+    /* Intentos mÃ¡ximos para encontrar posiciÃ³n vÃ¡lida. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Distances", AdvancedDisplay)
     int32 MaxGenerationAttempts = 100;
 
-    /** Factor sobre el radio de la estrella para la distancia orbital mínima. */
+    /** Factor sobre el radio de la estrella para la distancia orbital mÃ­nima. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Orbits", meta = (ClampMin = "1.0"))
     float OrbitDistanceMinFactor = 3.0f;
 
@@ -145,7 +145,7 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Planets", meta = (ClampMin = "0.001", ClampMax = "0.5"))
     float PlanetRadiusFactorMax = 0.06f;
 
-    /** Factores para la órbita lunar (multiplican el radio del planeta). */
+    /** Factores para la Ã³rbita lunar (multiplican el radio del planeta). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Moons", meta = (ClampMin = "1.0"))
     float MoonOrbitDistanceFactorMin = 10.0f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Moons", meta = (ClampMin = "1.0"))
@@ -157,17 +157,17 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Moons", meta = (ClampMin = "0.01", ClampMax = "1.0"))
     float MoonRadiusFactorMax = 0.3f;
 
-    // GENERATION RULES – CLASIFICACIÓN Y PROBABILIDADES
+    // GENERATION RULES â€“ CLASIFICACIÃ“N Y PROBABILIDADES
 
-    /** Umbral de relación tamaño/distancia para clasificar como gigante gaseoso. */
-    /** Fracción del total de cuerpos que deben quedar por generar para que puedan aparecer gigantes gaseosos.
+    /** Umbral de relaciÃ³n tamaÃ±o/distancia para clasificar como gigante gaseoso. */
+    /** FracciÃ³n del total de cuerpos que deben quedar por generar para que puedan aparecer gigantes gaseosos.
  *  0.3 = solo cuando quede el 30% o menos de cuerpos por generar.
  */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Gas Giants",
         meta = (ClampMin = "0.0", ClampMax = "1.0"))
     float GasGiantAppearanceThreshold = 0.3f;
 
-    /** Probabilidad de que un planeta sea gigante gaseoso cuando se cumple la condición de aparición. */
+    /** Probabilidad de que un planeta sea gigante gaseoso cuando se cumple la condiciÃ³n de apariciÃ³n. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Gas Giants",
         meta = (ClampMin = "0.0", ClampMax = "1.0"))
     float GasGiantProbability = 0.7f;
@@ -189,19 +189,19 @@ protected:
         meta = (ClampMin = "0.1"))
     float GasGiantRadiusMax = 50.0f;
 
-    /** Zona habitable (fracción del radio del sistema). */
+    /** Zona habitable (fracciÃ³n del radio del sistema). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Classification", meta = (ClampMin = "0.0", ClampMax = "1.0"))
     float HabitableZoneInnerFraction = 0.25f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Classification", meta = (ClampMin = "0.0", ClampMax = "1.0"))
     float HabitableZoneOuterFraction = 0.65f;
 
-    /** Zona de cinturón de asteroides. */
+    /** Zona de cinturÃ³n de asteroides. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Classification", meta = (ClampMin = "0.0", ClampMax = "1.0"))
     float BeltZoneInnerFraction = 0.55f;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Classification", meta = (ClampMin = "0.0", ClampMax = "1.0"))
     float BeltZoneOuterFraction = 0.70f;
 
-    /** Probabilidad de que un planeta en zona de cinturón sea un cinturón. */
+    /** Probabilidad de que un planeta en zona de cinturÃ³n sea un cinturÃ³n. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Classification", meta = (ClampMin = "0.0", ClampMax = "1.0"))
     float BeltProbability = 0.6f;
 
@@ -209,11 +209,11 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Classification", meta = (ClampMin = "0.0", ClampMax = "1.0"))
     float GasGiantRingProbability = 0.65f;
 
-    /** Probabilidad de océano en planetas telúricos ubicados en zona habitable. */
+    /** Probabilidad de ocÃ©ano en planetas telÃºricos ubicados en zona habitable. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Classification", meta = (ClampMin = "0.0", ClampMax = "1.0"))
     float TelluricOceanProbability = 0.7f;
 
-    // GENERATION RULES – RANGOS DE LUNAS
+    // GENERATION RULES â€“ RANGOS DE LUNAS
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Moons", meta = (ClampMin = "0", ClampMax = "20"))
     int32 GasGiantMoonMin = 1;
@@ -225,7 +225,7 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Moons", meta = (ClampMin = "0", ClampMax = "20"))
     int32 TelluricMoonMax = 3;
 
-    // GENERATION RULES – RESOLUCIONES
+    // GENERATION RULES â€“ RESOLUCIONES
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Graphics", meta = (ClampMin = "16", ClampMax = "512"))
     int32 GasGiantClipResolution = 64;
@@ -236,7 +236,7 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Graphics", meta = (ClampMin = "16", ClampMax = "512"))
     int32 OceanResolutionWithoutOcean = 64;
 
-    /** Cuerpos generados (sólo referencia interna). */
+    /** Cuerpos generados (sÃ³lo referencia interna). */
     UPROPERTY()
     TArray<AActor*> GeneratedBodies;
 
@@ -303,7 +303,7 @@ private:
     UPROPERTY(Transient)
     TArray<TObjectPtr<UCosmicDefaultNoiseSettings>> GeneratedNoiseSettingsAssets;
 #endif
-    /** Intenta colocar un planeta respetando distancias. Retorna true si se colocó. */
+    /** Intenta colocar un planeta respetando distancias. Retorna true si se colocÃ³. */
     bool TryPlacePlanet(
         FRandomStream& Stream,
         float SystemRadiusKm,
@@ -314,7 +314,7 @@ private:
         float& OutPlanetRadius,
         bool bIsGasGiant) const;
 
-    /** Verifica si la distancia orbital propuesta es válida frente a las existentes. */
+    /** Verifica si la distancia orbital propuesta es vÃ¡lida frente a las existentes. */
     bool IsOrbitDistanceValid(
         float ProposedOrbitKm,
         float ProposedRadiusKm,

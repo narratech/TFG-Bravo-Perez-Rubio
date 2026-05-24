@@ -19,7 +19,7 @@ class COSMICARCHITECTRUNTIME_API FCosmicNoiseGenerationTask : public FNonAbandon
 {
 public:
 
-    /**
+    /** 
      * Referencia a los vertices base de la malla.
      *
      * Estos vertices representan la geometria original antes

@@ -15,4 +15,4 @@ struct COSMICARCHITECTRUNTIME_API FCosmicBenchmarkBridge
         if (OnRecordEvent)
             OnRecordEvent(Name, Desc, Value);
     }
-};
+}; 
