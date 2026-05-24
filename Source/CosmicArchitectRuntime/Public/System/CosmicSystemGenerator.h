@@ -292,10 +292,10 @@ private:
 
     void SaveGeneratedNoiseSettingsAsset(UCosmicDefaultNoiseSettings* NoiseSettings) const;
 
-    void UpdateBodiesOrbitalPeriod();
-
     static void SanitizeObjectName(FString& Name);
 #endif
+
+    void UpdateBodiesOrbitalPeriod();
 
     int32 GeneratedNoiseAssetCounter = 0;
 
