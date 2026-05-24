@@ -19,7 +19,7 @@ FORCEINLINE int32 GetIndexFromLayer(ECosmicFoliageLayer Layer)
 
 FORCEINLINE ECosmicFoliageLayer GetLayerFromIndex(int32 Index)
 {
-    switch (Index)
+    switch (Index) 
     {
     case 0:   return ECosmicFoliageLayer::Near;
     case 1:   return ECosmicFoliageLayer::Medium;
@@ -189,10 +189,10 @@ void UCosmicFoliageSpawner::DrawDebugCells(const FVector& PlanetCenter, double P
     //{
     //    const FCubeMapCell& Cell = Pair.Key;
 
-    //    // Obtener vértices de la celda
+    //    // Obtener vÃ©rtices de la celda
     //    TArray<FVector> Vertices = Octree.GetDebugVertices(Cell);
 
-    //    // Dibujar líneas
+    //    // Dibujar lÃ­neas
     //    for (int32 i = 0; i < Vertices.Num(); i += 2)
     //    {
     //        DrawDebugLine(
@@ -218,7 +218,7 @@ void UCosmicFoliageSpawner::DrawDebugCells(const FVector& PlanetCenter, double P
     //    //    -1
     //    //);
 
-    //    //// Dibujar texto con información de la celda
+    //    //// Dibujar texto con informaciÃ³n de la celda
     //    //DrawDebugString(
     //    //    GetWorld(),
     //    //    Center,

@@ -8,30 +8,30 @@
 #include "CosmicFoliageCollection.generated.h"
 
 /**
- * Delegado que se ejecuta cuando la colecci髇 de foliage es modificada.
+ * Delegado que se ejecuta cuando la colecci贸n de foliage es modificada.
  */
 DECLARE_MULTICAST_DELEGATE(FOnFoliageCollectionChanged);
 
 /**
- * DataAsset que define una colecci髇 de foliage utilizada en la generaci髇 de planetas.
+ * DataAsset que define una colecci贸n de foliage utilizada en la generaci贸n de planetas.
  *
- * Permite agrupar m鷏tiples entradas de foliage y notificar cambios en editor.
+ * Permite agrupar m煤ltiples entradas de foliage y notificar cambios en editor.
  */
 UCLASS(BlueprintType)
 class COSMICARCHITECTFOLIAGE_API UCosmicFoliageCollection : public UDataAsset
-{
+{ 
 	GENERATED_BODY()
 
 public:
 
 	/**
-	 * Lista de entradas de foliage que componen esta colecci髇.
+	 * Lista de entradas de foliage que componen esta colecci贸n.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Foliage")
 	TArray<FCosmicFoliageCollectionEntry> FoliageEntries;
 
 	/**
-	 * Evento que se dispara cuando la colecci髇 cambia.
+	 * Evento que se dispara cuando la colecci贸n cambia.
 	 */
 	FOnFoliageCollectionChanged OnFoliageCollectionChanged;
 
@@ -42,7 +42,7 @@ protected:
 	/**
 	 * Callback del editor cuando una propiedad del asset es modificada.
 	 *
-	 * Se usa para detectar cambios en la colecci髇 y notificar a sistemas dependientes.
+	 * Se usa para detectar cambios en la colecci贸n y notificar a sistemas dependientes.
 	 */
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 

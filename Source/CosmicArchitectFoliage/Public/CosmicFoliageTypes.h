@@ -19,7 +19,7 @@ enum class ECosmicFoliagePlacement : uint8
 };
 
 UENUM(BlueprintType)
-enum class ECosmicFoliageLayer : uint8
+enum class ECosmicFoliageLayer : uint8 
 {
     Near      UMETA(DisplayName = "Near"),
     Medium    UMETA(DisplayName = "Medium"),
@@ -131,7 +131,7 @@ struct FCosmicFoliageLayerCells
 {
     GENERATED_BODY()
 
-    // Mapa de celda: datos de componentes para esta capa específica
+    // Mapa de celda: datos de componentes para esta capa especÃ­fica
     TMap<FCubeMapCell, FCosmicFoliageCellData> ActiveCells;
 };
 

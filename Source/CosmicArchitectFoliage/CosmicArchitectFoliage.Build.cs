@@ -17,7 +17,7 @@ public class CosmicArchitectFoliage : ModuleRules
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] {
-            "ProceduralMeshComponent", 
+            "ProceduralMeshComponent",  
             "Foliage"                   
         });
 

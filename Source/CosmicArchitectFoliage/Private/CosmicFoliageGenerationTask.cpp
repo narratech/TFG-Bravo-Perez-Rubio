@@ -98,13 +98,13 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
 {
     ResultInstances.Empty();
 
-    // Recopilar todos los meshes v·lidos de esta capa con su cuota de instancias
+    // Recopilar todos los meshes v√°lidos de esta capa con su cuota de instancias
     struct FMeshAllocation
     {
         const FCosmicFoliageCollectionEntry* Entry;
         const FCosmicFoliageMesh* Mesh;
         int32 TargetCount;   // instancias que le corresponden
-        int32 Assigned;      // cu·ntas ya se asignaron
+        int32 Assigned;      // cu√°ntas ya se asignaron
     };
 
     TArray<FMeshAllocation> Allocations;
@@ -126,7 +126,7 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
     if (Allocations.Num() == 0 || TotalTarget == 0)
         return;
 
-    // Barajar los seed points para evitar sesgos espaciales en la asignaciÛn
+    // Barajar los seed points para evitar sesgos espaciales en la asignaci√≥n
     TArray<int32> PointIndices;
     PointIndices.Reserve(SeedPoints.Num());
     for (int32 i = 0; i < SeedPoints.Num(); i++)
@@ -140,8 +140,8 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
     }
 
     // Distribuir puntos entre allocations proporcionalmente sin desperdiciar ninguno.
-    // Iteramos en orden aleatorio y asignamos cada punto al mesh que m·s instancias
-    // le faltan en proporciÛn a su cuota (largest remainder / round-robin ponderado).
+    // Iteramos en orden aleatorio y asignamos cada punto al mesh que m√°s instancias
+    // le faltan en proporci√≥n a su cuota (largest remainder / round-robin ponderado).
     ResultInstances.Reserve(FMath::Min(SeedPoints.Num(), TotalTarget));
 
     int32 TotalAssigned = 0;
@@ -154,7 +154,7 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
         const FSeedPoint& Point = SeedPoints[Idx];
 
         // Buscar la allocation con mayor "deuda" proporcional restante
-        // deuda = (TargetCount - Assigned) ó elegimos la de mayor cuota pendiente
+        // deuda = (TargetCount - Assigned) ‚Äî elegimos la de mayor cuota pendiente
         int32 BestAlloc = -1;
         int32 BestRemaining = 0;
 
@@ -181,12 +181,12 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
         }
 
         if (BestAlloc == -1)
-            continue; // ning˙n mesh acepta las condiciones de este punto
+            continue; // ning√∫n mesh acepta las condiciones de este punto
 
         FMeshAllocation& Alloc = Allocations[BestAlloc];
         const FCosmicFoliageMesh* SelectedMesh = Alloc.Mesh;
 
-        // Calcular transformaciÛn 
+        // Calcular transformaci√≥n 
         float Yaw = Random.FRandRange(SelectedMesh->RandomRotationMin, SelectedMesh->RandomRotationMax);
         float Scale = Random.FRandRange(SelectedMesh->ScaleMin, SelectedMesh->ScaleMax);
 
@@ -248,7 +248,7 @@ void FFoliageGenerationTask::CalculateSlopeAndNormal(
 
     float CenterHeight = 0.0f;
     FLinearColor Dummy;
-    NoiseGenerationStrategy->EvaluatePoint(Direction, CenterHeight, Dummy);
+    NoiseGenerationStrategy->EvaluatePoint(Direction, CenterHeight, Dummy); 
 
     FVector Positions[4];
     float   MaxSlope = 0.0f;

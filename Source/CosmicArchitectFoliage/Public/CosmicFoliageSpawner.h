@@ -20,7 +20,7 @@ class ICosmicNoiseStrategy;
  * - Ejecución de tareas asíncronas de generación.
  * - Aplicación de instancias mediante HISM.
  * - Gestión de capas de vegetación.
- */
+ */ 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent), 
     HideCategories = (Rendering, Lighting, Navigation, Replication, Physics,Collision,
         Activation, AssetUserData, HLOD, Cooking, Tags, ComponentReplication))

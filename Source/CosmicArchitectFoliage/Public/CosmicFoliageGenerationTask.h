@@ -17,7 +17,7 @@ struct FCosmicFoliageInstance
 {
     GENERATED_BODY()
 
-    /** DefiniciÛn del mesh de foliage asociado */
+    /** Definici√≥n del mesh de foliage asociado */
     const FCosmicFoliageMesh* MeshDef = nullptr;
     /** Transform final de la instancia */
     FTransform Transform;
@@ -25,11 +25,11 @@ struct FCosmicFoliageInstance
 
 
 /**
- * Tarea asÌncrona encargada de generar instancias de foliage
+ * Tarea as√≠ncrona encargada de generar instancias de foliage
  * para una celda del CubeMap del planeta.
  *
- * Ejecuta la generaciÛn procedural basada en ruido, condiciones
- * ambientales y distribuciÛn por capas de vegetaciÛn.
+ * Ejecuta la generaci√≥n procedural basada en ruido, condiciones
+ * ambientales y distribuci√≥n por capas de vegetaci√≥n.
  */
 class FFoliageGenerationTask : public FNonAbandonableTask
 {
@@ -38,24 +38,24 @@ public:
     TArray<FCosmicFoliageInstance> ResultInstances;
     /** Celda del CubeMap a procesar */
     FCubeMapCell Cell;
-    /** Capa de foliage que se est· generando */
+    /** Capa de foliage que se est√° generando */
     ECosmicFoliageLayer Layer;
 
     /**
-     * Representa un punto de muestreo utilizado durante la generaciÛn de foliage.
+     * Representa un punto de muestreo utilizado durante la generaci√≥n de foliage.
      */
     struct FSeedPoint
     {
-        FVector Direction;      // DirecciÛn desde el centro del planeta
-        FVector WorldPosition;  // PosiciÛn en el mundo
+        FVector Direction;      // Direcci√≥n desde el centro del planeta
+        FVector WorldPosition;  // Posici√≥n en el mundo
         FVector CachedNormal;
         float Temperature;
         float Humidity;
         float Height;
         float Slope;
-    };
+    }; 
     /**
-     * Constructor de la tarea de generaciÛn de foliage.
+     * Constructor de la tarea de generaci√≥n de foliage.
      */
     FFoliageGenerationTask(
         const FCubeMapCell& InCell,
@@ -75,17 +75,17 @@ public:
     {
     }
 
-    /** Identificador de estadÌsticas para el sistema de threading */
+    /** Identificador de estad√≠sticas para el sistema de threading */
     FORCEINLINE TStatId GetStatId() const
     {
         RETURN_QUICK_DECLARE_CYCLE_STAT(FFoliageGenerationTask, STATGROUP_ThreadPoolAsyncTasks);
     }
-    /** EjecuciÛn principal de la tarea */
+    /** Ejecuci√≥n principal de la tarea */
     void DoWork();
 
 private:
 
-    /** ColecciÛn de foliage utilizada como base */
+    /** Colecci√≥n de foliage utilizada como base */
     UCosmicFoliageCollection* Collection;
 
     /** Centro del planeta */
@@ -94,13 +94,13 @@ private:
     /** Radio del planeta */
     float PlanetRadius;
 
-    /** Estrategia de generaciÛn de ruido */
+    /** Estrategia de generaci√≥n de ruido */
     TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy;
 
-    /** ¡rea de la celda en km≤ */
+    /** √Årea de la celda en km¬≤ */
     float CellAreaKm2;
 
-    /** Puntos generados para evaluaciÛn */
+    /** Puntos generados para evaluaci√≥n */
     TArray<FSeedPoint> SeedPoints;
 
     /**
@@ -109,7 +109,7 @@ private:
     void GenerateSeedPoints(FRandomStream& Random);
 
     /**
-     * Eval˙a condiciones ambientales (temperatura, humedad, altura, etc).
+     * Eval√∫a condiciones ambientales (temperatura, humedad, altura, etc).
      */
     void EvaluateEnvironmentalConditions(FRandomStream& Random);
 
