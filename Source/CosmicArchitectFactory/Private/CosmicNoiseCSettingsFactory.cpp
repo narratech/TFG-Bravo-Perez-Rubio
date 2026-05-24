@@ -12,12 +12,12 @@ UCosmicNoiseCSettingsFactory::UCosmicNoiseCSettingsFactory()
     // Permitimos crear objetos nuevos desde cero (no solo importando)
     bCreateNew = true;
 
-    //Abre automáticamente el panel de detalles al crearlo
+    //Abre automÃ¡ticamente el panel de detalles al crearlo
     bEditAfterNew = true;
 }
 
 UObject* UCosmicNoiseCSettingsFactory::FactoryCreateNew(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn)
-{
+{ 
     // Usamos NewObject para crear la instancia real en la memoria de Unreal
     UCosmicCraterNoiseSettings* NewNoiseSettings = NewObject<UCosmicCraterNoiseSettings>(InParent, InClass, InName, Flags | RF_Transactional);
 
@@ -29,5 +29,5 @@ UObject* UCosmicNoiseCSettingsFactory::FactoryCreateNew(UClass* InClass, UObject
 
 bool UCosmicNoiseCSettingsFactory::ShouldShowInNewMenu() const
 {
-    return true; // Para que aparezca en el menú de "Miscellaneous" por defecto
+    return true; // Para que aparezca en el menÃº de "Miscellaneous" por defecto
 }

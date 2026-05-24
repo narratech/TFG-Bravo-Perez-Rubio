@@ -21,3 +21,4 @@ public:
 
     virtual bool ShouldShowInNewMenu() const override;
 };
+ 

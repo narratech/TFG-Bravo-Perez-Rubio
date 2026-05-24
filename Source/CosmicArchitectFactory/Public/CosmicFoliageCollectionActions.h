@@ -20,7 +20,7 @@ public:
 
     // En qué categoría del menú aparecerá
     virtual uint32 GetCategories() override;
-
+     
     // ID de la categoría personalizada
     EAssetTypeCategories::Type MyAssetCategory;
 

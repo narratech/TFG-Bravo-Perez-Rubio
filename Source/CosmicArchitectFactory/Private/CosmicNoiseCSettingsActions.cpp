@@ -12,4 +12,4 @@ UClass* FCosmicNoiseCraterSettingsActions::GetSupportedClass() const
 uint32 FCosmicNoiseCraterSettingsActions::GetCategories()
 {
     return MyAssetCategory;
-}
+} 

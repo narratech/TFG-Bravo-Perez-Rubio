@@ -18,8 +18,9 @@ public:
 
 	UCosmicSpherePlayerFactory();
 
-	// El nombre que aparecerá en el menú del clic derecho
+	// El nombre que aparecerÃ¡ en el menÃº del clic derecho
 	virtual FText GetDisplayName() const override;
 
 	virtual uint32 GetMenuCategories() const override;
 };
+ 

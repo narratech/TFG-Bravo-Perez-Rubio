@@ -12,7 +12,7 @@ UCosmicNoiseDSettingsFactory::UCosmicNoiseDSettingsFactory()
     // Permitimos crear objetos nuevos desde cero (no solo importando)
     bCreateNew = true;
 
-    //Abre automáticamente el panel de detalles al crearlo
+    //Abre automÃ¡ticamente el panel de detalles al crearlo
     bEditAfterNew = true;
 }
 
@@ -23,11 +23,11 @@ UObject* UCosmicNoiseDSettingsFactory::FactoryCreateNew(UClass* InClass, UObject
 
     // Inicializar valores por defecto
     // ej: NewNoiseSettings->Params.Seed = FMath::RandRange(1000, 9999);
-
+     
     return NewNoiseSettings;
 }
 
 bool UCosmicNoiseDSettingsFactory::ShouldShowInNewMenu() const
 {
-    return true; // Para que aparezca en el menú de "Miscellaneous" por defecto
+    return true; // Para que aparezca en el menÃº de "Miscellaneous" por defecto
 }

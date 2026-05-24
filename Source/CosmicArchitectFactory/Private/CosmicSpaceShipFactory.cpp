@@ -10,7 +10,7 @@ UCosmicSpaceShipFactory::UCosmicSpaceShipFactory()
     SupportedClass = UBlueprint::StaticClass();
     ParentClass = ACosmicSpaceShip::StaticClass();
 
-    //Omitimos la ventana de di·logo de selecciÛn de clase
+    //Omitimos la ventana de di√°logo de selecci√≥n de clase
     bSkipClassPicker = true;
 
     bCreateNew = true;
@@ -24,14 +24,14 @@ FText UCosmicSpaceShipFactory::GetDisplayName() const
 
 uint32 UCosmicSpaceShipFactory::GetMenuCategories() const
 {
-    // AquÌ necesitamos el ID de la categorÌa que creaste en tu StartupModule.
-    // Si tienes acceso a ella a travÈs de tu clase de MÛdulo, ponla aquÌ.
+    // Aqu√≠ necesitamos el ID de la categor√≠a que creaste en tu StartupModule.
+    // Si tienes acceso a ella a trav√©s de tu clase de M√≥dulo, ponla aqu√≠.
     // Si no, puedes devolver "EAssetTypeCategories::Blueprint" temporalmente 
-    // y saldr· en la categorÌa por defecto de Blueprints.
+    // y saldr√° en la categor√≠a por defecto de Blueprints.
 
-    // Suponiendo que guardaste tu categorÌa en alg˙n sitio global o puedes acceder a ella:
+    // Suponiendo que guardaste tu categor√≠a en alg√∫n sitio global o puedes acceder a ella: 
     return FCosmicArchitectFactoryModule::CosmicCategory; 
 
-    // Para una prueba r·pida ahora mismo:
+    // Para una prueba r√°pida ahora mismo:
     //return EAssetTypeCategories::Blueprint;
 }

@@ -12,4 +12,4 @@ UClass* FCosmicNoiseEarthSettingsActions::GetSupportedClass() const
 uint32 FCosmicNoiseEarthSettingsActions::GetCategories()
 {
     return MyAssetCategory;
-}
+} 

@@ -10,4 +10,4 @@ UClass* FCosmicFoliageCollectionActions::GetSupportedClass() const
 uint32 FCosmicFoliageCollectionActions::GetCategories()
 {
     return MyAssetCategory;
-}
+} 

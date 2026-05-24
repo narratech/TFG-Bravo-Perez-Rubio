@@ -11,7 +11,7 @@ UCosmicFoliageCollectionFactory::UCosmicFoliageCollectionFactory()
     // Permitimos crear objetos nuevos desde cero (no solo importando)
     bCreateNew = true;
 
-    //Abre automáticamente el panel de detalles al crearlo
+    //Abre automÃ¡ticamente el panel de detalles al crearlo
     bEditAfterNew = true;
 }
 
@@ -20,7 +20,7 @@ UObject* UCosmicFoliageCollectionFactory::FactoryCreateNew(UClass* InClass, UObj
     // Usamos NewObject para crear la instancia real en la memoria de Unreal
     UCosmicFoliageCollection* NewNoiseSettings = NewObject<UCosmicFoliageCollection>(InParent, InClass, InName, Flags | RF_Transactional);
 
-    // Inicializar valores por defecto
+    // Inicializar valores por defecto 
     // ej: NewNoiseSettings->Params.Seed = FMath::RandRange(1000, 9999);
 
     return NewNoiseSettings;
@@ -28,5 +28,5 @@ UObject* UCosmicFoliageCollectionFactory::FactoryCreateNew(UClass* InClass, UObj
 
 bool UCosmicFoliageCollectionFactory::ShouldShowInNewMenu() const
 {
-    return true; // Para que aparezca en el menú de "Miscellaneous" por defecto
+    return true; // Para que aparezca en el menÃº de "Miscellaneous" por defecto
 }

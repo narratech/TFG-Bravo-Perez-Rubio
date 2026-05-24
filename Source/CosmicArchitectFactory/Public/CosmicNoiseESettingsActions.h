@@ -9,19 +9,19 @@
 class  FCosmicNoiseEarthSettingsActions : public FAssetTypeActions_Base
 {
 public:
-    // El nombre que aparecerá en el menú
+    // El nombre que aparecerÃ¡ en el menÃº
     virtual FText GetName() const override { return FText::FromString("Earth Noise Settings"); }
 
     // El color de la franja en la parte inferior del Asset
     virtual FColor GetTypeColor() const override { return FColor(45, 175, 255); } // Azul
 
-    // A qué clase representa esta acción
+    // A quÃ© clase representa esta acciÃ³n
     virtual UClass* GetSupportedClass() const override;
 
-    // En qué categoría del menú aparecerá
+    // En quÃ© categorÃ­a del menÃº aparecerÃ¡
     virtual uint32 GetCategories() override;
 
-    // ID de la categoría personalizada
+    // ID de la categorÃ­a personalizada
     EAssetTypeCategories::Type MyAssetCategory;
 	
-};
+}; 

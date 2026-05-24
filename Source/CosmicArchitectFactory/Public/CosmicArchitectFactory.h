@@ -14,5 +14,5 @@ public:
 	virtual void ShutdownModule() override;
 
 
-	static EAssetTypeCategories::Type CosmicCategory;
+	static EAssetTypeCategories::Type CosmicCategory; 
 };
