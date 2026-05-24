@@ -19,7 +19,7 @@ void FCosmicEarthLikeNoiseStrategy::Initialize(
 
     ContinentalLayer = InContinental;
     MountainLayer = InMountain;
-    HillLayer = InHill;
+    HillLayer = InHill; 
     DetailLayer = InDetail;
     RiverLayer = InRiver;
 
@@ -50,7 +50,7 @@ void FCosmicEarthLikeNoiseStrategy::Initialize(
     DetailNoise.SetFractalLacunarity(DetailLayer.Lacunarity);
     DetailNoise.SetFractalGain(DetailLayer.Persistence);
 
-    // Montañas (RIDGED)
+    // MontaÃ±as (RIDGED)
     MountainNoise.SetSeed(Seed + 100);
     MountainNoise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
     MountainNoise.SetFractalType(FastNoiseLite::FractalType_Ridged);
@@ -137,7 +137,7 @@ void FCosmicEarthLikeNoiseStrategy::EvaluatePoint(
     float Temperature = FMath::Clamp(BaseTemp + TempVar, 0.0f, 1.0f);
 
     // NORMALIZACION ALTURA
-    // Calcular el rango teórico verdadero (sin escala)
+    // Calcular el rango teÃ³rico verdadero (sin escala)
     float TrueMinHeight = -0.5f * ContinentalLayer.Amplitude;
     float TrueMaxHeight = 0.5f * ContinentalLayer.Amplitude
         + MountainLayer.Amplitude
@@ -145,7 +145,7 @@ void FCosmicEarthLikeNoiseStrategy::EvaluatePoint(
         + DetailLayer.Amplitude;   // Detail puede llegar hasta +Amplitude
 
     // Aplicar tu factor de escala configurable (opcional)
-    // Estrecha o ensancha el rango percibido en la visualización.
+    // Estrecha o ensancha el rango percibido en la visualizaciÃ³n.
     float NormalizedMin = TrueMinHeight * HeightNormalizationScale; // normalmente 0
     float NormalizedMax = TrueMaxHeight * HeightNormalizationScale;
 

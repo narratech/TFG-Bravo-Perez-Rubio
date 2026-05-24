@@ -21,7 +21,7 @@ public:
 	float HeightNormalizationScale = 1.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Noise Settings")
-	FCosmicNoiseDataLayer ContinentalLayer;
+	FCosmicNoiseDataLayer ContinentalLayer; 
 
 	UPROPERTY(EditAnywhere, Category = "Noise Settings")
 	FCosmicNoiseDataLayer MountainLayer;

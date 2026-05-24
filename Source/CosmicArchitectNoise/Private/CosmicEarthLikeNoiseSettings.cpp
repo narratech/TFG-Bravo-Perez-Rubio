@@ -14,3 +14,4 @@ TSharedPtr<ICosmicNoiseStrategy> UCosmicEarthLikeNoiseSettings::CreateStrategy()
 
     return Strategy;
 }
+ 

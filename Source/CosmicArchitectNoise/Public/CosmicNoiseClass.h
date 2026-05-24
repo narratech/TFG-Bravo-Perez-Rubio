@@ -17,7 +17,7 @@ class COSMICARCHITECTNOISE_API UCosmicNoiseClass : public UDataAsset
 {
 	GENERATED_BODY()
 	
-public:
+public: 
 	FOnNoiseSettingsChanged OnNoiseSettingsChanged;
 
 	virtual TSharedPtr<ICosmicNoiseStrategy> CreateStrategy() const;

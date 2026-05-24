@@ -18,7 +18,7 @@ void FCosmicDefaultNoiseStrategy::Initialize(int32 InSeed, FCosmicNoiseLayer InL
     case ECosmicNoiseType::Cellular: Noise.SetNoiseType(FastNoiseLite::NoiseType_Cellular); break;
     case ECosmicNoiseType::Value: Noise.SetNoiseType(FastNoiseLite::NoiseType_Value); break;
     }
-    switch (LayerParameters.FractalType) {
+    switch (LayerParameters.FractalType) { 
     case ECosmicFractalType::None: Noise.SetFractalType(FastNoiseLite::FractalType_None); break;
     case ECosmicFractalType::FBM: Noise.SetFractalType(FastNoiseLite::FractalType_FBm); break;
     case ECosmicFractalType::Ridged: Noise.SetFractalType(FastNoiseLite::FractalType_Ridged); break;

@@ -21,7 +21,7 @@ enum class ECosmicFractalType : uint8
 {
     None,
     FBM,
-    Ridged,
+    Ridged, 
     PingPong
 };
 
@@ -178,7 +178,7 @@ struct COSMICARCHITECTNOISE_API FCosmicNoiseBiomeParameters
     UPROPERTY(EditAnywhere, Category = "Biome", meta = (ClampMin = "0", ClampMax = "2"))
     float LatitudeEffect = 1.0f;
 
-    /** Penalización de temperatura por altitud (0-1) */
+    /** PenalizaciÃ³n de temperatura por altitud (0-1) */
     UPROPERTY(EditAnywhere, Category = "Biome", meta = (ClampMin = "0", ClampMax = "1"))
     float AltitudeTemperaturePenalty = 0.6f;
 
@@ -186,11 +186,11 @@ struct COSMICARCHITECTNOISE_API FCosmicNoiseBiomeParameters
     UPROPERTY(EditAnywhere, Category = "Biome", meta = (ClampMin = "0.0001"))
     float HumidityFrequency = 0.015f;
 
-    /** Octavas para humedad (más = nubes más detalladas) */
+    /** Octavas para humedad (mÃ¡s = nubes mÃ¡s detalladas) */
     UPROPERTY(EditAnywhere, Category = "Biome", meta = (ClampMin = "1", ClampMax = "8"))
     int32 HumidityOctaves = 5;
 
-    /** Contraste de humedad (1 = normal, >1 = más extremo) */
+    /** Contraste de humedad (1 = normal, >1 = mÃ¡s extremo) */
     UPROPERTY(EditAnywhere, Category = "Biome", meta = (ClampMin = "0.5", ClampMax = "3"))
     float HumidityContrast = 1.5f;
 

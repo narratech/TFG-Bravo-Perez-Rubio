@@ -19,3 +19,4 @@ public:
         FLinearColor& OutColor
     ) const = 0;
 };
+ 

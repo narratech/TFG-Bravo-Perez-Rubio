@@ -13,7 +13,7 @@ void UCosmicNoiseClass::PostEditChangeProperty(FPropertyChangedEvent& PropertyCh
 {
     Super::PostEditChangeProperty(PropertyChangedEvent); // Siempre llama al Super primero o al inicio
 
-    // Obtenemos la propiedad que cambió y, si es parte de un struct, su propiedad "padre"
+    // Obtenemos la propiedad que cambiÃ³ y, si es parte de un struct, su propiedad "padre"
     FProperty* Property = PropertyChangedEvent.Property;
     FProperty* MemberProperty = PropertyChangedEvent.MemberProperty;
 
@@ -21,4 +21,4 @@ void UCosmicNoiseClass::PostEditChangeProperty(FPropertyChangedEvent& PropertyCh
 
     OnNoiseSettingsChanged.Broadcast();
 }
-#endif
+#endif 

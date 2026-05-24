@@ -19,7 +19,7 @@ public:
 	int32 Seed;
 
 	UPROPERTY(EditAnywhere, Category = "Noise Settings")
-	FCosmicNoiseLayer LayerParameters;
+	FCosmicNoiseLayer LayerParameters; 
 
 	UPROPERTY(EditAnywhere, Category = "Noise Settings")
 	FCosmicNoiseBiomeParameters BiomeParameters;

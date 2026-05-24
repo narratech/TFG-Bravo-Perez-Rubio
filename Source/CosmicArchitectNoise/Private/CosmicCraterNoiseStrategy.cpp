@@ -17,7 +17,7 @@ void FCosmicCraterNoiseStrategy::Initialize(int32 InSeed, FCosmicNoiseLayer InLa
     case ECosmicNoiseType::Simplex:
     case ECosmicNoiseType::Ridged: Noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2); break;
     case ECosmicNoiseType::Cellular: Noise.SetNoiseType(FastNoiseLite::NoiseType_Cellular); break;
-    case ECosmicNoiseType::Value: Noise.SetNoiseType(FastNoiseLite::NoiseType_Value); break;
+    case ECosmicNoiseType::Value: Noise.SetNoiseType(FastNoiseLite::NoiseType_Value); break; 
     }
     switch (LayerParameters.FractalType) {
     case ECosmicFractalType::None: Noise.SetFractalType(FastNoiseLite::FractalType_None); break;
@@ -39,7 +39,7 @@ void FCosmicCraterNoiseStrategy::Initialize(int32 InSeed, FCosmicNoiseLayer InLa
     TempNoise.SetSeed(Seed + 256);
     TempNoise.SetFrequency(BiomeParameters.TemperatureFrequency);
 
-    //Ruido para los cráteres
+    //Ruido para los crÃ¡teres
     CraterNoise.SetSeed(Seed + 512);
     CraterNoise.SetNoiseType(FastNoiseLite::NoiseType_Cellular);
 
@@ -67,7 +67,7 @@ void FCosmicCraterNoiseStrategy::EvaluatePoint(const FVector& NoiseDir, float& O
     float BaseNoise = Noise.GetNoise(X, Y, Z); // [-1, 1]
     float Height = BaseNoise * LayerParameters.Amplitude;
 
-    // --- CRÁTERES ---
+    // --- CRÃTERES ---
     float FinalCraterHeight = 0.0f;
     float FreqScale = 1.0f;
     float AmpScale = 1.0f;
@@ -86,7 +86,7 @@ void FCosmicCraterNoiseStrategy::EvaluatePoint(const FVector& NoiseDir, float& O
         const float DynamicRadius = FMath::Max(CraterParameters.CraterRadiusMultiplier * SizeVariation, 0.01f);
         const float CurrentDepth = CraterParameters.CraterDepth * AmpScale;
 
-        // Solo procesar puntos dentro del area de influencia del cráter
+        // Solo procesar puntos dentro del area de influencia del crÃ¡ter
         if (CellDistance < DynamicRadius * 1.3f)
         {
             const float t = CellDistance / DynamicRadius; // 0=centro, 1=borde
@@ -97,7 +97,7 @@ void FCosmicCraterNoiseStrategy::EvaluatePoint(const FVector& NoiseDir, float& O
             {
                 // FloorHeight=0  bowl completo sin suelo plano
                 // FloorHeight=0.5  suelo plano hasta la mitad del radio
-                // FloorHeight=1  cráter completamente plano
+                // FloorHeight=1  crÃ¡ter completamente plano
                 const float FloorStart = FMath::Clamp(CraterParameters.CraterFloorHeight, 0.0f, 0.99f);
 
                 float Bowl = 0.0f;
@@ -108,7 +108,7 @@ void FCosmicCraterNoiseStrategy::EvaluatePoint(const FVector& NoiseDir, float& O
                 }
                 else
                 {
-                    // Transición suave del suelo hacia el borde: parábola invertida
+                    // TransiciÃ³n suave del suelo hacia el borde: parÃ¡bola invertida
                     const float tNorm = (t - FloorStart) / (1.0f - FloorStart); // [0,1] desde el suelo hasta el borde
                     const float S = FMath::SmoothStep(0.0f, 1.0f, tNorm);
                     Bowl = FMath::Pow(1.0f - S, 2.0f);
@@ -118,7 +118,7 @@ void FCosmicCraterNoiseStrategy::EvaluatePoint(const FVector& NoiseDir, float& O
             }
 
             // --- RIM (borde, campana gaussiana centrada en t=1) ---
-            // CraterRimSharpness controla cuán estrecho es el borde
+            // CraterRimSharpness controla cuÃ¡n estrecho es el borde
             // CraterRimHeight escala su altura relativa a la profundidad
             const float RimExponent = FMath::Pow((t - 1.0f) / 0.15f, 2.0f) * CraterParameters.CraterRimSharpness;
             const float Rim = FMath::Exp(-RimExponent);
@@ -147,7 +147,7 @@ void FCosmicCraterNoiseStrategy::EvaluatePoint(const FVector& NoiseDir, float& O
     const float TempNoisVal = TempNoise.GetNoise(X, Y, Z) * 0.2f;
     const float Temperature = FMath::Clamp(BaseTemp + TempNoisVal, 0.0f, 1.0f);
 
-    // --- MODIFICACIÓN POR BIOMA ---
+    // --- MODIFICACIÃ“N POR BIOMA ---
     const float BiomeInfluence = FMath::Lerp(0.8f, 1.2f, Humidity);
     Height *= BiomeInfluence;
 

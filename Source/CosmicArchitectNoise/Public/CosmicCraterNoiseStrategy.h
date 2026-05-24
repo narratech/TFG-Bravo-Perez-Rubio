@@ -18,7 +18,7 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Noise Settings")
 	FCosmicNoiseLayer LayerParameters;
-
+     
 	UPROPERTY(EditAnywhere, Category = "Noise Settings")
 	FCosmicNoiseBiomeParameters BiomeParameters;
 

@@ -12,3 +12,4 @@ TSharedPtr<ICosmicNoiseStrategy> UCosmicCraterNoiseSettings::CreateStrategy() co
 
     return Strategy;
 }
+ 
