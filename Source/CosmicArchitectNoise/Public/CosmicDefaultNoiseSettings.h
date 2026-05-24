@@ -7,22 +7,41 @@
 #include "CosmicDefaultNoiseSettings.generated.h"
 
 /**
- * 
+ * Configuración utilizada para crear una estrategia de ruido procedural estándar.
+ *
+ * Esta clase encapsula los parámetros necesarios para inicializar
+ * una instancia de FCosmicDefaultNoiseStrategy.
  */
 UCLASS()
 class COSMICARCHITECTNOISE_API UCosmicDefaultNoiseSettings : public UCosmicNoiseClass
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
+
 public:
 
-	UPROPERTY(EditAnywhere, Category = "Noise Settings")
-	int32 Seed;
+    /**
+     * Semilla utilizada para la generación procedural del ruido.
+     */
+    UPROPERTY(EditAnywhere, Category = "Noise Settings")
+    int32 Seed;
 
-	UPROPERTY(EditAnywhere, Category = "Noise Settings")
-	FCosmicNoiseLayer LayerParameters; 
+    /**
+     * Parámetros generales de la capa de ruido principal.
+     */
+    UPROPERTY(EditAnywhere, Category = "Noise Settings")
+    FCosmicNoiseLayer LayerParameters;
 
-	UPROPERTY(EditAnywhere, Category = "Noise Settings")
-	FCosmicNoiseBiomeParameters BiomeParameters;
+    /**
+     * Parámetros utilizados para la generación y mezcla de biomas.
+     */
+    UPROPERTY(EditAnywhere, Category = "Noise Settings")
+    FCosmicNoiseBiomeParameters BiomeParameters;
 
-	virtual TSharedPtr<ICosmicNoiseStrategy> CreateStrategy() const override;
+    /**
+     * Crea e inicializa la estrategia de ruido por defecto
+     * utilizando la configuración actual.
+     *
+     * @return Estrategia de ruido completamente inicializada.
+     */
+    virtual TSharedPtr<ICosmicNoiseStrategy> CreateStrategy() const override;
 };
