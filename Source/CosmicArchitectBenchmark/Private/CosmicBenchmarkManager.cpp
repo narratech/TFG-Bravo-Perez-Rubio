@@ -10,7 +10,7 @@
 #include "Engine/World.h"
 #include "Planet/CosmicPlanet.h"
 #include "Kismet/GameplayStatics.h"
-#include "CosmicNoiseClass.h"
+#include "CosmicNoiseClass.h" 
 #include "TimerManager.h"
 #include "Materials/MaterialInstance.h"
 #include "GameFramework/Pawn.h"
@@ -32,7 +32,7 @@ void UCosmicBenchmarkManager::Tick(float DeltaTime)
         // Acumular tiempo transcurrido
         AccumulatedCaptureTime += DeltaTime;
 
-        // Verificar si se alcanzÛ la duraciÛn de captura
+        // Verificar si se alcanz√≥ la duraci√≥n de captura
         if (AccumulatedCaptureTime >= CaptureDuration)
         {
             OnBenchmarkCaptureComplete();
@@ -131,17 +131,17 @@ void UCosmicBenchmarkManager::RunNextAllTest()
     case 6: RunOrbitSimulationTest(); break;
     case 7: RunNBodySimulationTest(); break;
     case 8:
-        // SystemGeneratorTest es sÌncrono, avanzar inmediatamente despuÈs
+        // SystemGeneratorTest es s√≠ncrono, avanzar inmediatamente despu√©s
         RunSystemGeneratorTest();
         AllTestsCurrentIndex++;
         OnAllTestsStepComplete();
         return; // No continuar, OnAllTestsStepComplete ya programa el siguiente
     }
 
-    // No incrementar el Ìndice aquÌ, se incrementar· cuando el test secuencial termine
+    // No incrementar el √≠ndice aqu√≠, se incrementar√° cuando el test secuencial termine
 }
 
-// Este mÈtodo se llama cuando un test secuencial termina
+// Este m√©todo se llama cuando un test secuencial termina
 void UCosmicBenchmarkManager::OnAllTestsStepComplete()
 {
     if (!bIsRunningAllTests) return;
@@ -149,7 +149,7 @@ void UCosmicBenchmarkManager::OnAllTestsStepComplete()
     UWorld* World = GetWorld();
     if (!World) return;
 
-    // PequeÒo delay para estabilizaciÛn entre tests
+    // Peque√±o delay para estabilizaci√≥n entre tests
     World->GetTimerManager().SetTimer(
         AllTestsTimerHandle,
         this,
@@ -166,7 +166,7 @@ void UCosmicBenchmarkManager::StartBenchmark()
 
 void UCosmicBenchmarkManager::StopBenchmark()
 {
-    // Detener test secuencial si est· corriendo
+    // Detener test secuencial si est√° corriendo
     if (bIsRunningSequentialTest)
     {
         bIsRunningSequentialTest = false;
@@ -257,7 +257,7 @@ void UCosmicBenchmarkManager::SpawnPlanetsNear(int32 NumPlanets, bool UseFoliage
     const FBenchmarkPlanetConfig& PC = CurrentPlanetConfig;
     bool bFoliage = UseFoliage || PC.bUseFoliageByDefault;
 
-    // Obtener posiciÛn de c·mara (o usar SpawnCenter si no hay c·mara)
+    // Obtener posici√≥n de c√°mara (o usar SpawnCenter si no hay c√°mara)
     FVector Origin = PC.SpawnCenter;
     APlayerController* PlayerController = World->GetFirstPlayerController();
     if (PlayerController)
@@ -417,7 +417,7 @@ void UCosmicBenchmarkManager::RunNextSequentialStep()
 
 
 
-    // Generar planetas seg˙n el tipo de test
+    // Generar planetas seg√∫n el tipo de test
     switch (CurrentSequentialTestType)
     {
     case ESequentialTestType::PlanetScaling:
@@ -441,20 +441,20 @@ void UCosmicBenchmarkManager::RunNextSequentialStep()
         break;
     case ESequentialTestType::ClipmapResolution:
     {
-        // Actualizar configuraciÛn de clipmap
+        // Actualizar configuraci√≥n de clipmap
         SetClipmapConfig(CurrentStep, CurrentClipmapConfig.NumLevels);
-        SpawnPlanetsNear(1, false); // Solo 1 planeta para test de resoluciÛn
+        SpawnPlanetsNear(1, false); // Solo 1 planeta para test de resoluci√≥n
         break;
     }
     case ESequentialTestType::ClipmapLevels:
     {
-        // Actualizar niveles manteniendo resoluciÛn base
+        // Actualizar niveles manteniendo resoluci√≥n base
         SetClipmapConfig(CurrentClipmapConfig.BaseResolution, CurrentStep);
         SpawnPlanetsNear(1, false);
         break;
     }
     case ESequentialTestType::OrbitSimulation:
-        SpawnSimBodies(CurrentStep, false); // ”rbitas elÌpticas
+        SpawnSimBodies(CurrentStep, false); // √ìrbitas el√≠pticas
         break;
 
     case ESequentialTestType::NBodySimulation:
@@ -509,7 +509,7 @@ void UCosmicBenchmarkManager::RunNextSequentialStep()
                 SetCurrentTestParams(CurrentStep, TestName);
                 BeginCapture(8.0f);
             },
-            CurrentPlanetConfig.StabilizationDelaySeconds, // Tiempo de estabilizaciÛn
+            CurrentPlanetConfig.StabilizationDelaySeconds, // Tiempo de estabilizaci√≥n
             false
         );
     }
@@ -581,7 +581,7 @@ void UCosmicBenchmarkManager::OnSequentialTestComplete()
 }
 
 
-// Captura de MÈtricas
+// Captura de M√©tricas
 void UCosmicBenchmarkManager::BeginCapture(float DurationSeconds)
 {
     float ActualDuration = (DurationSeconds > 0.f)
@@ -594,7 +594,7 @@ void UCosmicBenchmarkManager::BeginCapture(float DurationSeconds)
     CaptureDuration = ActualDuration;
     AccumulatedCaptureTime = 0.0f;
 
-    UE_LOG(LogTemp, Warning, TEXT("Capture Start ó Duration: %.1f s ó Test: %s"),
+    UE_LOG(LogTemp, Warning, TEXT("Capture Start ‚Äî Duration: %.1f s ‚Äî Test: %s"),
         ActualDuration, *CurrentTestName);
 }
 
@@ -648,7 +648,7 @@ void UCosmicBenchmarkManager::OnBenchmarkCaptureComplete()
         UWorld* World = GetWorld();
         if (World)
         {
-            // PequeÒa pausa entre pasos (0.5 segundos)
+            // Peque√±a pausa entre pasos (0.5 segundos)
             World->GetTimerManager().SetTimer(
                 SequentialTestTimerHandle,
                 this,
@@ -745,8 +745,8 @@ void UCosmicBenchmarkManager::RunFoliageRadiusTest()
             FVector(0.5f, 2.0f, 5.0f)       // Muy lejos
     };
 
-    // Este test variar· los radios de las capas
-    SequentialTestSteps = { 0, 1, 2, 3, 4, 5 }; // Õndices para diferentes configuraciones
+    // Este test variar√° los radios de las capas
+    SequentialTestSteps = { 0, 1, 2, 3, 4, 5 }; // √çndices para diferentes configuraciones
     CurrentSequentialStepIndex = 0;
     CurrentSequentialTestType = ESequentialTestType::FoliageViewDistance;
     bIsRunningSequentialTest = true;
@@ -768,7 +768,7 @@ void UCosmicBenchmarkManager::RunClipmapResolutionTest(int32 Resolution)
             return;
         }
 
-        // Pasos de resoluciÛn a probar
+        // Pasos de resoluci√≥n a probar
         SequentialTestSteps = { 8, 16, 32, 64, 128, 256 };
         CurrentSequentialStepIndex = 0;
         CurrentSequentialTestType = ESequentialTestType::ClipmapResolution;
@@ -778,7 +778,7 @@ void UCosmicBenchmarkManager::RunClipmapResolutionTest(int32 Resolution)
     }
     else
     {
-        // Test individual con una resoluciÛn especÌfica
+        // Test individual con una resoluci√≥n espec√≠fica
         UE_LOG(LogTemp, Warning, TEXT("=== Clipmap Resolution Test: %d ==="), Resolution);
 
         SetClipmapConfig(Resolution, CurrentClipmapConfig.NumLevels);
@@ -794,7 +794,7 @@ void UCosmicBenchmarkManager::RunClipmapLevelsTest(int32 Levels)
 {
     FCosmicBenchmarkRecorder::ClearCSVResults();
 
-    // Si se llama sin argumento (Levels=0), ejecutar test secuencial autom·tico
+    // Si se llama sin argumento (Levels=0), ejecutar test secuencial autom√°tico
     if (Levels <= 0)
     {
         UE_LOG(LogTemp, Warning, TEXT("=== Clipmap Levels Test (Sequential) ==="));
@@ -814,7 +814,7 @@ void UCosmicBenchmarkManager::RunClipmapLevelsTest(int32 Levels)
     }
     else
     {
-        // Test individual con un n˙mero especÌfico de niveles
+        // Test individual con un n√∫mero espec√≠fico de niveles
         UE_LOG(LogTemp, Warning, TEXT("=== Clipmap Levels Test: %d levels ==="), Levels);
 
         SetClipmapConfig(CurrentClipmapConfig.BaseResolution, Levels);
@@ -854,7 +854,7 @@ void UCosmicBenchmarkManager::RunOrbitSimulationTest(int32 NumBodies)
         UE_LOG(LogTemp, Warning, TEXT("=== Orbit Simulation Test: %d bodies ==="), NumBodies);
 
         ClearSimBodies();
-        SpawnSimBodies(NumBodies, false); // false = Ûrbitas simples
+        SpawnSimBodies(NumBodies, false); // false = √≥rbitas simples
 
         SetCurrentTestParams(NumBodies, FString::Printf(TEXT("OrbitSim_%d"), NumBodies));
         BeginCapture(5.0f);
@@ -1027,7 +1027,7 @@ void UCosmicBenchmarkManager::SpawnSimBodies(int32 NumBodies, bool bNBodySimulat
     if (CentralBody)
     {
         CentralBody->InitAsCentralBody();
-        // Hacer la esfera central un poco m·s grande
+        // Hacer la esfera central un poco m√°s grande
         if (CentralBody->MeshComponent)
         {
             CentralBody->MeshComponent->SetWorldScale3D(FVector(20.f));
@@ -1059,7 +1059,7 @@ void UCosmicBenchmarkManager::SpawnSimBodies(int32 NumBodies, bool bNBodySimulat
             }
             else
             {
-                // ”rbita aleatoria alrededor del cuerpo central
+                // √ìrbita aleatoria alrededor del cuerpo central
                 float SemiMajorAxis = FMath::FRandRange(0.3f, 1.5f);
                 Body->AttachToActor(CentralBody, FAttachmentTransformRules::KeepWorldTransform);
                 Body->InitRandomOrbit(CentralBody, SemiMajorAxis);

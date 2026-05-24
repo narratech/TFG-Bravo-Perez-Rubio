@@ -9,28 +9,28 @@ ACosmicBenchmarkConfig::ACosmicBenchmarkConfig()
     PrimaryActorTick.bCanEverTick = false;
 }
 
-void ACosmicBenchmarkConfig::BeginPlay()
+void ACosmicBenchmarkConfig::BeginPlay() 
 {
     Super::BeginPlay();
 
     UCosmicBenchmarkManager* BM = UCosmicBenchmarkManager::Get(GetWorld());
     if (!BM)
     {
-        UE_LOG(LogTemp, Error, TEXT("ABenchMarkConfig: No se encontró el BenchmarkManager."));
+        UE_LOG(LogTemp, Error, TEXT("ABenchMarkConfig: No se encontrÃ³ el BenchmarkManager."));
         return;
     }
 
-    // 1 — Assets
+    // 1 â€” Assets
     BM->InitializeAssets(
         BaseMaterial, MoonMaterial, OceanMaterial,
         StarMaterial, GasGiantMaterial, RingMaterial,
         NoiseClass, FoliageCollection
     );
 
-    // 2 — Configuración de planeta
+    // 2 â€” ConfiguraciÃ³n de planeta
     BM->SetPlanetConfig(BuildPlanetConfig());
 
-    UE_LOG(LogTemp, Log, TEXT("ABenchMarkConfig: Configuración enviada al BenchmarkManager."));
+    UE_LOG(LogTemp, Log, TEXT("ABenchMarkConfig: ConfiguraciÃ³n enviada al BenchmarkManager."));
     UE_LOG(LogTemp, Log, TEXT("  Radius=%.1f km | Ocean=%s | Foliage=%s | Capture=%.1fs"),
         PlanetRadiusKm,
         bHasOcean ? TEXT("ON") : TEXT("OFF"),

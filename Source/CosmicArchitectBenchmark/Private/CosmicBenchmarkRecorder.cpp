@@ -9,7 +9,7 @@
 #include "HAL/PlatformFilemanager.h"
 #include "Engine/GameViewportClient.h"
 #include "UnrealClient.h"
-#include "DynamicRHI.h"
+#include "DynamicRHI.h" 
 
 // Para VRAM en Windows
 #if PLATFORM_WINDOWS
@@ -19,7 +19,7 @@
 #endif
 
 // 
-//  Variables estáticas
+//  Variables estÃ¡ticas
 // 
 bool                        FCosmicBenchmarkRecorder::bIsRecording = false;
 float                       FCosmicBenchmarkRecorder::AccumulatedFPS = 0.0f;
@@ -73,7 +73,7 @@ static float GetVRAMUsageGB()
 }
 
 // 
-//  Grabación
+//  GrabaciÃ³n
 // 
 void FCosmicBenchmarkRecorder::StartRecording()
 {
@@ -247,7 +247,7 @@ void FCosmicBenchmarkRecorder::LogCurrentData(const FString& Label)
  * Ejemplo desde C++:
  *   FCosmicBenchmarkRecorder::RecordEvent(TEXT("PlanetLoaded"), TEXT("Terrain listo"), (float)NumVerts);
  *
- * Ejemplo a través del manager (recomendado para blueprints):
+ * Ejemplo a travÃ©s del manager (recomendado para blueprints):
  *   UBenchmarkManager::Get(World)->RecordEvent(TEXT("MiEvento"), TEXT("Desc"), 0.f);
  */
 void FCosmicBenchmarkRecorder::RecordEvent(const FString& EventName,
@@ -260,7 +260,7 @@ void FCosmicBenchmarkRecorder::RecordEvent(const FString& EventName,
     Evt.EventName = EventName;
     Evt.Description = Description;
     Evt.NumericValue = NumericValue;
-    Evt.TimestampSec = RecordingElapsedTime;   // segundos desde el último StartRecording
+    Evt.TimestampSec = RecordingElapsedTime;   // segundos desde el Ãºltimo StartRecording
     Evt.TestContext = CurrentTestNameContext;
 
     Events.Add(Evt);
@@ -297,7 +297,7 @@ void FCosmicBenchmarkRecorder::ExportCSV(const FString& FileName)
 {
     FString CSV;
 
-    //  Sección 1: Métricas 
+    //  SecciÃ³n 1: MÃ©tricas 
     CSV += TEXT("# BENCHMARK METRICS\n");
     CSV += TEXT("TestName,NumObjects,AvgFPS,Low1FPS,FrameTimeMs,GameThreadMs,RenderThreadMs,GPUTimeMs,RAM_GB,VRAM_GB\n");
 
@@ -312,7 +312,7 @@ void FCosmicBenchmarkRecorder::ExportCSV(const FString& FileName)
         );
     }
 
-    //  Sección 2: Eventos personalizados 
+    //  SecciÃ³n 2: Eventos personalizados 
     if (Events.Num() > 0)
     {
         CSV += TEXT("\n# CUSTOM EVENTS\n");

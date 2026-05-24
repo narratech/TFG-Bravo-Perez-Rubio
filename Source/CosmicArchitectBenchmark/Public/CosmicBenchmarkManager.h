@@ -15,11 +15,11 @@ class UMaterialInstance;
 DECLARE_DELEGATE(FOnBenchmarkTestComplete);
 
 USTRUCT(BlueprintType)
-struct FBenchmarkPlanetConfig
+struct FBenchmarkPlanetConfig 
 {
     GENERATED_BODY()
 
-    // Geometría 
+    // GeometrÃ­a 
     /** Radio del planeta en Km */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Geometry")
     float RadiusKm = 10.0f;
@@ -29,20 +29,20 @@ struct FBenchmarkPlanetConfig
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Spawn")
     FVector SpawnCenter = FVector::ZeroVector;
 
-    /** Separación entre planetas en SpawnPlanets (unidades UE = cm) */
+    /** SeparaciÃ³n entre planetas en SpawnPlanets (unidades UE = cm) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Spawn")
     float SpawnSpacingCm = 500000.0f;
 
-    /** Radio del círculo en SpawnPlanetsNear (unidades UE = cm) */
+    /** Radio del cÃ­rculo en SpawnPlanetsNear (unidades UE = cm) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Spawn")
     float NearSpawnRadiusCm = 1005000.0f;
 
-    /** Separación entre planetas en SpawnPlanetsFar (unidades UE = cm) */
+    /** SeparaciÃ³n entre planetas en SpawnPlanetsFar (unidades UE = cm) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Spawn")
     float FarSpawnSpacingCm = 5000000.0f;
 
-    // Océano 
-    /** ¿El planeta tiene océano? */
+    // OcÃ©ano 
+    /** Â¿El planeta tiene ocÃ©ano? */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Ocean")
     bool bHasOcean = true;
 
@@ -51,23 +51,23 @@ struct FBenchmarkPlanetConfig
         meta = (EditCondition = "bHasOcean"))
     float OceanSeaLevel = 0.0f;
 
-    /** Resolución del clipmap del océano */
+    /** ResoluciÃ³n del clipmap del ocÃ©ano */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Ocean",
         meta = (EditCondition = "bHasOcean"))
     int32 OceanClipmapResolution = 128;
 
     // Foliaje 
-    /** ¿Activar foliaje por defecto en SpawnPlanets? */
+    /** Â¿Activar foliaje por defecto en SpawnPlanets? */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Foliage")
     bool bUseFoliageByDefault = false;
 
     // Captura 
-    /** Duración de cada paso en los tests secuenciales (segundos) */
+    /** DuraciÃ³n de cada paso en los tests secuenciales (segundos) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Benchmark|Capture",
         meta = (ClampMin = "1.0", ClampMax = "120.0"))
     float CaptureDurationSeconds = 8.0f;
 
-    /** Pausa de estabilización entre pasos de test secuencial (segundos) */
+    /** Pausa de estabilizaciÃ³n entre pasos de test secuencial (segundos) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Benchmark|Capture",
         meta = (ClampMin = "0.5", ClampMax = "30.0"))
     float StabilizationDelaySeconds = 1.5f;
@@ -92,7 +92,7 @@ public:
     virtual bool IsTickable() const override { return bIsCapturing; }
     virtual bool IsTickableInEditor() const override { return false; }
 
-    // Inicialización 
+    // InicializaciÃ³n 
     void InitializeAssets(
         UMaterialInstance* InBaseMaterial,
         UMaterialInstance* InMoonMaterial,
@@ -104,12 +104,12 @@ public:
         UCosmicFoliageCollection* InFoliageCollection
     );
 
-    /** Aplica la configuración de planeta para todos los tests posteriores.
-     *  Llámalo desde ABenchMarkConfig::BeginPlay (ya integrado). */
+    /** Aplica la configuraciÃ³n de planeta para todos los tests posteriores.
+     *  LlÃ¡malo desde ABenchMarkConfig::BeginPlay (ya integrado). */
     UFUNCTION(BlueprintCallable, Category = "Benchmark|Config")
     void SetPlanetConfig(const FBenchmarkPlanetConfig& InConfig);
 
-    /** Devuelve la configuración de planeta activa (read-only). */
+    /** Devuelve la configuraciÃ³n de planeta activa (read-only). */
     UFUNCTION(BlueprintCallable, Category = "Benchmark|Config")
     const FBenchmarkPlanetConfig& GetPlanetConfig() const { return CurrentPlanetConfig; }
 
@@ -151,7 +151,7 @@ public:
     //  System Generator Test 
     void RunSystemGeneratorTest(int32 NumBodies = 0);
 
-    //  Métricas 
+    //  MÃ©tricas 
     void BeginCapture(float DurationSeconds = 5.0f);
     void EndCapture();
     void SetCurrentTestParams(int32 NumObjects, const FString& TestName);
@@ -170,7 +170,7 @@ public:
     //    Blueprint:
     //      (nodo "Record Benchmark Event" en cualquier actor/component)
     //
-    //  El evento aparecerá en la sección "# CUSTOM EVENTS" del CSV exportado.
+    //  El evento aparecerÃ¡ en la secciÃ³n "# CUSTOM EVENTS" del CSV exportado.
     // 
     UFUNCTION(BlueprintCallable, Category = "Benchmark|Events",
         meta = (DisplayName = "Record Benchmark Event",

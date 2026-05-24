@@ -12,9 +12,9 @@ class UCosmicFoliageCollection;
 class UMaterialInstance;
 
 /**
- *  Actor de configuraciÛn del Benchmark.
- *  ColÛcalo en el nivel y rellena sus propiedades desde el editor.
- *  En BeginPlay enviar· toda la configuraciÛn al BenchmarkManager autom·ticamente.
+ *  Actor de configuraci√≥n del Benchmark.
+ *  Col√≥calo en el nivel y rellena sus propiedades desde el editor.
+ *  En BeginPlay enviar√° toda la configuraci√≥n al BenchmarkManager autom√°ticamente. 
  */
 UCLASS(ClassGroup = (CosmicArchitect), meta = (BlueprintSpawnableComponent),
     HideCategories = (Rendering, Lighting, Navigation, Replication, Physics, Collision,
@@ -54,7 +54,7 @@ public:
     UCosmicFoliageCollection* FoliageCollection;
 
     // 
-    //  GEOMETRÕA DEL PLANETA
+    //  GEOMETR√çA DEL PLANETA
     // 
     /** Radio del planeta en Km para todos los tests */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Geometry",
@@ -70,27 +70,27 @@ public:
         meta = (ToolTip = "Centro del mundo para los tests. Por defecto (0,0,0)."))
     FVector SpawnCenter = FVector::ZeroVector;
 
-    /** SeparaciÛn entre planetas en el test est·ndar (cm, eje X) */
+    /** Separaci√≥n entre planetas en el test est√°ndar (cm, eje X) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Spawn",
         meta = (ClampMin = "10000.0",
-            ToolTip = "SeparaciÛn entre planetas en SpawnPlanets. 500000 = 5 km UE."))
+            ToolTip = "Separaci√≥n entre planetas en SpawnPlanets. 500000 = 5 km UE."))
     float SpawnSpacingCm = 500000.0f;
 
     /** Radio del anillo de spawn en SpawnPlanetsNear (cm) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Spawn",
         meta = (ClampMin = "10000.0",
-            ToolTip = "Radio del cÌrculo de spawn alrededor de la c·mara en SpawnPlanetsNear."))
+            ToolTip = "Radio del c√≠rculo de spawn alrededor de la c√°mara en SpawnPlanetsNear."))
     float NearSpawnRadiusCm = 1005000.0f;
 
-    /** SeparaciÛn entre planetas en SpawnPlanetsFar (cm) */
+    /** Separaci√≥n entre planetas en SpawnPlanetsFar (cm) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Spawn",
         meta = (ClampMin = "10000.0"))
     float FarSpawnSpacingCm = 5000000.0f;
 
     // 
-    //  OC…ANO
+    //  OC√âANO
     // 
-    /** øLos planetas generados en los tests tendr·n ocÈano? */
+    /** ¬øLos planetas generados en los tests tendr√°n oc√©ano? */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Ocean")
     bool bHasOcean = true;
 
@@ -99,7 +99,7 @@ public:
         meta = (EditCondition = "bHasOcean"))
     float OceanSeaLevel = 0.0f;
 
-    /** ResoluciÛn del clipmap del ocÈano */
+    /** Resoluci√≥n del clipmap del oc√©ano */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Ocean",
         meta = (EditCondition = "bHasOcean", ClampMin = "16", ClampMax = "512"))
     int32 OceanClipmapResolution = 128;
@@ -107,20 +107,20 @@ public:
     // 
     //  FOLIAJE
     // 
-    /** øLos planetas en SpawnPlanets usar·n foliaje por defecto? */
+    /** ¬øLos planetas en SpawnPlanets usar√°n foliaje por defecto? */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Foliage")
     bool bUseFoliageByDefault = false;
 
     // 
     //  CAPTURA
     // 
-    /** DuraciÛn de captura por paso en los tests secuenciales */
+    /** Duraci√≥n de captura por paso en los tests secuenciales */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Benchmark|Capture",
         meta = (ClampMin = "1.0", ClampMax = "120.0",
-            ToolTip = "Segundos de captura por paso. M·s tiempo = datos m·s precisos."))
+            ToolTip = "Segundos de captura por paso. M√°s tiempo = datos m√°s precisos."))
     float CaptureDurationSeconds = 8.0f;
 
-    /** Pausa de estabilizaciÛn entre pasos (deja que el motor se asiente) */
+    /** Pausa de estabilizaci√≥n entre pasos (deja que el motor se asiente) */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Benchmark|Capture",
         meta = (ClampMin = "0.5", ClampMax = "30.0"))
     float StabilizationDelaySeconds = 1.5f;

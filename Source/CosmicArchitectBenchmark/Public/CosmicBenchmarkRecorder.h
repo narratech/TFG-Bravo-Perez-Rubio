@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 
 // 
-//  Fila de métricas de rendimiento (CSV)
+//  Fila de mÃ©tricas de rendimiento (CSV)
 // 
 struct FBenchmarkCSVRow
 {
@@ -16,7 +16,7 @@ struct FBenchmarkCSVRow
     float Low1FPS = 0.0f;
 
     float FrameTimeMs = 0.0f;
-    float GameThreadTimeMs = 0.0f;
+    float GameThreadTimeMs = 0.0f; 
     float RenderThreadTimeMs = 0.0f;
     float GPUTimeMs = 0.0f;
 
@@ -26,18 +26,18 @@ struct FBenchmarkCSVRow
 
 // 
 //  Evento personalizado registrable en tiempo real
-//  Úsalo desde cualquier sistema con:
-//    FBenchmarkRecorder::RecordEvent("MiEvento", "Descripción", 42.f);
-//  o a través del manager:
+//  Ãšsalo desde cualquier sistema con:
+//    FBenchmarkRecorder::RecordEvent("MiEvento", "DescripciÃ³n", 42.f);
+//  o a travÃ©s del manager:
 //    UBenchmarkManager::Get(World)->RecordEvent(...);
 // 
 struct FBenchmarkEvent
 {
     FString EventName;                  // Nombre corto (aparece en CSV)
-    FString Description;                // Descripción libre
-    float   NumericValue = 0.0f;     // Valor numérico opcional (ej: temperatura, distancia)
-    float   TimestampSec = 0.0f;     // Segundos desde el inicio de la grabación activa
-    FString TestContext;                // Nombre del test que estaba corriendo cuando se registró
+    FString Description;                // DescripciÃ³n libre
+    float   NumericValue = 0.0f;     // Valor numÃ©rico opcional (ej: temperatura, distancia)
+    float   TimestampSec = 0.0f;     // Segundos desde el inicio de la grabaciÃ³n activa
+    FString TestContext;                // Nombre del test que estaba corriendo cuando se registrÃ³
 };
 
 // 
@@ -60,7 +60,7 @@ struct FBenchmarkData
 class FCosmicBenchmarkRecorder
 {
 public:
-    //  Grabación 
+    //  GrabaciÃ³n 
     static void StartRecording();
     static void StopRecording();
     static void RecordFrame(float DeltaTime);
@@ -72,8 +72,8 @@ public:
     static void           SetCurrentTestName(const FString& InTestName);
 
     //  Eventos personalizados 
-    //  Llama a este método desde CUALQUIER sistema para anotar un evento.
-    //  Los eventos se exportan en una sección separada del CSV.
+    //  Llama a este mÃ©todo desde CUALQUIER sistema para anotar un evento.
+    //  Los eventos se exportan en una secciÃ³n separada del CSV.
     static void RecordEvent(const FString& EventName,
         const FString& Description = TEXT(""),
         float          NumericValue = 0.0f);
@@ -86,7 +86,7 @@ public:
     static void ClearCSVResults();
 
 private:
-    // Grabación
+    // GrabaciÃ³n
     static bool  bIsRecording;
     static float AccumulatedFPS;
     static float AccumulatedLow1FPS;

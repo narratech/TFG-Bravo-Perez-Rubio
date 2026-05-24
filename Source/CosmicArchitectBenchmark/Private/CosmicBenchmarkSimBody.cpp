@@ -10,9 +10,9 @@
 
 ACosmicBenchmarkSimBody::ACosmicBenchmarkSimBody()
 {
-	PrimaryActorTick.bCanEverTick = false; // El OrbitComponent ya hace tick
+	PrimaryActorTick.bCanEverTick = false; // El OrbitComponent ya hace tick 
 
-	// Crear malla est·tica simple (esfera por defecto de UE)
+	// Crear malla est√°tica simple (esfera por defecto de UE)
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
 	RootComponent = MeshComponent;
 
@@ -26,10 +26,10 @@ ACosmicBenchmarkSimBody::ACosmicBenchmarkSimBody()
 		MeshComponent->SetStaticMesh(SphereMesh.Object);
 	}
 
-	// Escala pequeÒa para que sea una esfera simple
+	// Escala peque√±a para que sea una esfera simple
 	MeshComponent->SetWorldScale3D(FVector(10.f));
 
-	// Sin colisiÛn para reducir overhead
+	// Sin colisi√≥n para reducir overhead
 	MeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	// Sin sombras para reducir overhead de renderizado

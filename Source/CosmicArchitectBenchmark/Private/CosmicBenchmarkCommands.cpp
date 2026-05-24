@@ -9,7 +9,7 @@
 #include "Misc/FileHelper.h"
 #include "HAL/FileManager.h"
 
-// COMANDOS B¡SICOS
+// COMANDOS B√ÅSICOS 
 
 static FAutoConsoleCommandWithWorldAndArgs CmdRunAllTests(
     TEXT("bm.run_all"),
@@ -198,7 +198,7 @@ static FAutoConsoleCommandWithWorldAndArgs CmdClipmapLevelsTest(
     )
 );
 
-// COMANDOS DE SIMULACI”N 
+// COMANDOS DE SIMULACI√ìN 
 
 static FAutoConsoleCommandWithWorldAndArgs CmdOrbitSimTest(
     TEXT("bm.orbit_sim"),
@@ -290,7 +290,7 @@ static FAutoConsoleCommandWithWorldAndArgs CmdEndCapture(
     )
 );
 
-// COMANDO DE EXPORTACI”N 
+// COMANDO DE EXPORTACI√ìN 
 
 static FAutoConsoleCommandWithWorldAndArgs CmdExportResults(
     TEXT("bm.export"),

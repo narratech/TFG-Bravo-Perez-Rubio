@@ -17,7 +17,7 @@ public class CosmicArchitectBenchmark : ModuleRules
                 "Engine",
                 "InputCore",
                 "CosmicArchitectRuntime",
-                "CosmicArchitectFoliage",
+                "CosmicArchitectFoliage", 
                 "CosmicArchitectNoise",
                 "RHI",
                 "RenderCore"

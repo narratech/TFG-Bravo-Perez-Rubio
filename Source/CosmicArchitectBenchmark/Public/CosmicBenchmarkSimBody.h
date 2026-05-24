@@ -18,7 +18,7 @@ class COSMICARCHITECTBENCHMARK_API ACosmicBenchmarkSimBody : public AActor
 public:
 	ACosmicBenchmarkSimBody();
 
-	// Componente de malla b·sico (esfera simple)
+	// Componente de malla b√°sico (esfera simple) 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* MeshComponent;
 
@@ -29,12 +29,12 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UCosmicGravityComponent* GravityComponent;
 
-	// Inicializar con par·metros orbitales aleatorios
+	// Inicializar con par√°metros orbitales aleatorios
 	void InitRandomOrbit(AActor* InParentBody, float InSemiMajorAxisKm);
 
 	void InitGravityComponent(bool Nbody);
 
-	// Inicializar como cuerpo central (sin Ûrbita)
+	// Inicializar como cuerpo central (sin √≥rbita)
 	void InitAsCentralBody();
 
 };
