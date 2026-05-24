@@ -7,9 +7,9 @@
 
 /**
  * Objeto tickable del editor encargado de actualizar
- * continuamente los datos de la c醡ara activa del viewport.
+ * continuamente los datos de la c谩mara activa del viewport.
  *
- * Esta clase sincroniza la posici髇 y rotaci髇 de la c醡ara
+ * Esta clase sincroniza la posici贸n y rotaci贸n de la c谩mara
  * del editor con el bridge compartido utilizado por el sistema.
  */
 class FCameraViewportDataUpdater : public FTickableEditorObject
@@ -17,32 +17,32 @@ class FCameraViewportDataUpdater : public FTickableEditorObject
 public:
 
     /**
-     * Ejecuta la actualizaci髇 en cada tick del editor.
+     * Ejecuta la actualizaci贸n en cada tick del editor.
      *
-     * @param DeltaTime Tiempo transcurrido desde el 鷏timo tick.
+     * @param DeltaTime Tiempo transcurrido desde el 煤ltimo tick.
      */
     virtual void Tick(float DeltaTime) override;
 
     /**
      * Indica si este objeto debe recibir ticks.
      *
-     * @return true si el objeto puede actualizarse.
+     * @return true si el objeto puede actualizarse. 
      */
     virtual bool IsTickable() const override;
 
     /**
-     * Obtiene el identificador de estad韘ticas del sistema de profiling.
+     * Obtiene el identificador de estad铆sticas del sistema de profiling.
      *
-     * @return Identificador de estad韘ticas asociado al tick.
+     * @return Identificador de estad铆sticas asociado al tick.
      */
     virtual TStatId GetStatId() const override;
 
 private:
 
     /**
-     * Actualiza la informaci髇 de la c醡ara activa del viewport.
+     * Actualiza la informaci贸n de la c谩mara activa del viewport.
      *
-     * Obtiene la posici髇 y rotaci髇 actuales de la c醡ara
+     * Obtiene la posici贸n y rotaci贸n actuales de la c谩mara
      * del editor y las almacena en el bridge compartido.
      */
     void UpdateCameraViewport();

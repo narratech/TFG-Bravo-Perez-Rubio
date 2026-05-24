@@ -24,7 +24,7 @@ TStatId FCameraViewportDataUpdater::GetStatId() const
 void FCameraViewportDataUpdater::UpdateCameraViewport()
 {
     if (!GEditor) return;
-
+     
     FViewport* Viewport = GEditor->GetActiveViewport();
     if (!Viewport) return;
 

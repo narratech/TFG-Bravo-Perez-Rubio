@@ -13,7 +13,7 @@
 FVector UCosmicEditorUtils::GetEditorCameraPosition()
 {
 #if WITH_EDITOR
-    // Obtiene la posición de la cámara del viewport activo del editor.
+    // Obtiene la posiciÃ³n de la cÃ¡mara del viewport activo del editor.
     if (GEditor && GEditor->GetActiveViewport())
     {
         FEditorViewportClient* ViewportClient =
@@ -27,7 +27,7 @@ FVector UCosmicEditorUtils::GetEditorCameraPosition()
 #endif
     return FVector::ZeroVector;
 }
-
+ 
 bool UCosmicEditorUtils::IsInEditor()
 {
 #if WITH_EDITOR
