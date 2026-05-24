@@ -62,9 +62,6 @@ struct COSMICARCHITECTFOLIAGE_API FCosmicFoliageMesh
     float RandomRotationMax = 360.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings")
-    bool bCanSpawnInWater = false;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings")
     bool bHasCollision = true;
 };
 
