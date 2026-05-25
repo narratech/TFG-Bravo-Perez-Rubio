@@ -132,7 +132,7 @@ protected:
     float MaxDistanceToNearest = 0.0f;
 
     /* Intentos máximos para encontrar posición válida. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Distances", AdvancedDisplay)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Distances", AdvancedDisplay, meta = (ClampMin = "1", ClampMax = "100"))
     int32 MaxGenerationAttempts = 100;
 
     /** Factor sobre el radio de la estrella para la distancia orbital mínima. */
