@@ -1,25 +1,21 @@
-# <p align="center">Cosmic Architect - TFG para Desarrollo de videojuegos (UCM) </p>
-## <p align="center">Plugin de Unreal Engine 5  para facilitar el desarrollo de sistemas planetarios </p>
+# <p align="center">Cosmic Architect: Generaci贸n procedimental de sistemas planetarios para Unreal Engine</p>
 
+Este es el repositorio de software asociado al Trabajo de Fin de Grado (TFG) del Grado en Desarrollo de Videojuegos de la Universidad Complutense de Madrid titulado 'Cosmic Architect: Generaci贸n procedimental y simulaci贸n f铆sica de sistemas planetarios en Unreal Engine' y realizado durante el curso 2025-2026 bajo la direcci贸n del Prof. Federico Peinado Gil.
+
+Los autores del TFG y responsables del repositorio son:
 * Javier Bravo Perucho
 * David Rubio Moreno
-* Sergio P閞ez Robledano
+* Sergio P茅rez Robledano
 
-### Resumen 
+El c贸digo fuente se distribuye a trav茅s de la licencia GNU Lesser General Public License v2.1.
 
-El presente Trabajo de Fin de Grado tiene como objetivo el desarrollo
-e implementaci髇 de un plugin para Unreal Engine 5 (UE5) que facilite la
-creaci髇 de sistemas planetarios personalizados. Este plugin busca aprovechar las herramientas de generaci髇 procedimental y simulaci髇 avanzada
-del motor, ofreciendo un entorno modular y flexible para dise馻r planetas y
-cuerpos celestes completamente configurables.
+## Descripci贸n
 
-This Bachelor's Thesis aims to develop and implement a plugin for Unreal Engine 5 (UE5)
-that facilitates the creation of custom planetary systems. This plugin seeks to leverage the engine's
-procedural generation and advanced simulation tools, offering a modular and flexible environment for
-designing fully configurable planets and celestial bodies.
+El presente Trabajo de Fin de Grado tiene como objetivo el desarrollo e implementaci贸n de un plugin para Unreal Engine que facilite la creaci贸n de sistemas planetarios personalizados. Este plugin busca aprovechar las herramientas de generaci贸n procedimental y simulaci贸n avanzada del motor, ofreciendo un entorno modular y flexible para dise帽ar planetas y cuerpos celestes completamente configurables.
 
-[Documentaci髇 oficial de Unreal Engine / Unreal Engine Documentation](https://docs.unrealengine.com/)
+[Cosmic Architect: Documentaci贸n e instrucciones de instalaci贸n](https://tfg-bravoperezrubio.gitbook.io/cosmicarchitectdocumentation/) (versi贸n soportada: Unreal Engine 5.7, ver [documentaci贸n oficial](https://docs.unrealengine.com/))
 
-[Cosmic Architect Documentation and Install Instructions](https://tfg-bravoperezrubio.gitbook.io/cosmicarchitectdocumentation/)
+## Description
+This Bachelor's Thesis aims to develop and implement a plugin for Unreal Engine that facilitates the creation of custom planetary systems. This plugin seeks to leverage the engine's procedural generation and advanced simulation tools, offering a modular and flexible environment for designing fully configurable planets and celestial bodies.
 
-Versi髇 soportada actualmente 5.7 / Soported version 5.7
+[Cosmic Architect: Documentation and Install Instructions (in Spanish)](https://tfg-bravoperezrubio.gitbook.io/cosmicarchitectdocumentation/) (supported version: Unreal Engine 5.7; see [official documentation](https://docs.unrealengine.com/))
