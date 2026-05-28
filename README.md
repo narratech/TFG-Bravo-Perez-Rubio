@@ -15,11 +15,11 @@ El presente Trabajo de Fin de Grado tiene como objetivo el desarrollo e implemen
 
 [Cosmic Architect: Documentación e instrucciones de instalación](https://tfg-bravoperezrubio.gitbook.io/cosmicarchitectdocumentation/) 
 
-Versión soportada: Unreal Engine 5.7; consultar la [documentación oficial](https://docs.unrealengine.com/)).
+Versión soportada: Unreal Engine 5.7; consultar la [documentación oficial](https://docs.unrealengine.com/).
 
 ## Description
 This Bachelor's Thesis aims to develop and implement a plugin for Unreal Engine that facilitates the creation of custom planetary systems. This plugin seeks to leverage the engine's procedural generation and advanced simulation tools, offering a modular and flexible environment for designing fully configurable planets and celestial bodies.
 
 [Cosmic Architect: Documentation and Install Instructions (in Spanish)](https://tfg-bravoperezrubio.gitbook.io/cosmicarchitectdocumentation/) 
 
-Supported version: Unreal Engine 5.7; consult the [official documentation](https://docs.unrealengine.com/)).
+Supported version: Unreal Engine 5.7; consult the [official documentation](https://docs.unrealengine.com/).
