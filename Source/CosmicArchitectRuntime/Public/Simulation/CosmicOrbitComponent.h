@@ -1,30 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
-
-// ============================================================
-// Cosmic Architect
-// Archivo: CosmicOrbitComponent.h
-// Módulo: CosmicArchitectRuntime
-//
-// Descripción:
-//     Componente encargado de simular órbitas keplerianas
-//     simples alrededor de un cuerpo padre.
-//
-// Responsabilidades:
-//     - Movimiento orbital elíptico
-//     - Rotación axial del actor
-//     - Inicialización orbital
-//     - Visualización debug de órbitas
-//     - Previsualización en editor
-//
-// Notas:
-//     - Utiliza una aproximación basada en anomalía excéntrica. 
-//     - La simulación es relativa al actor padre.
-//     - El sistema está diseñado para visualización y gameplay,
-//       no para simulación astrofísica precisa.
-//
-// ============================================================
+// Copyright 1998 - 2026 Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 

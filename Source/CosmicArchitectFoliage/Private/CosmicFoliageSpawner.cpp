@@ -1,3 +1,5 @@
+// Copyright 1998 - 2026 Epic Games, Inc. All Rights Reserved.
+
 #include "CosmicFoliageSpawner.h"
 #include "Engine/World.h"
 #include "ICosmicNoiseStrategy.h"

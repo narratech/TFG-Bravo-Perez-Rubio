@@ -1,3 +1,4 @@
+// Copyright 1998 - 2026 Epic Games, Inc. All Rights Reserved.
 
 #include "Terrain/CosmicCollisionComponent.h"
 #include "PhysicsEngine/BodySetup.h"

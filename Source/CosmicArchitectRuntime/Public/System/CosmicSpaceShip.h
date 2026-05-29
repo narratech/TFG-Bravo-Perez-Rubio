@@ -1,24 +1,4 @@
-// ============================================================
-// Cosmic Architect
-// Archivo: CosmicSpaceShip.h
-// Módulo: CosmicArchitectRuntime
-//
-// Descripción:
-//     Pawn espacial diseñado para navegación 6DOF.
-//
-// Responsabilidades:
-//     - Movimiento espacial libre
-//     - Rotación física de la nave
-//     - Gestión de boost interestelar
-//     - Integración con Enhanced Input
-//     - Control de cámara del jugador
-//
-// Notas:
-//     - Utiliza simulación física basada en fuerzas.
-//     - El movimiento se implementa mediante thrust
-//       y torque aplicados sobre el mesh principal.
-//     - Diseñado para navegación espacial sin gravedad.
-// ============================================================
+// Copyright 1998 - 2026 Epic Games, Inc. All Rights Reserved.
  
 #pragma once
 
