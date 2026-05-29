@@ -7,7 +7,16 @@ Los autores del TFG y responsables del repositorio son:
 * *David Rubio Moreno*
 * *Sergio Pérez Robledano*
 
-El código fuente se distribuye a través de la licencia GNU Lesser General Public License v2.1.
+Este proyecto se distribuye bajo la licencia MIT License.
+
+Esto significa que cualquier persona puede usar, copiar, modificar y distribuir este software, incluso con fines comerciales, siempre que se incluya el aviso de copyright original y el texto de la licencia.
+
+Dependencias de terceros
+
+Este proyecto utiliza la librería FastNoiseLite, distribuida bajo licencia MIT:
+
+Copyright(c) 2023 Jordan Peck (jordan.me2@gmail.com)
+Copyright(c) 2023 Contributors
 
 ## Descripción
 
