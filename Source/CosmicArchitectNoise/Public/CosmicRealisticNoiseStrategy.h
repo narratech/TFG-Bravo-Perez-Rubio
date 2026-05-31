@@ -1,3 +1,4 @@
+// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -5,21 +6,18 @@
 #include "ICosmicNoiseStrategy.h"
 #include "ThirdParty/FastNoiseLite.h"
 
+
 /**
- * Estrategia de generaci√≥n de ruido procedural tipo ‚ÄúEarth-like‚Äù.
- *
- * Combina m√∫ltiples capas de ruido (continentes, monta√±as, colinas, r√≠os y detalle)
- * junto con par√°metros de bioma (humedad y temperatura) para generar terreno planetario.
+ * 
  */
-class COSMICARCHITECTNOISE_API FCosmicEarthLikeNoiseStrategy : public ICosmicNoiseStrategy
+class COSMICARCHITECTNOISE_API FCosmicRealisticNoiseStrategy : public ICosmicNoiseStrategy
 {
 public:
-
     /** Semilla base utilizada para inicializar todos los sistemas de ruido */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     int32 Seed;
 
-    /** Factor global de normalizaci√≥n de altura del terreno */
+    /** Factor global de normalizaciÛn de altura del terreno */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     float HeightNormalizationScale = 1.0f;
 
@@ -27,11 +25,11 @@ public:
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseDataLayer ContinentalLayer;
 
-    /** Capa de ruido utilizada para la generaci√≥n de monta√±as */
+    /** Capa de ruido utilizada para la generaciÛn de montaÒas */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseDataLayer MountainLayer;
 
-    /** Capa de ruido utilizada para la generaci√≥n de colinas */
+    /** Capa de ruido utilizada para la generaciÛn de colinas */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseDataLayer HillLayer;
 
@@ -39,16 +37,16 @@ public:
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseDataLayer DetailLayer;
 
-    /** Capa de ruido utilizada para la generaci√≥n de r√≠os */
+    /** Capa de ruido utilizada para la generaciÛn de rÌos */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseDataLayer RiverLayer;
 
-    /** Par√°metros globales de biomas (humedad, temperatura, etc.) */
+    /** Par·metros globales de biomas (humedad, temperatura, etc.) */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseBiomeParameters BiomeParameters;
 
     /**
-     * Inicializa la estrategia de ruido con todos los par√°metros necesarios.
+     * Inicializa la estrategia de ruido con todos los par·metros necesarios.
      */
     void Initialize(
         int32 InSeed,
@@ -61,7 +59,7 @@ public:
         FCosmicNoiseDataLayer InRiver);
 
     /**
-     * Eval√∫a un punto en el espacio de ruido y genera altura y color de bioma.
+     * Eval˙a un punto en el espacio de ruido y genera altura y color de bioma.
      */
     void EvaluatePoint(const FVector& NoiseDir, float& OutHeight, FLinearColor& OutColor) const override;
 
@@ -70,7 +68,7 @@ protected:
     /** Ruido base de continentes */
     FastNoiseLite ContinentalNoise;
 
-    /** Ruido de monta√±as (ridged noise) */
+    /** Ruido de montaÒas (ridged noise) */
     FastNoiseLite MountainNoise;
 
     /** Ruido de colinas */
@@ -79,7 +77,7 @@ protected:
     /** Ruido de detalle fino */
     FastNoiseLite DetailNoise;
 
-    /** Ruido de r√≠os basado en cellular noise */
+    /** Ruido de rÌos basado en cellular noise */
     FastNoiseLite RiverNoise;
 
     /** Ruido de humedad para biomas */

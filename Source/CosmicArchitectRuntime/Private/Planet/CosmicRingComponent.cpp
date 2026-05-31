@@ -1,4 +1,3 @@
-// Copyright 1998 - 2026 Epic Games, Inc. All Rights Reserved.
 
 #include "Planet/CosmicRingComponent.h"
 #include "Kismet/GameplayStatics.h"

@@ -1,7 +1,9 @@
+// Fill out your copyright notice in the Description page of Project Settings.
 
-#include "CosmicEarthLikeNoiseStrategy.h"
 
-void FCosmicEarthLikeNoiseStrategy::Initialize(
+#include "CosmicRealisticNoiseStrategy.h"
+
+void FCosmicRealisticNoiseStrategy::Initialize(
     int32 InSeed,
     float InHeightNormalizationScale,
     FCosmicNoiseBiomeParameters InBiomeParameters,
@@ -17,7 +19,7 @@ void FCosmicEarthLikeNoiseStrategy::Initialize(
 
     ContinentalLayer = InContinental;
     MountainLayer = InMountain;
-    HillLayer = InHill; 
+    HillLayer = InHill;
     DetailLayer = InDetail;
     RiverLayer = InRiver;
 
@@ -48,7 +50,7 @@ void FCosmicEarthLikeNoiseStrategy::Initialize(
     DetailNoise.SetFractalLacunarity(DetailLayer.Lacunarity);
     DetailNoise.SetFractalGain(DetailLayer.Persistence);
 
-    // MontaÃ±as (RIDGED)
+    // Montañas (RIDGED)
     MountainNoise.SetSeed(Seed + 100);
     MountainNoise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
     MountainNoise.SetFractalType(FastNoiseLite::FractalType_Ridged);
@@ -70,7 +72,7 @@ void FCosmicEarthLikeNoiseStrategy::Initialize(
     SetupSimplexFBM(TempNoise, { BiomeParameters.TemperatureFrequency, 3, 2.0f, 0.5f, 1.0f }, 600);
 }
 
-void FCosmicEarthLikeNoiseStrategy::EvaluatePoint(
+void FCosmicRealisticNoiseStrategy::EvaluatePoint(
     const FVector& NoiseDir,
     float& OutHeight,
     FLinearColor& OutColor) const
@@ -135,7 +137,7 @@ void FCosmicEarthLikeNoiseStrategy::EvaluatePoint(
     float Temperature = FMath::Clamp(BaseTemp + TempVar, 0.0f, 1.0f);
 
     // NORMALIZACION ALTURA
-    // Calcular el rango teÃ³rico verdadero (sin escala)
+    // Calcular el rango teórico verdadero (sin escala)
     float TrueMinHeight = -0.5f * ContinentalLayer.Amplitude;
     float TrueMaxHeight = 0.5f * ContinentalLayer.Amplitude
         + MountainLayer.Amplitude
@@ -143,7 +145,7 @@ void FCosmicEarthLikeNoiseStrategy::EvaluatePoint(
         + DetailLayer.Amplitude;   // Detail puede llegar hasta +Amplitude
 
     // Aplicar tu factor de escala configurable (opcional)
-    // Estrecha o ensancha el rango percibido en la visualizaciÃ³n.
+    // Estrecha o ensancha el rango percibido en la visualización.
     float NormalizedMin = TrueMinHeight * HeightNormalizationScale; // normalmente 0
     float NormalizedMax = TrueMaxHeight * HeightNormalizationScale;
 

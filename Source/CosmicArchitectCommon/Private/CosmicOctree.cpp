@@ -1,4 +1,3 @@
-// Copyright 1998 - 2026 Epic Games, Inc. All Rights Reserved.
 
 
 #include "CosmicOctree.h"
@@ -244,7 +243,7 @@ void FCosmicOctree::GetNodesInRadius(
 
     float ViewDistanceCm = ViewDistanceKm * 100000.0f;
     float ViewAngleRad = ViewDistanceCm / SphereRadius;
-    float TargetAngularSize = ViewAngleRad * 0.5f;
+    float TargetAngularSize = FMath::Max(ViewAngleRad * 0.5f, 0.08f / SphereRadius);
 
     // Calcular RequiredDepth una sola vez (usando una celda cercana al centro de la cara)
     int32 RequiredDepth = MaxDepth;
