@@ -1,4 +1,4 @@
-
+// Javier Bravo, David Rubio, Sergio Perez 2026 All Rights Reserved.
 
 #include "CosmicEarthLikeNoiseSettings.h"
 #include "CosmicEarthLikeNoiseStrategy.h"

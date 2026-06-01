@@ -1,4 +1,4 @@
-
+// Javier Bravo, David Rubio, Sergio Perez 2026 All Rights Reserved.
 
 #include "CosmicCraterNoiseSettings.h"
 #include "CosmicCraterNoiseStrategy.h"

@@ -1,3 +1,4 @@
+// Javier Bravo, David Rubio, Sergio Perez 2026 All Rights Reserved.
 
 #include "System/CosmicSpherePlayer.h"
 #include "Components/CapsuleComponent.h"

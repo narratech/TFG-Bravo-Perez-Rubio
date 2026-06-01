@@ -1,4 +1,4 @@
-
+// Javier Bravo, David Rubio, Sergio Perez 2026 All Rights Reserved.
 #include "CosmicArchitectNoise.h"
 
 #define LOCTEXT_NAMESPACE "FCosmicArchitectNoiseModule"

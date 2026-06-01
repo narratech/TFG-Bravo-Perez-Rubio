@@ -1,4 +1,4 @@
-
+// Javier Bravo, David Rubio, Sergio Perez 2026 All Rights Reserved.
 #include "CosmicNoiseClass.h"
 
 TSharedPtr<ICosmicNoiseStrategy> UCosmicNoiseClass::CreateStrategy() const

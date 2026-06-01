@@ -1,4 +1,4 @@
-
+// Javier Bravo, David Rubio, Sergio Perez 2026 All Rights Reserved.
 
 #include "CameraViewportDataUpdater.h"
 #include "ModulesBridge/CosmicCameraBridge.h"
