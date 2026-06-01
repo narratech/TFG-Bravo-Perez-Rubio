@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// Javier Bravo, David Rubio, Sergio Perez 2026 All Rights Reserved.
 
 
 #include "CosmicRealisticNoiseStrategy.h"
@@ -10,7 +10,7 @@ void FCosmicRealisticNoiseStrategy::Initialize(
     FCosmicNoiseDataLayer InContinental,
     FCosmicNoiseDataLayer InMountain,
     FCosmicNoiseDataLayer InHill,
-    FCosmicNoiseDataLayer InDetail,
+    FCosmicNoiseDataLayer InDiffer,
     FCosmicNoiseDataLayer InRiver)
 {
     Seed = InSeed;
@@ -20,35 +20,33 @@ void FCosmicRealisticNoiseStrategy::Initialize(
     ContinentalLayer = InContinental;
     MountainLayer = InMountain;
     HillLayer = InHill;
-    DetailLayer = InDetail;
-    RiverLayer = InRiver;
+    DifferLayer = InDiffer;
 
     auto SetupSimplexFBM = [&](FastNoiseLite& Noise, const FCosmicNoiseDataLayer& Layer, int32 Offset)
         {
             Noise.SetSeed(Seed + Offset);
             Noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
             Noise.SetFractalType(FastNoiseLite::FractalType_FBm);
-
             Noise.SetFrequency(Layer.Frequency);
             Noise.SetFractalOctaves(Layer.Octaves);
             Noise.SetFractalLacunarity(Layer.Lacunarity);
             Noise.SetFractalGain(Layer.Persistence);
         };
 
-    // Continentes
+    // Continentes (base)
     SetupSimplexFBM(ContinentalNoise, ContinentalLayer, 0);
 
-    // Colinas
+    // Colinas (FBM suave)
     SetupSimplexFBM(HillNoise, HillLayer, 200);
 
-    // Detalle (ValueCubic)
-    DetailNoise.SetSeed(Seed + 300);
-    DetailNoise.SetNoiseType(FastNoiseLite::NoiseType_ValueCubic);
-    DetailNoise.SetFractalType(FastNoiseLite::FractalType_FBm);
-    DetailNoise.SetFrequency(DetailLayer.Frequency);
-    DetailNoise.SetFractalOctaves(DetailLayer.Octaves);
-    DetailNoise.SetFractalLacunarity(DetailLayer.Lacunarity);
-    DetailNoise.SetFractalGain(DetailLayer.Persistence);
+    // Detalle (ValueCubic FBM)
+    DifferNoise.SetSeed(Seed + 300);
+    DifferNoise.SetNoiseType(FastNoiseLite::NoiseType_ValueCubic);
+    DifferNoise.SetFractalType(FastNoiseLite::FractalType_FBm);
+    DifferNoise.SetFrequency(DifferLayer.Frequency);
+    DifferNoise.SetFractalOctaves(DifferLayer.Octaves);
+    DifferNoise.SetFractalLacunarity(DifferLayer.Lacunarity);
+    DifferNoise.SetFractalGain(DifferLayer.Persistence);
 
     // Montañas (RIDGED)
     MountainNoise.SetSeed(Seed + 100);
@@ -59,15 +57,7 @@ void FCosmicRealisticNoiseStrategy::Initialize(
     MountainNoise.SetFractalLacunarity(MountainLayer.Lacunarity);
     MountainNoise.SetFractalGain(MountainLayer.Persistence);
 
-    // Rios (CELLULAR)
-    RiverNoise.SetSeed(Seed + 400);
-    RiverNoise.SetNoiseType(FastNoiseLite::NoiseType_Cellular);
-    RiverNoise.SetFractalType(FastNoiseLite::FractalType_None);
-    RiverNoise.SetFrequency(RiverLayer.Frequency);
-    RiverNoise.SetCellularDistanceFunction(FastNoiseLite::CellularDistanceFunction_Euclidean);
-    RiverNoise.SetCellularReturnType(FastNoiseLite::CellularReturnType_Distance);
-
-    // Clima
+    // (Opcional) Clima – si los necesitas para el color, mantenlos
     SetupSimplexFBM(HumidityNoise, { BiomeParameters.HumidityFrequency, BiomeParameters.HumidityOctaves, 2.0f, 0.5f, 1.0f }, 500);
     SetupSimplexFBM(TempNoise, { BiomeParameters.TemperatureFrequency, 3, 2.0f, 0.5f, 1.0f }, 600);
 }
@@ -81,91 +71,66 @@ void FCosmicRealisticNoiseStrategy::EvaluatePoint(
     const float Y = NoiseDir.Y;
     const float Z = NoiseDir.Z;
 
-    // CONTINENTES
-    float Continent = ContinentalNoise.GetNoise(X, Y, Z);
-    Continent = (Continent + 1.0f) * 0.5f;
+    // ------------------ CAPA CONTINENTAL (océano vs tierra) ------------------
+    float ContinentRaw = ContinentalNoise.GetNoise(X, Y, Z);
+    float Continent = (ContinentRaw + 1.0f) * 0.5f;          // [0,1]
+    float BaseHeight = (Continent - 0.5f) * ContinentalLayer.Amplitude;
 
     float OceanMask = FMath::SmoothStep(0.4f, 0.5f, Continent);
     float LandMask = 1.0f - OceanMask;
 
-    float BaseHeight = (Continent - 0.5f) * ContinentalLayer.Amplitude;
+    // ------------------ MÁSCARA DE RELIEVE (montaña vs colina) ------------------
+    // Obtenemos un valor de máscara entre 0 y 1 desde DifferNoise
+    float DiffRaw = DifferNoise.GetNoise(X, Y, Z);
+    // Normalizamos de [-1,1] o [0,1] según el ruido. ValueCubic suele dar [-1,1].
+    float DiffMask = (DiffRaw + 1.0f) * 0.5f;   // ahora [0,1]
+    // Opcional: aplicar contraste para zonas más definidas
+    DiffMask = FMath::Clamp((DiffMask - 0.5f) * 2.0f + 0.5f, 0.0f, 1.0f); // contraste opcional
 
-    // MONTANAS
-    float MountainValue = MountainNoise.GetNoise(X, Y, Z);
-    float Mountain = FMath::Max(0.0f, MountainValue);
-    float MountainMask = FMath::SmoothStep(0.4f, 0.6f, Continent);
+    // ------------------ GENERACIÓN DE MONTAÑAS Y COLINAS ------------------
+    // Montañas (Ridged)
+    float MountainRaw = MountainNoise.GetNoise(X, Y, Z);
+    float Mountain = FMath::Max(0.0f, MountainRaw);    // Ridged ya da [0,1] aprox
     float MountainHeight = Mountain * MountainLayer.Amplitude;
 
-    // COLINAS
-    float Hills = HillNoise.GetNoise(X, Y, Z);
-    float HillHeight = Hills * HillLayer.Amplitude;
+    // Colinas (FBM suave)
+    float HillRaw = HillNoise.GetNoise(X, Y, Z);
+    float Hill = (HillRaw + 1.0f) * 0.5f;               // [0,1]
+    float HillHeight = Hill * HillLayer.Amplitude;
 
-    // BASE TERRAIN
-    float Height = BaseHeight;
+    // Mezcla según DiffMask: donde DiffMask es alto -> montañas, bajo -> colinas
+    float ReliefHeight = FMath::Lerp(HillHeight, MountainHeight, DiffMask);
 
-    Height = FMath::Lerp(Height, Height + HillHeight, LandMask);
-    Height = FMath::Lerp(Height, Height + MountainHeight, MountainMask);
+    // ------------------ COMBINACIÓN FINAL ------------------
+    // Solo aplicamos relieve sobre tierra firme
+    float Height = BaseHeight + (ReliefHeight * LandMask);
 
-    // OCEANO
-    Height = FMath::Lerp(Height, -ContinentalLayer.Amplitude * 0.5f, OceanMask);
+    // Hundir océanos (opcional)
+    Height = FMath::Lerp(Height, -ContinentalLayer.Amplitude * 0.6f, OceanMask);
 
-    // RIOS
-    float River = FMath::Abs(RiverNoise.GetNoise(X, Y, Z));
-    float RiverMask = FMath::SmoothStep(0.0f, 0.05f, River);
-    Height -= RiverMask * RiverLayer.Amplitude;
+    // (Opcional) Añadir un pequeño ruido de detalle extra si quieres, pero ya no usamos DifferLayer para eso.
+    // Si deseas microdetalle, puedes añadir otra capa aparte, pero con esto es suficiente.
 
-    // DETALLE
-    float Detail = DetailNoise.GetNoise(X, Y, Z);
-    Height += Detail * DetailLayer.Amplitude;
-
-    // HUMEDAD
-    float RawHum = HumidityNoise.GetNoise(X, Y, Z);
-    float Humidity = (RawHum + 1.0f) * 0.5f;
-
-    Humidity = (Humidity + BiomeParameters.HumidityOffset);
-    Humidity = FMath::Clamp(
-        (Humidity - 0.5f) * BiomeParameters.HumidityContrast + 0.5f,
-        0.0f,
-        1.0f
-    );
-
-    // TEMPERATURA
-    float Latitude = FMath::Abs(Z);
-    float BaseTemp = 1.0f - (Latitude * BiomeParameters.LatitudeEffect);
-    float TempVar = TempNoise.GetNoise(X, Y, Z) * 0.2f;
-
-    float Temperature = FMath::Clamp(BaseTemp + TempVar, 0.0f, 1.0f);
-
-    // NORMALIZACION ALTURA
-    // Calcular el rango teórico verdadero (sin escala)
-    float TrueMinHeight = -0.5f * ContinentalLayer.Amplitude;
+    // ------------------ NORMALIZACIÓN Y COLOR ------------------
+    float TrueMinHeight = -0.6f * ContinentalLayer.Amplitude;
     float TrueMaxHeight = 0.5f * ContinentalLayer.Amplitude
-        + MountainLayer.Amplitude
-        + HillLayer.Amplitude
-        + DetailLayer.Amplitude;   // Detail puede llegar hasta +Amplitude
-
-    // Aplicar tu factor de escala configurable (opcional)
-    // Estrecha o ensancha el rango percibido en la visualización.
-    float NormalizedMin = TrueMinHeight * HeightNormalizationScale; // normalmente 0
+        + FMath::Max(MountainLayer.Amplitude, HillLayer.Amplitude); // el mayor de los dos
+    float NormalizedMin = TrueMinHeight * HeightNormalizationScale;
     float NormalizedMax = TrueMaxHeight * HeightNormalizationScale;
-
-    // Normalizar con desplazamiento
     float AltitudeNormalized = (Height - NormalizedMin) / (NormalizedMax - NormalizedMin);
     AltitudeNormalized = FMath::Clamp(AltitudeNormalized, 0.0f, 1.0f);
 
-    float VisualTemp = FMath::Clamp(
-        Temperature - (AltitudeNormalized * BiomeParameters.AltitudeTemperaturePenalty),
-        0.0f,
-        1.0f
-    );
+    // Cálculo de clima (si lo necesitas para color)
+    float RawHum = HumidityNoise.GetNoise(X, Y, Z);
+    float Humidity = (RawHum + 1.0f) * 0.5f;
+    Humidity = FMath::Clamp((Humidity + BiomeParameters.HumidityOffset - 0.5f) * BiomeParameters.HumidityContrast + 0.5f, 0.0f, 1.0f);
 
-    // OUTPUT
+    float Latitude = FMath::Abs(Z);
+    float BaseTemp = 1.0f - (Latitude * BiomeParameters.LatitudeEffect);
+    float TempVar = TempNoise.GetNoise(X, Y, Z) * 0.2f;
+    float Temperature = FMath::Clamp(BaseTemp + TempVar, 0.0f, 1.0f);
+    float VisualTemp = FMath::Clamp(Temperature - (AltitudeNormalized * BiomeParameters.AltitudeTemperaturePenalty), 0.0f, 1.0f);
+
     OutHeight = Height;
-
-    OutColor = FLinearColor(
-        AltitudeNormalized,  // R
-        VisualTemp,          // G
-        Humidity,            // B     
-        1.0f             // A 
-    );
+    OutColor = FLinearColor(AltitudeNormalized, VisualTemp, Humidity, 1.0f);
 }

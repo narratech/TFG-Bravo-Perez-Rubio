@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// Javier Bravo, David Rubio, Sergio Perez 2026 All Rights Reserved.
 
 #pragma once
 
@@ -33,9 +33,9 @@ public:
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseDataLayer HillLayer;
 
-    /** Capa de ruido de detalle fino del terreno */
+    /** Capa para separar colinas de montañas */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
-    FCosmicNoiseDataLayer DetailLayer;
+    FCosmicNoiseDataLayer DifferLayer;
 
     /** Capa de ruido utilizada para la generación de ríos */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
@@ -75,7 +75,7 @@ protected:
     FastNoiseLite HillNoise;
 
     /** Ruido de detalle fino */
-    FastNoiseLite DetailNoise;
+    FastNoiseLite DifferNoise;
 
     /** Ruido de ríos basado en cellular noise */
     FastNoiseLite RiverNoise;
