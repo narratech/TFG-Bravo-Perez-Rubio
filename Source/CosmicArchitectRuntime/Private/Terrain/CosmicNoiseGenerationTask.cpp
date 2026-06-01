@@ -59,7 +59,7 @@ void FCosmicNoiseGenerationTask::DoWork()
 
         const double SampleDistance = GridSpacing;
 
-        FVector Normal;
+        FVector Normal = FVector::ZeroVector;
 
         if (IsPlanet || IsSphere) {
             // Crear dos vectores perpendiculares a la dirección

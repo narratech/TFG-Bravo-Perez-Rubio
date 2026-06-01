@@ -3,14 +3,14 @@
 #include "Simulation/CosmicGravitySubsystem.h"
 #include "Simulation/CosmicGravityComponent.h"
 
-// Constante gravitacional universal en unidades SI: 6.674e-11 m3 / (kg * s2).
+// Constante gravitacional universal en unidades del sistema internacional: 6.674e-11 m3 / (kg * s2).
 // Se usa para calcular masas planetarias en BeginPlay y como base de GUnreal.
-static const double G = 0.00000000006674;
+static const double GravityConstant = 0.00000000006674;
 
 // Version adaptada de G para el sistema de unidades de Unreal Engine (centimetros).
 // Se multiplica por 10000 (100^2) para compensar que las distancias en Unreal estan en cm
 // mientras que la formula de Newton opera en metros: F = G*M*m / r^2, con r en metros.
-static const double GUnreal = G * 10000;
+static const double GUnreal = GravityConstant * 10000;
 
 
 void UCosmicGravitySubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -219,7 +219,7 @@ void UCosmicGravitySubsystem::UnregisterBody(UCosmicGravityComponent* Body)
 
 double UCosmicGravitySubsystem::GetGravityConstant() const
 {
-    return G;
+    return GravityConstant;
 }
 
 UWorld* UCosmicGravitySubsystem::GetTickableGameObjectWorld() const
