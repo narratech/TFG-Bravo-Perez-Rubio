@@ -3,6 +3,7 @@
 #include "CosmicNoiseDSettingsActions.h"
 #include "CosmicNoiseESettingsActions.h"
 #include "CosmicNoiseCSettingsActions.h"
+#include "CosmicNoiseRSettingsActions.h"
 #include "CosmicFoliageCollectionActions.h"
 
 #define LOCTEXT_NAMESPACE "FCosmicArchitectFactoryModule"
@@ -33,12 +34,16 @@ void FCosmicArchitectFactoryModule::StartupModule()
     TSharedPtr<FCosmicNoiseCraterSettingsActions> CraterNoiseActions = MakeShareable(new FCosmicNoiseCraterSettingsActions());
     CraterNoiseActions->MyAssetCategory = CosmicCategory;
 
+    TSharedPtr<FCosmicNoiseRealisticSettingsActions> RealisticNoiseActions = MakeShareable(new FCosmicNoiseRealisticSettingsActions());
+    RealisticNoiseActions->MyAssetCategory = CosmicCategory;
+
     TSharedPtr<FCosmicFoliageCollectionActions> FoliageActions = MakeShareable(new FCosmicFoliageCollectionActions());
     FoliageActions->MyAssetCategory = CosmicCategory;
 
     AssetTools.RegisterAssetTypeActions(NoiseActions.ToSharedRef());
     AssetTools.RegisterAssetTypeActions(EarthNoiseActions.ToSharedRef());
     AssetTools.RegisterAssetTypeActions(CraterNoiseActions.ToSharedRef());
+    AssetTools.RegisterAssetTypeActions(RealisticNoiseActions.ToSharedRef());
     AssetTools.RegisterAssetTypeActions(FoliageActions.ToSharedRef());
 }
 
