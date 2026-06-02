@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// Javier Bravo, David Rubio, Sergio Perez 2026 All Rights Reserved.
 
 #pragma once
 
@@ -15,7 +15,7 @@ class COSMICARCHITECTNOISE_API UCosmicRealisticNoiseSettings : public UCosmicNoi
 	GENERATED_BODY()
 	
     /**
-     * Semilla utilizada para la generación procedural del terreno.
+     * Semilla utilizada para la generaciï¿½n procedural del terreno.
      */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     int32 Seed;
@@ -23,8 +23,8 @@ class COSMICARCHITECTNOISE_API UCosmicRealisticNoiseSettings : public UCosmicNoi
     /**
      * Escala utilizada para normalizar la altura final del terreno.
      *
-     * Valores más bajos comprimen las alturas.
-     * Valores más altos preservan mayor variación vertical.
+     * Valores mï¿½s bajos comprimen las alturas.
+     * Valores mï¿½s altos preservan mayor variaciï¿½n vertical.
      */
     UPROPERTY(
         EditAnywhere,
@@ -40,7 +40,7 @@ class COSMICARCHITECTNOISE_API UCosmicRealisticNoiseSettings : public UCosmicNoi
     FCosmicNoiseDataLayer ContinentalLayer;
 
     /**
-     * Capa utilizada para generar cadenas montañosas.
+     * Capa utilizada para generar cadenas montaï¿½osas.
      */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseDataLayer MountainLayer;
@@ -52,26 +52,26 @@ class COSMICARCHITECTNOISE_API UCosmicRealisticNoiseSettings : public UCosmicNoi
     FCosmicNoiseDataLayer HillLayer;
 
     /**
-     * Capa utilizada para añadir detalle fino al terreno.
+     * Capa utilizada para aï¿½adir detalle fino al terreno.
      */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseDataLayer DetailLayer;
 
     /**
-     * Capa utilizada para la generación procedural de ríos.
+     * Capa utilizada para la generaciï¿½n procedural de rï¿½os.
      */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseDataLayer RiverLayer;
 
     /**
-     * Parámetros relacionados con la generación de biomas.
+     * Parï¿½metros relacionados con la generaciï¿½n de biomas.
      */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseBiomeParameters BiomeParameters;
 
     /**
      * Crea e inicializa la estrategia de ruido tipo Tierra
-     * utilizando la configuración actual.
+     * utilizando la configuraciï¿½n actual.
      *
      * @return Estrategia de ruido completamente inicializada.
      */

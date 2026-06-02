@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// Javier Bravo, David Rubio, Sergio Perez 2026 All Rights Reserved.
 
 
 #include "CosmicRealisticNoiseSettings.h"
