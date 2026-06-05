@@ -41,13 +41,13 @@ UCosmicRingComponent::UCosmicRingComponent()
 		MacroDiskComponent->SetStaticMesh(PlaneMeshAsset.Object);
 	}
 
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> CosmicMaterialAsset(TEXT("/Script/Engine.Material'/CosmicArchitect/Resources/Materials/M_CosmicRing.M_CosmicRing'"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> CosmicMaterialAsset(TEXT("/Script/Engine.MaterialInstanceConstant'/CosmicArchitect/CosmicArchitect/Resources/Materials/M_CosmicRing.M_CosmicRing'"));
 	if (CosmicMaterialAsset.Succeeded())
 	{
 		MacroRingMaterial = CosmicMaterialAsset.Object;
 	}
 
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> AsteroidMeshAsset(TEXT("/Script/Engine.StaticMesh'/CosmicArchitect/Models/Asteroid/asteroid_01.asteroid_01'"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> AsteroidMeshAsset(TEXT("/Script/Engine.StaticMesh'/CosmicArchitect/CosmicArchitect/Resources/Mesh/asteroid_01.asteroid_01'"));
 	if (AsteroidMeshAsset.Succeeded())
 	{
 		AsteroidMesh = AsteroidMeshAsset.Object;
