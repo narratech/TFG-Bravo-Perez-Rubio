@@ -435,7 +435,7 @@ void UCosmicBenchmarkManager::RunNextSequentialStep()
         if (CurrentStep < RadiusConfigs.Num())
         {
             FVector Radii = RadiusConfigs[CurrentStep];
-            SetFoliageConfig(100, Radii.X, Radii.Y, Radii.Z);
+            SetFoliageConfig(500, Radii.X, Radii.Y, Radii.Z);
             SpawnPlanets(1, true);
         }
         break;
@@ -737,12 +737,12 @@ void UCosmicBenchmarkManager::RunFoliageRadiusTest()
     }
 
     RadiusConfigs = {
-            FVector(0.01f, 0.05f, 0.1f),   // Muy cercano
-            FVector(0.02f, 0.1f, 0.2f),     // Cercano
+            FVector(0.02f, 0.05f, 0.1f),   // Muy cercano
+            FVector(0.04f, 0.1f, 0.2f),     // Cercano
             FVector(0.05f, 0.2f, 0.5f),     // Default
             FVector(0.1f, 0.4f, 1.0f),      // Medio
             FVector(0.2f, 0.8f, 2.0f),      // Lejos
-            FVector(0.5f, 2.0f, 5.0f)       // Muy lejos
+            FVector(0.4f, 2.0f, 5.0f)       // Muy lejos
     };
 
     // Este test variará los radios de las capas

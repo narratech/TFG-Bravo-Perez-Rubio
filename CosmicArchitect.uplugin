@@ -73,6 +73,20 @@
 			]
 		},
 		{
+			"Name": "CosmicArchitectBenchmark",
+			"Type": "DeveloperTool",
+			"LoadingPhase": "Default",
+			"PlatformAllowList": [
+				"Win64"
+			],
+			"PlatformDenyList": [
+				"Linux",
+				"Mac",
+				"IOS",
+				"Android"
+			]
+		},
+		{
 			"Name": "CosmicArchitectCommon",
 			"Type": "Runtime",
 			"LoadingPhase": "Default",
