@@ -16,8 +16,9 @@ struct FCosmicFoliageInstance
 {
     GENERATED_BODY()
 
-    /** Definición del mesh de foliage asociado */
-    const FCosmicFoliageMesh* MeshDef = nullptr;
+    /** HISM compartido al que pertenece la instancia. */
+    FCosmicHISMKey HISMKey;
+
     /** Transform final de la instancia */
     FTransform Transform;
 };
@@ -45,13 +46,14 @@ public:
      */
     struct FSeedPoint
     {
-        FVector Direction;      // Dirección desde el centro del planeta
-        FVector WorldPosition;  // Posición en el mundo
-        FVector CachedNormal;
-        float Temperature;
-        float Humidity;
-        float Height;
-        float Slope;
+        FVector Direction = FVector::UpVector;      // Dirección desde el centro del planeta
+        FVector WorldPosition = FVector::ZeroVector; // Posición relativa al planeta
+        FVector CachedNormal = FVector::UpVector;
+        int32 AllocationIndex = INDEX_NONE;
+        float Temperature = 0.0f;
+        float Humidity = 0.0f;
+        float Height = 0.0f;
+        float Slope = 0.0f;
     }; 
     /**
      * Constructor de la tarea de generación de foliage.
@@ -59,18 +61,18 @@ public:
     FFoliageGenerationTask(
         const FCubeMapCell& InCell,
         ECosmicFoliageLayer InLayer,
-        UCosmicFoliageCollection* InCollection,
-        const FVector& InPlanetCenter,
-        float InPlanetRadius,
+        TSharedPtr<const TArray<FCosmicFoliageCollectionEntry>, ESPMode::ThreadSafe> InFoliageEntries,
+        double InPlanetRadius,
         TSharedPtr<ICosmicNoiseStrategy> InNoiseGenerationStrategy,
-        float InCellAreaKm2)
+        int32 InMaxInstancesPerCell,
+        float InNormalSampleDistanceCm)
         : Cell(InCell)
         , Layer(InLayer)
-        , Collection(InCollection)
-        , PlanetCenter(InPlanetCenter)
+        , FoliageEntries(MoveTemp(InFoliageEntries))
         , PlanetRadius(InPlanetRadius)
         , NoiseGenerationStrategy(InNoiseGenerationStrategy)
-        , CellAreaKm2(InCellAreaKm2)
+        , MaxInstancesPerCell(InMaxInstancesPerCell)
+        , NormalSampleDistanceCm(InNormalSampleDistanceCm)
     {
     }
 
@@ -84,23 +86,40 @@ public:
 
 private:
 
-    /** Colección de foliage utilizada como base */
-    UCosmicFoliageCollection* Collection;
-
-    /** Centro del planeta */
-    FVector PlanetCenter;
+    /** Snapshot inmutable creado una sola vez en el game thread y compartido entre tareas. */
+    TSharedPtr<const TArray<FCosmicFoliageCollectionEntry>, ESPMode::ThreadSafe> FoliageEntries;
 
     /** Radio del planeta */
-    float PlanetRadius;
+    double PlanetRadius;
 
     /** Estrategia de generación de ruido */
     TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy;
 
     /** Área de la celda en km² */
-    float CellAreaKm2;
+    double CellAreaKm2 = 0.0;
+
+    /** Limites de seguridad y muestreo configurados por el spawner. */
+    int32 MaxInstancesPerCell;
+    float NormalSampleDistanceCm;
 
     /** Puntos generados para evaluación */
     TArray<FSeedPoint> SeedPoints;
+
+    struct FMeshAllocation
+    {
+        int32 EntryIndex = INDEX_NONE;
+        int32 MeshIndex = INDEX_NONE;
+        int32 TargetCount = 0;
+        bool bNeedsSurfaceNormal = true;
+    };
+
+    TArray<FMeshAllocation> Allocations;
+
+    /** Calcula el area real del cuadrilatero esferico de la celda. */
+    double CalculateCellAreaKm2() const;
+
+    /** Precalcula cuotas deterministas, incluyendo redondeo estocastico. */
+    int32 PrepareAllocations(FRandomStream& Random);
 
     /**
      * Genera puntos de semilla dentro de la celda.
@@ -110,7 +129,7 @@ private:
     /**
      * Evalúa condiciones ambientales (temperatura, humedad, altura, etc).
      */
-    void EvaluateEnvironmentalConditions(FRandomStream& Random);
+    void EvaluateEnvironmentalConditions();
 
     /**
      * Crea instancias finales de foliage a partir de los seed points.
@@ -122,6 +141,7 @@ private:
      */
     void CalculateSlopeAndNormal(
         const FVector& Direction,
+        float CenterHeight,
         float& OutSlope,
         FVector& OutNormal);
 };

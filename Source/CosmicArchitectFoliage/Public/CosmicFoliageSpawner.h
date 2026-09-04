@@ -79,8 +79,28 @@ public:
     float FarLayerRadiusKm = 0.5f;
 
     /** Máximo de instancias procesadas por frame */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage", meta = (ClampMin = "1"))
     int32 MaxInstancesPerFrame = 100;
+
+    /** Numero maximo de celdas calculadas simultaneamente en el thread pool. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance",
+        meta = (ClampMin = "1", ClampMax = "32"))
+    int32 MaxConcurrentGenerationTasks = 4;
+
+    /** Limite de seguridad para impedir celdas configuradas con millones de instancias. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance",
+        meta = (ClampMin = "1", ClampMax = "1000000"))
+    int32 MaxInstancesPerCell = 10000;
+
+    /** Distancia usada para estimar la normal procedural del terreno. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance",
+        meta = (ClampMin = "1.0"))
+    float NormalSampleDistanceCm = 500.0f;
+
+    /** Fraccion del radio que debe desplazarse el observador antes de consultar de nuevo el octree. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance",
+        meta = (ClampMin = "0.001", ClampMax = "0.25"))
+    float VisibilityUpdateDistanceRatio = 0.02f;
 
     /** Activa debug visual de celdas */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Debug")
@@ -113,11 +133,12 @@ protected:
     // Debug: Dibujar celdas activas
     void DrawDebugCells(const FVector& PlanetCenter, double PlanetRadius);
 
-    void ProcessApplyQueue();
-    void ProcessDeactivationQueue();
-    void UpdateOctreeAndGenerate(const FVector& ViewerLocation, double DistanceToSurface, const FVector& PlanetCenter, double PlanetRadius, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy);
+    void ProcessApplyQueue(int32& RemainingInstanceBudget);
+    void ProcessDeactivationQueue(int32& RemainingInstanceBudget);
+    void UpdateOctreeAndGenerate(const FVector& ViewerLocation, double DistanceToSurface, const FVector& PlanetCenter);
     void UpdateFoliageGeneration();
-    void GenerateCellFoliage(const FCubeMapCell& Cell, const FVector& PlanetCenter, double PlanetRadius, ECosmicFoliageLayer Layer, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy);
+    void GenerateCellFoliage(const FCubeMapCell& Cell, double PlanetRadius, ECosmicFoliageLayer Layer, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy);
+    void StartQueuedGenerationTasks(double PlanetRadius, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy);
     void ClearDelegates();
 
 private:
@@ -127,26 +148,40 @@ private:
         FCubeMapCell Cell;
         ECosmicFoliageLayer Layer;
         TArray<FCosmicFoliageInstance> Instances;
+        int32 NextInstanceIndex = 0;
     };
 
     TArray<FPendingApplyCell> ApplyQueues[3];
     TArray<FCubeMapCell> PendingDeactivation[3];
+    TArray<FCubeMapCell> QueuedCells[3];
+    TSet<FCubeMapCell> PendingDeactivationCells[3];
+    TSet<FCubeMapCell> CellsBeingDeactivated[3];
 
     TSet<FCubeMapCell> CurrentVisibleCells[3];
 
     UPROPERTY()
-    TMap<FCosmicHISMKey, FCosmicHISMPoolList> FreeHISMPool;
+    TMap<FCosmicHISMKey, FCosmicSharedHISMData> SharedHISMs;
 
-    FRandomStream RandomStream;
     TSet<FCubeMapCell> PendingCells[3];
     TArray<FAsyncTask<FFoliageGenerationTask>*> ActiveTasks[3];
 
+    /** Cache ligera para no recorrer el octree cuando no puede cambiar la cobertura. */
+    FVector LastVisibilityQueryLocation[3];
+    float LastVisibilityRadiusKm[3] = { 0.0f, 0.0f, 0.0f };
+    bool bVisibilityQueryValid[3] = { false, false, false };
+    bool bLayerWasEnabled[3] = { false, false, false };
+    uint8 ConfiguredLayerMask = 0;
+    bool bLayerMaskDirty = true;
+    TSharedPtr<const TArray<FCosmicFoliageCollectionEntry>, ESPMode::ThreadSafe> FoliageEntriesSnapshot;
+
     float GetLayerRadius(ECosmicFoliageLayer Layer) const;
     FColor GetLayerColor(ECosmicFoliageLayer Layer) const;
+    int32 GetActiveTaskCount() const;
+    void RefreshConfiguredLayerMask();
     /** Aplica las instancias generadas al mundo */
-    void ApplyGeneratedInstances(const FCubeMapCell& Cell, ECosmicFoliageLayer Layer, const TArray<FCosmicFoliageInstance>& Instances);
+    void ApplyGeneratedInstances(const FCubeMapCell& Cell, ECosmicFoliageLayer Layer, TArrayView<const FCosmicFoliageInstance> Instances);
 
-    UHierarchicalInstancedStaticMeshComponent* AcquireHISM(const FCosmicHISMKey& Key);
-    void ReleaseHISM(const FCosmicHISMKey& Key, UHierarchicalInstancedStaticMeshComponent* Comp);
+    FCosmicSharedHISMData* GetOrCreateSharedHISM(const FCosmicHISMKey& Key);
+    int32 RemoveCellInstances(int32 LayerIndex, const FCubeMapCell& Cell, int32 InstanceBudget);
 
 };

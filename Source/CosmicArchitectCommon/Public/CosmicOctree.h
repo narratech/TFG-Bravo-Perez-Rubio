@@ -187,6 +187,9 @@ private:
      */
     float GetCellAngularSize(const FCubeMapCell& Cell) const;
 
+    /** Obtiene las cuatro esquinas unicas de la celda ya normalizadas. */
+    void GetCellCornerDirections(const FCubeMapCell& Cell, FVector OutCorners[4]) const;
+
     /**
      * Recorre recursivamente una celda y sus subdivisiones visibles.
      *
@@ -204,4 +207,7 @@ private:
         float ViewDistanceCm,
         int32 RequiredDepth,
         TArray<FCubeMapCell>& OutNodes) const;
+
+    /** Profundidades ya calculadas para las distancias usadas por las capas. */
+    mutable TMap<int32, int32> RequiredDepthCache;
 };

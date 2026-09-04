@@ -102,7 +102,10 @@ struct FCosmicHISMKey
 {
     GENERATED_BODY()
 
+    UPROPERTY()
     UStaticMesh* Mesh = nullptr;
+
+    UPROPERTY()
     bool         bHasCollision = true;
 
     bool operator==(const FCosmicHISMKey& Other) const
@@ -121,7 +124,8 @@ struct FCosmicFoliageCellData
 {
     GENERATED_BODY()
 
-    TMap<FCosmicHISMKey, UHierarchicalInstancedStaticMeshComponent*> MeshComponents;
+    /** Indices pertenecientes a esta celda dentro del HISM compartido. */
+    TMap<FCosmicHISMKey, TArray<int32>> InstanceIndices;
 };
 
 // Estructura para almacenar celdas por capa
@@ -135,27 +139,28 @@ struct FCosmicFoliageLayerCells
 };
 
 USTRUCT()
-struct FCosmicHISMPoolList
+struct FCosmicFoliageInstanceOwner
 {
     GENERATED_BODY()
 
-    TArray<UHierarchicalInstancedStaticMeshComponent*> Components;
+    FCubeMapCell Cell;
+    int32 LayerIndex = INDEX_NONE;
+    int32 CellSlot = INDEX_NONE;
 };
 
-struct FCosmicHISMPoolKey
+USTRUCT()
+struct FCosmicSharedHISMData
 {
-    UStaticMesh* Mesh;
-    ECosmicFoliageLayer Layer;
+    GENERATED_BODY()
 
-    bool operator==(const FCosmicHISMPoolKey& Other) const
-    {
-        return Mesh == Other.Mesh && Layer == Other.Layer;
-    }
+    UPROPERTY()
+    UHierarchicalInstancedStaticMeshComponent* Component = nullptr;
+
+    /** Paralelo al array interno de instancias del HISM. */
+    TArray<FCosmicFoliageInstanceOwner> InstanceOwners;
+
+    /** Slots ocultos que pueden reutilizarse sin borrar/reordenar el HISM. */
+    TArray<int32> FreeInstanceIndices;
+
+    int32 ActiveInstanceCount = 0;
 };
-
-FORCEINLINE uint32 GetTypeHash(const FCosmicHISMPoolKey& Key)
-{
-    return HashCombine(GetTypeHash(Key.Mesh), (uint32)Key.Layer);
-}
-
-
