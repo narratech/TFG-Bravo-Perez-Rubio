@@ -78,9 +78,13 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage", meta = (ClampMin = "0.02"))
     float FarLayerRadiusKm = 0.5f;
 
-    /** Máximo de instancias procesadas por frame */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage", meta = (ClampMin = "1"))
+    /** Máximo de instancias aplicadas al mundo por frame */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance", meta = (ClampMin = "1"))
     int32 MaxInstancesPerFrame = 100;
+
+    /** Máximo de instancias retiradas/desactivadas del mundo por frame */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance", meta = (ClampMin = "1"))
+    int32 MaxDeactivationInstancesPerFrame = 100;
 
     /** Numero maximo de celdas calculadas simultaneamente en el thread pool. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance",
@@ -101,6 +105,10 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance",
         meta = (ClampMin = "0.001", ClampMax = "0.25"))
     float VisibilityUpdateDistanceRatio = 0.02f;
+
+    /** Orden de prioridad para generar, aplicar y retirar las capas (por defecto: Far -> Medium -> Near). */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance")
+    TArray<ECosmicFoliageLayer> FoliageLayerPriority;
 
     /** Activa debug visual de celdas */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Debug")
@@ -184,6 +192,7 @@ private:
     float GetLayerRadius(ECosmicFoliageLayer Layer) const;
     FColor GetLayerColor(ECosmicFoliageLayer Layer) const;
     int32 GetActiveTaskCount() const;
+    void GetLayerPriorityIndices(int32 OutLayerIndices[3]) const;
     void RefreshConfiguredLayerMask();
     /** Aplica las instancias generadas al mundo */
     void ApplyGeneratedInstances(const FCubeMapCell& Cell, ECosmicFoliageLayer Layer, TArrayView<const FCosmicFoliageInstance> Instances);

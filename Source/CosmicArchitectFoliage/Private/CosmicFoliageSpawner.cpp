@@ -36,6 +36,11 @@ UCosmicFoliageSpawner::UCosmicFoliageSpawner()
     // El clipmap llama explicitamente a UpdateFoliageSpawner; registrar otro
     // tick de componente no aporta trabajo y si tiene coste de scheduling.
     PrimaryComponentTick.bCanEverTick = false;
+    FoliageLayerPriority = {
+        ECosmicFoliageLayer::Far,
+        ECosmicFoliageLayer::Medium,
+        ECosmicFoliageLayer::Near
+    };
 }
 
 void UCosmicFoliageSpawner::InitFoliageSpawner(float RadiusKm)
@@ -61,9 +66,11 @@ void UCosmicFoliageSpawner::UpdateFoliageSpawner(float DeltaTime, const FVector&
     const FVector ViewerDir = (ViewerLocation - PlanetCenter).GetSafeNormal();
     StartQueuedGenerationTasks(ViewerDir, PlanetRadius, NoiseGenerationStrategy);
 
-    int32 RemainingInstanceBudget = FMath::Max(1, MaxInstancesPerFrame);
-    ProcessDeactivationQueue(RemainingInstanceBudget);
-    ProcessApplyQueue(ViewerDir, RemainingInstanceBudget);
+    int32 RemainingDeactivationBudget = FMath::Max(1, MaxDeactivationInstancesPerFrame);
+    int32 RemainingApplyBudget = FMath::Max(1, MaxInstancesPerFrame);
+
+    ProcessDeactivationQueue(RemainingDeactivationBudget);
+    ProcessApplyQueue(ViewerDir, RemainingApplyBudget);
 }
 
 void UCosmicFoliageSpawner::CancelAsyncWork()
@@ -267,6 +274,46 @@ int32 UCosmicFoliageSpawner::GetActiveTaskCount() const
     return ActiveTasks[0].Num() + ActiveTasks[1].Num() + ActiveTasks[2].Num();
 }
 
+void UCosmicFoliageSpawner::GetLayerPriorityIndices(int32 OutLayerIndices[3]) const
+{
+    int32 NumLayers = 0;
+
+    auto AddUniqueLayer = [&OutLayerIndices, &NumLayers](ECosmicFoliageLayer Layer)
+    {
+        int32 LayerIndex = INDEX_NONE;
+        switch (Layer)
+        {
+        case ECosmicFoliageLayer::Near:   LayerIndex = 0; break;
+        case ECosmicFoliageLayer::Medium: LayerIndex = 1; break;
+        case ECosmicFoliageLayer::Far:    LayerIndex = 2; break;
+        default: return;
+        }
+
+        for (int32 Index = 0; Index < NumLayers; ++Index)
+        {
+            if (OutLayerIndices[Index] == LayerIndex)
+            {
+                return;
+            }
+        }
+
+        if (NumLayers < 3)
+        {
+            OutLayerIndices[NumLayers++] = LayerIndex;
+        }
+    };
+
+    for (const ECosmicFoliageLayer Layer : FoliageLayerPriority)
+    {
+        AddUniqueLayer(Layer);
+    }
+
+    // Fallback por defecto: Far -> Medium -> Near
+    AddUniqueLayer(ECosmicFoliageLayer::Far);
+    AddUniqueLayer(ECosmicFoliageLayer::Medium);
+    AddUniqueLayer(ECosmicFoliageLayer::Near);
+}
+
 void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocation, double DistanceToSurface, const FVector& PlanetCenter)
 {
     if (bLayerMaskDirty)
@@ -384,8 +431,16 @@ void UCosmicFoliageSpawner::StartQueuedGenerationTasks(
     }
 
     int32 AvailableSlots = FMath::Max(1, MaxConcurrentGenerationTasks) - GetActiveTaskCount();
-    for (int32 LayerIndex = 0; LayerIndex < 3 && AvailableSlots > 0; ++LayerIndex)
+    int32 LayerPriorityIndices[3];
+    GetLayerPriorityIndices(LayerPriorityIndices);
+
+    for (const int32 LayerIndex : LayerPriorityIndices)
     {
+        if (AvailableSlots <= 0)
+        {
+            break;
+        }
+
         TArray<FPendingQueuedCell>& Queue = QueuedCells[LayerIndex];
         while (!Queue.IsEmpty() && AvailableSlots > 0)
         {
@@ -473,38 +528,45 @@ void UCosmicFoliageSpawner::UpdateFoliageGeneration()
 
 void UCosmicFoliageSpawner::ProcessApplyQueue(const FVector& ViewerDir, int32& RemainingBudget)
 {
-    // PRIORIDAD: Near Medium Far
-    for (int32 Layer = 0; Layer < 3; Layer++)
-    {
-        auto& Queue = ApplyQueues[Layer];
+    int32 LayerPriorityIndices[3];
+    GetLayerPriorityIndices(LayerPriorityIndices);
 
-        // Si hay multiples celdas completadas esperando a ser aplicadas y la primera aun no ha comenzado
-        // (NextInstanceIndex == 0), priorizamos la celda mas cercana al jugador.
-        if (Queue.Num() > 1 && Queue[0].NextInstanceIndex == 0)
+    for (const int32 Layer : LayerPriorityIndices)
+    {
+        if (RemainingBudget <= 0)
         {
-            int32 BestIndex = 0;
-            double BestScore = FVector::DotProduct(ViewerDir, Queue[0].UnitDirection);
-            for (int32 Index = 1; Index < Queue.Num(); ++Index)
-            {
-                if (Queue[Index].NextInstanceIndex == 0)
-                {
-                    const double Score = FVector::DotProduct(ViewerDir, Queue[Index].UnitDirection);
-                    if (Score > BestScore)
-                    {
-                        BestScore = Score;
-                        BestIndex = Index;
-                    }
-                }
-            }
-            if (BestIndex != 0)
-            {
-                Queue.Swap(0, BestIndex);
-            }
+            return;
         }
 
-        for (int32 i = 0; i < Queue.Num(); )
+        auto& Queue = ApplyQueues[Layer];
+
+        while (!Queue.IsEmpty() && RemainingBudget > 0)
         {
-            FPendingApplyCell& Pending = Queue[i];
+            // Si hay multiples celdas completadas esperando y la primera aun no ha comenzado
+            // (NextInstanceIndex == 0), priorizamos la celda mas cercana al jugador.
+            if (Queue.Num() > 1 && Queue[0].NextInstanceIndex == 0)
+            {
+                int32 BestIndex = 0;
+                double BestScore = FVector::DotProduct(ViewerDir, Queue[0].UnitDirection);
+                for (int32 Index = 1; Index < Queue.Num(); ++Index)
+                {
+                    if (Queue[Index].NextInstanceIndex == 0)
+                    {
+                        const double Score = FVector::DotProduct(ViewerDir, Queue[Index].UnitDirection);
+                        if (Score > BestScore)
+                        {
+                            BestScore = Score;
+                            BestIndex = Index;
+                        }
+                    }
+                }
+                if (BestIndex != 0)
+                {
+                    Queue.Swap(0, BestIndex);
+                }
+            }
+
+            FPendingApplyCell& Pending = Queue[0];
 
             // Si ya no es necesaria descartar
             if (!CurrentVisibleCells[Layer].Contains(Pending.Cell))
@@ -516,7 +578,7 @@ void UCosmicFoliageSpawner::ProcessApplyQueue(const FVector& ViewerDir, int32& R
                     PendingDeactivation[Layer].Add(Pending.Cell);
                     PendingDeactivationCells[Layer].Add(Pending.Cell);
                 }
-                Queue.RemoveAtSwap(i, 1, EAllowShrinking::No);
+                Queue.RemoveAtSwap(0, 1, EAllowShrinking::No);
                 continue;
             }
 
@@ -527,13 +589,8 @@ void UCosmicFoliageSpawner::ProcessApplyQueue(const FVector& ViewerDir, int32& R
                 // relanzar una tarea en cada actualizacion.
                 LayerCells[Layer].ActiveCells.FindOrAdd(Pending.Cell);
                 PendingCells[Layer].Remove(Pending.Cell);
-                Queue.RemoveAtSwap(i, 1, EAllowShrinking::No);
+                Queue.RemoveAtSwap(0, 1, EAllowShrinking::No);
                 continue;
-            }
-
-            if (RemainingBudget <= 0)
-            {
-                return;
             }
 
             const int32 NumToApply = FMath::Min(InstancesLeft, RemainingBudget);
@@ -547,7 +604,7 @@ void UCosmicFoliageSpawner::ProcessApplyQueue(const FVector& ViewerDir, int32& R
             if (Pending.NextInstanceIndex >= Pending.Instances.Num())
             {
                 PendingCells[Layer].Remove(Pending.Cell);
-                Queue.RemoveAtSwap(i, 1, EAllowShrinking::No);
+                Queue.RemoveAtSwap(0, 1, EAllowShrinking::No);
             }
             else
             {
@@ -559,8 +616,16 @@ void UCosmicFoliageSpawner::ProcessApplyQueue(const FVector& ViewerDir, int32& R
 
 void UCosmicFoliageSpawner::ProcessDeactivationQueue(int32& RemainingBudget)
 {
-    for (int32 Layer = 0; Layer < 3; Layer++)
+    int32 LayerPriorityIndices[3];
+    GetLayerPriorityIndices(LayerPriorityIndices);
+
+    for (const int32 Layer : LayerPriorityIndices)
     {
+        if (RemainingBudget <= 0)
+        {
+            return;
+        }
+
         auto& Queue = PendingDeactivation[Layer];
 
         for (int32 i = 0; i < Queue.Num(); )
