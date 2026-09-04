@@ -138,9 +138,6 @@ protected:
     UPROPERTY()
     FCosmicFoliageLayerCells LayerCells[3];
 
-    // Debug: Dibujar celdas activas
-    void DrawDebugCells(const FVector& PlanetCenter, double PlanetRadius);
-
     void ProcessApplyQueue(const FVector& ViewerDir, int32& RemainingInstanceBudget);
     void ProcessDeactivationQueue(int32& RemainingInstanceBudget);
     void UpdateOctreeAndGenerate(const FVector& ViewerLocation, double DistanceToSurface, const FVector& PlanetCenter);
@@ -190,7 +187,6 @@ private:
     TSharedPtr<const TArray<FCosmicFoliageCollectionEntry>, ESPMode::ThreadSafe> FoliageEntriesSnapshot;
 
     float GetLayerRadius(ECosmicFoliageLayer Layer) const;
-    FColor GetLayerColor(ECosmicFoliageLayer Layer) const;
     int32 GetActiveTaskCount() const;
     void GetLayerPriorityIndices(int32 OutLayerIndices[3]) const;
     void RefreshConfiguredLayerMask();

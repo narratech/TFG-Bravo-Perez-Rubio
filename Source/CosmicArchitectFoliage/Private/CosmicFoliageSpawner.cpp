@@ -194,57 +194,6 @@ void UCosmicFoliageSpawner::PostEditChangeProperty(FPropertyChangedEvent& Proper
 }
 #endif
 
-void UCosmicFoliageSpawner::DrawDebugCells(const FVector& PlanetCenter, double PlanetRadius)
-{
-    if (!bDrawDebugCells)
-        return;
-
-    // Dibujar todas las celdas activas
-    //for (const auto& Pair : ActiveCells)
-    //{
-    //    const FCubeMapCell& Cell = Pair.Key;
-
-    //    // Obtener vértices de la celda
-    //    TArray<FVector> Vertices = Octree.GetDebugVertices(Cell);
-
-    //    // Dibujar líneas
-    //    for (int32 i = 0; i < Vertices.Num(); i += 2)
-    //    {
-    //        DrawDebugLine(
-    //            GetWorld(),
-    //            PlanetCenter + Vertices[i],
-    //            PlanetCenter + Vertices[i + 1],
-    //            FColor::Green,
-    //            false,
-    //            UpdateInterval,
-    //            0,
-    //            DebugCellThickness
-    //        );
-    //    }
-
-    //    //// Dibujar un punto en el centro de la celda
-    //    //FVector Center = PlanetCenter + Octree.GetNodeCenter(Cell) * PlanetRadius;
-    //    //DrawDebugPoint(
-    //    //    GetWorld(),
-    //    //    Center,
-    //    //    10.0f,
-    //    //    FColor::Red,
-    //    //    false,
-    //    //    -1
-    //    //);
-
-    //    //// Dibujar texto con información de la celda
-    //    //DrawDebugString(
-    //    //    GetWorld(),
-    //    //    Center,
-    //    //    Cell.ToString(),
-    //    //    nullptr,
-    //    //    FColor::White,
-    //    //    -1
-    //    //);
-    //}
-}
-
 void UCosmicFoliageSpawner::RefreshConfiguredLayerMask()
 {
     ConfiguredLayerMask = 0;
@@ -706,17 +655,6 @@ float UCosmicFoliageSpawner::GetLayerRadius(ECosmicFoliageLayer Layer) const
     case ECosmicFoliageLayer::Medium: return MediumLayerRadiusKm;
     case ECosmicFoliageLayer::Far:    return FarLayerRadiusKm;
     default: return 0.0f;
-    }
-}
-
-FColor UCosmicFoliageSpawner::GetLayerColor(ECosmicFoliageLayer Layer) const
-{
-    switch (Layer)
-    {
-    case ECosmicFoliageLayer::Near:   return FColor::Red;
-    case ECosmicFoliageLayer::Medium: return FColor::Yellow;
-    case ECosmicFoliageLayer::Far:    return FColor::Green;
-    default: return FColor::White;
     }
 }
 
