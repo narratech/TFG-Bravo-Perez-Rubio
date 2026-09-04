@@ -133,27 +133,34 @@ protected:
     // Debug: Dibujar celdas activas
     void DrawDebugCells(const FVector& PlanetCenter, double PlanetRadius);
 
-    void ProcessApplyQueue(int32& RemainingInstanceBudget);
+    void ProcessApplyQueue(const FVector& ViewerDir, int32& RemainingInstanceBudget);
     void ProcessDeactivationQueue(int32& RemainingInstanceBudget);
     void UpdateOctreeAndGenerate(const FVector& ViewerLocation, double DistanceToSurface, const FVector& PlanetCenter);
     void UpdateFoliageGeneration();
     void GenerateCellFoliage(const FCubeMapCell& Cell, double PlanetRadius, ECosmicFoliageLayer Layer, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy);
-    void StartQueuedGenerationTasks(double PlanetRadius, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy);
+    void StartQueuedGenerationTasks(const FVector& ViewerDir, double PlanetRadius, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy);
     void ClearDelegates();
 
 private:
+
+    struct FPendingQueuedCell
+    {
+        FCubeMapCell Cell;
+        FVector UnitDirection = FVector::UpVector;
+    };
 
     struct FPendingApplyCell
     {
         FCubeMapCell Cell;
         ECosmicFoliageLayer Layer;
+        FVector UnitDirection = FVector::UpVector;
         TArray<FCosmicFoliageInstance> Instances;
         int32 NextInstanceIndex = 0;
     };
 
     TArray<FPendingApplyCell> ApplyQueues[3];
     TArray<FCubeMapCell> PendingDeactivation[3];
-    TArray<FCubeMapCell> QueuedCells[3];
+    TArray<FPendingQueuedCell> QueuedCells[3];
     TSet<FCubeMapCell> PendingDeactivationCells[3];
     TSet<FCubeMapCell> CellsBeingDeactivated[3];
 

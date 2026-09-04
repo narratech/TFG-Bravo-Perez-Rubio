@@ -57,11 +57,13 @@ void UCosmicFoliageSpawner::UpdateFoliageSpawner(float DeltaTime, const FVector&
 {
     UpdateFoliageGeneration();
     UpdateOctreeAndGenerate(ViewerLocation, DistanceToSurface, PlanetCenter);
-    StartQueuedGenerationTasks(PlanetRadius, NoiseGenerationStrategy);
+
+    const FVector ViewerDir = (ViewerLocation - PlanetCenter).GetSafeNormal();
+    StartQueuedGenerationTasks(ViewerDir, PlanetRadius, NoiseGenerationStrategy);
 
     int32 RemainingInstanceBudget = FMath::Max(1, MaxInstancesPerFrame);
     ProcessDeactivationQueue(RemainingInstanceBudget);
-    ProcessApplyQueue(RemainingInstanceBudget);
+    ProcessApplyQueue(ViewerDir, RemainingInstanceBudget);
 }
 
 void UCosmicFoliageSpawner::CancelAsyncWork()
@@ -312,7 +314,7 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
             if (!LayerCells[i].ActiveCells.Contains(Node) && !PendingCells[i].Contains(Node))
             {
                 PendingCells[i].Add(Node);
-                QueuedCells[i].Add(Node);
+                QueuedCells[i].Add(FPendingQueuedCell{ Node, Octree.GetNodeCenterDirection(Node) });
             }
         }
 
@@ -329,9 +331,9 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
         // Las celdas aun no iniciadas se pueden cancelar sin tocar el thread pool.
         for (int32 QueueIndex = QueuedCells[i].Num() - 1; QueueIndex >= 0; --QueueIndex)
         {
-            if (!VisibleSet.Contains(QueuedCells[i][QueueIndex]))
+            if (!VisibleSet.Contains(QueuedCells[i][QueueIndex].Cell))
             {
-                PendingCells[i].Remove(QueuedCells[i][QueueIndex]);
+                PendingCells[i].Remove(QueuedCells[i][QueueIndex].Cell);
                 QueuedCells[i].RemoveAtSwap(QueueIndex, 1, EAllowShrinking::No);
             }
         }
@@ -372,6 +374,7 @@ void UCosmicFoliageSpawner::GenerateCellFoliage(
 }
 
 void UCosmicFoliageSpawner::StartQueuedGenerationTasks(
+    const FVector& ViewerDir,
     double PlanetRadius,
     TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy)
 {
@@ -383,19 +386,39 @@ void UCosmicFoliageSpawner::StartQueuedGenerationTasks(
     int32 AvailableSlots = FMath::Max(1, MaxConcurrentGenerationTasks) - GetActiveTaskCount();
     for (int32 LayerIndex = 0; LayerIndex < 3 && AvailableSlots > 0; ++LayerIndex)
     {
-        TArray<FCubeMapCell>& Queue = QueuedCells[LayerIndex];
+        TArray<FPendingQueuedCell>& Queue = QueuedCells[LayerIndex];
         while (!Queue.IsEmpty() && AvailableSlots > 0)
         {
-            const FCubeMapCell Cell = Queue.Pop(EAllowShrinking::No);
-            if (!PendingCells[LayerIndex].Contains(Cell) ||
-                !CurrentVisibleCells[LayerIndex].Contains(Cell))
+            int32 BestIndex = INDEX_NONE;
+            double BestScore = -MAX_dbl;
+
+            for (int32 Index = 0; Index < Queue.Num(); ++Index)
             {
-                PendingCells[LayerIndex].Remove(Cell);
+                const double Score = FVector::DotProduct(ViewerDir, Queue[Index].UnitDirection);
+                if (Score > BestScore)
+                {
+                    BestScore = Score;
+                    BestIndex = Index;
+                }
+            }
+
+            if (BestIndex == INDEX_NONE)
+            {
+                break;
+            }
+
+            const FPendingQueuedCell Selected = Queue[BestIndex];
+            Queue.RemoveAtSwap(BestIndex, 1, EAllowShrinking::No);
+
+            if (!PendingCells[LayerIndex].Contains(Selected.Cell) ||
+                !CurrentVisibleCells[LayerIndex].Contains(Selected.Cell))
+            {
+                PendingCells[LayerIndex].Remove(Selected.Cell);
                 continue;
             }
 
             GenerateCellFoliage(
-                Cell,
+                Selected.Cell,
                 PlanetRadius,
                 GetLayerFromIndex(LayerIndex),
                 NoiseGenerationStrategy);
@@ -431,6 +454,7 @@ void UCosmicFoliageSpawner::UpdateFoliageGeneration()
                     FPendingApplyCell Pending;
                     Pending.Cell = Cell;
                     Pending.Layer = GetLayerFromIndex(Layer);
+                    Pending.UnitDirection = Octree.GetNodeCenterDirection(Cell);
                     Pending.Instances = MoveTemp(CompletedTask.ResultInstances);
 
                     ApplyQueues[Layer].Add(MoveTemp(Pending));
@@ -447,12 +471,36 @@ void UCosmicFoliageSpawner::UpdateFoliageGeneration()
     }
 }
 
-void UCosmicFoliageSpawner::ProcessApplyQueue(int32& RemainingBudget)
+void UCosmicFoliageSpawner::ProcessApplyQueue(const FVector& ViewerDir, int32& RemainingBudget)
 {
     // PRIORIDAD: Near Medium Far
     for (int32 Layer = 0; Layer < 3; Layer++)
     {
         auto& Queue = ApplyQueues[Layer];
+
+        // Si hay multiples celdas completadas esperando a ser aplicadas y la primera aun no ha comenzado
+        // (NextInstanceIndex == 0), priorizamos la celda mas cercana al jugador.
+        if (Queue.Num() > 1 && Queue[0].NextInstanceIndex == 0)
+        {
+            int32 BestIndex = 0;
+            double BestScore = FVector::DotProduct(ViewerDir, Queue[0].UnitDirection);
+            for (int32 Index = 1; Index < Queue.Num(); ++Index)
+            {
+                if (Queue[Index].NextInstanceIndex == 0)
+                {
+                    const double Score = FVector::DotProduct(ViewerDir, Queue[Index].UnitDirection);
+                    if (Score > BestScore)
+                    {
+                        BestScore = Score;
+                        BestIndex = Index;
+                    }
+                }
+            }
+            if (BestIndex != 0)
+            {
+                Queue.Swap(0, BestIndex);
+            }
+        }
 
         for (int32 i = 0; i < Queue.Num(); )
         {
@@ -559,7 +607,7 @@ void UCosmicFoliageSpawner::ProcessDeactivationQueue(int32& RemainingBudget)
                     !PendingCells[Layer].Contains(Cell))
                 {
                     PendingCells[Layer].Add(Cell);
-                    QueuedCells[Layer].Add(Cell);
+                    QueuedCells[Layer].Add(FPendingQueuedCell{ Cell, Octree.GetNodeCenterDirection(Cell) });
                 }
                 continue;
             }
