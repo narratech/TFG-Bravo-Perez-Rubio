@@ -224,11 +224,10 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
         {
             bWaitingForNormalTransition = true;
 
-            const FRotator Rotation = GetPatchRotation(N);
+            ConfigureLevelsForViewer(N);
 
             for (size_t i = 0; i < Levels.Num(); i++)
             {
-                Levels[i]->SetPositionAndRotation(SurfacePos - CurrentActorPosition, Rotation);
                 Levels[i]->RequestMeshUpdate(NoiseGenerationStrategy);
             }
 
@@ -341,19 +340,19 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
         }
     }
 
-    // Calcular desplazamiento necesario
-    FIntPoint Shift = ComputeGridShiftSpherical(ViewerPos, SurfacePos, BaseGridSpacing * BaseResolution / 4);
-    TotalShift += Shift;
+    // El movimiento se calcula en coordenadas absolutas del plano tangente.
+    // El centro comun se cuantiza al spacing mas grueso para que todos los
+    // niveles conserven vertices coincidentes en sus bordes 2:1.
+    const bool bProjectionUpdate = ConfigureLevelsForViewer(N);
 
-    // Si hubo desplazamiento o cambios en los niveles, solicitar nuevas actualizaciones
-    if (Shift != FIntPoint::ZeroValue || UpdateClipmapLevels)
+    if (bProjectionUpdate || UpdateClipmapLevels)
     {
-        const FRotator Rotation = GetPatchRotation(N);
-
         for (size_t i = 0; i < Levels.Num(); i++)
         {
-            Levels[i]->SetPositionAndRotation(SurfacePos - CurrentActorPosition, Rotation);
-            Levels[i]->RequestMeshUpdate(NoiseGenerationStrategy);
+            if (Levels[i]->IsPlanetaryProjectionUpdateRequired())
+            {
+                Levels[i]->RequestMeshUpdate(NoiseGenerationStrategy);
+            }
         }
     } 
 }
@@ -400,6 +399,14 @@ void UCosmicClipmapComponent::PostEditChangeProperty(FPropertyChangedEvent& Prop
 
             CreatePerformanceLevel(true);
         }
+        return;
+    }
+
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, PlanetGridSnapAngleDegrees))
+    {
+        bSnappedProjectionValid = false;
+        bCoarsestGridCenterValid = false;
+        ++SnappedProjectionRevision;
         return;
     }
 
@@ -452,7 +459,8 @@ void UCosmicClipmapComponent::CreateLevels()
         GetDistanceToSurface(ViewerPos, SurfacePos, N);
     }
 
-    FRotator PatchRotation = GetPatchRotation(N);
+    UpdateSnappedProjectionFrame(N);
+    const FRotator PatchRotation = SnappedProjectionFrame.GetRotation().Rotator();
 
     // Crear cada nivel
     for (int32 L = 0; L < NumLevels; ++L)
@@ -490,12 +498,11 @@ void UCosmicClipmapComponent::CreateLevels()
         Mesh->PlanetRadius = PlanetRadius;
         Mesh->bIsPlanet = true;
 
-        Mesh->SetPositionAndRotation(SurfacePos - CurrentActorPosition, PatchRotation);
+        Mesh->SetPositionAndRotation(SnappedProjectionFrame.GetTranslation(), PatchRotation);
 
         // Construir malla
         Mesh->BuildBaseProjectedMesh();
         Mesh->SetMeshActive(false);
-        Mesh->RequestMeshUpdate(NoiseGenerationStrategy);
         
         // Asignar material
         if (DynamicPlanetMat)
@@ -506,8 +513,17 @@ void UCosmicClipmapComponent::CreateLevels()
         // Guardar referencia
         Levels[L] = Mesh;
     }
-   
+
     bInit = true;
+
+    ConfigureLevelsForViewer(N);
+    for (UCosmicMeshComponent* Mesh : Levels)
+    {
+        if (Mesh)
+        {
+            Mesh->RequestMeshUpdate(NoiseGenerationStrategy);
+        }
+    }
 }
 
 void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
@@ -561,6 +577,8 @@ void UCosmicClipmapComponent::ClearLevels()
     int LevelsCleared = 0;  
 
     TotalShift = FIntPoint::ZeroValue;
+    bSnappedProjectionValid = false;
+    bCoarsestGridCenterValid = false;
 
     // Destruir componentes del array Levels
     for (UCosmicMeshComponent* Mesh : Levels)
@@ -674,6 +692,16 @@ void UCosmicClipmapComponent::RequestCompleteMeshUpdate()
     
     if(!bPerformaceMode)
     {
+        // Una revision nueva invalida las caches aun cuando el observador no
+        // se haya desplazado (por ejemplo, tras cambiar la semilla de ruido).
+        ++SnappedProjectionRevision;
+
+        const AActor* Owner = GetOwner();
+        const FVector ViewerNormal = Owner
+            ? (GetPlayerLocation() - Owner->GetActorLocation()).GetSafeNormal()
+            : FVector::UpVector;
+        ConfigureLevelsForViewer(ViewerNormal);
+
         for (size_t i = 0; i < Levels.Num(); i++)
         {        
             Levels[i]->RequestMeshUpdate(NoiseGenerationStrategy);
@@ -702,6 +730,126 @@ FRotator UCosmicClipmapComponent::GetPatchRotation(const FVector& N) const
     const FVector Forward = FVector::CrossProduct(Up, Right); // ya unitario
 
     return FRotationMatrix::MakeFromXZ(Forward, Up).Rotator();
+}
+
+bool UCosmicClipmapComponent::UpdateSnappedProjectionFrame(const FVector& ViewerNormal)
+{
+    FVector SafeNormal = ViewerNormal.GetSafeNormal();
+    if (SafeNormal.IsNearlyZero())
+    {
+        SafeNormal = bSnappedProjectionValid
+            ? SnappedProjectionFrame.TransformVectorNoScale(FVector::UpVector)
+            : FVector::UpVector;
+    }
+
+    const double SnapRadians = FMath::DegreesToRadians(
+        FMath::Clamp(static_cast<double>(PlanetGridSnapAngleDegrees), 0.1, 45.0));
+    const double Longitude = FMath::Atan2(SafeNormal.Y, SafeNormal.X);
+    const double Latitude = FMath::Asin(FMath::Clamp(SafeNormal.Z, -1.0, 1.0));
+
+    const int32 LongitudeCell = FMath::RoundToInt(Longitude / SnapRadians);
+    const int32 LatitudeCell = FMath::RoundToInt(Latitude / SnapRadians);
+    const FIntPoint NewProjectionKey(LongitudeCell, LatitudeCell);
+
+    if (bSnappedProjectionValid && NewProjectionKey == SnappedProjectionKey)
+    {
+        return false;
+    }
+
+    const double SnappedLongitude = LongitudeCell * SnapRadians;
+    const double SnappedLatitude = FMath::Clamp(
+        LatitudeCell * SnapRadians,
+        -HALF_PI,
+        HALF_PI);
+    const double CosLatitude = FMath::Cos(SnappedLatitude);
+
+    const FVector AnchorNormal(
+        CosLatitude * FMath::Cos(SnappedLongitude),
+        CosLatitude * FMath::Sin(SnappedLongitude),
+        FMath::Sin(SnappedLatitude));
+    const FVector East(
+        -FMath::Sin(SnappedLongitude),
+        FMath::Cos(SnappedLongitude),
+        0.0);
+    const FVector North = FVector::CrossProduct(AnchorNormal, East).GetSafeNormal();
+    const FQuat FrameRotation = FRotationMatrix::MakeFromXY(East, North).ToQuat();
+
+    SnappedProjectionFrame = FTransform(
+        FrameRotation,
+        AnchorNormal * PlanetRadius,
+        FVector::OneVector);
+    SnappedProjectionKey = NewProjectionKey;
+    bSnappedProjectionValid = true;
+    bCoarsestGridCenterValid = false;
+    ++SnappedProjectionRevision;
+
+    return true;
+}
+
+FVector2D UCosmicClipmapComponent::ProjectDirectionToSnappedFrame(const FVector& Direction) const
+{
+    if (!bSnappedProjectionValid)
+    {
+        return FVector2D::ZeroVector;
+    }
+
+    const FVector SafeDirection = Direction.GetSafeNormal();
+    const FVector FrameX = SnappedProjectionFrame.TransformVectorNoScale(FVector::ForwardVector);
+    const FVector FrameY = SnappedProjectionFrame.TransformVectorNoScale(FVector::RightVector);
+
+    return FVector2D(
+        PlanetRadius * FVector::DotProduct(SafeDirection, FrameX),
+        PlanetRadius * FVector::DotProduct(SafeDirection, FrameY));
+}
+
+bool UCosmicClipmapComponent::ConfigureLevelsForViewer(const FVector& ViewerNormal)
+{
+    if (Levels.IsEmpty() || !Levels.Last())
+    {
+        return false;
+    }
+
+    const bool bFrameChanged = UpdateSnappedProjectionFrame(ViewerNormal);
+    const FVector2D ViewerCoordinates = ProjectDirectionToSnappedFrame(ViewerNormal);
+    const int64 CoarsestSpacing = Levels.Last()->GridSpacing;
+    if (CoarsestSpacing <= 0)
+    {
+        return false;
+    }
+
+    const FIntPoint NewCoarsestCenter(
+        FMath::RoundToInt(ViewerCoordinates.X / static_cast<double>(CoarsestSpacing)),
+        FMath::RoundToInt(ViewerCoordinates.Y / static_cast<double>(CoarsestSpacing)));
+    const bool bCenterChanged =
+        !bCoarsestGridCenterValid || NewCoarsestCenter != CoarsestGridCenter;
+
+    CoarsestGridCenter = NewCoarsestCenter;
+    bCoarsestGridCenterValid = true;
+
+    bool bRequiresUpdate = bFrameChanged || bCenterChanged;
+
+    for (int32 LevelIndex = 0; LevelIndex < Levels.Num(); ++LevelIndex)
+    {
+        UCosmicMeshComponent* Mesh = Levels[LevelIndex];
+        if (!Mesh || Mesh->GridSpacing <= 0)
+        {
+            continue;
+        }
+
+        const int64 LevelMultiplier = CoarsestSpacing / Mesh->GridSpacing;
+        const FIntPoint LevelCenter(
+            static_cast<int32>(static_cast<int64>(CoarsestGridCenter.X) * LevelMultiplier),
+            static_cast<int32>(static_cast<int64>(CoarsestGridCenter.Y) * LevelMultiplier));
+
+        Mesh->ConfigurePlanetaryProjection(
+            SnappedProjectionFrame,
+            LevelCenter,
+            SnappedProjectionRevision,
+            LevelIndex < Levels.Num() - 1);
+        bRequiresUpdate |= Mesh->IsPlanetaryProjectionUpdateRequired();
+    }
+
+    return bRequiresUpdate;
 }
 
 FIntPoint UCosmicClipmapComponent::ComputeGridShiftPlanar(

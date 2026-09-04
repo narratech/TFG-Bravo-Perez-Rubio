@@ -116,6 +116,19 @@ public:
     void SetPositionAndRotation(const FVector& SurfacePos, const FRotator& PatchRotation);
 
     /**
+     * Configura la proyeccion absoluta del nivel dentro de un marco tangente
+     * cuantizado. El centro se expresa en celdas propias de este nivel.
+     */
+    void ConfigurePlanetaryProjection(
+        const FTransform& InProjectionFrame,
+        const FIntPoint& InGridCenter,
+        uint64 InProjectionRevision,
+        bool bInHasCoarserLevel);
+
+    /** Indica si el centro o el marco configurados aun no se han generado. */
+    bool IsPlanetaryProjectionUpdateRequired() const;
+
+    /**
      * Activa o desactiva visualmente la malla.
      *
      * @param active Estado de visibilidad.
@@ -156,4 +169,17 @@ protected:
 
     /** Indica si actualmente se está generando ruido */
     bool bIsGeneratingNoise = false;
+
+    /** Estado de la ruta incremental de geometry clipmap planetario. */
+    bool bUseSnappedPlanetProjection = false;
+    bool bHasCoarserLevel = false;
+    FTransform ProjectionFrame = FTransform::Identity;
+    FIntPoint RequestedGridCenter = FIntPoint::ZeroValue;
+    uint64 RequestedProjectionRevision = 0;
+
+    /** Estado de la cache aplicada actualmente a este nivel. */
+    FIntPoint CachedGridCenter = FIntPoint::ZeroValue;
+    uint64 CachedProjectionRevision = MAX_uint64;
+    TArray<float> CachedHeights;
+    TArray<FLinearColor> CachedColors;
 };

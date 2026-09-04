@@ -123,6 +123,14 @@ public:
     UPROPERTY(EditAnywhere, Category = "Clipmap")
     bool FreezeGeneration = false;
 
+    /**
+     * Paso angular del marco tangente planetario. Dentro del mismo marco los
+     * niveles solo desplazan sus caches; al cruzarlo se hace una regeneracion.
+     */
+    UPROPERTY(EditAnywhere, Category = "Clipmap|Spherical",
+        meta = (ClampMin = "0.1", ClampMax = "45.0", UIMin = "0.5", UIMax = "15.0"))
+    float PlanetGridSnapAngleDegrees = 5.0f;
+
     /** Componente encargado de la colisión dinámica */
     UCosmicCollisionComponent* CollisionComponent;
 
@@ -266,6 +274,15 @@ protected:
     void UpdateMeshPhase(const FVector& ViewerPos, const FVector& SurfacePos,
         const FVector& N, float DistanceToSurface);
 
+    /** Actualiza el marco tangente cuantizado si el observador cambia de celda angular. */
+    bool UpdateSnappedProjectionFrame(const FVector& ViewerNormal);
+
+    /** Proyecta una direccion de la esfera al plano tangente absoluto activo. */
+    FVector2D ProjectDirectionToSnappedFrame(const FVector& Direction) const;
+
+    /** Configura todos los niveles con centros enteros alineados entre LODs. */
+    bool ConfigureLevelsForViewer(const FVector& ViewerNormal);
+
     /**
      * Genera o actualiza la colisión cercana al jugador.
      */
@@ -367,4 +384,14 @@ private:
 
     /** Delta lineal acumulado sobre la superficie */
     FVector2D AccumulatedLinearDelta;
+
+    /** Marco tangente fijo y celda angular que lo origino. */
+    FTransform SnappedProjectionFrame = FTransform::Identity;
+    FIntPoint SnappedProjectionKey = FIntPoint::ZeroValue;
+    bool bSnappedProjectionValid = false;
+    uint64 SnappedProjectionRevision = 0;
+
+    /** Centro comun expresado en celdas del nivel mas grueso. */
+    FIntPoint CoarsestGridCenter = FIntPoint::ZeroValue;
+    bool bCoarsestGridCenterValid = false;
 };

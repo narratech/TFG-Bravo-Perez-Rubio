@@ -25,6 +25,10 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
 
     ClearAllMeshSections();
 
+    CachedHeights.Reset();
+    CachedColors.Reset();
+    CachedProjectionRevision = MAX_uint64;
+
     BaseVertices.Empty(TotalVertices);
     BaseNormals.Empty(TotalVertices);
      
@@ -421,6 +425,9 @@ void UCosmicMeshComponent::ReScaleLevel(int64 NewGridSpacing)
     }
 
     GridSpacing = NewGridSpacing;
+    CachedHeights.Reset();
+    CachedColors.Reset();
+    CachedProjectionRevision = MAX_uint64;
 
     const int32 HalfRes = Resolution / 2;
     const int32 VertRes = Resolution + 1;
@@ -467,6 +474,26 @@ void UCosmicMeshComponent::SetPositionAndRotation(const FVector& SurfacePos, con
     );
 }
 
+void UCosmicMeshComponent::ConfigurePlanetaryProjection(
+    const FTransform& InProjectionFrame,
+    const FIntPoint& InGridCenter,
+    uint64 InProjectionRevision,
+    bool bInHasCoarserLevel)
+{
+    bUseSnappedPlanetProjection = true;
+    bHasCoarserLevel = bInHasCoarserLevel;
+    ProjectionFrame = InProjectionFrame;
+    RequestedGridCenter = InGridCenter;
+    RequestedProjectionRevision = InProjectionRevision;
+}
+
+bool UCosmicMeshComponent::IsPlanetaryProjectionUpdateRequired() const
+{
+    return !bUseSnappedPlanetProjection ||
+        CachedProjectionRevision != RequestedProjectionRevision ||
+        CachedGridCenter != RequestedGridCenter;
+}
+
 void UCosmicMeshComponent::SetMeshActive(bool active)
 {
     bActiveMesh = active;
@@ -482,6 +509,21 @@ void UCosmicMeshComponent::RequestMeshUpdate(TSharedPtr<ICosmicNoiseStrategy> No
     // Centro del planeta 
     FVector PlanetCenter = GetOwner()->GetActorLocation();
 
+    FCosmicPlanetClipmapGenerationSettings ClipmapGenerationSettings;
+    if (bUseSnappedPlanetProjection && bIsPlanet && !bIsSphereMesh)
+    {
+        ClipmapGenerationSettings.bEnabled = true;
+        ClipmapGenerationSettings.bHasCoarserLevel = bHasCoarserLevel;
+        ClipmapGenerationSettings.GridResolution = Resolution;
+        ClipmapGenerationSettings.ProjectionFrame = ProjectionFrame;
+        ClipmapGenerationSettings.DesiredGridCenter = RequestedGridCenter;
+        ClipmapGenerationSettings.PreviousGridCenter = CachedGridCenter;
+        ClipmapGenerationSettings.ProjectionRevision = RequestedProjectionRevision;
+        ClipmapGenerationSettings.PreviousProjectionRevision = CachedProjectionRevision;
+        ClipmapGenerationSettings.CachedHeights = MoveTemp(CachedHeights);
+        ClipmapGenerationSettings.CachedColors = MoveTemp(CachedColors);
+    }
+
     NoiseTask = new FAsyncTask<FCosmicNoiseGenerationTask>(
         BaseVertices,
         PatchTransform,
@@ -490,7 +532,8 @@ void UCosmicMeshComponent::RequestMeshUpdate(TSharedPtr<ICosmicNoiseStrategy> No
         GridSpacing,
         bIsPlanet,
         bIsSphereMesh,
-        NoiseGenerationStrategy
+        NoiseGenerationStrategy,
+        MoveTemp(ClipmapGenerationSettings)
     );
     // Lanzar la tarea asincrona
     NoiseTask->StartBackgroundTask();
@@ -506,11 +549,20 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
     // Si no ha terminado, devolvemos false
     if (!NoiseTask->IsDone()) return false;
 
-    TArray<FVector> CurrentVertices = NoiseTask->GetTask().CalculatedVertices;
-    TArray<FLinearColor> CurrentColors = NoiseTask->GetTask().CalculatedColors;
+    FCosmicNoiseGenerationTask& CompletedTask = NoiseTask->GetTask();
+    TArray<FVector> CurrentVertices = MoveTemp(CompletedTask.CalculatedVertices);
+    TArray<FLinearColor> CurrentColors = MoveTemp(CompletedTask.CalculatedColors);
 
     if (bIsPlanet || bIsSphereMesh) {
-        BaseNormals = NoiseTask->GetTask().CalculatedNormals;
+        BaseNormals = MoveTemp(CompletedTask.CalculatedNormals);
+    }
+
+    if (bUseSnappedPlanetProjection && bIsPlanet && !bIsSphereMesh)
+    {
+        CachedHeights = MoveTemp(CompletedTask.CalculatedHeightCache);
+        CachedColors = MoveTemp(CompletedTask.CalculatedColorCache);
+        CachedGridCenter = CompletedTask.CalculatedGridCenter;
+        CachedProjectionRevision = CompletedTask.CalculatedProjectionRevision;
     }
     
     // Limpiamos la memoria de la tarea
@@ -543,6 +595,12 @@ void UCosmicMeshComponent::CancelAsyncWork()
 {
 
     bIsGeneratingNoise = false;
+
+    // La cache se mueve a la tarea mientras esta trabaja. Si se cancela no se
+    // puede garantizar su coherencia y la siguiente peticion debe regenerarla.
+    CachedHeights.Reset();
+    CachedColors.Reset();
+    CachedProjectionRevision = MAX_uint64;
 
     if (NoiseTask == nullptr) return;
 

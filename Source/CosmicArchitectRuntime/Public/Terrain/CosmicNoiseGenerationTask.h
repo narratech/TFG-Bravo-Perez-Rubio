@@ -7,6 +7,25 @@
 class ICosmicNoiseStrategy;
 
 /**
+ * Datos opcionales para generar un nivel de clipmap sobre un marco tangente
+ * estable. Las alturas y colores incluyen un halo de dos texels para poder
+ * reconstruir normales y la transicion al siguiente nivel sin reevaluar ruido.
+ */
+struct FCosmicPlanetClipmapGenerationSettings
+{
+    bool bEnabled = false;
+    bool bHasCoarserLevel = false;
+    int32 GridResolution = 0;
+    FTransform ProjectionFrame = FTransform::Identity;
+    FIntPoint DesiredGridCenter = FIntPoint::ZeroValue;
+    FIntPoint PreviousGridCenter = FIntPoint::ZeroValue;
+    uint64 ProjectionRevision = 0;
+    uint64 PreviousProjectionRevision = MAX_uint64;
+    TArray<float> CachedHeights;
+    TArray<FLinearColor> CachedColors;
+};
+
+/**
  * Tarea asincrona encargada de generar deformaciones de ruido,
  * normales y colores para una malla procedural.
  *
@@ -40,6 +59,14 @@ public:
      * Colores calculados para cada vertice.
      */
     TArray<FLinearColor> CalculatedColors;
+
+    /** Cache desplazable que se devuelve al componente al terminar la tarea. */
+    TArray<float> CalculatedHeightCache;
+    TArray<FLinearColor> CalculatedColorCache;
+
+    /** Centro y revision a los que pertenecen los resultados del clipmap. */
+    FIntPoint CalculatedGridCenter = FIntPoint::ZeroValue;
+    uint64 CalculatedProjectionRevision = 0;
 
     /**
      * Transformacion del componente propietario.
@@ -76,6 +103,9 @@ public:
      */
     TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy;
 
+    /** Configuracion de la ruta incremental de clipmap planetario. */
+    FCosmicPlanetClipmapGenerationSettings ClipmapSettings;
+
     /**
      * Constructor de la tarea asincrona de generacion procedural.
      *
@@ -96,7 +126,8 @@ public:
         double InGridSpacing,
         bool InPlanet,
         bool InIsSphere,
-        TSharedPtr<ICosmicNoiseStrategy> InNoiseGenerationStrategy
+        TSharedPtr<ICosmicNoiseStrategy> InNoiseGenerationStrategy,
+        FCosmicPlanetClipmapGenerationSettings InClipmapSettings = {}
     );
 
     /**
@@ -111,4 +142,9 @@ public:
      * Ejecuta el calculo procedural de vertices, normales y colores.
      */
     void DoWork();
+
+private:
+
+    /** Genera o desplaza la cache del clipmap y reconstruye solo sus salidas. */
+    void DoSnappedPlanetClipmapWork();
 };
