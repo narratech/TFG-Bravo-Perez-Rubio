@@ -686,13 +686,13 @@ void UCosmicFoliageSpawner::ApplyGeneratedInstances(
         FCosmicSharedHISMData* SharedData = GetOrCreateSharedHISM(Key);
         if (!SharedData || !SharedData->Component) continue;
 
-        UHierarchicalInstancedStaticMeshComponent* Component = SharedData->Component;
+        UInstancedStaticMeshComponent* Component = SharedData->Component;
         if (Component->GetInstanceCount() != SharedData->InstanceOwners.Num() ||
             SharedData->ActiveInstanceCount + SharedData->FreeInstanceIndices.Num() !=
                 SharedData->InstanceOwners.Num())
         {
             UE_LOG(LogTemp, Error,
-                TEXT("No se pueden anadir instancias: HISM %s desincronizado"),
+                TEXT("No se pueden anadir instancias: ISM %s desincronizado"),
                 *GetNameSafe(Key.Mesh));
             continue;
         }
@@ -711,7 +711,7 @@ void UCosmicFoliageSpawner::ApplyGeneratedInstances(
                 SharedData->InstanceOwners[InstanceIndex].LayerIndex != INDEX_NONE)
             {
                 UE_LOG(LogTemp, Error,
-                    TEXT("Slot libre invalido en HISM %s"),
+                    TEXT("Slot libre invalido en ISM %s"),
                     *GetNameSafe(Key.Mesh));
                 continue;
             }
@@ -720,11 +720,11 @@ void UCosmicFoliageSpawner::ApplyGeneratedInstances(
                 InstanceIndex,
                 Transforms[TransformIndex],
                 false,
-                true,
+                false,
                 true))
             {
                 UE_LOG(LogTemp, Error,
-                    TEXT("No se pudo reutilizar el slot %d de HISM %s"),
+                    TEXT("No se pudo reutilizar el slot %d de ISM %s"),
                     InstanceIndex,
                     *GetNameSafe(Key.Mesh));
                 SharedData->FreeInstanceIndices.Add(InstanceIndex);
@@ -766,7 +766,7 @@ void UCosmicFoliageSpawner::ApplyGeneratedInstances(
             if (InstanceIndex != FirstExpectedIndex + Index)
             {
                 UE_LOG(LogTemp, Error,
-                    TEXT("El HISM %s devolvio un indice de alta inesperado"),
+                    TEXT("El ISM %s devolvio un indice de alta inesperado"),
                     *GetNameSafe(Key.Mesh));
                 break;
             }
@@ -791,7 +791,7 @@ FCosmicSharedHISMData* UCosmicFoliageSpawner::GetOrCreateSharedHISM(const FCosmi
         return &SharedData;
     }
 
-    UHierarchicalInstancedStaticMeshComponent* NewComp = NewObject<UHierarchicalInstancedStaticMeshComponent>(
+    UInstancedStaticMeshComponent* NewComp = NewObject<UInstancedStaticMeshComponent>(
         GetOwner(),
         NAME_None,
         RF_Transient | RF_DuplicateTransient  // Marcar como transitorio
@@ -810,9 +810,6 @@ FCosmicSharedHISMData* UCosmicFoliageSpawner::GetOrCreateSharedHISM(const FCosmi
     NewComp->SetGenerateOverlapEvents(false);
     NewComp->SetCanEverAffectNavigation(false);
     NewComp->SetMobility(EComponentMobility::Movable);
-    // Las instancias estan a un radio planetario del origen local. El espacio
-    // trasladado mantiene precision de float en culling y en el cluster tree.
-    NewComp->bUseTranslatedInstanceSpace = true;
     NewComp->RegisterComponent();
     SharedData.Component = NewComp;
     return &SharedData;
@@ -904,14 +901,14 @@ int32 UCosmicFoliageSpawner::RemoveCellInstances(
                 break;
             }
 
-            // Mantener la posicion hace que HISM pueda actualizar escala in-place;
+            // Mantener la posicion hace que ISM pueda actualizar escala in-place;
             // escala cero tambien elimina inmediatamente el body de colision.
             HiddenTransform.SetScale3D(FVector::ZeroVector);
             if (!SharedData->Component->UpdateInstanceTransform(
                 InstanceIndex,
                 HiddenTransform,
                 false,
-                true,
+                false,
                 true))
             {
                 break;
@@ -939,7 +936,7 @@ int32 UCosmicFoliageSpawner::RemoveCellInstances(
         if (HiddenCount < HideCount)
         {
             UE_LOG(LogTemp, Error,
-                TEXT("No se pudieron ocultar todos los slots del HISM %s"),
+                TEXT("No se pudieron ocultar todos los slots del ISM %s"),
                 *GetNameSafe(Key.Mesh));
             break;
         }

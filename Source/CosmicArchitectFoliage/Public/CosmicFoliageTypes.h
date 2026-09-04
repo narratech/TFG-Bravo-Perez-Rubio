@@ -5,7 +5,7 @@
 #include "Engine/DataAsset.h"
 #include "Engine/StaticMesh.h"
 #include "CosmicCubeMapCell.h"
-#include "Components/HierarchicalInstancedStaticMeshComponent.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "CosmicFoliageTypes.generated.h"
 
 UENUM(BlueprintType)
@@ -154,7 +154,7 @@ struct FCosmicSharedHISMData
     GENERATED_BODY()
 
     UPROPERTY()
-    UHierarchicalInstancedStaticMeshComponent* Component = nullptr;
+    UInstancedStaticMeshComponent* Component = nullptr;
 
     /** Paralelo al array interno de instancias del HISM. */
     TArray<FCosmicFoliageInstanceOwner> InstanceOwners;
