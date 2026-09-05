@@ -208,6 +208,10 @@ void UCosmicFoliageSpawner::PreEditChange(FProperty* PropertyAboutToChange)
     {
         ClearFoliageLayer(ECosmicFoliageLayer::Far);
     }
+    else if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicFoliageSpawner, MaxInstancesPerCell))
+    {
+        ClearFoliage();
+    }
 }
 
 void UCosmicFoliageSpawner::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
