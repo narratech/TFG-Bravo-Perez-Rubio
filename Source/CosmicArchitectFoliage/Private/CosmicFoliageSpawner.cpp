@@ -77,22 +77,56 @@ void UCosmicFoliageSpawner::CancelAsyncWork()
 {
     for (int32 Layer = 0; Layer < 3; Layer++)
     {
-        for (FAsyncTask<FFoliageGenerationTask>* Task : ActiveTasks[Layer])
+        CancelLayerAsyncWork(Layer);
+    }
+}
+
+void UCosmicFoliageSpawner::CancelLayerAsyncWork(int32 LayerIndex)
+{
+    for (FAsyncTask<FFoliageGenerationTask>* Task : ActiveTasks[LayerIndex])
+    {
+        if (!Task) continue;
+
+        if (Task->Cancel() || Task->IsDone())
         {
-            if (!Task) continue;
-
-            if (Task->Cancel() || Task->IsDone())
-            {
-                delete Task;
-            }
-            else
-            {
-                Task->EnsureCompletion();
-                delete Task;
-            }
+            delete Task;
         }
+        else
+        {
+            Task->EnsureCompletion();
+            delete Task;
+        }
+    }
 
-        ActiveTasks[Layer].Empty();
+    ActiveTasks[LayerIndex].Empty();
+}
+
+void UCosmicFoliageSpawner::ResetLayerState(int32 LayerIndex)
+{
+    PendingCells[LayerIndex].Empty();
+    ApplyQueues[LayerIndex].Empty();
+    PendingDeactivation[LayerIndex].Empty();
+    QueuedCells[LayerIndex].Empty();
+    PendingDeactivationCells[LayerIndex].Empty();
+    CellsBeingDeactivated[LayerIndex].Empty();
+    CurrentVisibleCells[LayerIndex].Empty();
+    bVisibilityQueryValid[LayerIndex] = false;
+    bLayerWasEnabled[LayerIndex] = false;
+    LastVisibilityRadiusKm[LayerIndex] = 0.0f;
+}
+
+void UCosmicFoliageSpawner::ClearFoliageLayer(ECosmicFoliageLayer Layer)
+{
+    const int32 LayerIndex = GetIndexFromLayer(Layer);
+    CancelLayerAsyncWork(LayerIndex);
+    ResetLayerState(LayerIndex);
+
+    // La retirada modifica ActiveCells y conserva los slots de las otras capas.
+    TArray<FCubeMapCell> Cells;
+    LayerCells[LayerIndex].ActiveCells.GetKeys(Cells);
+    for (const FCubeMapCell& Cell : Cells)
+    {
+        RemoveCellInstances(LayerIndex, Cell, MAX_int32);
     }
 }
 
@@ -103,19 +137,10 @@ void UCosmicFoliageSpawner::ClearFoliage()
     for (int32 i = 0; i < 3; i++)
     {
         LayerCells[i].ActiveCells.Empty();
-        PendingCells[i].Empty();
-        ApplyQueues[i].Empty();
-        PendingDeactivation[i].Empty();
-        QueuedCells[i].Empty();
-        PendingDeactivationCells[i].Empty();
-        CellsBeingDeactivated[i].Empty();
-        CurrentVisibleCells[i].Empty();
-        bVisibilityQueryValid[i] = false;
-        bLayerWasEnabled[i] = false;
-        LastVisibilityRadiusKm[i] = 0.0f;
+        ResetLayerState(i);
     }
 
-    // Cada malla/estado de colision tiene un unico HISM compartido.
+    // Cada malla/estado de colision tiene un unico ISM compartido.
     for (auto& Pair : SharedHISMs)
     {
         if (Pair.Value.Component)
@@ -169,6 +194,19 @@ void UCosmicFoliageSpawner::PreEditChange(FProperty* PropertyAboutToChange)
         
         ClearFoliage();
         return;
+    }
+
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicFoliageSpawner, NearLayerRadiusKm))
+    {
+        ClearFoliageLayer(ECosmicFoliageLayer::Near);
+    }
+    else if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicFoliageSpawner, MediumLayerRadiusKm))
+    {
+        ClearFoliageLayer(ECosmicFoliageLayer::Medium);
+    }
+    else if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicFoliageSpawner, FarLayerRadiusKm))
+    {
+        ClearFoliageLayer(ECosmicFoliageLayer::Far);
     }
 }
 
@@ -257,7 +295,7 @@ void UCosmicFoliageSpawner::GetLayerPriorityIndices(int32 OutLayerIndices[3]) co
         AddUniqueLayer(Layer);
     }
 
-    // Fallback por defecto: Far -> Medium -> Near
+    // Fallback por defecto: 1.Far 2.Medium 3.Near
     AddUniqueLayer(ECosmicFoliageLayer::Far);
     AddUniqueLayer(ECosmicFoliageLayer::Medium);
     AddUniqueLayer(ECosmicFoliageLayer::Near);
@@ -280,12 +318,8 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
         const bool bLayerEnabled = bLayerConfigured &&
             DistanceToSurface < static_cast<double>(LayerRadiusKm) * 100000.0;
         const double QueryMovementThreshold = FMath::Clamp(
-            static_cast<double>(LayerRadiusKm) * 100000.0 * VisibilityUpdateDistanceRatio,
-            50.0,
-            2000.0);
-        const bool bViewerMovedEnough = !LastVisibilityQueryLocation[i].Equals(
-            ViewerRelativeToPlanet,
-            QueryMovementThreshold);
+            static_cast<double>(LayerRadiusKm) * 100000.0 * VisibilityUpdateDistanceRatio, 50.0, 2000.0);
+        const bool bViewerMovedEnough = !LastVisibilityQueryLocation[i].Equals(ViewerRelativeToPlanet, QueryMovementThreshold);
         const bool bShouldRefreshVisibility =
             !bVisibilityQueryValid[i] ||
             bLayerWasEnabled[i] != bLayerEnabled ||
@@ -369,9 +403,7 @@ void UCosmicFoliageSpawner::GenerateCellFoliage(
     UE_LOG(LogTemp, Verbose, TEXT("Generando foliage para celda: %s"), *Cell.ToString());
 }
 
-void UCosmicFoliageSpawner::StartQueuedGenerationTasks(
-    const FVector& ViewerDir,
-    double PlanetRadius,
+void UCosmicFoliageSpawner::StartQueuedGenerationTasks(const FVector& ViewerDir, double PlanetRadius,
     TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy)
 {
     if (!FoliageEntriesSnapshot.IsValid() || !NoiseGenerationStrategy.IsValid())
@@ -658,9 +690,7 @@ float UCosmicFoliageSpawner::GetLayerRadius(ECosmicFoliageLayer Layer) const
     }
 }
 
-void UCosmicFoliageSpawner::ApplyGeneratedInstances(
-    const FCubeMapCell& Cell,
-    ECosmicFoliageLayer Layer,
+void UCosmicFoliageSpawner::ApplyGeneratedInstances(const FCubeMapCell& Cell, ECosmicFoliageLayer Layer,
     TArrayView<const FCosmicFoliageInstance> Instances)
 {
     if (Instances.IsEmpty()) return;
@@ -702,37 +732,24 @@ void UCosmicFoliageSpawner::ApplyGeneratedInstances(
         CellIndices.Reserve(CellIndices.Num() + Transforms.Num());
 
         int32 TransformIndex = 0;
-        while (TransformIndex < Transforms.Num() &&
-            !SharedData->FreeInstanceIndices.IsEmpty())
+        while (TransformIndex < Transforms.Num() && !SharedData->FreeInstanceIndices.IsEmpty())
         {
-            const int32 InstanceIndex =
-                SharedData->FreeInstanceIndices.Pop(EAllowShrinking::No);
+            const int32 InstanceIndex = SharedData->FreeInstanceIndices.Pop(EAllowShrinking::No);
             if (!SharedData->InstanceOwners.IsValidIndex(InstanceIndex) ||
                 SharedData->InstanceOwners[InstanceIndex].LayerIndex != INDEX_NONE)
             {
-                UE_LOG(LogTemp, Error,
-                    TEXT("Slot libre invalido en ISM %s"),
-                    *GetNameSafe(Key.Mesh));
+                UE_LOG(LogTemp, Error,TEXT("Slot libre invalido en ISM %s"), *GetNameSafe(Key.Mesh));
                 continue;
             }
 
-            if (!Component->UpdateInstanceTransform(
-                InstanceIndex,
-                Transforms[TransformIndex],
-                false,
-                false,
-                true))
+            if (!Component->UpdateInstanceTransform(InstanceIndex, Transforms[TransformIndex], false, false, true))
             {
-                UE_LOG(LogTemp, Error,
-                    TEXT("No se pudo reutilizar el slot %d de ISM %s"),
-                    InstanceIndex,
-                    *GetNameSafe(Key.Mesh));
+                UE_LOG(LogTemp, Error, TEXT("No se pudo reutilizar el slot %d de ISM %s"), InstanceIndex, *GetNameSafe(Key.Mesh));
                 SharedData->FreeInstanceIndices.Add(InstanceIndex);
                 break;
             }
 
-            FCosmicFoliageInstanceOwner& Owner =
-                SharedData->InstanceOwners[InstanceIndex];
+            FCosmicFoliageInstanceOwner& Owner = SharedData->InstanceOwners[InstanceIndex];
             Owner.Cell = Cell;
             Owner.LayerIndex = LayerIndex;
             Owner.CellSlot = CellIndices.Add(InstanceIndex);
@@ -747,16 +764,10 @@ void UCosmicFoliageSpawner::ApplyGeneratedInstances(
         }
 
         TArray<FTransform> NewTransforms;
-        NewTransforms.Append(
-            Transforms.GetData() + TransformIndex,
-            NewInstanceCount);
+        NewTransforms.Append(Transforms.GetData() + TransformIndex, NewInstanceCount);
         Component->PreAllocateInstancesMemory(NewInstanceCount);
         const int32 FirstExpectedIndex = SharedData->InstanceOwners.Num();
-        const TArray<int32> AddedIndices = Component->AddInstances(
-            NewTransforms,
-            true,
-            false,
-            false);
+        const TArray<int32> AddedIndices = Component->AddInstances(NewTransforms, true, false, false);
 
         const int32 AddedCount = FMath::Min(AddedIndices.Num(), NewInstanceCount);
         SharedData->InstanceOwners.Reserve(FirstExpectedIndex + AddedCount);
@@ -765,9 +776,7 @@ void UCosmicFoliageSpawner::ApplyGeneratedInstances(
             const int32 InstanceIndex = AddedIndices[Index];
             if (InstanceIndex != FirstExpectedIndex + Index)
             {
-                UE_LOG(LogTemp, Error,
-                    TEXT("El ISM %s devolvio un indice de alta inesperado"),
-                    *GetNameSafe(Key.Mesh));
+                UE_LOG(LogTemp, Error, TEXT("El ISM %s devolvio un indice de alta inesperado"), *GetNameSafe(Key.Mesh));
                 break;
             }
 
@@ -804,9 +813,7 @@ FCosmicSharedHISMData* UCosmicFoliageSpawner::GetOrCreateSharedHISM(const FCosmi
 
     NewComp->SetupAttachment(GetOwner()->GetRootComponent());
     NewComp->SetStaticMesh(Key.Mesh);
-    NewComp->SetCollisionEnabled(Key.bHasCollision
-        ? ECollisionEnabled::QueryAndPhysics
-        : ECollisionEnabled::NoCollision);
+    NewComp->SetCollisionEnabled(Key.bHasCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
     NewComp->SetGenerateOverlapEvents(false);
     NewComp->SetCanEverAffectNavigation(false);
     NewComp->SetMobility(EComponentMobility::Movable);
@@ -840,9 +847,7 @@ int32 UCosmicFoliageSpawner::RemoveCellInstances(
         FCosmicSharedHISMData* SharedData = SharedHISMs.Find(Key);
         if (!SharedData || !IsValid(SharedData->Component))
         {
-            const int32 DiscardCount = FMath::Min(
-                CellIndices.Num(),
-                InstanceBudget - RemovedTotal);
+            const int32 DiscardCount = FMath::Min(CellIndices.Num(), InstanceBudget - RemovedTotal);
             CellIndices.SetNum(CellIndices.Num() - DiscardCount, EAllowShrinking::No);
             RemovedTotal += DiscardCount;
             if (CellIndices.IsEmpty())
@@ -852,14 +857,13 @@ int32 UCosmicFoliageSpawner::RemoveCellInstances(
             continue;
         }
 
-        const int32 HideCount = FMath::Min(
-            CellIndices.Num(),
-            InstanceBudget - RemovedTotal);
+        const int32 HideCount = FMath::Min(CellIndices.Num(), InstanceBudget - RemovedTotal);
         bool bIndicesValid =
             SharedData->Component->GetInstanceCount() == SharedData->InstanceOwners.Num() &&
             SharedData->ActiveInstanceCount + SharedData->FreeInstanceIndices.Num() ==
                 SharedData->InstanceOwners.Num() &&
             SharedData->ActiveInstanceCount >= HideCount;
+
         for (int32 Index = 0; Index < HideCount; ++Index)
         {
             const int32 CellSlot = CellIndices.Num() - 1 - Index;
@@ -871,8 +875,7 @@ int32 UCosmicFoliageSpawner::RemoveCellInstances(
                 continue;
             }
 
-            const FCosmicFoliageInstanceOwner& Owner =
-                SharedData->InstanceOwners[InstanceIndex];
+            const FCosmicFoliageInstanceOwner& Owner = SharedData->InstanceOwners[InstanceIndex];
             bIndicesValid &=
                 Owner.LayerIndex == LayerIndex &&
                 Owner.Cell == Cell &&
@@ -893,10 +896,7 @@ int32 UCosmicFoliageSpawner::RemoveCellInstances(
             const int32 CellSlot = CellIndices.Num() - 1 - Index;
             const int32 InstanceIndex = CellIndices[CellSlot];
             FTransform HiddenTransform;
-            if (!SharedData->Component->GetInstanceTransform(
-                InstanceIndex,
-                HiddenTransform,
-                false))
+            if (!SharedData->Component->GetInstanceTransform(InstanceIndex, HiddenTransform, false))
             {
                 break;
             }
@@ -914,8 +914,7 @@ int32 UCosmicFoliageSpawner::RemoveCellInstances(
                 break;
             }
 
-            SharedData->InstanceOwners[InstanceIndex] =
-                FCosmicFoliageInstanceOwner();
+            SharedData->InstanceOwners[InstanceIndex] = FCosmicFoliageInstanceOwner();
             SharedData->FreeInstanceIndices.Add(InstanceIndex);
             --SharedData->ActiveInstanceCount;
             ++HiddenCount;

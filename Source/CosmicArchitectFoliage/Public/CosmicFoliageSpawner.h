@@ -190,6 +190,11 @@ private:
     int32 GetActiveTaskCount() const;
     void GetLayerPriorityIndices(int32 OutLayerIndices[3]) const;
     void RefreshConfiguredLayerMask();
+    void CancelLayerAsyncWork(int32 LayerIndex);
+    /** Reinicia las colas y la cache de visibilidad de una capa. */
+    void ResetLayerState(int32 LayerIndex);
+    /** Cancela la generacion y retira las instancias de una sola capa. */
+    void ClearFoliageLayer(ECosmicFoliageLayer Layer);
     /** Aplica las instancias generadas al mundo */
     void ApplyGeneratedInstances(const FCubeMapCell& Cell, ECosmicFoliageLayer Layer, TArrayView<const FCosmicFoliageInstance> Instances);
 
