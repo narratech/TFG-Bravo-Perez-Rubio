@@ -82,9 +82,6 @@ public:
      */
     TArray<FVector> BaseVertices;
 
-    /** Normales base de la geometría */
-    TArray<FVector> BaseNormals;
-
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
 
     virtual void OnComponentDestroyed(bool bDestroyingHierarchy);

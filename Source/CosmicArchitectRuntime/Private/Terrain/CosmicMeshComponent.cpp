@@ -30,7 +30,9 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
     CachedProjectionRevision = MAX_uint64;
 
     BaseVertices.Empty(TotalVertices);
-    BaseNormals.Empty(TotalVertices);
+
+    TArray<FVector> BaseNormals;
+    BaseNormals.Reserve(TotalVertices);
      
     TArray<FVector2D> UVs;
     TArray<FProcMeshTangent> BaseTangents;
@@ -310,8 +312,8 @@ void UCosmicMeshComponent::BuildSphereMesh()
     ClearAllMeshSections();
 
     BaseVertices.Empty();
-    BaseNormals.Empty();
     
+    TArray<FVector> BaseNormals;
     TArray<FVector2D> UVs;
     TArray<FProcMeshTangent> BaseTangents;
     TArray<int32> Triangles;
@@ -552,9 +554,10 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
     FCosmicNoiseGenerationTask& CompletedTask = NoiseTask->GetTask();
     TArray<FVector> CurrentVertices = MoveTemp(CompletedTask.CalculatedVertices);
     TArray<FLinearColor> CurrentColors = MoveTemp(CompletedTask.CalculatedColors);
+    TArray<FVector> CurrentNormals;
 
     if (bIsPlanet || bIsSphereMesh) {
-        BaseNormals = MoveTemp(CompletedTask.CalculatedNormals);
+        CurrentNormals = MoveTemp(CompletedTask.CalculatedNormals);
     }
 
     if (bUseSnappedPlanetProjection && bIsPlanet && !bIsSphereMesh)
@@ -575,7 +578,7 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
     UpdateMeshSection_LinearColor(
         0,
         CurrentVertices,
-        BaseNormals,
+        CurrentNormals,
         TArray<FVector2D>(),
         CurrentColors,
         TArray<FProcMeshTangent>()
