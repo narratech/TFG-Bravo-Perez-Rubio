@@ -309,7 +309,7 @@ void ACosmicPlanet::SetFoliageParams(int32 InFoliageInstancesPerFrame, float InN
 {
     if (FoliageSpawnerComponent)
     {
-        FoliageSpawnerComponent->MaxInstancesPerFrame = InFoliageInstancesPerFrame;
+        FoliageSpawnerComponent->MaxInstancesGeneratedPerFrame = InFoliageInstancesPerFrame;
         FoliageSpawnerComponent->NearLayerRadiusKm = InNearLayerRadiusKm;
         FoliageSpawnerComponent->MediumLayerRadiusKm = InMediumLayerRadiusKm;
         FoliageSpawnerComponent->FarLayerRadiusKm = InFarLayerRadiusKm;

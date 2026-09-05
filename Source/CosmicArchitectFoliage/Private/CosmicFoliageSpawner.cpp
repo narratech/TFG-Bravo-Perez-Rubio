@@ -66,8 +66,8 @@ void UCosmicFoliageSpawner::UpdateFoliageSpawner(float DeltaTime, const FVector&
     const FVector ViewerDir = (ViewerLocation - PlanetCenter).GetSafeNormal();
     StartQueuedGenerationTasks(ViewerDir, PlanetRadius, NoiseGenerationStrategy);
 
-    int32 RemainingDeactivationBudget = FMath::Max(1, MaxDeactivationInstancesPerFrame);
-    int32 RemainingApplyBudget = FMath::Max(1, MaxInstancesPerFrame);
+    int32 RemainingDeactivationBudget = FMath::Max(1, MaxInstancesGeneratedPerFrame);
+    int32 RemainingApplyBudget = FMath::Max(1, MaxInstancesGeneratedPerFrame);
 
     ProcessDeactivationQueue(RemainingDeactivationBudget);
     ProcessApplyQueue(ViewerDir, RemainingApplyBudget);

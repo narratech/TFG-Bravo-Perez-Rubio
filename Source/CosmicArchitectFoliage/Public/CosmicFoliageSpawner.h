@@ -80,43 +80,27 @@ public:
 
     /** Máximo de instancias aplicadas al mundo por frame */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance", meta = (ClampMin = "1"))
-    int32 MaxInstancesPerFrame = 100;
-
-    /** Máximo de instancias retiradas/desactivadas del mundo por frame */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance", meta = (ClampMin = "1"))
-    int32 MaxDeactivationInstancesPerFrame = 100;
+    int32 MaxInstancesGeneratedPerFrame = 100;
 
     /** Numero maximo de celdas calculadas simultaneamente en el thread pool. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance",
-        meta = (ClampMin = "1", ClampMax = "32"))
-    int32 MaxConcurrentGenerationTasks = 4;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance", meta = (ClampMin = "1", ClampMax = "64"))
+    int32 MaxConcurrentGenerationTasks = 16;
 
     /** Limite de seguridad para impedir celdas configuradas con millones de instancias. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance",
-        meta = (ClampMin = "1", ClampMax = "1000000"))
-    int32 MaxInstancesPerCell = 10000;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance", meta = (ClampMin = "1", ClampMax = "100000"))
+    int32 MaxInstancesPerCell = 1000;
 
     /** Distancia usada para estimar la normal procedural del terreno. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance",
-        meta = (ClampMin = "1.0"))
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance", meta = (ClampMin = "1.0"))
     float NormalSampleDistanceCm = 500.0f;
 
     /** Fraccion del radio que debe desplazarse el observador antes de consultar de nuevo el octree. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance",
-        meta = (ClampMin = "0.001", ClampMax = "0.25"))
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance", meta = (ClampMin = "0.001", ClampMax = "0.25"))
     float VisibilityUpdateDistanceRatio = 0.02f;
 
-    /** Orden de prioridad para generar, aplicar y retirar las capas (por defecto: Far -> Medium -> Near). */
+    /** Orden de prioridad para generar, aplicar y retirar las capas (por defecto: 1.Far 2.Medium 3.Near). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance")
     TArray<ECosmicFoliageLayer> FoliageLayerPriority;
-
-    /** Activa debug visual de celdas */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Debug")
-    bool bDrawDebugCells = false;
-
-    /** Grosor de líneas de debug */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Debug")
-    float DebugCellThickness = 20.0f;
 
 protected:
     virtual void BeginDestroy() override;
