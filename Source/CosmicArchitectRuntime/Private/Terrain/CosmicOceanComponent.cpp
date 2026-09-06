@@ -94,6 +94,14 @@ void UCosmicOceanComponent::ClearOcean()
     bInit = false;
 }
 
+void UCosmicOceanComponent::ResetPointersAfterDuplicate(USceneComponent* NewRoot)
+{
+    ParentRoot = NewRoot;
+    OceanMesh = nullptr;
+    DynamicOceanMat = nullptr;
+    bInit = false;
+}
+
 #if WITH_EDITOR
 void UCosmicOceanComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {

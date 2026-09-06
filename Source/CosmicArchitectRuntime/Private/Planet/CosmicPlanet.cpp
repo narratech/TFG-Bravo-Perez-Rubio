@@ -67,14 +67,32 @@ void ACosmicPlanet::PostDuplicate(EDuplicateMode::Type Mode)
 
     if (!GetWorld()->IsGameWorld())
     {
-        // Escalamiento del radio a unidades de Unreal (Centímetros).
-        ClipmapComponent->PlanetRadius = RadiusKm * 100000;
-        if (FoliageSpawnerComponent)
+        bInitializedInEditor = false;
+
+        // 1. Duplicar objeto de ruido si no es asset persistente para evitar compartir estado
+        if (NoiseClass && !NoiseClass->IsAsset())
         {
-            ClipmapComponent->FoliageSpawnerComponent = FoliageSpawnerComponent;
-            FoliageSpawnerComponent->InitFoliageSpawner(RadiusKm);
+            NoiseClass = DuplicateObject<UCosmicNoiseClass>(NoiseClass, this);
         }
+
+        // 2. Desvincular referencias crudas del planeta original sin destruir sus componentes
+        if (ClipmapComponent)
+        {
+            ClipmapComponent->ResetPointersAfterDuplicate(Root);
+            ClipmapComponent->PlanetRadius = RadiusKm * 100000;
+        }
+
+        if (OceanComponent)
+        {
+            OceanComponent->ResetPointersAfterDuplicate(Root);
+        }
+
+        // 3. Reconstruir ordenadamente todos los subsistemas para el nuevo planeta
+        UpdateMaterialOnly();
         UpdateNoiseSettings();
+        InitClipmap();
+        UpdateFoliage();
+        UpdateOcean();
     }
 }
 #endif

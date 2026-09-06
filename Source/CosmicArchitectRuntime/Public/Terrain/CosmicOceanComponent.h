@@ -47,6 +47,13 @@ public:
 	void ClearOcean();
 
 	/**
+	 * Limpia referencias heredadas tras duplicacion sin destruir la malla del actor original.
+	 *
+	 * @param NewRoot Componente raíz del nuevo actor.
+	 */
+	void ResetPointersAfterDuplicate(USceneComponent* NewRoot);
+
+	/**
 	 * Indica si el planeta posee oceano.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean")

@@ -462,6 +462,12 @@ void UCosmicClipmapComponent::CreateLevels()
     UpdateSnappedProjectionFrame(N);
     const FRotator PatchRotation = SnappedProjectionFrame.GetRotation().Rotator();
 
+    // Asegurar que exista material dinamico antes de instanciar niveles
+    if (!DynamicPlanetMat && BaseMaterial)
+    {
+        BuildDynamicMaterial();
+    }
+
     // Crear cada nivel
     for (int32 L = 0; L < NumLevels; ++L)
     {
@@ -613,6 +619,21 @@ void UCosmicClipmapComponent::ClearLevels()
     bPerformanceBuild = false;
 }
 
+void UCosmicClipmapComponent::ResetPointersAfterDuplicate(USceneComponent* NewRoot)
+{
+    ParentRoot = NewRoot;
+    Levels.Empty();
+    FarLevel = nullptr;
+    DynamicPlanetMat = nullptr;
+    bInit = false;
+    bPerformanceBuild = false;
+    bPerformaceMode = false;
+    TotalShift = FIntPoint::ZeroValue;
+    bSnappedProjectionValid = false;
+    bCoarsestGridCenterValid = false;
+    ++SnappedProjectionRevision;
+}
+
 void UCosmicClipmapComponent::SetMaterialData(FColor Color1, FColor Color2, FColor ColorCold, FColor ColorHot,
     FColor ColorSlope, float ScaleL, float ScaleM, float ScaleS)
 {
@@ -656,7 +677,10 @@ void UCosmicClipmapComponent::BuildDynamicMaterial()
 
     for (size_t i = 0; i < Levels.Num(); i++)
     {
-        Levels[i]->SetMaterial(0, DynamicPlanetMat);
+        if (Levels[i])
+        {
+            Levels[i]->SetMaterial(0, DynamicPlanetMat);
+        }
     }
 
     if (FarLevel)

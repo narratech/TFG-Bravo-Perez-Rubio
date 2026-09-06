@@ -54,6 +54,13 @@ public:
     void ClearLevels();
 
     /**
+     * Limpia referencias heredadas tras duplicación sin destruir componentes del actor original.
+     *
+     * @param NewRoot Componente raíz del nuevo actor.
+     */
+    void ResetPointersAfterDuplicate(USceneComponent* NewRoot);
+
+    /**
      * Configura los parámetros visuales del material planetario.
      *
      * @param Color1 Color principal base.
