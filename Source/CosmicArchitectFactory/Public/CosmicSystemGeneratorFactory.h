@@ -17,7 +17,7 @@ public:
 
 	UCosmicSystemGeneratorFactory();
 
-	// El nombre que aparecerá en el menú del clic derecho
+	// The name that will appear in the right-click menu
 	virtual FText GetDisplayName() const override;
 
 	virtual uint32 GetMenuCategories() const override;

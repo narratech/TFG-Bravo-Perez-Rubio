@@ -10,10 +10,10 @@ class UMaterialInstance;
 class UMaterialInstanceDynamic;
 
 /**
- * Componente encargado de generar y gestionar la malla del oceano planetario.
+ * Component responsible for generating and managing planetary ocean mesh.
  *
- * Este componente crea una esfera procedural independiente que representa
- * el nivel del mar del planeta y administra su material dinamico.
+ * This component creates an independent procedural sphere representing
+ * the planet sea level and manages its dynamic material.
  */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent),
 	HideCategories = (Activation, Tags, AssetUserData, Navigation, Rendering, Replication, Input, Actor, Collision, Cooking))
@@ -24,55 +24,55 @@ UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent),
 public: 
 
 	/**
-	 * Constructor del componente oceano.
+	 * Ocean component constructor.
 	 */
 	UCosmicOceanComponent();
 
 	/**
-	 * Inicializa el sistema oceánico.
+	 * Initializes ocean system.
 	 *
-	 * @param PlanetRadiusKm Radio del planeta en kilometros.
-	 * @param Parent Componente padre al que se adjuntara la malla del oceano.
+	 * @param PlanetRadiusKm Planet radius in kilometers.
+	 * @param Parent Parent component to which ocean mesh will be attached.
 	 */
 	void InitOcean(double PlanetRadiusKm, USceneComponent* Parent);
 
 	/**
-	 * Regenera completamente la malla del oceano.
+	 * Completely regenerates ocean mesh.
 	 */
 	void RegenerateOcean();
 
 	/**
-	 * Elimina y destruye la malla del oceano actual.
+	 * Removes and destroys current ocean mesh.
 	 */
 	void ClearOcean();
 
 	/**
-	 * Limpia referencias heredadas tras duplicacion sin destruir la malla del actor original.
+	 * Clears inherited references after duplication without destroying original actor mesh.
 	 *
-	 * @param NewRoot Componente raíz del nuevo actor.
+	 * @param NewRoot Root component of new actor.
 	 */
 	void ResetPointersAfterDuplicate(USceneComponent* NewRoot);
 
 	/**
-	 * Indica si el planeta posee oceano.
+	 * Indicates whether the planet has an ocean.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean")
 	bool bHasOcean = true;
 
 	/**
-	 * Nivel del mar relativo al radio del planeta en kilometros.
+	 * Sea level relative to planet radius in kilometers.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean", meta = (EditCondition = "bHasOcean"))
 	double SeaLevelKm = -0.01;
 
 	/**
-	 * Resolucion de la esfera del oceano.
+	 * Ocean sphere resolution.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean", meta = (EditCondition = "bHasOcean", ClampMin = "8", ClampMax = "256"))
 	int32 OceanResolution = 128;
 
 	/**
-	 * Material base utilizado para renderizar el oceano.
+	 * Base material used to render ocean.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean", meta = (EditCondition = "bHasOcean"))
 	UMaterialInstance* OceanMaterial;
@@ -80,40 +80,40 @@ public:
 protected:
 
 	/**
-	 * Instancia dinamica del material del oceano.
+	 * Dynamic material instance of ocean.
 	 */
 	UPROPERTY()
 	UMaterialInstanceDynamic* DynamicOceanMat;
 
 	/**
-	 * Malla procedural utilizada para representar el oceano.
+	 * Procedural mesh used to represent ocean.
 	 */
 	UCosmicMeshComponent* OceanMesh;
 
 	/**
-	 * Componente raiz al que se adjunta la malla del oceano.
+	 * Root component to which ocean mesh is attached.
 	 */
 	USceneComponent* ParentRoot;
 
 	/**
-	 * Radio del planeta en centimetros.
+	 * Planet radius in centimeters.
 	 */
 	double PlanetRadiusCm;
 
 	/**
-	 * Indica si el sistema oceánico ya fue inicializado.
+	 * Indicates whether ocean system has already been initialized.
 	 */
 	bool bInit = false;
 
 	/**
-	 * Construye y aplica el material dinamico del oceano.
+	 * Builds and applies dynamic ocean material.
 	 */
 	void BuildDynamicMaterial();
 
 #if WITH_EDITOR
 
 	/**
-	 * Se ejecuta automaticamente cuando una propiedad cambia desde el editor.
+	 * Executes automatically when a property changes from the editor.
 	 */
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 
@@ -122,7 +122,7 @@ protected:
 public:
 
 	/**
-	 * Actualiza parametros dinamicos del oceano cada frame.
+	 * Updates dynamic ocean parameters every frame.
 	 */
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 };

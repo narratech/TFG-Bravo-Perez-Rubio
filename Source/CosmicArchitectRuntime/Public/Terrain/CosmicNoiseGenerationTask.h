@@ -7,9 +7,9 @@
 class ICosmicNoiseStrategy;
 
 /**
- * Datos opcionales para generar un nivel de clipmap sobre un marco tangente
- * estable. Las alturas y colores incluyen un halo de dos texels para poder
- * reconstruir normales y la transicion al siguiente nivel sin reevaluar ruido.
+ * Optional data to generate a clipmap level on a stable tangent frame.
+ * Heights and colors include a two-texel halo to reconstruct normals
+ * and the transition to the next level without re-evaluating noise.
  */
 struct FCosmicPlanetClipmapGenerationSettings
 {
@@ -26,97 +26,97 @@ struct FCosmicPlanetClipmapGenerationSettings
 };
 
 /**
- * Tarea asincrona encargada de generar deformaciones de ruido,
- * normales y colores para una malla procedural.
+ * Asynchronous task responsible for generating noise deformations,
+ * normals, and colors for a procedural mesh.
  *
- * Esta tarea se ejecuta en segundo plano utilizando el sistema
- * de tareas asincronas de Unreal Engine para evitar bloquear
- * el hilo principal durante la generacion del terreno.
+ * This task runs in the background using Unreal Engine's
+ * async task system to avoid blocking the main thread
+ * during terrain generation.
  */
 class COSMICARCHITECTRUNTIME_API FCosmicNoiseGenerationTask : public FNonAbandonableTask
 {
 public:
 
     /** 
-     * Referencia a los vertices base de la malla.
+     * Reference to base mesh vertices.
      *
-     * Estos vertices representan la geometria original antes
-     * de aplicar desplazamientos de ruido.
+     * These vertices represent original geometry before
+     * applying noise displacements.
      */
     const TArray<FVector>& BaseVertices;
 
     /**
-     * Vertices calculados tras aplicar el ruido procedural.
+     * Vertices calculated after applying procedural noise.
      */
     TArray<FVector> CalculatedVertices;
 
     /**
-     * Normales calculadas para la geometria final.
+     * Normals calculated for the final geometry.
      */
     TArray<FVector> CalculatedNormals;
 
     /**
-     * Colores calculados para cada vertice.
+     * Colors calculated for each vertex.
      */
     TArray<FLinearColor> CalculatedColors;
 
-    /** Cache desplazable que se devuelve al componente al terminar la tarea. */
+    /** Scrollable cache returned to component upon task completion. */
     TArray<float> CalculatedHeightCache;
     TArray<FLinearColor> CalculatedColorCache;
 
-    /** Centro y revision a los que pertenecen los resultados del clipmap. */
+    /** Center and revision to which clipmap results belong. */
     FIntPoint CalculatedGridCenter = FIntPoint::ZeroValue;
     uint64 CalculatedProjectionRevision = 0;
 
     /**
-     * Transformacion del componente propietario.
+     * Owning component transform.
      */
     FTransform ComponentTransform;
 
     /**
-     * Centro global del planeta.
+     * Global planet center.
      */
     FVector PlanetCenter;
 
     /**
-     * Radio del planeta utilizado para las proyecciones esfericas.
+     * Planet radius used for spherical projections.
      */
     double PlanetRadius;
 
     /**
-     * Espaciado entre vertices de la grilla.
+     * Grid vertex spacing.
      */
     double GridSpacing;
 
     /**
-     * Indica si la malla representa un planeta.
+     * Indicates whether mesh represents a planet.
      */
     bool IsPlanet;
 
     /**
-     * Indica si la malla corresponde a una esfera completa.
+     * Indicates whether mesh corresponds to a full sphere.
      */
     bool IsSphere;
 
     /**
-     * Estrategia de ruido utilizada para evaluar alturas y colores.
+     * Noise strategy used to evaluate heights and colors.
      */
     TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy;
 
-    /** Configuracion de la ruta incremental de clipmap planetario. */
+    /** Configuration of incremental planetary clipmap route. */
     FCosmicPlanetClipmapGenerationSettings ClipmapSettings;
 
     /**
-     * Constructor de la tarea asincrona de generacion procedural.
+     * Constructor for procedural generation asynchronous task.
      *
-     * @param InBaseVerts Vertices base de la malla.
-     * @param InTransform Transformacion del componente.
-     * @param InPlanetCenter Centro global del planeta.
-     * @param InPlanetRadius Radio del planeta.
-     * @param InGridSpacing Espaciado entre vertices.
-     * @param InPlanet Indica si la malla es planetaria.
-     * @param InIsSphere Indica si la geometria es una esfera.
-     * @param InNoiseGenerationStrategy Estrategia de ruido utilizada.
+     * @param InBaseVerts Base mesh vertices.
+     * @param InTransform Component transform.
+     * @param InPlanetCenter Global planet center.
+     * @param InPlanetRadius Planet radius.
+     * @param InGridSpacing Vertex spacing.
+     * @param InPlanet Indicates if mesh is planetary.
+     * @param InIsSphere Indicates if geometry is a sphere.
+     * @param InNoiseGenerationStrategy Noise strategy used.
      */
     FCosmicNoiseGenerationTask(
         const TArray<FVector>& InBaseVerts,
@@ -131,7 +131,7 @@ public:
     );
 
     /**
-     * Devuelve las estadisticas de ejecucion para profiling.
+     * Returns execution stats for profiling.
      */
     FORCEINLINE TStatId GetStatId() const
     {
@@ -139,12 +139,12 @@ public:
     }
 
     /**
-     * Ejecuta el calculo procedural de vertices, normales y colores.
+     * Executes procedural computation of vertices, normals, and colors.
      */
     void DoWork();
 
 private:
 
-    /** Genera o desplaza la cache del clipmap y reconstruye solo sus salidas. */
+    /** Generates or scrolls clipmap cache and reconstructs only its outputs. */
     void DoSnappedPlanetClipmapWork();
 };

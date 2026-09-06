@@ -6,17 +6,17 @@
 #include "CosmicEarthLikeNoiseSettings.generated.h"
 
 /**
- * Configuración utilizada para generar una estrategia de ruido
- * orientada a planetas tipo Tierra.
+ * Configuration used to generate an Earth-like
+ * planetary noise strategy.
  *
- * Esta configuración combina múltiples capas de ruido especializadas:
- * - Continentes.
- * - Montañas.
- * - Colinas.
- * - Detalle fino.
- * - Ríos.
+ * This configuration combines multiple specialized noise layers:
+ * - Continents.
+ * - Mountains.
+ * - Hills.
+ * - Fine detail.
+ * - Rivers.
  *
- * Además incluye parámetros de biomas y normalización de altura.
+ * It also includes biome parameters and height normalization.
  */
 UCLASS()
 class COSMICARCHITECTNOISE_API UCosmicEarthLikeNoiseSettings : public UCosmicNoiseClass
@@ -26,16 +26,16 @@ class COSMICARCHITECTNOISE_API UCosmicEarthLikeNoiseSettings : public UCosmicNoi
 public:
 
     /**
-     * Semilla utilizada para la generación procedural del terreno.
+     * Seed used for procedural terrain generation.
      */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     int32 Seed;
 
     /**
-     * Escala utilizada para normalizar la altura final del terreno.
+     * Scale used to normalize final terrain height.
      *
-     * Valores más bajos comprimen las alturas.
-     * Valores más altos preservan mayor variación vertical.
+     * Lower values compress heights.
+     * Higher values preserve greater vertical variation.
      */
     UPROPERTY(
         EditAnywhere,
@@ -45,46 +45,46 @@ public:
     float HeightNormalizationScale = 1.0f;
 
     /**
-     * Capa principal utilizada para generar continentes.
+     * Main layer used to generate continents.
      */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseDataLayer ContinentalLayer;
 
     /**
-     * Capa utilizada para generar cadenas montañosas.
+     * Layer used to generate mountain ranges.
      */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseDataLayer MountainLayer;
 
     /**
-     * Capa utilizada para generar colinas y variaciones suaves.
+     * Layer used to generate hills and smooth variations.
      */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseDataLayer HillLayer;
 
     /**
-     * Capa utilizada para añadir detalle fino al terreno.
+     * Layer used to add fine detail to terrain.
      */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseDataLayer DetailLayer;
 
     /**
-     * Capa utilizada para la generación procedural de ríos.
+     * Layer used for procedural river generation.
      */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseDataLayer RiverLayer;
 
     /**
-     * Parámetros relacionados con la generación de biomas.
+     * Parameters related to biome generation.
      */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseBiomeParameters BiomeParameters;
 
     /**
-     * Crea e inicializa la estrategia de ruido tipo Tierra
-     * utilizando la configuración actual.
+     * Creates and initializes the Earth-like noise strategy
+     * using the current configuration.
      *
-     * @return Estrategia de ruido completamente inicializada.
+     * @return Fully initialized noise strategy.
      */
     virtual TSharedPtr<ICosmicNoiseStrategy> CreateStrategy() const override;
 };

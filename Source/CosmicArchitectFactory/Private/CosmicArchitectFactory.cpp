@@ -18,13 +18,13 @@ void FCosmicArchitectFactoryModule::StartupModule()
 
     IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
 
-    // Categoría nueva en el menú de clic derecho
+    // New category in the right-click menu
     CosmicCategory = AssetTools.RegisterAdvancedAssetCategory( 
         FName(TEXT("CosmicArchitect")),
         FText::FromString("Cosmic Architect")
     );
 
-    // Registramos nuestras acciones y le pasamos la categoría
+    // Register our actions and pass the category
     TSharedPtr<FCosmicNoiseDefaultSettingsActions> NoiseActions = MakeShareable(new FCosmicNoiseDefaultSettingsActions());
     NoiseActions->MyAssetCategory = CosmicCategory;
 

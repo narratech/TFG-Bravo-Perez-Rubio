@@ -9,35 +9,35 @@
 class ICosmicNoiseStrategy;
 
 /**
- * Define el cuadrante lógico utilizado por el clipmap
- * para gestionar desplazamientos y reconstrucciones.
+ * Defines the logical quadrant used by the clipmap
+ * to manage scrolling and reconstructions.
  */
 UENUM(BlueprintType)
 enum class EClipmapQuadrant : uint8
 {
-    /** Posición base inicial */
+    /** Initial base position */
     TopLeft = 0,
 
-    /** Desplazamiento hacia la derecha */ 
+    /** Offset to the right */ 
     TopRight = 1,
 
-    /** Desplazamiento hacia abajo */
+    /** Offset downwards */
     BottomLeft = 2,
 
-    /** Desplazamiento hacia derecha y abajo */
+    /** Offset to the right and downwards */
     BottomRight = 3
 };
 
 /**
- * Componente procedural encargado de representar
- * un nivel individual del sistema clipmap.
+ * Procedural component responsible for representing
+ * an individual level of the clipmap system.
  *
- * Funcionalidades principales:
- * - Generación de malla procedural proyectada sobre esfera.
- * - Generación de mallas esféricas simplificadas.
- * - Actualización asíncrona mediante tareas de ruido.
- * - Reescalado dinámico del nivel.
- * - Gestión de visibilidad y transformaciones.
+ * Main features:
+ * - Procedural mesh generation projected onto sphere.
+ * - Generation of simplified spherical meshes.
+ * - Asynchronous updating using noise tasks.
+ * - Dynamic level rescaling.
+ * - Visibility and transformation management.
  */
 UCLASS()
 class UCosmicMeshComponent : public UProceduralMeshComponent
@@ -46,39 +46,39 @@ class UCosmicMeshComponent : public UProceduralMeshComponent
 
 public:
 
-    /** Índice del nivel dentro del clipmap */
+    /** Level index within clipmap */
     int32 LevelIndex;
 
-    /** Resolución de la cuadrícula */
+    /** Grid resolution */
     int32 Resolution;
 
-    /** Espaciado entre vértices */
+    /** Vertex spacing */
     int64 GridSpacing;
 
-    /** Radio del planeta */
+    /** Planet radius */
     double PlanetRadius;
 
-    /** Indica si el nivel es un anillo exterior */
+    /** Indicates whether level is an outer ring */
     bool bIsRing;
 
-    /** Indica si la malla representa un planeta */
+    /** Indicates whether mesh represents a planet */
     bool bIsPlanet;
 
-    /** Indica si la malla procedural ya fue creada */
+    /** Indicates whether procedural mesh has already been created */
     bool bMeshCreated = false;
 
-    /** Indica si la malla es una esfera completa */
+    /** Indicates whether mesh is a full sphere */
     bool bIsSphereMesh = false;
 
-    /** Indica si la malla está visible actualmente */
+    /** Indicates whether mesh is currently visible */
     bool bActiveMesh;
 
-    /** Transformación actual del patch */
+    /** Current patch transform */
     FTransform PatchTransform;
 
     /**
-     * Vértices base deformados únicamente sobre la esfera
-     * sin aplicar alturas de ruido adicionales.
+     * Base vertices deformed only on the sphere
+     * without applying additional noise heights.
      */
     TArray<FVector> BaseVertices;
 
@@ -87,34 +87,34 @@ public:
     virtual void OnComponentDestroyed(bool bDestroyingHierarchy);
 
     /**
-     * Construye la malla procedural base proyectada
-     * sobre la superficie del planeta.
+     * Builds base procedural mesh projected
+     * onto planet surface.
      */
     void BuildBaseProjectedMesh();
 
     /**
-     * Construye una esfera completa simplificada.
+     * Builds a simplified full sphere.
      */
     void BuildSphereMesh();
 
     /**
-     * Reescala el nivel actual utilizando un nuevo spacing.
+     * Rescales current level using new spacing.
      *
-     * @param GridSpacing Nuevo espaciado entre vértices.
+     * @param GridSpacing New vertex spacing.
      */
     void ReScaleLevel(int64 GridSpacing);
 
     /**
-     * Actualiza la posición y rotación del patch.
+     * Updates patch position and rotation.
      *
-     * @param SurfacePos Posición sobre la superficie.
-     * @param PatchRotation Rotación alineada con la normal.
+     * @param SurfacePos Position on surface.
+     * @param PatchRotation Rotation aligned with normal.
      */
     void SetPositionAndRotation(const FVector& SurfacePos, const FRotator& PatchRotation);
 
     /**
-     * Configura la proyeccion absoluta del nivel dentro de un marco tangente
-     * cuantizado. El centro se expresa en celdas propias de este nivel.
+     * Configures absolute projection of the level within a quantized
+     * tangent frame. Center is expressed in this level's own cells.
      */
     void ConfigurePlanetaryProjection(
         const FTransform& InProjectionFrame,
@@ -122,59 +122,59 @@ public:
         uint64 InProjectionRevision,
         bool bInHasCoarserLevel);
 
-    /** Indica si el centro o el marco configurados aun no se han generado. */
+    /** Indicates whether configured center or frame have not yet been generated. */
     bool IsPlanetaryProjectionUpdateRequired() const;
 
     /**
-     * Activa o desactiva visualmente la malla.
+     * Visually enables or disables mesh.
      *
-     * @param active Estado de visibilidad.
+     * @param active Visibility state.
      */
     void SetMeshActive(bool active);
 
     /**
-     * Solicita una actualización asíncrona de ruido procedural.
+     * Requests an asynchronous procedural noise update.
      *
-     * @param NoiseGenerationStrategy Estrategia de ruido activa.
+     * @param NoiseGenerationStrategy Active noise strategy.
      */
     void RequestMeshUpdate(TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy);
 
     /**
-     * Comprueba si la tarea de generación terminó
-     * y aplica la nueva geometría generada.
+     * Checks whether generation task has finished
+     * and applies newly generated geometry.
      *
-     * @return True si la malla ya está actualizada.
+     * @return True if mesh is already updated.
      */
     bool CheckAndApplyMeshUpdate();
 
     /**
-     * Comprueba si existe una tarea asíncrona activa.
+     * Checks whether an active asynchronous task exists.
      *
-     * @return True si la tarea sigue ejecutándose.
+     * @return True if task is still executing.
      */
     bool IsTaskActive();
 
     /**
-     * Cancela cualquier tarea asíncrona activa.
+     * Cancels any active asynchronous task.
      */
     void CancelAsyncWork();
 
 protected:
 
-    /** Tarea asíncrona utilizada para generar ruido procedural */
+    /** Asynchronous task used to generate procedural noise */
     FAsyncTask<FCosmicNoiseGenerationTask>* NoiseTask = nullptr;
 
-    /** Indica si actualmente se está generando ruido */
+    /** Indicates whether noise is currently being generated */
     bool bIsGeneratingNoise = false;
 
-    /** Estado de la ruta incremental de geometry clipmap planetario. */
+    /** State of incremental planetary geometry clipmap route. */
     bool bUseSnappedPlanetProjection = false;
     bool bHasCoarserLevel = false;
     FTransform ProjectionFrame = FTransform::Identity;
     FIntPoint RequestedGridCenter = FIntPoint::ZeroValue;
     uint64 RequestedProjectionRevision = 0;
 
-    /** Estado de la cache aplicada actualmente a este nivel. */
+    /** State of cache currently applied to this level. */
     FIntPoint CachedGridCenter = FIntPoint::ZeroValue;
     uint64 CachedProjectionRevision = MAX_uint64;
     TArray<float> CachedHeights;

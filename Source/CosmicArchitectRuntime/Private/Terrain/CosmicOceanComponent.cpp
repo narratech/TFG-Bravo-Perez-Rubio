@@ -21,7 +21,7 @@ void UCosmicOceanComponent::InitOcean(double PlanetRadiusKm, USceneComponent* Pa
 
 void UCosmicOceanComponent::RegenerateOcean()
 {
-    // Limpiar oceano anterior antes de regenerar
+    // Clear previous ocean before regenerating
     if (bInit)
     { 
         ClearOcean();
@@ -32,14 +32,14 @@ void UCosmicOceanComponent::RegenerateOcean()
     UCosmicMeshComponent* Mesh = NewObject<UCosmicMeshComponent>(
         GetOwner(),
         ComponentName,
-        RF_Transient | RF_DuplicateTransient  // Marcar como transitorio
+        RF_Transient | RF_DuplicateTransient  // Mark as transient
     );
 
     if (Mesh)
     {
         Mesh->RegisterComponent();
 
-        // Adjuntar la malla al componente raiz indicado
+        // Attach mesh to indicated root component
         if (ParentRoot)
         {
             Mesh->AttachToComponent(ParentRoot, FAttachmentTransformRules::KeepRelativeTransform);
@@ -63,7 +63,7 @@ void UCosmicOceanComponent::RegenerateOcean()
 
 void UCosmicOceanComponent::BuildDynamicMaterial()
 {
-    // Crear instancia dinamica del material del oceano
+    // Create dynamic instance of ocean material
     if (OceanMaterial) {
 
         DynamicOceanMat = UMaterialInstanceDynamic::Create(OceanMaterial, this);
@@ -73,7 +73,7 @@ void UCosmicOceanComponent::BuildDynamicMaterial()
         DynamicOceanMat = nullptr;
     }
 
-    // Aplicar material a la malla
+    // Apply material to mesh
     if (OceanMesh)
     {
         OceanMesh->SetMaterial(0, DynamicOceanMat);
@@ -85,7 +85,7 @@ void UCosmicOceanComponent::ClearOcean()
 {
     if (!bInit || !OceanMesh) return;
 
-    // Limpiar recursos asociados a la malla procedural
+    // Clean up resources associated with procedural mesh
     OceanMesh->ClearAllMeshSections();
     OceanMesh->CancelAsyncWork();
     OceanMesh->DestroyComponent();
@@ -117,7 +117,7 @@ void UCosmicOceanComponent::PostEditChangeProperty(FPropertyChangedEvent& Proper
         return;
     }
 
-    // Cambios que requieren reconstruccion completa
+    // Changes that require full rebuild
     if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, OceanResolution) ||
         PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, SeaLevelKm))
     {
@@ -125,7 +125,7 @@ void UCosmicOceanComponent::PostEditChangeProperty(FPropertyChangedEvent& Proper
         return;
     }
 
-    // Actualizar material base del oceano
+    // Update ocean base material
     if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, OceanMaterial))
     {
         BuildDynamicMaterial();
@@ -139,7 +139,7 @@ void UCosmicOceanComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-    // Actualizar posicion global del planeta en el material dinamico
+    // Update global planet position in dynamic material
     if (bInit && DynamicOceanMat)
     {
         DynamicOceanMat->SetVectorParameterValue("PlanetCenter", GetOwner()->GetActorLocation());

@@ -15,7 +15,7 @@ class COSMICARCHITECTFACTORY_API UCosmicFoliageCollectionFactory : public UFacto
 public:
     UCosmicFoliageCollectionFactory();
 
-    //Para crear asset del tipo que quieras
+    //To create an asset of the desired type
     virtual UObject* FactoryCreateNew(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn) override;
 
     virtual bool ShouldShowInNewMenu() const override;

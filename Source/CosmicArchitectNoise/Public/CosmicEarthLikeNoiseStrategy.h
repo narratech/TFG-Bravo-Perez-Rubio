@@ -7,49 +7,49 @@
 #include "ThirdParty/FastNoiseLite.h"
 
 /**
- * Estrategia de generación de ruido procedural tipo “Earth-like”.
+ * "Earth-like" procedural noise generation strategy.
  *
- * Combina múltiples capas de ruido (continentes, montañas, colinas, ríos y detalle)
- * junto con parámetros de bioma (humedad y temperatura) para generar terreno planetario.
+ * Combines multiple noise layers (continents, mountains, hills, rivers and detail)
+ * along with biome parameters (humidity and temperature) to generate planetary terrain.
  */
 class COSMICARCHITECTNOISE_API FCosmicEarthLikeNoiseStrategy : public ICosmicNoiseStrategy
 {
 public:
 
-    /** Semilla base utilizada para inicializar todos los sistemas de ruido */
+    /** Base seed used to initialize all noise systems */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     int32 Seed;
 
-    /** Factor global de normalización de altura del terreno */
+    /** Global terrain height normalization factor */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     float HeightNormalizationScale = 1.0f;
 
-    /** Capa de ruido principal que define continentes y masas terrestres */
+    /** Main noise layer defining continents and landmasses */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseDataLayer ContinentalLayer;
 
-    /** Capa de ruido utilizada para la generación de montañas */
+    /** Noise layer used for mountain generation */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseDataLayer MountainLayer;
 
-    /** Capa de ruido utilizada para la generación de colinas */
+    /** Noise layer used for hill generation */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseDataLayer HillLayer;
 
-    /** Capa de ruido de detalle fino del terreno */
+    /** Fine detail terrain noise layer */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseDataLayer DetailLayer;
 
-    /** Capa de ruido utilizada para la generación de ríos */
+    /** Noise layer used for river generation */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseDataLayer RiverLayer;
 
-    /** Parámetros globales de biomas (humedad, temperatura, etc.) */
+    /** Global biome parameters (humidity, temperature, etc.) */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseBiomeParameters BiomeParameters;
 
     /**
-     * Inicializa la estrategia de ruido con todos los parámetros necesarios.
+     * Initializes the noise strategy with all required parameters.
      */
     void Initialize(
         int32 InSeed,
@@ -62,30 +62,30 @@ public:
         FCosmicNoiseDataLayer InRiver);
 
     /**
-     * Evalúa un punto en el espacio de ruido y genera altura y color de bioma.
+     * Evaluates a point in noise space and generates height and biome color.
      */
     void EvaluatePoint(const FVector& NoiseDir, float& OutHeight, FLinearColor& OutColor) const override;
 
 protected:
 
-    /** Ruido base de continentes */
+    /** Base continent noise */
     FastNoiseLite ContinentalNoise;
 
-    /** Ruido de montañas (ridged noise) */
+    /** Mountain noise (ridged noise) */
     FastNoiseLite MountainNoise;
 
-    /** Ruido de colinas */
+    /** Hill noise */
     FastNoiseLite HillNoise;
 
-    /** Ruido de detalle fino */
+    /** Fine detail noise */
     FastNoiseLite DetailNoise;
 
-    /** Ruido de ríos basado en cellular noise */
+    /** River noise based on cellular noise */
     FastNoiseLite RiverNoise;
 
-    /** Ruido de humedad para biomas */
+    /** Humidity noise for biomes */
     FastNoiseLite HumidityNoise;
 
-    /** Ruido de temperatura para biomas */
+    /** Temperature noise for biomes */
     FastNoiseLite TempNoise;
 };

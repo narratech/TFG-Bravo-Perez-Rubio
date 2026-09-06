@@ -11,14 +11,14 @@ class UCosmicFoliageCollection;
 class ICosmicNoiseStrategy;
  
 /**
- * Componente encargado de gestionar la generación y streaming de foliage
- * alrededor del jugador utilizando un sistema de CubeMap + Octree.
+ * Component responsible for managing foliage generation and streaming
+ * around the player using a CubeMap + Octree system.
  *
- * Controla:
- * - Activación/desactivación de celdas por distancia.
- * - Ejecución de tareas asíncronas de generación.
- * - Aplicación de instancias mediante HISM.
- * - Gestión de capas de vegetación.
+ * Controls:
+ * - Cell activation/deactivation by distance.
+ * - Execution of asynchronous generation tasks.
+ * - Instance application via HISM.
+ * - Vegetation layer management.
  */ 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent), 
     HideCategories = (Rendering, Lighting, Navigation, Replication, Physics,Collision,
@@ -29,76 +29,76 @@ class COSMICARCHITECTFOLIAGE_API UCosmicFoliageSpawner : public UActorComponent
 
 public:
     /**
-     * Constructor por defecto.
+     * Default constructor.
      */
     UCosmicFoliageSpawner();
 
     /**
-     * Inicializa el sistema de spawning de foliage.
+     * Initializes the foliage spawning system.
      *
-     * @param PlanetRadius Radio del planeta.
+     * @param PlanetRadius Planet radius.
      */
     void InitFoliageSpawner(float PlanetRadius);
 
     /**
-     * Actualiza el sistema de foliage según la posición del jugador.
+     * Updates the foliage system based on player position.
      *
-     * @param DeltaTime Tiempo entre frames.
-     * @param ViewerLocation Posición del observador.
-     * @param PlanetCenter Centro del planeta.
-     * @param PlanetRadius Radio del planeta.
-     * @param DistanceToSurface Distancia a la superficie.
-     * @param NoiseGenerationStrategy Estrategia de ruido ambiental.
+     * @param DeltaTime Time between frames.
+     * @param ViewerLocation Viewer position.
+     * @param PlanetCenter Planet center.
+     * @param PlanetRadius Planet radius.
+     * @param DistanceToSurface Distance to surface.
+     * @param NoiseGenerationStrategy Environmental noise strategy.
      */
     void UpdateFoliageSpawner(float DeltaTime, const FVector& ViewerLocation, const FVector& PlanetCenter, double PlanetRadius, double DistanceToSurface, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy);
 
     /**
-     * Cancela todas las tareas asíncronas activas.
+     * Cancels all active asynchronous tasks.
      */
     void CancelAsyncWork();
 
     /**
-     * Limpia todas las instancias de foliage generadas.
+     * Clears all generated foliage instances.
      */
     void ClearFoliage();
 
-    /** Colección de foliage utilizada para la generación */
+    /** Foliage collection used for generation */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
     UCosmicFoliageCollection* FoliageCollection;
 
-    /** Radio de activación de capa cercana */
+    /** Near layer activation radius */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage", meta = (ClampMin = "0.02"))
     float NearLayerRadiusKm = 0.05f;
 
-    /** Radio de activación de capa media */
+    /** Medium layer activation radius */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage", meta = (ClampMin = "0.02"))
     float MediumLayerRadiusKm = 0.2f;
 
-    /** Radio de activación de capa lejana */
+    /** Far layer activation radius */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage", meta = (ClampMin = "0.02"))
     float FarLayerRadiusKm = 0.5f;
 
-    /** Máximo de instancias aplicadas al mundo por frame */
+    /** Maximum instances applied to the world per frame */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance", meta = (ClampMin = "1"))
     int32 MaxInstancesGeneratedPerFrame = 100;
 
-    /** Numero maximo de celdas calculadas simultaneamente en el thread pool. */
+    /** Maximum number of cells computed simultaneously in the thread pool. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance", meta = (ClampMin = "1", ClampMax = "64"))
     int32 MaxConcurrentGenerationTasks = 16;
 
-    /** Limite de seguridad para impedir celdas configuradas con millones de instancias. */
+    /** Safety limit to prevent cells configured with millions of instances. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance", meta = (ClampMin = "1", ClampMax = "100000"))
     int32 MaxInstancesPerCell = 1000;
 
-    /** Distancia usada para estimar la normal procedural del terreno. */
+    /** Distance used to estimate the procedural terrain normal. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance", meta = (ClampMin = "1.0"))
     float NormalSampleDistanceCm = 500.0f;
 
-    /** Fraccion del radio que debe desplazarse el observador antes de consultar de nuevo el octree. */
+    /** Fraction of radius the observer must move before re-querying the octree. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance", meta = (ClampMin = "0.001", ClampMax = "0.25"))
     float VisibilityUpdateDistanceRatio = 0.02f;
 
-    /** Orden de prioridad para generar, aplicar y retirar las capas (por defecto: 1.Far 2.Medium 3.Near). */
+    /** Priority order to generate, apply and remove layers (default: 1.Far 2.Medium 3.Near). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance")
     TArray<ECosmicFoliageLayer> FoliageLayerPriority;
 
@@ -112,12 +112,12 @@ protected:
 #endif
 
     /**
-     * Octree responsable de la subdivisión espacial del planeta.
+     * Octree responsible for spatial subdivision of the planet.
      */
     FCosmicOctree Octree;
 
     /**
-     * Estructura de celdas activas por capa de foliage.
+     * Active cells structure per foliage layer.
      */
     UPROPERTY()
     FCosmicFoliageLayerCells LayerCells[3];
@@ -161,7 +161,7 @@ private:
     TSet<FCubeMapCell> PendingCells[3];
     TArray<FAsyncTask<FFoliageGenerationTask>*> ActiveTasks[3];
 
-    /** Cache ligera para no recorrer el octree cuando no puede cambiar la cobertura. */
+    /** Lightweight cache to avoid traversing the octree when coverage cannot change. */
     FVector LastVisibilityQueryLocation[3];
     float LastVisibilityRadiusKm[3] = { 0.0f, 0.0f, 0.0f };
     bool bVisibilityQueryValid[3] = { false, false, false };
@@ -175,11 +175,11 @@ private:
     void GetLayerPriorityIndices(int32 OutLayerIndices[3]) const;
     void RefreshConfiguredLayerMask();
     void CancelLayerAsyncWork(int32 LayerIndex);
-    /** Reinicia las colas y la cache de visibilidad de una capa. */
+    /** Resets queues and visibility cache for a layer. */
     void ResetLayerState(int32 LayerIndex);
-    /** Cancela la generacion y retira las instancias de una sola capa. */
+    /** Cancels generation and removes instances of a single layer. */
     void ClearFoliageLayer(ECosmicFoliageLayer Layer);
-    /** Aplica las instancias generadas al mundo */
+    /** Applies generated instances to the world */
     void ApplyGeneratedInstances(const FCubeMapCell& Cell, ECosmicFoliageLayer Layer, TArrayView<const FCosmicFoliageInstance> Instances);
 
     FCosmicSharedHISMData* GetOrCreateSharedHISM(const FCosmicHISMKey& Key);

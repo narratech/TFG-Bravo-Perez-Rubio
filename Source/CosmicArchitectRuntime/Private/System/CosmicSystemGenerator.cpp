@@ -91,11 +91,11 @@ bool ACosmicSystemGenerator::TryPlacePlanet(
     const float MinDist = StarRadiusKm * OrbitDistanceMinFactor;
     const float MaxDist = SystemRadiusKm;
 
-    // Seleccionar factores de radio según tipo
+    // Select radius factors according to type
     const float RadiusFactorMin = bIsGasGiant ? GasGiantRadiusFactorMin : PlanetRadiusFactorMin;
     const float RadiusFactorMax = bIsGasGiant ? GasGiantRadiusFactorMax : PlanetRadiusFactorMax;
 
-    // Seleccionar rango de diámetro según tipo
+    // Select diameter range according to type
     const FVector2D& DiameterRange = BodyDiameterRangeKm;
 
     for (int32 Attempt = 0; Attempt < MaxGenerationAttempts; ++Attempt)
@@ -103,13 +103,13 @@ bool ACosmicSystemGenerator::TryPlacePlanet(
         float Orbit = Stream.FRandRange(MinDist, MaxDist);
         float Radius = Orbit * Stream.FRandRange(RadiusFactorMin, RadiusFactorMax);
 
-        // Aplicar límites de diámetro (convertir a radio)
+        // Apply diameter limits (convert to radius)
         Radius = FMath::Clamp(Radius, DiameterRange.X * 0.5f, DiameterRange.Y * 0.5f);
 
         if (!IsOrbitDistanceValid(Orbit, Radius, ExistingOrbitDistances, ExistingPlanetRadii))
             continue;
 
-        // Verificar agrupamiento si es necesario
+        // Check clustering if needed
         if (MaxDistanceToNearest > 0.0f && ExistingOrbitDistances.Num() > 0)
         {
             bool bHasNeighbor = false;
@@ -144,10 +144,10 @@ ACosmicSystemGenerator::FPlanetClassification ACosmicSystemGenerator::ClassifyPl
     const bool bInBeltZone = (OrbitalFraction >= BeltZoneInnerFraction &&
         OrbitalFraction <= BeltZoneOuterFraction);
 
-    // Calcular fracción de cuerpos restantes
+    // Calculate fraction of remaining bodies
     const float RemainingFraction = (float)RemainingBodies / FMath::Max(1, TotalBodies);
 
-    // NUEVA LÓGICA: Gigante gaseoso cuando quedan pocos cuerpos y hay probabilidad
+    // NEW LOGIC: Gas giant when few bodies remain and probability check passes
     if (RemainingFraction <= GasGiantAppearanceThreshold &&
         Stream.FRandRange(0.f, 1.f) < GasGiantProbability)
     {
@@ -167,7 +167,7 @@ ACosmicSystemGenerator::FPlanetClassification ACosmicSystemGenerator::ClassifyPl
     }
     else
     {
-        // Planeta telúrico por defecto
+        // Terrestrial planet by default
         Result.Type = EPlanetType::Telluric;
         Result.bHasRings = false;
         Result.bHasMoons = true;
@@ -516,7 +516,7 @@ void ACosmicSystemGenerator::GenerateBodies()
     const float SystemRadiusKm = VolumeSizeKm.X * 0.5f;
     const float StarRadiusKm = SystemRadiusKm * StarRadiusFraction;
 
-    // --- ESTRELLA ---
+    // --- STAR ---
     ACosmicPlanet* Star = GetWorld()->SpawnActor<ACosmicPlanet>(
         ACosmicPlanet::StaticClass(),
         GetActorLocation(), FRotator::ZeroRotator, SpawnParams);
@@ -546,7 +546,7 @@ void ACosmicSystemGenerator::GenerateBodies()
     Star->AddInstanceComponent(StarGravity);
     GeneratedBodies.Add(Star);
 
-    // Luz puntual de la estrella, con alcance suficiente para todo el sistema generado.
+    // Point light of the star, with sufficient range for the entire generated system.
     APointLight* PointLight = GetWorld()->SpawnActor<APointLight>(
         APointLight::StaticClass(),
         Star->GetActorLocation(), Star->GetActorRotation(), SpawnParams);
@@ -573,13 +573,13 @@ void ACosmicSystemGenerator::GenerateBodies()
         GeneratedBodies.Add(PointLight);
     }
 
-    // Contador de cuerpos: la estrella y la luz no cuentan para NumberOfBodies (sólo planetas y lunas)
+    // Body counter: star and light do not count towards NumberOfBodies (only planets and moons)
     int32 BodiesSpawned = 0;
-    // Listas para mantener distancias orbitales y radios de los planetas ya colocados
+    // Lists to track orbital distances and radii of already placed planets
     TArray<float> PlanetOrbits;
     TArray<float> PlanetRadii;
 
-    // Generar planetas hasta alcanzar NumberOfBodies o hasta que no se pueda colocar más
+    // Generate planets until reaching NumberOfBodies or until no more can be placed
     while (BodiesSpawned < NumberOfBodies)
     {
         const int32 RemainingBodies = NumberOfBodies - BodiesSpawned;
@@ -592,7 +592,7 @@ void ACosmicSystemGenerator::GenerateBodies()
             PlanetOrbits, PlanetRadii, NewOrbit, NewRadius, bShouldBeGasGiant))
             break;
 
-        // Clasificar el planeta
+        // Classify planet
         FPlanetClassification Class = ClassifyPlanet(
             NewOrbit, NewRadius, SystemRadiusKm, Stream, RemainingBodies, NumberOfBodies);
 
@@ -601,7 +601,7 @@ void ACosmicSystemGenerator::GenerateBodies()
             NewRadius = Stream.FRandRange(GasGiantRadiusMin, GasGiantRadiusMax);
         }
 
-        // Cinturón de asteroides - no cuenta como cuerpo planetario, pero tampoco es una luna.
+        // Asteroid belt - does not count as a planetary body, but is not a moon either.
         if (Class.Type == EPlanetType::AsteroidBelt)
         {
             UCosmicRingComponent* Belt = NewObject<UCosmicRingComponent>(Star);
@@ -623,17 +623,17 @@ void ACosmicSystemGenerator::GenerateBodies()
                 Stream.FRandRange(0.001f, 0.003f), 1.f);
             Belt->MacroRingMaterial = RingMaterial;
             Star->AddInstanceComponent(Belt);
-            continue; // no ocupa cupo de cuerpos
+            continue; // does not take up body quota
         }
 
-        // Crear el planeta
+        // Create planet
         ACosmicPlanet* Planet = GetWorld()->SpawnActor<ACosmicPlanet>(
             ACosmicPlanet::StaticClass(),
             GetActorLocation(), FRotator::ZeroRotator, SpawnParams);
         if (!Planet) continue;
         Planet->AttachToActor(this, FAttachmentTransformRules::KeepWorldTransform);
 
-        // Incrementar contador
+        // Increment counter
         BodiesSpawned++;
         PlanetOrbits.Add(NewOrbit);
         PlanetRadii.Add(NewRadius);
@@ -717,7 +717,7 @@ void ACosmicSystemGenerator::GenerateBodies()
 
         GeneratedBodies.Add(Planet);
 
-        // --- LUNAS ---
+        // --- MOONS ---
         if (!Class.bHasMoons || BodiesSpawned >= NumberOfBodies)
             continue;
 

@@ -9,9 +9,9 @@ TSharedPtr<ICosmicNoiseStrategy> UCosmicNoiseClass::CreateStrategy() const
 #if WITH_EDITOR
 void UCosmicNoiseClass::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
-    Super::PostEditChangeProperty(PropertyChangedEvent); // Siempre llama al Super primero o al inicio
+    Super::PostEditChangeProperty(PropertyChangedEvent); // Always call Super first or at the start
 
-    // Obtenemos la propiedad que cambió y, si es parte de un struct, su propiedad "padre"
+    // We get the property that changed and, if it is part of a struct, its "parent" property
     FProperty* Property = PropertyChangedEvent.Property;
     FProperty* MemberProperty = PropertyChangedEvent.MemberProperty;
 

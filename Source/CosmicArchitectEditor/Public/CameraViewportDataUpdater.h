@@ -5,44 +5,44 @@
 #include "Templates/UniquePtr.h"
 
 /**
- * Objeto tickable del editor encargado de actualizar
- * continuamente los datos de la cámara activa del viewport.
+ * Editor tickable object responsible for continuously
+ * updating the active viewport camera data.
  *
- * Esta clase sincroniza la posición y rotación de la cámara
- * del editor con el bridge compartido utilizado por el sistema.
+ * This class synchronizes the editor camera's position and rotation
+ * with the shared bridge used by the system.
  */
 class FCameraViewportDataUpdater : public FTickableEditorObject
 {
 public:
 
     /**
-     * Ejecuta la actualización en cada tick del editor.
+     * Executes the update on each editor tick.
      *
-     * @param DeltaTime Tiempo transcurrido desde el último tick.
+     * @param DeltaTime Time elapsed since the last tick.
      */
     virtual void Tick(float DeltaTime) override;
 
     /**
-     * Indica si este objeto debe recibir ticks.
+     * Indicates whether this object should receive ticks.
      *
-     * @return true si el objeto puede actualizarse. 
+     * @return true if the object can be updated. 
      */
     virtual bool IsTickable() const override;
 
     /**
-     * Obtiene el identificador de estadísticas del sistema de profiling.
+     * Gets the stat identifier for the profiling system.
      *
-     * @return Identificador de estadísticas asociado al tick.
+     * @return Stat identifier associated with the tick.
      */
     virtual TStatId GetStatId() const override;
 
 private:
 
     /**
-     * Actualiza la información de la cámara activa del viewport.
+     * Updates active viewport camera information.
      *
-     * Obtiene la posición y rotación actuales de la cámara
-     * del editor y las almacena en el bridge compartido.
+     * Obtains the current position and rotation of the editor
+     * camera and stores them in the shared bridge.
      */
     void UpdateCameraViewport();
 };

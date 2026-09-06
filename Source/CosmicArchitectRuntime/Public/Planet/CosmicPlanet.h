@@ -15,9 +15,9 @@ class UMaterialInstance;
 
 /**
  * ACosmicPlanet
- * Actor principal que representa un cuerpo planetario procedural. 
- * Orquestra la generación de terreno mediante Clipmaps, simulación de océanos,
- * sistemas de colisiones dinámicas y distribución de follaje a gran escala.
+ * Main actor representing a procedural planetary body. 
+ * Orchestrates terrain generation via Clipmaps, ocean simulation,
+ * dynamic collision systems, and large-scale foliage distribution.
  */
 UCLASS(HideCategories = (
 	Replication, Input, Actor, LOD, Activation, Cooking, Networking,
@@ -28,82 +28,82 @@ UCLASS(HideCategories = (
 
 public:
 
-	/** Radio base del planeta en Kilómetros (soporta Large World Coordinates). */
+	/** Base planet radius in Kilometers (supports Large World Coordinates). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Planet")
 	double RadiusKm = 1.0;
 
-	/** Componente raíz de la jerarquía del actor. */
+	/** Root component of the actor hierarchy. */
 	UPROPERTY(VisibleAnywhere, Category = "Planet", BlueprintReadOnly)
 	USceneComponent* Root;
 
-	/** Sistema de gestión de terreno basado en niveles de detalle concéntricos (Clipmap). */
+	/** Terrain management system based on concentric levels of detail (Clipmap). */
 	UPROPERTY(VisibleAnywhere, Category = "Planet", BlueprintReadOnly)
 	TObjectPtr<UCosmicClipmapComponent> ClipmapComponent;
 
-	/** Gestiona la generación de mallas de colisión en tiempo real alrededor del observador. */
+	/** Manages real-time collision mesh generation around the observer. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Planet")
 	UCosmicCollisionComponent* CollisionComponent;
 
-	/** Componente encargado de la representación visual y física del nivel del mar. */
+	/** Component responsible for visual and physical representation of sea level. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Planet")
 	UCosmicOceanComponent* OceanComponent;
 
-	/** Asset que define los algoritmos de ruido para el relieve del terreno. */
+	/** Asset defining noise algorithms for terrain relief. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Noise")
 	UCosmicNoiseClass* NoiseClass;
 
-	/** Sistema de instanciación masiva de vegetación y rocas sobre la superficie. */
+	/** Mass instantiation system for vegetation and rocks on the surface. */
 	UPROPERTY(VisibleAnywhere, Category = "Planet", BlueprintReadOnly)
 	UCosmicFoliageSpawner* FoliageSpawnerComponent;
 
-	// --- CONFIGURACIÓN DE COLORES DEL MATERIAL ---
+	// --- MATERIAL COLOR CONFIGURATION ---
 
-	/** Color predominante para las zonas de altitud media. */
+	/** Predominant color for mid-altitude zones. */
 	UPROPERTY(EditAnywhere, Category = "Materials|Color")
 	FColor PlanetMainColor1 = FColor::Red;
 
-	/** Color secundario para variación cromática del terreno. */
+	/** Secondary color for terrain chromatic variation. */
 	UPROPERTY(EditAnywhere, Category = "Materials|Color")
 	FColor PlanetMainColor2 = FColor::Orange;
 
-	/** Tono aplicado en zonas de baja temperatura o valles profundos. */
+	/** Tint applied to low temperature areas or deep valleys. */
 	UPROPERTY(EditAnywhere, Category = "Materials|Color")
 	FColor PlanetColdColor = FColor::White;
 
-	/** Tono aplicado en cimas o zonas de alta actividad/temperatura. */
+	/** Tint applied to peaks or high activity/temperature areas. */
 	UPROPERTY(EditAnywhere, Category = "Materials|Color")
 	FColor PlanetHotColor = FColor::Red;
 
-	/** Color utilizado para resaltar pendientes pronunciadas y acantilados. */
+	/** Color used to highlight steep slopes and cliffs. */
 	UPROPERTY(EditAnywhere, Category = "Materials|Color")
 	FColor PlanetSlopeColor = FColor::Black;
 
-	// --- ESCALAS DE RUIDO ---
+	// --- NOISE SCALES ---
 
-	/** Detalle fino del terreno (Micro-relieve). */
+	/** Fine terrain detail (Micro-relief). */
 	UPROPERTY(EditAnywhere, Category = "Materials|Noise", meta = (ClampMin = "0.01"))
 	float NoiseScaleSmall = 1.f;
 
-	/** Detalle medio del terreno (Colinas y formaciones). */
+	/** Medium terrain detail (Hills and formations). */
 	UPROPERTY(EditAnywhere, Category = "Materials|Noise", meta = (ClampMin = "0.01"))
 	float NoiseScaleMedium = 3.f;
 
-	/** Detalle macro del terreno (Montañas y continentes). */
+	/** Macro terrain detail (Mountains and continents). */
 	UPROPERTY(EditAnywhere, Category = "Materials|Noise", meta = (ClampMin = "0.01"))
 	float NoiseScaleLarge = 100.f;
 
 
-	/** Inicializa los componentes por defecto y la estructura básica. */
+	/** Initializes default components and basic structure. */
 	ACosmicPlanet();
 
 #if WITH_EDITOR
-	/** Lógica de construcción inicial para visualización en el Editor. */
+	/** Initial construction logic for visualization in Editor. */
 	virtual void OnConstruction(const FTransform& Transform) override;
 #endif
 
 	/**
-	 * Configuración completa del planeta.
-	 * Se utiliza para inicializar todas las propiedades desde un mánager o Blueprint.
+	 * Complete planet configuration.
+	 * Used to initialize all properties from a manager or Blueprint.
 	 */
 	void InitPlanet(
 		float InRadiusKm,
@@ -127,63 +127,63 @@ public:
 		UCosmicFoliageCollection* InFoliageCollection = nullptr
 	);
 
-	/** Configura el comportamiento y radios de aparición del follaje procedural. */
+	/** Configures behavior and spawn radii of procedural foliage. */
 	void SetFoliageParams(
 		int32 InFoliageInstancesPerFrame = 50.f,
 		float NearLayerRadiusKm = 0.05f,
 		float MediumLayerRadiusKm = 0.2f,
 		float FarLayerRadiusKm = 0.5f);
 
-	/** Libera la memoria de los objetos de ruido si no son assets persistentes. */
+	/** Frees memory of noise objects if they are not persistent assets. */
 	void CleanupNoiseSettings();
 
 protected:
-	/** Lógica de inicio al ejecutar el juego. */
+	/** Startup logic when the game executes. */
 	virtual void BeginPlay() override;
 
 #if WITH_EDITOR
-	/** Maneja la duplicación del actor en el editor asegurando que los componentes se regeneren. */
+	/** Handles actor duplication in the editor ensuring components regenerate. */
 	virtual void PostDuplicate(EDuplicateMode::Type Mode) override;
 #endif
 
-	/** Limpieza al destruir el actor. */
+	/** Cleanup when destroying the actor. */
 	virtual void Destroyed() override;
 
-	/** Fase inicial de destrucción del objeto. */
+	/** Initial phase of object destruction. */
 	virtual void BeginDestroy() override;
 
-	/** Inicialización de datos tras la creación de todos los sub-componentes. */
+	/** Data initialization after all subcomponents are created. */
 	virtual void PostInitializeComponents() override;
 
-	/** Finalización de la ejecución en el mundo. */
+	/** World execution termination. */
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-	/** Configura y lanza la generación del sistema de Clipmaps. */
+	/** Configures and launches Clipmap system generation. */
 	void InitClipmap();
 
-	/** Fuerza la reconstrucción total de todos los sistemas planetarios. */
+	/** Forces total reconstruction of all planetary systems. */
 	void RebuildPlanet();
 
-	/** Actualiza el sistema de ruido y sus delegados de notificación. */
+	/** Updates the noise system and its notification delegates. */
 	void UpdateNoiseSettings();
 
-	/** Regenera el sistema de vegetación y rocas. */
+	/** Regenerates vegetation and rock systems. */
 	void UpdateFoliage();
 
-	/** Sincroniza el componente oceánico con el radio actual del planeta. */
+	/** Synchronizes the ocean component with the current planet radius. */
 	void UpdateOcean();
 
-	/** Actualiza únicamente los parámetros visuales del material en el terreno. */
+	/** Updates only visual parameters of the material on the terrain. */
 	void UpdateMaterialOnly();
 
-	/** Limpia colisiones y desvincula delegados activos. */
+	/** Cleans collisions and unbinds active delegates. */
 	void ClearData();
 
-	/** Bandera interna para evitar reinicializaciones redundantes en el Editor. */
+	/** Internal flag to avoid redundant reinitializations in the Editor. */
 	bool bInitializedInEditor = false;
 
 #if WITH_EDITOR
-	/** Notificador de cambios en el panel de detalles para actualizaciones en tiempo real. */
+	/** Details panel change notifier for real-time updates. */
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 };

@@ -8,19 +8,19 @@
 class  FCosmicNoiseDefaultSettingsActions : public FAssetTypeActions_Base
 {
 public:
-    // El nombre que aparecerá en el menú
+    // The name that will appear in the menu
     virtual FText GetName() const override { return FText::FromString("Default Noise Settings"); }
 
-    // El color de la franja en la parte inferior del Asset
-    virtual FColor GetTypeColor() const override { return FColor(45, 175, 255); } // Azul
+    // The color of the stripe at the bottom of the Asset
+    virtual FColor GetTypeColor() const override { return FColor(45, 175, 255); } // Blue
 
-    // A qué clase representa esta acción
+    // Which class this action represents
     virtual UClass* GetSupportedClass() const override;
 
-    // En qué categoría del menú aparecerá
+    // Which menu category it will appear in
     virtual uint32 GetCategories() override;
 
-    // ID de la categoría personalizada
+    // ID of the custom category
     EAssetTypeCategories::Type MyAssetCategory;
 	 
 };

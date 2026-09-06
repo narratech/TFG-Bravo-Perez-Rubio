@@ -6,10 +6,10 @@
 #include "CosmicEditorUtils.generated.h"
 
 /**
- * Librería de utilidades relacionadas con funcionalidades del editor.
+ * Utility library related to editor functionalities.
  *
- * Proporciona acceso desde Blueprints a información
- * específica del entorno de edición y del sistema.
+ * Provides Blueprint access to specific information
+ * about the editor environment and the system.
  */
 UCLASS()
 class COSMICARCHITECTEDITOR_API UCosmicEditorUtils : public UBlueprintFunctionLibrary
@@ -19,21 +19,21 @@ class COSMICARCHITECTEDITOR_API UCosmicEditorUtils : public UBlueprintFunctionLi
 public:
 
     /**
-     * Obtiene la posición actual de la cámara activa del editor.
+     * Gets the current position of the active editor camera.
      *
-     * Disponible únicamente en entorno editor.
+     * Available only in editor environment.
      *
-     * @return Posición de la cámara del viewport activo.
+     * @return Active viewport camera position.
      */
     UFUNCTION(BlueprintCallable, Category = "Editor", meta = (DevelopmentOnly)) 
     static FVector GetEditorCameraPosition();
 
     /**
-     * Indica si la ejecución actual se encuentra en el editor.
+     * Indicates whether the current execution is within the editor.
      *
-     * En runtime siempre devolverá false.
+     * In runtime it will always return false.
      *
-     * @return true si el código se está ejecutando dentro del editor.
+     * @return true if the code is executing within the editor.
      */
     UFUNCTION(BlueprintCallable, Category = "System")
     static bool IsInEditor();

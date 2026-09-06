@@ -8,10 +8,10 @@ UCosmicNoiseRSettingsFactory::UCosmicNoiseRSettingsFactory()
 {
     SupportedClass = UCosmicRealisticNoiseSettings::StaticClass();
 
-    // Permitimos crear objetos nuevos desde cero (no solo importando)
+    // Allow creating new objects from scratch (not just by importing)
     bCreateNew = true;
 
-    //Abre automáticamente el panel de detalles al crearlo
+    //Automatically opens the details panel upon creation
     bEditAfterNew = true;
 }
 

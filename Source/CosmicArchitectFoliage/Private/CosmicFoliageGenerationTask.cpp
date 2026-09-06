@@ -38,7 +38,7 @@ namespace
     }
 }
 
-// TAREA ASINCRONA 
+// ASYNCHRONOUS TASK 
 void FFoliageGenerationTask::DoWork()
 {
     if (!FoliageEntries.IsValid() || FoliageEntries->IsEmpty() ||
@@ -47,7 +47,7 @@ void FFoliageGenerationTask::DoWork()
         return;
     }
 
-    //Crear siempre la misma semilla para la misma celda
+    //Always create the same seed for the same cell
     uint32 Hash = 2166136261u;
 
     Hash = (Hash ^ Cell.Face) * 16777619u;
@@ -64,13 +64,13 @@ void FFoliageGenerationTask::DoWork()
         return;
     }
 
-    // Generar puntos de semilla en la esfera
+    // Generate seed points on the sphere
     GenerateSeedPoints(LocalRandom);
     
-    // Evaluar condiciones ambientales para cada punto
+    // Evaluate environmental conditions for each point
     EvaluateEnvironmentalConditions();
 
-    // Seleccionar y crear instancias basadas en las condiciones
+    // Select and create instances based on conditions
     CreateFoliageInstances(LocalRandom);
 }
 
@@ -151,7 +151,7 @@ int32 FFoliageGenerationTask::PrepareAllocations(FRandomStream& Random)
             const int32 WholeTarget = static_cast<int32>(ScaledTarget);
             Allocations[Index].TargetCount = WholeTarget;
             AssignedTargets += WholeTarget;
-            // El ruido solo desempata cuotas idénticas sin alterar la proporción.
+            // Noise only breaks ties between identical quotas without altering the proportion.
             Remainders.Emplace(
                 ScaledTarget - WholeTarget + Random.FRand() * UE_DOUBLE_SMALL_NUMBER,
                 Index);
@@ -186,7 +186,7 @@ void FFoliageGenerationTask::GenerateSeedPoints(FRandomStream& Random)
 
     SeedPoints.Reserve(NumSeeds);
 
-    // Datos de la celda para mapeo UV
+    // Cell data for UV mapping
     const int32 CellsPerSide = 1 << Cell.Depth;
     const double CellSizeUV = 1.0 / CellsPerSide;
     const double MinU = Cell.X * CellSizeUV;
@@ -198,9 +198,9 @@ void FFoliageGenerationTask::GenerateSeedPoints(FRandomStream& Random)
     const double MinY = MinV * 2.0 - 1.0;
     const double MaxY = MaxV * 2.0 - 1.0;
 
-    // La normalizacion cubo->esfera no conserva area. Su Jacobiano es
-    // (1+x^2+y^2)^(-3/2); el rechazo evita concentrar vegetacion en unas
-    // zonas de la cara y perderla en otras.
+    // Cube->sphere normalization does not preserve area. Its Jacobian is
+    // (1+x^2+y^2)^(-3/2); rejection sampling prevents concentrating vegetation in some
+    // areas of the face while losing it in others.
     const double ClosestX = FMath::Clamp(0.0, MinX, MaxX);
     const double ClosestY = FMath::Clamp(0.0, MinY, MaxY);
     const double MaximumJacobian = FMath::Pow(
@@ -247,7 +247,7 @@ void FFoliageGenerationTask::EvaluateEnvironmentalConditions()
         if (Allocations.IsValidIndex(Point.AllocationIndex) &&
             Allocations[Point.AllocationIndex].bNeedsSurfaceNormal)
         {
-            // La altura central ya evaluada se reutiliza para la pendiente y la normal.
+            // The already evaluated center height is reused for slope and normal.
             CalculateSlopeAndNormal(
                 Point.Direction,
                 Point.Height,
@@ -278,8 +278,8 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
 
     ResultInstances.Reserve(FMath::Min(SeedPoints.Num(), TotalTarget));
 
-    // Cada punto conserva la malla cuya densidad lo generó. Así una regla de
-    // bioma no puede apropiarse de los candidatos de otra y falsear densidades.
+    // Each point retains the mesh whose density generated it. Thus a biome
+    // rule cannot appropriate another's candidates and distort densities.
     for (const FSeedPoint& Point : SeedPoints)
     {
         if (!Allocations.IsValidIndex(Point.AllocationIndex))
@@ -302,7 +302,7 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
         const FCosmicFoliageMesh& SelectedMesh =
             Entry.Foliage[Alloc.MeshIndex];
 
-        // Calcular transformación 
+        // Calculate transform 
         const float Yaw = Random.FRandRange(
             FMath::Min(SelectedMesh.RandomRotationMin, SelectedMesh.RandomRotationMax),
             FMath::Max(SelectedMesh.RandomRotationMin, SelectedMesh.RandomRotationMax));

@@ -124,17 +124,17 @@ struct FCosmicFoliageCellData
 {
     GENERATED_BODY()
 
-    /** Indices pertenecientes a esta celda dentro del HISM compartido. */
+    /** Indices belonging to this cell within the shared HISM. */
     TMap<FCosmicHISMKey, TArray<int32>> InstanceIndices;
 };
 
-// Estructura para almacenar celdas por capa
+// Structure to store cells by layer
 USTRUCT()
 struct FCosmicFoliageLayerCells
 {
     GENERATED_BODY()
 
-    // Mapa de celda: datos de componentes para esta capa específica
+    // Cell map: component data for this specific layer
     TMap<FCubeMapCell, FCosmicFoliageCellData> ActiveCells;
 };
 
@@ -156,10 +156,10 @@ struct FCosmicSharedHISMData
     UPROPERTY()
     UInstancedStaticMeshComponent* Component = nullptr;
 
-    /** Paralelo al array interno de instancias del HISM. */
+    /** Parallel to the internal instance array of the HISM. */
     TArray<FCosmicFoliageInstanceOwner> InstanceOwners;
 
-    /** Slots ocultos que pueden reutilizarse sin borrar/reordenar el HISM. */
+    /** Hidden slots that can be reused without deleting/reordering the HISM. */
     TArray<int32> FreeInstanceIndices;
 
     int32 ActiveInstanceCount = 0;

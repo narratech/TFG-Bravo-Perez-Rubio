@@ -169,31 +169,31 @@ struct COSMICARCHITECTNOISE_API FCosmicNoiseBiomeParameters
 {
     GENERATED_BODY()
 
-    /** Frecuencia para el ruido de temperatura (0.001-0.02) */
+    /** Frequency for temperature noise (0.001-0.02) */
     UPROPERTY(EditAnywhere, Category = "Biome", meta = (ClampMin = "0.0001"))
     float TemperatureFrequency = 0.005f;
 
-    /** Intensidad del efecto de latitud (0 = solo ruido, 1 = fuerte gradiente polar) */
+    /** Latitude effect intensity (0 = noise only, 1 = strong polar gradient) */
     UPROPERTY(EditAnywhere, Category = "Biome", meta = (ClampMin = "0", ClampMax = "2"))
     float LatitudeEffect = 1.0f;
 
-    /** Penalización de temperatura por altitud (0-1) */
+    /** Temperature penalty for altitude (0-1) */
     UPROPERTY(EditAnywhere, Category = "Biome", meta = (ClampMin = "0", ClampMax = "1"))
     float AltitudeTemperaturePenalty = 0.6f;
 
-    /** Frecuencia para el ruido de humedad (0.001-0.1) */
+    /** Frequency for humidity noise (0.001-0.1) */
     UPROPERTY(EditAnywhere, Category = "Biome", meta = (ClampMin = "0.0001"))
     float HumidityFrequency = 0.015f;
 
-    /** Octavas para humedad (más = nubes más detalladas) */
+    /** Octaves for humidity (more = more detailed clouds) */
     UPROPERTY(EditAnywhere, Category = "Biome", meta = (ClampMin = "1", ClampMax = "8"))
     int32 HumidityOctaves = 5;
 
-    /** Contraste de humedad (1 = normal, >1 = más extremo) */
+    /** Humidity contrast (1 = normal, >1 = more extreme) */
     UPROPERTY(EditAnywhere, Category = "Biome", meta = (ClampMin = "0.5", ClampMax = "3"))
     float HumidityContrast = 1.5f;
 
-    /** Offset de humedad (para desplazar el rango) */
+    /** Humidity offset (to shift the range) */
     UPROPERTY(EditAnywhere, Category = "Biome", meta = (ClampMin = "-1", ClampMax = "1"))
     float HumidityOffset = -0.5f;
 };

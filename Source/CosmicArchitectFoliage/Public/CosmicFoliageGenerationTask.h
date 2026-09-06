@@ -9,45 +9,45 @@
 class ICosmicNoiseStrategy;
 
 /**
- * Instancia generada de foliage resultante del sistema procedural.
+ * Generated foliage instance resulting from the procedural system.
  */
 USTRUCT()
 struct FCosmicFoliageInstance
 {
     GENERATED_BODY()
 
-    /** HISM compartido al que pertenece la instancia. */
+    /** Shared HISM to which the instance belongs. */
     FCosmicHISMKey HISMKey;
 
-    /** Transform final de la instancia */
+    /** Final transform of the instance */
     FTransform Transform;
 };
 
 
 /**
- * Tarea asíncrona encargada de generar instancias de foliage
- * para una celda del CubeMap del planeta.
+ * Asynchronous task responsible for generating foliage instances
+ * for a planet CubeMap cell.
  *
- * Ejecuta la generación procedural basada en ruido, condiciones
- * ambientales y distribución por capas de vegetación.
+ * Executes procedural generation based on noise, environmental
+ * conditions, and vegetation layer distribution.
  */
 class FFoliageGenerationTask : public FNonAbandonableTask
 {
 public:
-    /** Resultados generados de instancias de foliage */
+    /** Generated foliage instance results */
     TArray<FCosmicFoliageInstance> ResultInstances;
-    /** Celda del CubeMap a procesar */
+    /** CubeMap cell to process */
     FCubeMapCell Cell;
-    /** Capa de foliage que se está generando */
+    /** Foliage layer being generated */
     ECosmicFoliageLayer Layer;
 
     /**
-     * Representa un punto de muestreo utilizado durante la generación de foliage.
+     * Represents a sample point used during foliage generation.
      */
     struct FSeedPoint
     {
-        FVector Direction = FVector::UpVector;      // Dirección desde el centro del planeta
-        FVector WorldPosition = FVector::ZeroVector; // Posición relativa al planeta
+        FVector Direction = FVector::UpVector;      // Direction from planet center
+        FVector WorldPosition = FVector::ZeroVector; // Position relative to planet
         FVector CachedNormal = FVector::UpVector;
         int32 AllocationIndex = INDEX_NONE;
         float Temperature = 0.0f;
@@ -56,7 +56,7 @@ public:
         float Slope = 0.0f;
     }; 
     /**
-     * Constructor de la tarea de generación de foliage.
+     * Foliage generation task constructor.
      */
     FFoliageGenerationTask(
         const FCubeMapCell& InCell,
@@ -76,33 +76,33 @@ public:
     {
     }
 
-    /** Identificador de estadísticas para el sistema de threading */
+    /** Stat identifier for the threading system */
     FORCEINLINE TStatId GetStatId() const
     {
         RETURN_QUICK_DECLARE_CYCLE_STAT(FFoliageGenerationTask, STATGROUP_ThreadPoolAsyncTasks);
     }
-    /** Ejecución principal de la tarea */
+    /** Main task execution */
     void DoWork();
 
 private:
 
-    /** Snapshot inmutable creado una sola vez en el game thread y compartido entre tareas. */
+    /** Immutable snapshot created once on the game thread and shared across tasks. */
     TSharedPtr<const TArray<FCosmicFoliageCollectionEntry>, ESPMode::ThreadSafe> FoliageEntries;
 
-    /** Radio del planeta */
+    /** Planet radius */
     double PlanetRadius;
 
-    /** Estrategia de generación de ruido */
+    /** Noise generation strategy */
     TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy;
 
-    /** Área de la celda en km² */
+    /** Cell area in km² */
     double CellAreaKm2 = 0.0;
 
-    /** Limites de seguridad y muestreo configurados por el spawner. */
+    /** Safety and sampling limits configured by the spawner. */
     int32 MaxInstancesPerCell;
     float NormalSampleDistanceCm;
 
-    /** Puntos generados para evaluación */
+    /** Points generated for evaluation */
     TArray<FSeedPoint> SeedPoints;
 
     struct FMeshAllocation
@@ -115,29 +115,29 @@ private:
 
     TArray<FMeshAllocation> Allocations;
 
-    /** Calcula el area real del cuadrilatero esferico de la celda. */
+    /** Calculates the actual spherical quadrilateral area of the cell. */
     double CalculateCellAreaKm2() const;
 
-    /** Precalcula cuotas deterministas, incluyendo redondeo estocastico. */
+    /** Precalculates deterministic quotas, including stochastic rounding. */
     int32 PrepareAllocations(FRandomStream& Random);
 
     /**
-     * Genera puntos de semilla dentro de la celda.
+     * Generates seed points within the cell.
      */
     void GenerateSeedPoints(FRandomStream& Random);
 
     /**
-     * Evalúa condiciones ambientales (temperatura, humedad, altura, etc).
+     * Evaluates environmental conditions (temperature, humidity, height, etc).
      */
     void EvaluateEnvironmentalConditions();
 
     /**
-     * Crea instancias finales de foliage a partir de los seed points.
+     * Creates final foliage instances from seed points.
      */
     void CreateFoliageInstances(FRandomStream& Random);
 
     /**
-     * Calcula pendiente y normal del terreno en un punto.
+     * Calculates terrain slope and normal at a point.
      */
     void CalculateSlopeAndNormal(
         const FVector& Direction,

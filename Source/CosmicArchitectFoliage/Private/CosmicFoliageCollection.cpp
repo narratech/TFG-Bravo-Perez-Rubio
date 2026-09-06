@@ -7,7 +7,7 @@ void UCosmicFoliageCollection::PostEditChangeProperty(FPropertyChangedEvent& Pro
 {
     Super::PostEditChangeProperty(PropertyChangedEvent); 
 
-    // Obtenemos la propiedad que cambio y, si es parte de un struct, su propiedad "padre"
+    // We get the property that changed and, if it is part of a struct, its "parent" property
     FProperty* Property = PropertyChangedEvent.Property;
     FProperty* MemberProperty = PropertyChangedEvent.MemberProperty;
 

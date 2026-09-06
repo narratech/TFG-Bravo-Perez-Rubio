@@ -44,11 +44,11 @@ void FCosmicDefaultNoiseStrategy::EvaluatePoint(const FVector& NoiseDir, float& 
     const float Y = NoiseDir.Y;
     const float Z = NoiseDir.Z;
 
-    // ALTURA BASE
+    // BASE HEIGHT
     float BaseNoise = Noise.GetNoise(X, Y, Z); // [-1,1]
     float Height = BaseNoise * LayerParameters.Amplitude;
 
-    // HUMEDAD
+    // HUMIDITY
     float RawHum = HumidityNoise.GetNoise(X, Y, Z);
     float Humidity = (RawHum + 1.0f) * 0.5f; // [0,1]
 
@@ -59,7 +59,7 @@ void FCosmicDefaultNoiseStrategy::EvaluatePoint(const FVector& NoiseDir, float& 
         1.0f
     );
 
-    // TEMPERATURA
+    // TEMPERATURE
     float Latitude = FMath::Abs(Z);
 
     float BaseTemp = 1.0f - (Latitude * BiomeParameters.LatitudeEffect);
@@ -67,13 +67,13 @@ void FCosmicDefaultNoiseStrategy::EvaluatePoint(const FVector& NoiseDir, float& 
 
     float Temperature = FMath::Clamp(BaseTemp + TempNoiseVal, 0.0f, 1.0f);
 
-    // MODIFICACION POR BIOMA 
-    // Ejemplo: zonas humedas mas suaves, zonas secas mas abruptas
+    // BIOME MODIFICATION 
+    // Example: wetter zones smoother, drier zones steeper
 
     float BiomeInfluence = FMath::Lerp(0.8f, 1.2f, Humidity);
     Height *= BiomeInfluence;
 
-    // Penalizacion por altitud en temperatura
+    // Altitude penalty on temperature
     float AltitudeNormalized = FMath::Clamp(
         Height / FMath::Max(LayerParameters.Amplitude, 1.0f),
         0.0f,
@@ -86,13 +86,13 @@ void FCosmicDefaultNoiseStrategy::EvaluatePoint(const FVector& NoiseDir, float& 
         1.0f
     );
 
-    // SALIDA
+    // OUTPUT
     OutHeight = Height;
 
-    // R = altura normalizada
-    // G = temperatura visual
-    // B = humedad
-    // A = libre 
+    // R = normalized height
+    // G = visual temperature
+    // B = humidity
+    // A = unused 
     OutColor = FLinearColor(
         AltitudeNormalized,
         VisualTemp,

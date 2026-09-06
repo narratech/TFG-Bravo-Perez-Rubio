@@ -29,12 +29,12 @@ FORCEINLINE ECosmicFoliageLayer GetLayerFromIndex(int32 Index)
     }
 }
 
-// COMPONENTE
+// COMPONENT
 
 UCosmicFoliageSpawner::UCosmicFoliageSpawner()
 {
-    // El clipmap llama explicitamente a UpdateFoliageSpawner; registrar otro
-    // tick de componente no aporta trabajo y si tiene coste de scheduling.
+    // The clipmap explicitly calls UpdateFoliageSpawner; registering another
+    // component tick adds no useful work and incurs scheduling overhead.
     PrimaryComponentTick.bCanEverTick = false;
     FoliageLayerPriority = {
         ECosmicFoliageLayer::Far,
@@ -45,7 +45,7 @@ UCosmicFoliageSpawner::UCosmicFoliageSpawner()
 
 void UCosmicFoliageSpawner::InitFoliageSpawner(float RadiusKm)
 {
-    Octree.Initialize(RadiusKm * 100000, 16); // 16 niveles de profundidad
+    Octree.Initialize(RadiusKm * 100000, 16); // 16 depth levels
     ClearFoliage();
 
     if (FoliageCollection)
@@ -121,7 +121,7 @@ void UCosmicFoliageSpawner::ClearFoliageLayer(ECosmicFoliageLayer Layer)
     CancelLayerAsyncWork(LayerIndex);
     ResetLayerState(LayerIndex);
 
-    // La retirada modifica ActiveCells y conserva los slots de las otras capas.
+    // Removal modifies ActiveCells and preserves slots of other layers.
     TArray<FCubeMapCell> Cells;
     LayerCells[LayerIndex].ActiveCells.GetKeys(Cells);
     for (const FCubeMapCell& Cell : Cells)
@@ -140,7 +140,7 @@ void UCosmicFoliageSpawner::ClearFoliage()
         ResetLayerState(i);
     }
 
-    // Cada malla/estado de colision tiene un unico ISM compartido.
+    // Each mesh/collision state has a single shared ISM.
     for (auto& Pair : SharedHISMs)
     {
         if (Pair.Value.Component)
@@ -299,7 +299,7 @@ void UCosmicFoliageSpawner::GetLayerPriorityIndices(int32 OutLayerIndices[3]) co
         AddUniqueLayer(Layer);
     }
 
-    // Fallback por defecto: 1.Far 2.Medium 3.Near
+    // Default fallback: 1.Far 2.Medium 3.Near
     AddUniqueLayer(ECosmicFoliageLayer::Far);
     AddUniqueLayer(ECosmicFoliageLayer::Medium);
     AddUniqueLayer(ECosmicFoliageLayer::Near);
@@ -362,7 +362,7 @@ void UCosmicFoliageSpawner::UpdateOctreeAndGenerate(const FVector& ViewerLocatio
             }
         }
 
-        // Las celdas aun no iniciadas se pueden cancelar sin tocar el thread pool.
+        // Cells not yet started can be canceled without touching the thread pool.
         for (int32 QueueIndex = QueuedCells[i].Num() - 1; QueueIndex >= 0; --QueueIndex)
         {
             if (!VisibleSet.Contains(QueuedCells[i][QueueIndex].Cell))
@@ -527,8 +527,8 @@ void UCosmicFoliageSpawner::ProcessApplyQueue(const FVector& ViewerDir, int32& R
 
         while (!Queue.IsEmpty() && RemainingBudget > 0)
         {
-            // Si hay multiples celdas completadas esperando y la primera aun no ha comenzado
-            // (NextInstanceIndex == 0), priorizamos la celda mas cercana al jugador.
+            // If multiple completed cells are waiting and the first has not started yet
+            // (NextInstanceIndex == 0), we prioritize the cell closest to the player.
             if (Queue.Num() > 1 && Queue[0].NextInstanceIndex == 0)
             {
                 int32 BestIndex = 0;
@@ -553,7 +553,7 @@ void UCosmicFoliageSpawner::ProcessApplyQueue(const FVector& ViewerDir, int32& R
 
             FPendingApplyCell& Pending = Queue[0];
 
-            // Si ya no es necesaria descartar
+            // If no longer needed, discard
             if (!CurrentVisibleCells[Layer].Contains(Pending.Cell))
             {
                 PendingCells[Layer].Remove(Pending.Cell);
@@ -570,8 +570,8 @@ void UCosmicFoliageSpawner::ProcessApplyQueue(const FVector& ViewerDir, int32& R
             const int32 InstancesLeft = Pending.Instances.Num() - Pending.NextInstanceIndex;
             if (InstancesLeft <= 0)
             {
-                // Las celdas vacias tambien se consideran generadas para no
-                // relanzar una tarea en cada actualizacion.
+                // Empty cells are also considered generated to avoid
+                // relaunching a task on every update.
                 LayerCells[Layer].ActiveCells.FindOrAdd(Pending.Cell);
                 PendingCells[Layer].Remove(Pending.Cell);
                 Queue.RemoveAtSwap(0, 1, EAllowShrinking::No);
@@ -651,8 +651,8 @@ void UCosmicFoliageSpawner::ProcessDeactivationQueue(int32& RemainingBudget)
                 PendingDeactivationCells[Layer].Remove(Cell);
                 Queue.RemoveAtSwap(i, 1, EAllowShrinking::No);
 
-                // Si volvio a entrar durante una retirada parcial, se genera
-                // de nuevo una vez concluida para no dejar una celda incompleta.
+                // If it re-entered during a partial removal, it is generated
+                // again once concluded so as not to leave an incomplete cell.
                 if (CurrentVisibleCells[Layer].Contains(Cell) &&
                     !PendingCells[Layer].Contains(Cell))
                 {
@@ -664,7 +664,7 @@ void UCosmicFoliageSpawner::ProcessDeactivationQueue(int32& RemainingBudget)
 
             if (RemovedCount == 0)
             {
-                // Estado inconsistente: evita bloquear permanentemente la cola.
+                // Inconsistent state: avoids permanently blocking the queue.
                 UE_LOG(LogTemp, Warning,
                     TEXT("No se pudieron retirar instancias de foliage para %s"),
                     *Cell.ToString());
@@ -807,7 +807,7 @@ FCosmicSharedHISMData* UCosmicFoliageSpawner::GetOrCreateSharedHISM(const FCosmi
     UInstancedStaticMeshComponent* NewComp = NewObject<UInstancedStaticMeshComponent>(
         GetOwner(),
         NAME_None,
-        RF_Transient | RF_DuplicateTransient  // Marcar como transitorio
+        RF_Transient | RF_DuplicateTransient  // Mark as transient
     );
     if (!NewComp)
     {
@@ -905,8 +905,8 @@ int32 UCosmicFoliageSpawner::RemoveCellInstances(
                 break;
             }
 
-            // Mantener la posicion hace que ISM pueda actualizar escala in-place;
-            // escala cero tambien elimina inmediatamente el body de colision.
+            // Keeping the position allows ISM to update scale in-place;
+            // zero scale also immediately removes the collision body.
             HiddenTransform.SetScale3D(FVector::ZeroVector);
             if (!SharedData->Component->UpdateInstanceTransform(
                 InstanceIndex,

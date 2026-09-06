@@ -6,51 +6,51 @@
 #include "ThirdParty/FastNoiseLite.h"
 
 /**
- * Estrategia de generación de ruido procedural orientada
- * a superficies planetarias con cráteres.
+ * Procedural noise generation strategy oriented
+ * toward cratered planetary surfaces.
  *
- * Esta implementación combina:
- * - Ruido base procedural.
- * - Generación de biomas.
- * - Variaciones de humedad y temperatura.
- * - Generación de cráteres multicapa.
+ * This implementation combines:
+ * - Procedural base noise.
+ * - Biome generation.
+ * - Humidity and temperature variations.
+ * - Multilayer crater generation.
  */
 class COSMICARCHITECTNOISE_API FCosmicCraterNoiseStrategy : public ICosmicNoiseStrategy
 {
 public:
 
     /**
-     * Semilla utilizada para inicializar todos los generadores de ruido.
+     * Seed used to initialize all noise generators.
      */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     int32 Seed;
 
     /**
-     * Parámetros generales de las capas de ruido base.
+     * General parameters of base noise layers.
      */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseLayer LayerParameters;
 
     /**
-     * Parámetros relacionados con la generación de biomas.
+     * Parameters related to biome generation.
      */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseBiomeParameters BiomeParameters;
 
     /**
-     * Parámetros específicos utilizados para la generación de cráteres.
+     * Specific parameters used for crater generation.
      */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseCraterParameters CraterParameters;
 
     /**
-     * Inicializa la estrategia de ruido y configura todos los
-     * generadores internos necesarios.
+     * Initializes the noise strategy and configures all
+     * necessary internal generators.
      *
-     * @param Seed Semilla procedural utilizada para los ruidos.
-     * @param LayerParameters Configuración del ruido base.
-     * @param BiomeParameters Configuración de biomas.
-     * @param CraterParameters Configuración de generación de cráteres.
+     * @param Seed Procedural seed used for noises.
+     * @param LayerParameters Base noise configuration.
+     * @param BiomeParameters Biome configuration.
+     * @param CraterParameters Crater generation configuration.
      */
     void Initialize(
         int32 Seed,
@@ -60,13 +60,13 @@ public:
     );
 
     /**
-     * Evalúa un punto sobre la superficie procedural y calcula:
-     * - Altura final.
-     * - Color representativo del bioma.
+     * Evaluates a point on the procedural surface and calculates:
+     * - Final height.
+     * - Representative biome color.
      *
-     * @param NoiseDir Dirección normalizada utilizada como coordenada de ruido.
-     * @param OutHeight Altura resultante calculada.
-     * @param OutColor Color asociado al bioma generado.
+     * @param NoiseDir Normalized direction used as noise coordinate.
+     * @param OutHeight Calculated resultant height.
+     * @param OutColor Color associated with the generated biome.
      */
     void EvaluatePoint(
         const FVector& NoiseDir,
@@ -77,22 +77,22 @@ public:
 protected:
 
     /**
-     * Generador de ruido utilizado para calcular humedad.
+     * Noise generator used to calculate humidity.
      */
     FastNoiseLite HumidityNoise;
 
     /**
-     * Generador de ruido utilizado para calcular temperatura.
+     * Noise generator used to calculate temperature.
      */
     FastNoiseLite TempNoise;
 
     /**
-     * Generador principal de ruido base del terreno.
+     * Main terrain base noise generator.
      */
     FastNoiseLite Noise;
 
     /**
-     * Generador de ruido utilizado para la formación de cráteres.
+     * Noise generator used for crater formation.
      */
     FastNoiseLite CraterNoise;
 };

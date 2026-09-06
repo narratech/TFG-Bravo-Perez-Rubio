@@ -49,19 +49,19 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
             double WorldX = (x - HalfRes) * GridSpacing;
             double WorldY = (y - HalfRes) * GridSpacing;
 
-            // Calcular posición en esfera
+            // Compute position on sphere
             FVector SphereCenter = FVector(0, 0, -PlanetRadius);
             double Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
             FVector BasePosition;
 
-            if (Distance2D <= PlanetRadius && Distance2D > 0.001f) // Evitar división por 0
+            if (Distance2D <= PlanetRadius && Distance2D > 0.001f) // Avoid division by 0
             {
                 double ZOffset = FMath::Sqrt(PlanetRadius * PlanetRadius - Distance2D * Distance2D);
                 BasePosition = FVector(WorldX, WorldY, -PlanetRadius + ZOffset);
             }
             else if (Distance2D <= 0.001f)
             {
-                // Centro - evitar NaN
+                // Center - avoid NaN
                 BasePosition = FVector(0, 0, 0);
             }
             else
@@ -84,7 +84,7 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
             }
             BaseNormals.Add(Normal);
 
-            // Tangente
+            // Tangent
             FVector TangentDir = FVector(-Normal.Y, Normal.X, 0);
             if (TangentDir.SizeSquared() > 0.001f)
             {
@@ -104,7 +104,7 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
         }
     }
 
-    // CALCULAR TRIÁNGULOS 
+    // COMPUTE TRIANGLES 
     Triangles.Empty();
     int32 TriangleCount = 0;
 
@@ -112,7 +112,7 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
     {
         for (int32 x = 0; x < Resolution; ++x)
         {
-            // Índices de vértices
+            // Vertex indices
             int32 i0 = y * VertRes + x;
             int32 i1 = i0 + 1;
             int32 i2 = i0 + VertRes;
@@ -145,10 +145,10 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
                 (y == 0) ||
                 (y == Resolution - 1);
 
-            // BORDE DEL NIVEL 
+            // LEVEL BORDER 
             if (bBorder)
             {
-                // bordes horizontales
+                // horizontal borders
                 if ((y == 0 || y == Resolution - 1) && (x % 2 == 0) && x < Resolution - 1)
                 {
                     int32 i4 = i1 + 1;
@@ -156,7 +156,7 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
 
                     if (i4 < TotalVertices)
                     {
-                        if (y == Resolution - 1) // borde inferior 
+                        if (y == Resolution - 1) // bottom border 
                         {
 
                             if (x != Resolution - 2) {
@@ -178,7 +178,7 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
                             Triangles.Add(i1);
                             TriangleCount++;
                         }
-                        else // borde superior 
+                        else // top border 
                         {
                             if (x != 0) {
                                 Triangles.Add(i0);
@@ -201,7 +201,7 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
                         }
                     }
                 }
-                // bordes verticales
+                // vertical borders
                 else if ((x == 0 || x == Resolution - 1) && (y % 2 == 0) && y < Resolution - 1)
                 {
                     int32 i4 = i2 + VertRes;
@@ -209,7 +209,7 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
 
                     if (i4 < TotalVertices)
                     {
-                        if (x == Resolution - 1) // borde derecho
+                        if (x == Resolution - 1) // right border
                         {
                             Triangles.Add(i1);
                             Triangles.Add(i2);
@@ -230,7 +230,7 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
                                 TriangleCount++;
                             }
                         }
-                        else // borde izquierdo 
+                        else // left border 
                         {
                             if (y != 0) {
                                 Triangles.Add(i0);
@@ -256,7 +256,7 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
             }
             else
             {
-                // INTERIOR NORMAL 
+                // NORMAL INTERIOR 
 
                 Triangles.Add(i0);
                 Triangles.Add(i2);
@@ -283,16 +283,16 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
 
     CreateMeshSection_LinearColor(
         0,                    // SectionIndex
-        RotatedVertices,      // Vértices
-        Triangles,           // Triángulos
-        BaseNormals,      // Normales
+        RotatedVertices,      // Vertices
+        Triangles,           // Triangles
+        BaseNormals,      // Normals
         UVs,                 // UVs
-        TArray<FLinearColor>(),    // Colores de vértice
-        BaseTangents,     // Tangentes
+        TArray<FLinearColor>(),    // Vertex colors
+        BaseTangents,     // Tangents
         false
     );
 
-    // VERIFICAR que se creo correctamente
+    // VERIFY that it was created correctly
     if (GetNumSections() > 0)
     {
         bMeshCreated = true;
@@ -320,7 +320,7 @@ void UCosmicMeshComponent::BuildSphereMesh()
 
     bIsSphereMesh = true;
 
-    // Aseguramos múltiplo de 2
+    // Ensure multiple of 2
     Resolution = FMath::Max(4, Resolution & ~1);
 
     const int32 LatSegments = Resolution;
@@ -336,7 +336,7 @@ void UCosmicMeshComponent::BuildSphereMesh()
     BaseTangents.Reserve(TotalVertices);
     UVs.Reserve(TotalVertices);
 
-    // VÉRTICES
+    // VERTICES
     for (int32 y = 0; y < VertResY; ++y)
     {
         float V = (float)y / LatSegments;
@@ -372,7 +372,7 @@ void UCosmicMeshComponent::BuildSphereMesh()
         }
     }
 
-    // TRIÁNGULOS
+    // TRIANGLES
     for (int32 y = 0; y < LatSegments; ++y)
     {
         for (int32 x = 0; x < LonSegments; ++x)
@@ -382,7 +382,7 @@ void UCosmicMeshComponent::BuildSphereMesh()
             int32 i2 = i0 + VertResX;
             int32 i3 = i2 + 1;
 
-            // Orden antihorario desde fuera
+            // Counter-clockwise order from outside
             Triangles.Add(i0);
             Triangles.Add(i1);  
             Triangles.Add(i2);  
@@ -395,16 +395,16 @@ void UCosmicMeshComponent::BuildSphereMesh()
 
     CreateMeshSection_LinearColor(
         0,                    // SectionIndex
-        BaseVertices,      // Vértices
-        Triangles,           // Triángulos
-        BaseNormals,      // Normales
+        BaseVertices,      // Vertices
+        Triangles,           // Triangles
+        BaseNormals,      // Normals
         UVs,                 // UVs
-        TArray<FLinearColor>(),    // Colores de vértice
-        BaseTangents,     // Tangentes
-        false      // Crear colisión
+        TArray<FLinearColor>(),    // Vertex colors
+        BaseTangents,     // Tangents
+        false      // Create collision
     );
 
-    // VERIFICAR que se creó correctamente
+    // VERIFY that it was created correctly
     if (GetNumSections() > 0)
     {
         bMeshCreated = true;
@@ -441,19 +441,19 @@ void UCosmicMeshComponent::ReScaleLevel(int64 NewGridSpacing)
             double WorldX = (x - HalfRes) * GridSpacing;
             double WorldY = (y - HalfRes) * GridSpacing;
 
-            // Calcular posición en esfera
+            // Compute position on sphere
             FVector SphereCenter = FVector(0, 0, -PlanetRadius);
             double Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
             FVector Position;
 
-            if (Distance2D <= PlanetRadius && Distance2D > 0.001f) // Evitar división por 0
+            if (Distance2D <= PlanetRadius && Distance2D > 0.001f) // Avoid division by 0
             {
                 double ZOffset = FMath::Sqrt(PlanetRadius * PlanetRadius - Distance2D * Distance2D);
                 Position = FVector(WorldX, WorldY, -PlanetRadius + ZOffset);
             }
             else if (Distance2D <= 0.001f)
             {
-                // Centro - evitar NaN
+                // Center - avoid NaN
                 Position = FVector(0, 0, 0);
             }
             else
@@ -508,7 +508,7 @@ void UCosmicMeshComponent::RequestMeshUpdate(TSharedPtr<ICosmicNoiseStrategy> No
 
     bIsGeneratingNoise = true;
 
-    // Centro del planeta 
+    // Planet center 
     FVector PlanetCenter = GetOwner()->GetActorLocation();
 
     FCosmicPlanetClipmapGenerationSettings ClipmapGenerationSettings;
@@ -537,7 +537,7 @@ void UCosmicMeshComponent::RequestMeshUpdate(TSharedPtr<ICosmicNoiseStrategy> No
         NoiseGenerationStrategy,
         MoveTemp(ClipmapGenerationSettings)
     );
-    // Lanzar la tarea asincrona
+    // Launch asynchronous task
     NoiseTask->StartBackgroundTask();
 }
 
@@ -545,10 +545,10 @@ void UCosmicMeshComponent::RequestMeshUpdate(TSharedPtr<ICosmicNoiseStrategy> No
 
 bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
 {
-    //Si no hay tarea devolvemos true para saber que esta libre
+    // If there is no task we return true to indicate it is free
     
     if (!NoiseTask) return true;
-    // Si no ha terminado, devolvemos false
+    // If not finished, return false
     if (!NoiseTask->IsDone()) return false;
 
     FCosmicNoiseGenerationTask& CompletedTask = NoiseTask->GetTask();
@@ -568,13 +568,13 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
         CachedProjectionRevision = CompletedTask.CalculatedProjectionRevision;
     }
     
-    // Limpiamos la memoria de la tarea
+    // Clear task memory
     delete NoiseTask;
     NoiseTask = nullptr;
 
     bIsGeneratingNoise = false;
 
-    // Actualizamos la sección de la malla (No subimos informacion irrelevante)
+    // Update mesh section (Do not upload irrelevant data)
     UpdateMeshSection_LinearColor(
         0,
         CurrentVertices,
@@ -586,7 +586,7 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
 
     SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-    return true; // La malla se ha actualizado
+    return true; // Mesh has been updated
 }
 
 bool UCosmicMeshComponent::IsTaskActive()
@@ -599,8 +599,8 @@ void UCosmicMeshComponent::CancelAsyncWork()
 
     bIsGeneratingNoise = false;
 
-    // La cache se mueve a la tarea mientras esta trabaja. Si se cancela no se
-    // puede garantizar su coherencia y la siguiente peticion debe regenerarla.
+    // Cache is moved to task while it runs. If canceled it
+    // cannot guarantee consistency and next request must regenerate it.
     CachedHeights.Reset();
     CachedColors.Reset();
     CachedProjectionRevision = MAX_uint64;

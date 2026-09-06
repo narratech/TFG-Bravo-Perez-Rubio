@@ -5,10 +5,10 @@
 #include "CosmicCubeMapCell.generated.h"
 
 /**
- * Representa una celda dentro de un cubemap subdividido.
+ * Represents a cell within a subdivided cubemap.
  *
- * Cada celda identifica una region especifica de una de las
- * seis caras del cubo utilizadas para la proyeccion planetaria.
+ * Each cell identifies a specific region of one of the
+ * six cube faces used for planetary projection.
  */
 USTRUCT()
 struct COSMICARCHITECTCOMMON_API FCubeMapCell
@@ -16,31 +16,31 @@ struct COSMICARCHITECTCOMMON_API FCubeMapCell
     GENERATED_BODY()
      
     /**
-     * Cara del cubo a la que pertenece la celda.
+     * Cube face to which the cell belongs.
      *
-     * Valores validos: 0-5.
+     * Valid values: 0-5.
      */
     int32 Face = 0;
 
     /**
-     * Coordenada X de la celda dentro de la cara.
+     * X coordinate of the cell within the face.
      */
     int32 X = 0;
 
     /**
-     * Coordenada Y de la celda dentro de la cara.
+     * Y coordinate of the cell within the face.
      */
     int32 Y = 0;
 
     /**
-     * Nivel de subdivisión de la celda.
+     * Subdivision level of the cell.
      *
-     * Un valor de 0 representa la cara completa.
+     * A value of 0 represents the full face.
      */
     int32 Depth = 0;
 
     /**
-     * Operador de comparacion utilizado para estructuras hash y TMap.
+     * Comparison operator used for hash structures and TMap.
      */
     bool operator==(const FCubeMapCell& Other) const
     {
@@ -48,7 +48,7 @@ struct COSMICARCHITECTCOMMON_API FCubeMapCell
     }
 
     /**
-     * Genera un hash unico para la celda.
+     * Generates a unique hash for the cell.
      */
     friend uint32 GetTypeHash(const FCubeMapCell& Cell)
     {
@@ -61,7 +61,7 @@ struct COSMICARCHITECTCOMMON_API FCubeMapCell
     }
 
     /**
-     * Devuelve un identificador legible de la celda.
+     * Returns a human-readable identifier for the cell.
      */
     FString ToString() const
     {
@@ -70,32 +70,32 @@ struct COSMICARCHITECTCOMMON_API FCubeMapCell
 };
 
 /**
- * Representa los limites espaciales de un nodo del cubemap.
+ * Represents the spatial bounds of a cubemap node.
  *
- * Contiene informacion de las esquinas y centro de una region
- * tanto en espacio cubico como proyectado a esfera.
+ * Contains information about the corners and center of a region
+ * both in cube space and projected onto a sphere.
  */
 struct FNodeBounds
 {
     /**
-     * Esquina minima del nodo en espacio cubico.
+     * Minimum corner of the node in cube space.
      */
     FVector MinCorner;
 
     /**
-     * Esquina maxima del nodo en espacio cubico.
+     * Maximum corner of the node in cube space.
      */
     FVector MaxCorner;
 
     /**
-     * Centro del nodo en espacio cubico.
+     * Center of the node in cube space.
      */
     FVector Center;
 
     /**
-     * Devuelve las 8 esquinas del nodo en coordenadas cubicas.
+     * Returns the 8 corners of the node in cube coordinates.
      *
-     * Utilizado principalmente para depuracion y visualizacion.
+     * Used primarily for debugging and visualization.
      */
     TArray<FVector> GetCubeCorners() const
     {
@@ -114,16 +114,16 @@ struct FNodeBounds
     }
 
     /**
-     * Convierte las esquinas del cubo a coordenadas esfericas.
+     * Converts the cube corners to spherical coordinates.
      *
-     * @param Radius Radio utilizado para proyectar sobre la esfera.
-     * @return Array con las 8 esquinas proyectadas sobre la esfera.
+     * @param Radius Radius used to project onto the sphere.
+     * @return Array with the 8 corners projected onto the sphere.
      */
     TArray<FVector> GetSphereCorners(float Radius) const
     {
         TArray<FVector> Corners;
 
-        // Proyectar las 8 esquinas sobre la esfera
+        // Project the 8 corners onto the sphere
         Corners.Add(FVector(MinCorner.X, MinCorner.Y, MinCorner.Z).GetSafeNormal() * Radius);
         Corners.Add(FVector(MaxCorner.X, MinCorner.Y, MinCorner.Z).GetSafeNormal() * Radius);
         Corners.Add(FVector(MaxCorner.X, MaxCorner.Y, MinCorner.Z).GetSafeNormal() * Radius);

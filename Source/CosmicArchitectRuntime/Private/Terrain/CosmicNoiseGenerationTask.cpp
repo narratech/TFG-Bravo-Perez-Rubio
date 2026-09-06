@@ -24,7 +24,7 @@ FCosmicNoiseGenerationTask::FCosmicNoiseGenerationTask(
     , NoiseGenerationStrategy(InNoiseGenerationStrategy)
     , ClipmapSettings(MoveTemp(InClipmapSettings))
 {
-    // Reservamos memoria sin inicializar los elementos para optimizar rendimiento (SetNumUninitialized)
+    // Reserve memory without initializing elements for performance optimization (SetNumUninitialized)
     CalculatedVertices.SetNumUninitialized(BaseVertices.Num());
     CalculatedColors.SetNumUninitialized(BaseVertices.Num()); 
     CalculatedNormals.SetNumUninitialized(BaseVertices.Num());
@@ -52,7 +52,7 @@ void FCosmicNoiseGenerationTask::DoWork()
         }
     }
 
-    // Loop de vértices
+    // Vertex loop
     for (int32 i = 0; i < VertexCount; i++)
     {
         FVector WorldPos = IsPlanet ? CalculatedVertices[i] : BaseVertices[i];
@@ -70,11 +70,11 @@ void FCosmicNoiseGenerationTask::DoWork()
         FVector Normal = FVector::ZeroVector;
 
         if (IsPlanet || IsSphere) {
-            // Crear dos vectores perpendiculares a la dirección
+            // Create two vectors perpendicular to direction
             FVector Tangent1, Tangent2;
             NoiseDir.FindBestAxisVectors(Tangent1, Tangent2);
 
-            // Generar puntos de muestra alrededor
+            // Generate sample points around
             FVector SampleDirs[] = {
                 (NoiseDir + Tangent1 * (SampleDistance / PlanetRadius)).GetSafeNormal(),
                 (NoiseDir - Tangent1 * (SampleDistance / PlanetRadius)).GetSafeNormal(),
@@ -101,7 +101,7 @@ void FCosmicNoiseGenerationTask::DoWork()
 
         NoiseGenerationStrategy->EvaluatePoint(NoiseDir, FinalHeight, FinalColor);
 
-        // Calcular posición final del vértice
+        // Compute final vertex position
         if (IsPlanet || IsSphere) {
             CalculatedNormals[i] = Normal;
             CalculatedVertices[i] += (NoiseDir * FinalHeight);
@@ -111,7 +111,7 @@ void FCosmicNoiseGenerationTask::DoWork()
         }
 
 
-        // Guardar colores
+        // Store colors
         CalculatedColors[i] = FinalColor;
 
     }
@@ -173,9 +173,9 @@ void FCosmicNoiseGenerationTask::DoSnappedPlanetClipmapWork()
         const double RadiusSquared =
             NormalizedX * NormalizedX + NormalizedY * NormalizedY;
 
-        // Inversa de una proyeccion ortografica sobre la esfera. Conserva el
-        // spacing fisico cerca del observador y alcanza el horizonte cuando
-        // el plano llega al radio del planeta, igual que la malla anterior.
+        // Inverse of an orthographic projection onto the sphere. Preserves
+        // physical spacing near observer and reaches horizon when
+        // plane reaches planet radius, same as previous mesh.
         FVector LocalDirection;
         if (RadiusSquared < 1.0)
         {

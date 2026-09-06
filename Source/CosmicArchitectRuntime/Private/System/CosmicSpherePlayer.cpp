@@ -19,68 +19,68 @@ ACosmicSpherePlayer::ACosmicSpherePlayer()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	// Ejecuta Tick después de la simulación física
-	// para alinear correctamente cámara y visuales.
+	// Runs Tick after physics simulation
+	// to properly align camera and visuals.
 	PrimaryActorTick.TickGroup = TG_PostPhysics;
 
-	// Asigna automáticamente el control 
-	// al jugador local principal.
+	// Automatically assigns control 
+	// to the primary local player.
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
 
-	// CREACIÓN DE COMPONENTES
+	// COMPONENT CREATION
 
-	// Cápsula principal utilizada para:
-	// - Colisiones
-	// - Movimiento físico
-	// - Interacción gravitacional
+	// Main capsule used for:
+	// - Collisions
+	// - Physics movement
+	// - Gravitational interaction
 	CapsuleComp = CreateDefaultSubobject<UCapsuleComponent>(TEXT("CapsuleComp"));
 	RootComponent = CapsuleComp;
 	CapsuleComp->InitCapsuleSize(40.0f, 90.0f);
 
-	// Activa simulación física personalizada.
+	// Enables custom physics simulation.
 	CapsuleComp->SetSimulatePhysics(true);
 
-	// Desactiva gravedad estándar de Unreal
-	// para utilizar gravedad esférica personalizada.
+	// Disables standard Unreal gravity
+	// to use custom spherical gravity.
 	CapsuleComp->SetEnableGravity(false);
 
 	CapsuleComp->SetCollisionProfileName(TEXT("Pawn"));
 
-	// Nodo visual alineado estrictamente
-	// con la normal gravitacional local.
+	// Visual node strictly aligned
+	// with local gravitational normal.
 	VisualRoot = CreateDefaultSubobject<USceneComponent>(TEXT("VisualRoot"));
 	VisualRoot->SetupAttachment(RootComponent);
 
-	// Sistema de cámara orbital desacoplada.
+	// Decoupled orbital camera system.
 	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp"));
 	SpringArmComp->SetupAttachment(VisualRoot);
 	SpringArmComp->TargetArmLength = 400.0f;
 	SpringArmComp->bUsePawnControlRotation = false;
 	SpringArmComp->bEnableCameraLag = true;
 
-	// Cámara principal controlada por el jugador.
+	// Main player-controlled camera.
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->SetupAttachment(SpringArmComp, USpringArmComponent::SocketName);
 	CameraComp->bUsePawnControlRotation = false;
 
-	// Nodo utilizado para orientar visualmente
-	// el personaje hacia la dirección de movimiento.
+	// Node used to visually orient
+	// the character toward movement direction.
 	MeshRoot = CreateDefaultSubobject<USceneComponent>(TEXT("MeshRoot"));
 	MeshRoot->SetupAttachment(VisualRoot);
 
-	// Malla esquelética principal del jugador.
+	// Main skeletal mesh of the player.
 	PlayerMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("PlayerMesh"));
 	PlayerMesh->SetupAttachment(MeshRoot);
 
-	// Compensa visualmente la altura
-	// respecto a la cápsula física.
+	// Visually offsets height
+	// relative to physics capsule.
 	PlayerMesh->SetRelativeLocation(FVector(0.0f, 0.0f, -40.0f));
 
-	// Componente responsable de calcular
-	// gravedad planetaria personalizada.
+	// Component responsible for calculating
+	// custom planetary gravity.
 	GravityComp = CreateDefaultSubobject<UCosmicGravityComponent>(TEXT("GravityComp"));
 
-	// Estado inicial de orientación de cámara.
+	// Initial camera orientation state.
 	CameraYaw = 0.0f;
 	CameraPitch = -20.0f;
 }
@@ -89,8 +89,8 @@ void ACosmicSpherePlayer::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Inicializa el sistema moderno
-	// Enhanced Input de Unreal Engine 5.
+	// Initializes Unreal Engine 5's
+	// modern Enhanced Input system.
 	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
 	{
 		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
@@ -102,8 +102,8 @@ void ACosmicSpherePlayer::BeginPlay()
 		}
 	}
 
-	// Sincroniza la masa física con el
-	// componente gravitacional personalizado.
+	// Synchronizes physics mass with
+	// custom gravitational component.
 	CapsuleComp->SetMassOverrideInKg(NAME_None, GravityComp->Mass, true);
 }
 
@@ -111,8 +111,8 @@ void ACosmicSpherePlayer::SetupPlayerInputComponent(UInputComponent* PlayerInput
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	// Vincula acciones Enhanced Input
-	// con lógica C++ runtime.
+	// Binds Enhanced Input actions
+	// to runtime C++ logic.
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
 		if (IA_PlayerMove) { EnhancedInputComponent->BindAction(IA_PlayerMove, ETriggerEvent::Triggered, this, &ACosmicSpherePlayer::Move); }
@@ -126,50 +126,50 @@ void ACosmicSpherePlayer::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// Validación de seguridad para evitar
-	// acceso a componentes inválidos.
+	// Safety validation to avoid
+	// accessing invalid components.
 	if (!VisualRoot || !MeshRoot || !CapsuleComp) return;
 
-	// Obtiene gravedad personalizada activa
-	// o utiliza gravedad fallback por defecto.
+	// Gets active custom gravity
+	// or uses default fallback gravity.
 	FVector GravityDown = GravityComp ? GravityComp->CurrentGravityDirection : FVector::DownVector * GravityAcceleration * 100;
 
-	// Aplicación física de gravedad.
+	// Gravitational physics application.
 	CapsuleComp->AddForce(GravityDown, NAME_None, true);
 
-	// Vector Up gravitacional local.
+	// Local gravitational Up vector.
 	FVector TargetUp = -GravityDown.GetSafeNormal();
 
-	// Proyecta el forward sobre el plano local
-	// para evitar inclinaciones laterales.
+	// Projects forward onto local plane
+	// to avoid lateral tilting.
 	FVector StableForward = FVector::VectorPlaneProject(VisualRoot->GetForwardVector(), TargetUp).GetSafeNormal();
 
 	if (StableForward.IsNearlyZero()) {
 		StableForward = FVector::CrossProduct(VisualRoot->GetRightVector(), TargetUp).GetSafeNormal();
 	}
 
-	// Alineación gravitacional del contenedor visual.
+	// Gravitational alignment of visual container.
 	FQuat TargetVisualQuat = FRotationMatrix::MakeFromXZ(StableForward, TargetUp).ToQuat();
 	VisualRoot->SetWorldRotation(TargetVisualQuat);
 
-	// Dirección objetivo utilizada para orientar
-	// visualmente el personaje.
+	// Target direction used to visually
+	// orient the character.
 	FVector MeshDesiredForward = TargetFacingDirection.IsNearlyZero() ?
 		FVector::VectorPlaneProject(MeshRoot->GetForwardVector(), TargetUp).GetSafeNormal() :
 		FVector::VectorPlaneProject(TargetFacingDirection, TargetUp).GetSafeNormal();
 
 	if (!MeshDesiredForward.IsNearlyZero())
 	{
-		// Interpolación suave de orientación visual.
+		// Smooth interpolation of visual orientation.
 		FQuat TargetMeshQuat = FRotationMatrix::MakeFromXZ(MeshDesiredForward, TargetUp).ToQuat();
 		MeshRoot->SetWorldRotation(FMath::QInterpTo(MeshRoot->GetComponentQuat(), TargetMeshQuat, DeltaTime, 15.0f));
 	}
 
-	// Actualización del estado de suelo.
+	// Ground state update.
 	bIsGroundedState = IsGrounded();
 
-	// Velocidad vertical relativa respecto
-	// al eje gravitacional local.
+	// Relative vertical velocity with respect
+	// to local gravitational axis.
 	VerticalVelocity = FVector::DotProduct(CapsuleComp->GetComponentVelocity(), VisualRoot->GetUpVector());
 }
 
@@ -177,23 +177,23 @@ void ACosmicSpherePlayer::Move(const FInputActionValue& Value)
 {
 	FVector2D MovementVector = Value.Get<FVector2D>();
 
-	// Reinicia la orientación objetivo cuando
-	// no existe movimiento activo.
+	// Resets target orientation when
+	// there is no active movement.
 	if (MovementVector.IsNearlyZero()) { TargetFacingDirection = FVector::ZeroVector; return; }
 
 	if (VisualRoot && CameraComp && CapsuleComp)
 	{
 		FVector UpVector = VisualRoot->GetUpVector();
 
-		// Proyección horizontal de orientación
-		// de cámara sobre la superficie local.
+		// Horizontal projection of camera
+		// orientation onto local surface.
 		FVector ForwardOnGround = FVector::VectorPlaneProject(CameraComp->GetForwardVector(), UpVector).GetSafeNormal();
 		FVector RightOnGround = FVector::VectorPlaneProject(CameraComp->GetRightVector(), UpVector).GetSafeNormal();
 
-		// Construye dirección final de movimiento
-		// relativa a la orientación de cámara.
+		// Builds final movement direction
+		// relative to camera orientation.
 		TargetFacingDirection = ((ForwardOnGround * MovementVector.Y) + (RightOnGround * MovementVector.X)).GetSafeNormal();
-		// Aplicación física de movimiento.
+		// Physics application of movement.
 		CapsuleComp->AddForce(TargetFacingDirection * MovementForce);
 	}
 }
@@ -204,12 +204,12 @@ void ACosmicSpherePlayer::Look(const FInputActionValue& Value)
 
 	if (SpringArmComp)
 	{
-		// Actualización acumulativa de rotación
-		// orbital de cámara.
+		// Cumulative update of camera
+		// orbital rotation.
 		CameraYaw += LookAxisVector.X;
 
-		// Limita rotación vertical para evitar
-		// inversión completa de cámara.
+		// Clamps vertical rotation to avoid
+		// complete camera flipping.
 		CameraPitch = FMath::Clamp(CameraPitch + LookAxisVector.Y, -85.0f, 85.0f);
 
 		SpringArmComp->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.0f));
@@ -218,14 +218,14 @@ void ACosmicSpherePlayer::Look(const FInputActionValue& Value)
 
 void ACosmicSpherePlayer::Jump(const FInputActionValue& Value)
 {
-	// El salto únicamente puede ejecutarse
-	// mientras el jugador está en el suelo.
+	// Jump can only be executed
+	// while player is grounded.
 	if (!IsGrounded()) return;
 
 	if (CapsuleComp && VisualRoot)
 	{
-		// Impulso aplicado sobre el eje Up
-		// gravitacional local.
+		// Impulse applied along local
+		// gravitational Up axis.
 		CapsuleComp->AddImpulse(VisualRoot->GetUpVector() * 800.0f, NAME_None, true);
 	}
 }
@@ -234,21 +234,21 @@ bool ACosmicSpherePlayer::IsGrounded() const
 {
 	if (!CapsuleComp || !VisualRoot) return false;
 
-	// Punto inicial del raycast de suelo.
+	// Starting point of ground raycast.
 	FVector Start = GetActorLocation();
 
-	// Dirección gravitacional descendente local.
+	// Local downward gravitational direction.
 	FVector Down = -VisualRoot->GetUpVector();
 
-	// Longitud del raycast utilizada para
-	// detectar superficies cercanas.
+	// Raycast length used to
+	// detect nearby surfaces.
 	float HalfHeight = CapsuleComp->GetScaledCapsuleHalfHeight();
 	FVector End = Start + Down * (HalfHeight + 15.0f);
 
 	FHitResult Hit;
 	FCollisionQueryParams Params;
 
-	// Ignora colisiones contra el propio actor.
+	// Ignores collisions against the actor itself.
 	Params.AddIgnoredActor(this);
 
 	bool bHit = GetWorld()->LineTraceSingleByChannel(
@@ -259,7 +259,7 @@ bool ACosmicSpherePlayer::IsGrounded() const
 		Params
 	);
 
-	// Debug visual opcional del raycast de suelo.
+	// Optional visual debug of ground raycast.
 	// DrawDebugLine(GetWorld(), Start, End, bHit ? FColor::Green : FColor::Red, false, -1.0f, 0, 2.0f);
 
 	return bHit;

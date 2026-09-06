@@ -41,7 +41,7 @@ void UCosmicCollisionComponent::PostEditChangeProperty(FPropertyChangedEvent& Pr
         ? PropertyChangedEvent.Property->GetFName()
         : NAME_None;
 
-    // CAMBIOS QUE ROMPEN LA GEOMETRIA (REBUILD COMPLETO)
+    // CHANGES THAT BREAK GEOMETRY (FULL REBUILD)
     if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicCollisionComponent, CollisionTriangleSize) ||
         PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicCollisionComponent, CollisionResolution))
     {
@@ -55,7 +55,7 @@ void UCosmicCollisionComponent::PostEditChangeProperty(FPropertyChangedEvent& Pr
         return;
     }
 
-    // CAMBIOS EN CONFIG DE FISICA (RECOOK)
+    // CHANGES IN PHYSICS CONFIG (RECOOK)
     if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicCollisionComponent, bUseComplexAsSimpleCollision) ||
         PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicCollisionComponent, bUseAsyncCooking))
     {
@@ -91,7 +91,7 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(double Radius)
     BaseVertices.Reserve(TotalVertices);
     BaseNormals.Reserve(TotalVertices);
 
-    // 3. CALCULAR VÉRTICES
+    // 3. COMPUTE VERTICES
     int32 ActualVerticesCalculated = 0;
 
     for (int32 y = 0; y < VertRes; ++y)
@@ -101,19 +101,19 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(double Radius)
             double WorldX = (x - HalfRes) * CollisionTriangleSize;
             double WorldY = (y - HalfRes) * CollisionTriangleSize;
 
-            // Calcular posición en esfera
+            // Compute position on sphere
             FVector SphereCenter = FVector(0, 0, -Radius);
             double Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
             FVector BasePosition;
 
-            if (Distance2D <= Radius && Distance2D > 0.001f) // Evitar división por 0
+            if (Distance2D <= Radius && Distance2D > 0.001f) // Avoid division by 0
             {
                 double ZOffset = FMath::Sqrt(Radius * Radius - Distance2D * Distance2D);
                 BasePosition = FVector(WorldX, WorldY, -Radius + ZOffset);
             }
             else if (Distance2D <= 0.001f)
             {
-                // Centro - evitar NaN
+                // Center - avoid NaN
                 BasePosition = FVector(0, 0, 0);
             }
             else
@@ -139,9 +139,9 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(double Radius)
         }
     }
 
-    //UE_LOG(LogTemp, Warning, TEXT("Creando colision"));
+    //UE_LOG(LogTemp, Warning, TEXT("Creating collision"));
 
-    // 4. CALCULAR TRIÁNGULOS (CORREGIDO)
+    // 4. COMPUTE TRIANGLES (CORRECTED)
     Tris.Empty();
     int32 TriangleCount = 0;
 
@@ -149,7 +149,7 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(double Radius)
     {
         for (int32 x = 0; x < CollisionResolution; ++x)
         {
-            // Índices de vértices
+            // Vertex indices
             int32 i0 = y * VertRes + x;
             int32 i1 = i0 + 1;
             int32 i2 = i0 + VertRes;
@@ -190,7 +190,7 @@ void UCosmicCollisionComponent::UpdateCollisionMesh(TSharedPtr<ICosmicNoiseStrat
         FVector NoiseDir = (WorldPos - PlanetCenter).GetSafeNormal();
 
         float FinalHeight;
-        FLinearColor FinalColor; // Se calcula pero lo ignoramos para colisiones
+        FLinearColor FinalColor; // Computed but ignored for collisions
 
         NoiseGenerationStrategy->EvaluatePoint(NoiseDir, FinalHeight, FinalColor);
 
@@ -201,12 +201,12 @@ void UCosmicCollisionComponent::UpdateCollisionMesh(TSharedPtr<ICosmicNoiseStrat
 
     //double CreateEndTime = FPlatformTime::Seconds();
 
-    //UE_LOG(LogTemp, Warning, TEXT("Actualizar malla de colision tomo: %.4f ms"), (CreateEndTime - CreateStartTime) * 1000.0);
+    //UE_LOG(LogTemp, Warning, TEXT("Update collision mesh took: %.4f ms"), (CreateEndTime - CreateStartTime) * 1000.0);
 }
 
 void UCosmicCollisionComponent::ClearCollision() 
 {   
-    // Cancelar async cooking
+    // Cancel async cooking
     for (UBodySetup* Setup : AsyncBodySetupQueue)
     {
         if (Setup)
@@ -216,17 +216,17 @@ void UCosmicCollisionComponent::ClearCollision()
     }
     AsyncBodySetupQueue.Empty();
 
-    // Limpiar BodySetup actual
+    // Clear current BodySetup
     if (BodySetup)
     {
         BodySetup->ClearPhysicsMeshes();
         BodySetup = nullptr;
     }
 
-    // Quitar del sistema de físicas
+    // Remove from physics system
     DestroyPhysicsState();
 
-    // Limpiar datos
+    // Clear data
     Verts.Empty();
     Tris.Empty();
     BaseVertices.Empty();

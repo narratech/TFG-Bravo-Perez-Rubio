@@ -10,17 +10,17 @@
 class ICosmicNoiseStrategy;
 
 /**
- * Componente encargado de generar y actualizar la colisión procedural
- * utilizada sobre la superficie planetaria.
+ * Component responsible for generating and updating procedural collision
+ * used on the planetary surface.
  *
- * Implementa un proveedor de datos de colisión dinámico compatible
- * con Chaos/Physics mediante triángulos generados proceduralmente.
+ * Implements a dynamic collision data provider compatible
+ * with Chaos/Physics using procedurally generated triangles.
  *
- * Funcionalidades principales:
- * - Generación de malla base de colisión.
- * - Actualización dinámica con ruido procedural.
- * - Cooking síncrono y asíncrono.
- * - Visualización debug de la colisión. 
+ * Main features:
+ * - Base collision mesh generation.
+ * - Dynamic updating with procedural noise.
+ * - Synchronous and asynchronous cooking.
+ * - Debug collision visualization.
  */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent),
     HideCategories = (Rendering, Lighting, Navigation, Replication, Physics, LOD, TextureStreaming,
@@ -34,72 +34,72 @@ UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent),
 public:
 
     /**
-     * Constructor por defecto del componente.
+     * Default component constructor.
      */
     UCosmicCollisionComponent();
 
-    /** Tamaño de cada triángulo utilizado para la colisión */
+    /** Size of each triangle used for collision */
     UPROPERTY(EditAnywhere, Category = "Collision")
     float CollisionTriangleSize = 250.f;
 
-    /** Resolución de la cuadrícula de colisión */
+    /** Collision grid resolution */
     UPROPERTY(EditAnywhere, Category = "Collision")
     int32 CollisionResolution = 12;
 
-    /** Distancia máxima a la que se genera colisión */
+    /** Maximum distance at which collision is generated */
     UPROPERTY(EditAnywhere, Category = "Collision")
     double MaxCollisionDistance = 30000.f;
 
-    /** Mostrar la malla de colisión en el editor para depuración */
+    /** Show collision mesh in editor for debugging */
     UPROPERTY(EditAnywhere, Category = "Collision")
     bool bShowCollisionMesh = false;
 
-    /** Color utilizado para visualizar la malla de colisión */
+    /** Color used to visualize collision mesh */
     UPROPERTY(EditAnywhere, Category = "Collision", meta = (EditCondition = "bShowCollisionMesh"))
     FColor DebugColor = FColor::Green;
 
-    /** Grosor de las líneas debug de la colisión */
+    /** Collision debug line thickness */
     UPROPERTY(EditAnywhere, Category = "Collision", meta = (EditCondition = "bShowCollisionMesh", ClampMin = "0"))
     float DebugLineWidth = 20.f;
 
-    /** Utilizar la colisión compleja como colisión simple */
+    /** Use complex collision as simple collision */
     UPROPERTY(EditAnywhere, Category = "Collision")
     bool bUseComplexAsSimpleCollision = true;
 
-    /** Utilizar cooking asíncrono para físicas */
+    /** Use asynchronous cooking for physics */
     UPROPERTY(EditAnywhere, Category = "Collision")
     bool bUseAsyncCooking = true;
 
     /**
-     * Fuerza una reconstrucción completa de la colisión.
+     * Forces a full collision rebuild.
      */
     UFUNCTION(CallInEditor, Category = "Collision")
     void RebuildCollision();
 
     /**
-     * Genera la malla base de colisión.
+     * Generates the base collision mesh.
      *
-     * @param Radius Radio del planeta.
+     * @param Radius Planet radius.
      */
     void GenerateCollisionMesh(double Radius);
 
     /**
-     * Actualiza los vértices de colisión utilizando ruido procedural.
+     * Updates collision vertices using procedural noise.
      *
-     * @param NoiseGenerationStrategy Estrategia de ruido activa.
-     * @param PlanetCenter Centro actual del planeta.
+     * @param NoiseGenerationStrategy Active noise strategy.
+     * @param PlanetCenter Current planet center.
      */
     void UpdateCollisionMesh(TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy, const FVector& PlanetCenter);
 
     /**
-     * Limpia completamente la colisión activa.
+     * Completely clears active collision.
      */
     void ClearCollision();
 
     /**
-     * Indica si la colisión ya fue construida.
+     * Indicates whether collision has already been built.
      *
-     * @return True si existe una colisión válida.
+     * @return True if valid collision exists.
      */
     bool IsBuilt() const;
 
@@ -112,97 +112,97 @@ protected:
 #if WITH_EDITOR
 
     /**
-     * Se ejecuta automáticamente al modificar propiedades
-     * desde el panel de detalles del editor.
+     * Executes automatically when properties are modified
+     * from the editor details panel.
      */
     virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 
 #endif
 
-    /** Implementación del proveedor de datos de colisión */
+    /** Collision data provider implementation */
     virtual bool GetPhysicsTriMeshData(FTriMeshCollisionData* CollisionData, bool InUseAllTriData) override;
 
-    /** Indica si existen datos de colisión válidos */
+    /** Indicates whether valid collision data exists */
     virtual bool ContainsPhysicsTriMeshData(bool InUseAllTriData) const override;
 
-    /** No se requiere generación negativa en X */
+    /** Negative generation in X is not required */
     virtual bool WantsNegXTriMesh() override { return false; }
 
-    /** Estimaciones del tamaño de la malla de colisión */
+    /** Collision mesh size estimates */
     virtual bool GetTriMeshSizeEstimates(FTriMeshCollisionDataEstimates& OutTriMeshEstimates, bool bInUseAllTriData) const override;
 
-    /** Obtiene el BodySetup utilizado por físicas */
+    /** Gets the BodySetup used by physics */
     virtual UBodySetup* GetBodySetup() override;
 
 private:
 
     /**
-     * Construye o reconstruye la colisión física.
+     * Builds or rebuilds physics collision.
      */
     void BuildCollision();
 
     /**
-     * Actualiza únicamente los vértices de colisión.
+     * Updates only collision vertices.
      */
     void UpdateCollisionVertices();
 
-    /** BodySetup principal utilizado por el componente */
+    /** Main BodySetup used by the component */
     UPROPERTY(Transient)
     UBodySetup* BodySetup = nullptr;
 
-    /** Cola de BodySetup utilizados para cooking asíncrono */
+    /** Queue of BodySetups used for asynchronous cooking */
     UPROPERTY()
     TArray<UBodySetup*> AsyncBodySetupQueue;
 
-    /** Centro actual de la colisión */
+    /** Current collision center */
     FVector CurrentCollisionCenter;
 
-    /** Radio actual de la colisión */
+    /** Current collision radius */
     float CurrentCollisionRadius = 0;
 
-    /** Radio del planeta */
+    /** Planet radius */
     double PlanetRadius = 0;
 
-    /** Indica si es necesario reconstruir la colisión */
+    /** Indicates whether collision rebuild is required */
     bool bNeedsRebuild = false;
 
-    /** Indica si la colisión está activa */
+    /** Indicates whether collision is active */
     bool bIsActive = false;
 
-    /** Vértices base sin deformación */
+    /** Base vertices without deformation */
     TArray<FVector> BaseVertices;
 
-    /** Normales base utilizadas para deformación */
+    /** Base normals used for deformation */
     TArray<FVector> BaseNormals;
 
-    /** Vértices finales deformados */
+    /** Final deformed vertices */
     TArray<FVector> Verts;
 
-    /** Índices de triángulos */
+    /** Triangle indices */
     TArray<int32> Tris;
 
     /**
-     * Dibuja la malla debug de colisión.
+     * Draws collision debug mesh.
      */
     void DrawDebugCollisionMesh();
 
     /**
-     * Crea un nuevo BodySetup auxiliar.
+     * Creates a new auxiliary BodySetup.
      *
-     * @return Nuevo BodySetup configurado.
+     * @return Configured new BodySetup.
      */
     UBodySetup* CreateBodySetupHelper();
 
     /**
-     * Crea el BodySetup principal procedural.
+     * Creates the procedural main BodySetup.
      */
     void CreateProcMeshBodySetup();
 
     /**
-     * Callback ejecutado al finalizar el cooking asíncrono.
+     * Callback executed when asynchronous cooking finishes.
      *
-     * @param bSuccess True si el cooking fue exitoso.
-     * @param FinishedBodySetup BodySetup finalizado.
+     * @param bSuccess True if cooking succeeded.
+     * @param FinishedBodySetup Finished BodySetup.
      */
     void FinishPhysicsAsyncCook(bool bSuccess, UBodySetup* FinishedBodySetup);
 };

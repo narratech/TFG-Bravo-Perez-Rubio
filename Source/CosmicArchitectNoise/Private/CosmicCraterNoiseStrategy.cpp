@@ -38,7 +38,7 @@ void FCosmicCraterNoiseStrategy::Initialize(int32 InSeed, FCosmicNoiseLayer InLa
     TempNoise.SetSeed(Seed + 256);
     TempNoise.SetFrequency(BiomeParameters.TemperatureFrequency);
 
-    //Ruido para los cráteres
+    //Noise for craters
     CraterNoise.SetSeed(Seed + 512);
     CraterNoise.SetNoiseType(FastNoiseLite::NoiseType_Cellular);
 
@@ -62,11 +62,11 @@ void FCosmicCraterNoiseStrategy::EvaluatePoint(const FVector& NoiseDir, float& O
     const float Y = NoiseDir.Y;
     const float Z = NoiseDir.Z;
 
-    // --- ALTURA BASE ---
+    // --- BASE HEIGHT ---
     float BaseNoise = Noise.GetNoise(X, Y, Z); // [-1, 1]
     float Height = BaseNoise * LayerParameters.Amplitude;
 
-    // --- CRÁTERES ---
+    // --- CRATERS ---
     float FinalCraterHeight = 0.0f;
     float FreqScale = 1.0f;
     float AmpScale = 1.0f;
@@ -77,7 +77,7 @@ void FCosmicCraterNoiseStrategy::EvaluatePoint(const FVector& NoiseDir, float& O
         const float OffY = (Y * FreqScale) + (i * 133.7f);
         const float OffZ = (Z * FreqScale) + (i * 133.7f);
 
-        // Remapear distancia celular de [-1,1] a [0,1]
+        // Remap cellular distance from [-1,1] to [0,1]
         float CellDistance = CraterNoise.GetNoise(OffX, OffY, OffZ);
         CellDistance = (CellDistance + 1.0f) * 0.5f;
 
@@ -85,40 +85,40 @@ void FCosmicCraterNoiseStrategy::EvaluatePoint(const FVector& NoiseDir, float& O
         const float DynamicRadius = FMath::Max(CraterParameters.CraterRadiusMultiplier * SizeVariation, 0.01f);
         const float CurrentDepth = CraterParameters.CraterDepth * AmpScale;
 
-        // Solo procesar puntos dentro del area de influencia del cráter
+        // Only process points within the crater's area of influence
         if (CellDistance < DynamicRadius * 1.3f)
         {
-            const float t = CellDistance / DynamicRadius; // 0=centro, 1=borde
+            const float t = CellDistance / DynamicRadius; // 0=center, 1=rim
             float CraterShape = 0.0f;
 
-            // --- CAVIDAD (interior, t < 1) ---
+            // --- CAVITY (interior, t < 1) ---
             if (t < 1.0f)
             {
-                // FloorHeight=0  bowl completo sin suelo plano
-                // FloorHeight=0.5  suelo plano hasta la mitad del radio
-                // FloorHeight=1  cráter completamente plano
+                // FloorHeight=0  complete bowl with no flat floor
+                // FloorHeight=0.5  flat floor up to half radius
+                // FloorHeight=1  completely flat crater
                 const float FloorStart = FMath::Clamp(CraterParameters.CraterFloorHeight, 0.0f, 0.99f);
 
                 float Bowl = 0.0f;
                 if (t < FloorStart)
                 {
-                    // Zona plana del suelo
+                    // Flat floor zone
                     Bowl = 1.0f;
                 }
                 else
                 {
-                    // Transición suave del suelo hacia el borde: parábola invertida
-                    const float tNorm = (t - FloorStart) / (1.0f - FloorStart); // [0,1] desde el suelo hasta el borde
+                    // Smooth transition from floor to rim: inverted parabola
+                    const float tNorm = (t - FloorStart) / (1.0f - FloorStart); // [0,1] from floor to rim
                     const float S = FMath::SmoothStep(0.0f, 1.0f, tNorm);
                     Bowl = FMath::Pow(1.0f - S, 2.0f);
                 }
 
-                CraterShape -= Bowl * CurrentDepth; // negativo = se hunde
+                CraterShape -= Bowl * CurrentDepth; // negative = sinks
             }
 
-            // --- RIM (borde, campana gaussiana centrada en t=1) ---
-            // CraterRimSharpness controla cuán estrecho es el borde
-            // CraterRimHeight escala su altura relativa a la profundidad
+            // --- RIM (gaussian bell centered at t=1) ---
+            // CraterRimSharpness controls how sharp the rim is
+            // CraterRimHeight scales its height relative to depth
             const float RimExponent = FMath::Pow((t - 1.0f) / 0.15f, 2.0f) * CraterParameters.CraterRimSharpness;
             const float Rim = FMath::Exp(-RimExponent);
             CraterShape += Rim * CurrentDepth * CraterParameters.CraterRimHeight;
@@ -132,7 +132,7 @@ void FCosmicCraterNoiseStrategy::EvaluatePoint(const FVector& NoiseDir, float& O
 
     Height += FinalCraterHeight;
 
-    // --- HUMEDAD ---
+    // --- HUMIDITY ---
     const float RawHum = HumidityNoise.GetNoise(X, Y, Z);
     float Humidity = (RawHum + 1.0f) * 0.5f; // [0, 1]
     Humidity = FMath::Clamp(
@@ -140,17 +140,17 @@ void FCosmicCraterNoiseStrategy::EvaluatePoint(const FVector& NoiseDir, float& O
         0.0f, 1.0f
     );
 
-    // --- TEMPERATURA ---
+    // --- TEMPERATURE ---
     const float Latitude = FMath::Abs(Z);
     const float BaseTemp = 1.0f - (Latitude * BiomeParameters.LatitudeEffect);
     const float TempNoisVal = TempNoise.GetNoise(X, Y, Z) * 0.2f;
     const float Temperature = FMath::Clamp(BaseTemp + TempNoisVal, 0.0f, 1.0f);
 
-    // --- MODIFICACIÓN POR BIOMA ---
+    // --- BIOME MODIFICATION ---
     const float BiomeInfluence = FMath::Lerp(0.8f, 1.2f, Humidity);
     Height *= BiomeInfluence;
 
-    // --- SALIDA ---
+    // --- OUTPUT ---
     const float AltitudeNormalized = FMath::Clamp(
         Height / FMath::Max(LayerParameters.Amplitude, 1.0f),
         0.0f, 1.0f

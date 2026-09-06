@@ -37,6 +37,6 @@ void FCameraViewportDataUpdater::UpdateCameraViewport()
     FCosmicCameraBridge::CameraLocation = Client->GetViewLocation();
     FCosmicCameraBridge::CameraRotation = Client->GetViewRotation();
 
-    //UE_LOG(LogTemp, Warning, TEXT("Camara X: %.4f, Y: %.4f, Z: %.4f"),
+    //UE_LOG(LogTemp, Warning, TEXT("Camera X: %.4f, Y: %.4f, Z: %.4f"),
     // FCosmicCameraBridge::CameraLocation.X, FCosmicCameraBridge::CameraLocation.Y, FCosmicCameraBridge::CameraLocation.Z);
 }

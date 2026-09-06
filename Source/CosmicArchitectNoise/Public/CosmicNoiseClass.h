@@ -9,10 +9,10 @@
 DECLARE_MULTICAST_DELEGATE(FOnNoiseSettingsChanged);
 
 /**
- * Base abstracta para assets de configuración de ruido procedural.
+ * Abstract base for procedural noise configuration assets.
  *
- * Permite crear estrategias de ruido a partir de datos editables en Unreal Engine
- * y notificar cambios en tiempo de edición.
+ * Allows creating noise strategies from editable data in Unreal Engine
+ * and notifying changes at edit time.
  */
 UCLASS(Abstract, BlueprintType)
 class COSMICARCHITECTNOISE_API UCosmicNoiseClass : public UDataAsset
@@ -21,19 +21,19 @@ class COSMICARCHITECTNOISE_API UCosmicNoiseClass : public UDataAsset
 	
 public: 
      /**
-     * Evento que se dispara cuando se modifican propiedades del asset en el editor.
+     * Event fired when asset properties are modified in the editor.
      */
 	FOnNoiseSettingsChanged OnNoiseSettingsChanged;
 
     /**
-     * Crea una instancia de la estrategia de ruido asociada a este asset.
+     * Creates an instance of the noise strategy associated with this asset.
      */
 	virtual TSharedPtr<ICosmicNoiseStrategy> CreateStrategy() const;
 protected:
 #if WITH_EDITOR
 
     /**
-     * Se ejecuta cuando una propiedad del asset es modificada en el editor.
+     * Executes when an asset property is modified in the editor.
      */
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif

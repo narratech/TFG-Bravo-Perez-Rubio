@@ -3,13 +3,13 @@
 #include "Simulation/CosmicGravitySubsystem.h"
 #include "Simulation/CosmicGravityComponent.h"
 
-// Constante gravitacional universal en unidades del sistema internacional: 6.674e-11 m3 / (kg * s2).
-// Se usa para calcular masas planetarias en BeginPlay y como base de GUnreal.
+// Universal gravitational constant in SI units: 6.674e-11 m³ / (kg * s²).
+// Used to calculate planetary masses in BeginPlay and as base for GUnreal.
 static const double GravityConstant = 0.00000000006674;
 
-// Version adaptada de G para el sistema de unidades de Unreal Engine (centimetros).
-// Se multiplica por 10000 (100^2) para compensar que las distancias en Unreal estan en cm
-// mientras que la formula de Newton opera en metros: F = G*M*m / r^2, con r en metros.
+// Adapted version of G for Unreal Engine unit system (centimeters).
+// Multiplied by 10000 (100²) to compensate for Unreal distances being in cm
+// while Newton's formula operates in meters: F = G*M*m / r², with r in meters.
 static const double GUnreal = GravityConstant * 10000;
 
 
@@ -31,10 +31,10 @@ void UCosmicGravitySubsystem::Tick(float DeltaTime)
     const int32 Count = Bodies.Num();
     if (Count == 0) return;
 
-    // Fase 1: acumulacion de fuerzas.
-    // Cada cuerpo calcula las fuerzas que recibe segun su modo y las suma en AccumulatedForce.
-    // La integracion se realiza en una segunda pasada para que todas las fuerzas del frame
-    // esten acumuladas antes de mover ningun cuerpo (evita dependencias de orden).
+    // Phase 1: force accumulation.
+    // Each body calculates forces it receives based on mode and sums them into AccumulatedForce.
+    // Integration is performed in a second pass so all frame forces
+    // are accumulated before moving any body (avoids order dependencies).
     for (int32 i = 0; i < Count; ++i) {
         UCosmicGravityComponent* BodyA = Bodies[i];
         if (!BodyA) continue;
@@ -48,8 +48,8 @@ void UCosmicGravitySubsystem::Tick(float DeltaTime)
 
         case ECosmicGravityMode::NearestPlanet:
         {
-            // Busqueda del planeta mas cercano iterando unicamente sobre Planets (sublista optimizada).
-            // Se compara distancia al cuadrado para evitar raices cuadradas en el bucle.
+            // Nearest planet search iterating only over Planets (optimized sublist).
+            // Compares squared distance to avoid square roots in loop.
             if (!BodyA->IsAffectedByOthers) break;
 
             UCosmicGravityComponent* NearestPlanet = nullptr;
@@ -71,8 +71,8 @@ void UCosmicGravitySubsystem::Tick(float DeltaTime)
 
         case ECosmicGravityMode::SpecificPlanet:
         {
-            // Se busca el componente del actor referenciado en SpecificGravitySource
-            // dentro de Planets para garantizar que el actor destino es realmente un planeta registrado.
+            // Look up component of referenced actor in SpecificGravitySource
+            // within Planets to guarantee target actor is indeed a registered planet.
             if (!BodyA->IsAffectedByOthers || !BodyA->SpecificGravitySource) break;
 
             UCosmicGravityComponent* SpecificPlanetComp = nullptr;
@@ -90,8 +90,8 @@ void UCosmicGravitySubsystem::Tick(float DeltaTime)
 
         case ECosmicGravityMode::AllPlanets:
         {
-            // Se acumula la fuerza de cada planeta por separado.
-            // BodyAddForce filtra internamente planetas nulos o con AffectsOthers == false.
+            // Accumulate force from each planet separately.
+            // BodyAddForce internally filters null planets or those with AffectsOthers == false.
             if (!BodyA->IsAffectedByOthers) break;
 
             for (UCosmicGravityComponent* Planet : Planets) {
@@ -102,9 +102,9 @@ void UCosmicGravitySubsystem::Tick(float DeltaTime)
 
         case ECosmicGravityMode::NBody:
         {
-            // Simulacion N-cuerpos: cada par (i, j) se procesa una sola vez (j > i)
-            // aplicando fuerzas mutuas en ApplyMutualForce, que implementa la Tercera Ley de Newton.
-            // Esto reduce la complejidad de O(n^2) llamadas a O(n*(n-1)/2).
+            // N-body simulation: each pair (i, j) is processed once (j > i)
+            // applying mutual forces in ApplyMutualForce, implementing Newton's Third Law.
+            // This reduces complexity from O(n²) calls to O(n*(n-1)/2).
             for (int32 j = i + 1; j < Count; ++j) {
                 UCosmicGravityComponent* BodyB = Bodies[j];
                 ApplyMutualForce(BodyA, BodyB);
@@ -116,9 +116,9 @@ void UCosmicGravitySubsystem::Tick(float DeltaTime)
         }
     }
 
-    // Fase 2: integracion.
-    // Se mueven unicamente los cuerpos con modo activo e IsAffectedByOthers == true.
-    // Los planetas estaticos (IsAffectedByOthers == false) no integran aunque tengan fuerzas acumuladas.
+    // Phase 2: integration.
+    // Only bodies with active mode and IsAffectedByOthers == true are moved.
+    // Static planets (IsAffectedByOthers == false) do not integrate even if having accumulated forces.
     for (UCosmicGravityComponent* Body : Bodies)
     {
         if (Body && Body->GravityMode != ECosmicGravityMode::None && Body->IsAffectedByOthers)
@@ -138,9 +138,9 @@ void UCosmicGravitySubsystem::BodyAddForce(UCosmicGravityComponent* BodyA, UCosm
 
     double DistRadius = 0.0;
 
-    // Clampeo de distancia minima al radio del planeta en cm (RadiusKm * 1000 m/km * 100 cm/m).
-    // Evita que la fuerza diverja a infinito cuando un cuerpo atraviesa o se solapa con el planeta,
-    // simulando que dentro de la superficie la fuerza gravitacional no sigue creciendo.
+    // Clamp minimum distance to planet radius in cm (RadiusKm * 1000 m/km * 100 cm/m).
+    // Prevents force diverging to infinity when a body passes through or overlaps with planet,
+    // simulating that inside surface gravitational force does not keep growing.
     if (BodyA->IsPlanet) {
         DistRadius = FMath::Square(BodyA->RadiusKm * 100000);
     }
@@ -150,8 +150,8 @@ void UCosmicGravitySubsystem::BodyAddForce(UCosmicGravityComponent* BodyA, UCosm
 
     DistSq_cm = FMath::Max(DistRadius, DistSq_cm);
 
-    // Formula de Newton adaptada a centimetros: F = GUnreal * M * m / r^2
-    // GUnreal absorbe el factor de conversion de m^2 a cm^2 (x10000), manteniendo F en Newtons.
+    // Newton formula adapted to centimeters: F = GUnreal * M * m / r²
+    // GUnreal absorbs conversion factor from m² to cm² (x10000), keeping F in Newtons.
     double ForceMagnitude = (GUnreal * BodyA->Mass * BodyB->Mass) / DistSq_cm;
 
     BodyA->AccumulatedForce += Difference.GetSafeNormal() * ForceMagnitude;
@@ -169,8 +169,8 @@ void UCosmicGravitySubsystem::ApplyMutualForce(UCosmicGravityComponent* BodyA, U
 
     double DistRadius = 0.0;
 
-    // Mismo clampeo que en BodyAddForce: la distancia minima se fija al radio del planeta
-    // para evitar singularidades cuando los cuerpos se superponen geometricamente.
+    // Same clamping as in BodyAddForce: minimum distance clamped to planet radius
+    // to avoid singularities when bodies geometrically overlap.
     if (BodyA->IsPlanet) {
         DistRadius = FMath::Square(BodyA->RadiusKm * 100000);
     }
@@ -184,8 +184,8 @@ void UCosmicGravitySubsystem::ApplyMutualForce(UCosmicGravityComponent* BodyA, U
 
     FVector Force = Difference.GetSafeNormal() * ForceMagnitude;
 
-    // Aplicacion simetrica de fuerzas: BodyA recibe Force y BodyB recibe -Force.
-    // Se respetan los flags individuales: un cuerpo puede generar gravedad sin recibirla y viceversa.
+    // Symmetric force application: BodyA receives Force and BodyB receives -Force.
+    // Individual flags respected: body can generate gravity without receiving it and vice versa.
     if (BodyA->IsAffectedByOthers && BodyB->AffectsOthers)
         BodyA->AccumulatedForce += Force;
     if (BodyB->IsAffectedByOthers && BodyA->AffectsOthers)
@@ -196,7 +196,7 @@ void UCosmicGravitySubsystem::RegisterBody(UCosmicGravityComponent* Body)
 {
     if (!Body) return;
 
-    // AddUnique evita duplicados en caso de llamadas redundantes desde SetIsPlanet o BeginPlay.
+    // AddUnique avoids duplicates on redundant calls from SetIsPlanet or BeginPlay.
     Bodies.AddUnique(Body);
 
     if (Body->IsPlanet)

@@ -13,15 +13,15 @@ class UCosmicCollisionComponent;
 class UCosmicNoiseClass;
 
 /**
- * Componente encargado de gestionar el sistema de clipmaps planetarios.
+ * Component responsible for managing the planetary clipmap system.
  *
- * Administra la creación, actualización y destrucción de niveles de detalle
- * dinámicos alrededor del jugador, incluyendo:
- * - Generación procedural de mallas.
- * - Transiciones entre modo normal y rendimiento. 
- * - Actualización de colisión cercana.
- * - Generación de foliage.
- * - Materiales dinámicos del planeta.
+ * Manages creation, updating, and destruction of dynamic levels of detail
+ * around the player, including:
+ * - Procedural mesh generation.
+ * - Transitions between normal and performance mode.
+ * - Near collision updating.
+ * - Foliage generation.
+ * - Dynamic planet materials.
  */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent),
     HideCategories = (Activation, Tags, AssetUserData, Navigation, Rendering, Replication, Input, Actor, Collision, Cooking))
@@ -32,132 +32,132 @@ UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent),
 public:
 
     /**
-     * Constructor por defecto del componente.
+     * Default component constructor.
      */
     UCosmicClipmapComponent();
 
     /**
-     * Crea todos los niveles del sistema clipmap.
+     * Creates all levels of the clipmap system.
      */
     void CreateLevels();
 
     /**
-     * Crea el nivel simplificado utilizado en modo rendimiento.
+     * Creates simplified level used in performance mode.
      *
-     * @param bActive Indica si el nivel debe comenzar activo.
+     * @param bActive Indicates if level should start active.
      */
     void CreatePerformanceLevel(bool bActive);
 
     /**
-     * Elimina y destruye todos los niveles generados.
+     * Removes and destroys all generated levels.
      */
     void ClearLevels();
 
     /**
-     * Limpia referencias heredadas tras duplicación sin destruir componentes del actor original.
+     * Clears inherited references after duplication without destroying original actor components.
      *
-     * @param NewRoot Componente raíz del nuevo actor.
+     * @param NewRoot Root component of new actor.
      */
     void ResetPointersAfterDuplicate(USceneComponent* NewRoot);
 
     /**
-     * Configura los parámetros visuales del material planetario.
+     * Configures visual parameters of planetary material.
      *
-     * @param Color1 Color principal base.
-     * @param Color2 Color secundario base.
-     * @param ColorCold Color para zonas frías.
-     * @param ColorHot Color para zonas cálidas.
-     * @param ColorSlope Color aplicado a pendientes.
-     * @param ScaleL Escala de ruido grande.
-     * @param ScaleM Escala de ruido media.
-     * @param ScaleS Escala de ruido pequeña.
+     * @param Color1 Main base color.
+     * @param Color2 Secondary base color.
+     * @param ColorCold Color for cold zones.
+     * @param ColorHot Color for hot zones.
+     * @param ColorSlope Color applied to slopes.
+     * @param ScaleL Large noise scale.
+     * @param ScaleM Medium noise scale.
+     * @param ScaleS Small noise scale.
      */
     void SetMaterialData(FColor Color1, FColor Color2, FColor ColorCold, FColor ColorHot,
         FColor ColorSlope, float ScaleL, float ScaleM, float ScaleS);
 
     /**
-     * Solicita una regeneración completa de las mallas.
+     * Requests complete regeneration of meshes.
      */
     void RequestCompleteMeshUpdate();
 
     /**
-     * Actualiza la estrategia de generación de ruido activa.
+     * Updates active noise generation strategy.
      */
     void UpdateNoiseEvaluator();
 
-    /** Root al que se adjuntan los niveles generados */
+    /** Root to which generated levels are attached */
     USceneComponent* ParentRoot;
 
-    /** Clase encargada de generar la estrategia de ruido procedural */
+    /** Class responsible for generating procedural noise strategy */
     UCosmicNoiseClass* NoiseClass;
 
-    /** Radio del planeta */
+    /** Planet radius */
     double PlanetRadius;
 
-    /** Material base utilizado para generar la instancia dinámica */
+    /** Base material used to generate dynamic instance */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UMaterialInstance* BaseMaterial;
 
-    /** Textura por defecto utilizada por el material */
+    /** Default texture used by material */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UTexture2D* DefaultTexture;
 
-    /** Resolución base de cada nivel del clipmap */
+    /** Base resolution of each clipmap level */
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "8", ClampMax = "256"))
     int32 BaseResolution = 128;
 
-    /** Número total de niveles del clipmap */
+    /** Total number of clipmap levels */
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "1", ClampMax = "10"))
     int32 NumLevels = 4;
 
-    /** Tamaño mínimo permitido para los triángulos */
+    /** Minimum allowed size for triangles */
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "10"))
     int32 MinTriangleSize = 100;
 
-    /** Espaciado base actual de la cuadrícula */
+    /** Current base grid spacing */
     UPROPERTY(VisibleAnywhere, Category = "Clipmap")
     int64 BaseGridSpacing = 200;
 
-    /** Altura a partir de la cual se activa el modo rendimiento */
+    /** Altitude above which performance mode is activated */
     UPROPERTY(EditAnywhere, Category = "Clipmap")
     float HeightVisibility = 5.0f;
 
-    /** Habilita o deshabilita el sistema clipmap */
+    /** Enables or disables clipmap system */
     UPROPERTY(EditAnywhere, Category = "Clipmap")
     bool UseClipmap = true;
 
-    /** Congela la generación dinámica de los niveles */
+    /** Freezes dynamic level generation */
     UPROPERTY(EditAnywhere, Category = "Clipmap")
     bool FreezeGeneration = false;
 
     /**
-     * Paso angular del marco tangente planetario. Dentro del mismo marco los
-     * niveles solo desplazan sus caches; al cruzarlo se hace una regeneracion.
+     * Angular step of planetary tangent frame. Within the same frame
+     * levels only scroll their caches; when crossing it a regeneration occurs.
      */
     UPROPERTY(EditAnywhere, Category = "Clipmap|Spherical",
         meta = (ClampMin = "0.1", ClampMax = "45.0", UIMin = "0.5", UIMax = "15.0"))
     float PlanetGridSnapAngleDegrees = 5.0f;
 
-    /** Componente encargado de la colisión dinámica */
+    /** Component responsible for dynamic collision */
     UCosmicCollisionComponent* CollisionComponent;
 
-    /** Componente encargado del foliage procedural */
+    /** Component responsible for procedural foliage */
     UCosmicFoliageSpawner* FoliageSpawnerComponent;
 
 protected:
 
-    /** Niveles activos del sistema clipmap */
+    /** Active levels of the clipmap system */
     TArray<UCosmicMeshComponent*> Levels;
 
-    /** Nivel simplificado utilizado en modo rendimiento */
+    /** Simplified level used in performance mode */
     UCosmicMeshComponent* FarLevel;
 
-    /** Estrategia activa de generación procedural */
+    /** Active procedural generation strategy */
     TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy;
 
     /**
-     * Fases de actualización distribuidas entre frames
-     * para reducir el coste por tick.
+     * Update phases distributed across frames
+     * to reduce per-tick cost.
      */
     enum class EUpdatePhase : uint8
     {
@@ -166,82 +166,82 @@ protected:
         Mesh
     };
 
-    /** Tiempo acumulado desde la última actualización */
+    /** Time accumulated since last update */
     float ElapsedTime = 0;
 
-    /** Tiempo de refresco actualmente utilizado */
+    /** Currently used refresh time */
     float TimeToRefreshActive;
 
-    /** Indica si el sistema está en modo rendimiento */
+    /** Indicates whether system is in performance mode */
     bool bPerformaceMode = false;
 
-    /** Indica si los niveles normales han sido inicializados */
+    /** Indicates whether normal levels have been initialized */
     bool bInit = false;
 
-    /** Indica si el nivel de rendimiento ya fue generado */
+    /** Indicates whether performance level has already been generated */
     bool bPerformanceBuild = false;
 
-    /** Indica si existen tareas pendientes activas */
+    /** Indicates whether active pending tasks exist */
     bool bPendingTasksRemaining = false;
 
-    /** Esperando transición hacia modo normal */
+    /** Waiting for transition to normal mode */
     bool bWaitingForNormalTransition = false;
 
-    /** Esperando transición hacia modo rendimiento */
+    /** Waiting for transition to performance mode */
     bool bWaitingForPerformanceTransition = false;
 
-    /** Indica si actualmente se están construyendo niveles */
+    /** Indicates whether levels are currently being built */
     bool bBuildingLevels = false;
 
-    /** Indica si el sistema representa un planeta esférico */
+    /** Indicates whether system represents a spherical planet */
     bool IsPlanet = true;
 
-    /** Espaciado base original */
+    /** Original base spacing */
     int64 BaseSpacing = 200;
 
-    /** Color principal del planeta */
+    /** Main planet color */
     FColor PlanetMainColor1 = FColor::Green;
 
-    /** Color secundario del planeta */
+    /** Secondary planet color */
     FColor PlanetMainColor2 = FColor::Red;
 
-    /** Color para zonas frías */
+    /** Color for cold zones */
     FColor PlanetColdColor = FColor::Yellow;
 
-    /** Color para zonas cálidas */
+    /** Color for hot zones */
     FColor PlanetHotColor = FColor::Yellow;
 
-    /** Color utilizado en pendientes */
+    /** Color used on slopes */
     FColor PlanetSlopeColor = FColor::Yellow;
 
-    /** Escala de ruido pequeña */
+    /** Small noise scale */
     float NoiseScaleSmall = 1.f;
 
-    /** Escala de ruido media */
+    /** Medium noise scale */
     float NoiseScaleMedium = 1.f;
 
-    /** Escala de ruido grande */
+    /** Large noise scale */
     float NoiseScaleLarge = 1.f;
 
-    /** Intervalo de actualización del sistema */
+    /** System update interval */
     float TimeToRefresh = 0.01f;
 
-    /** Última posición conocida del jugador */
+    /** Last known player position */
     FVector LastPlayerPos;
 
-    /** Última posición usada para actualizar colisión */
+    /** Last position used to update collision */
     FVector LastMeshPlayerPos;
 
-    /** Posición actual del actor propietario */
+    /** Current position of owning actor */
     FVector CurrentActorPosition;
 
-    /** Delta acumulado en modo plano */
+    /** Accumulated delta in planar mode */
     FVector AccumulatedDelta = FVector::ZeroVector;
 
-    /** Shift total acumulado del clipmap */
+    /** Total accumulated clipmap shift */
     FIntPoint TotalShift = FIntPoint::ZeroValue;
 
-    /** Fase de actualización actual */
+    /** Current update phase */
     EUpdatePhase CurrentPhase = EUpdatePhase::Mesh;
 
     virtual void BeginPlay() override;
@@ -251,154 +251,154 @@ protected:
 #if WITH_EDITOR
 
     /**
-     * Se ejecuta automáticamente al modificar propiedades
-     * desde el panel de detalles del editor.
+     * Executes automatically when properties are modified
+     * from the editor details panel.
      */
     virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 
 #endif
 
     /**
-     * Actualiza el sistema de foliage procedural.
+     * Updates procedural foliage system.
      *
-     * @param DeltaTime Tiempo transcurrido desde el último frame.
-     * @param ViewerPos Posición actual del jugador.
-     * @param DistanceToSurface Distancia a la superficie.
+     * @param DeltaTime Elapsed time since last frame.
+     * @param ViewerPos Current player position.
+     * @param DistanceToSurface Distance to surface.
      */
     void UpdateFoliagePhase(float DeltaTime, const FVector& ViewerPos, float DistanceToSurface);
 
     /**
-     * Actualiza la colisión cercana al jugador.
+     * Updates near collision around player.
      *
-     * @return True si hubo actualización de colisión.
+     * @return True if collision was updated.
      */
     bool UpdateCollisionPhase(const FVector& ViewerPos, const FVector& SurfacePos,
         const FVector& N, float DistanceToSurface);
 
     /**
-     * Actualiza los niveles del clipmap.
+     * Updates clipmap levels.
      */
     void UpdateMeshPhase(const FVector& ViewerPos, const FVector& SurfacePos,
         const FVector& N, float DistanceToSurface);
 
-    /** Actualiza el marco tangente cuantizado si el observador cambia de celda angular. */
+    /** Updates quantized tangent frame if observer changes angular cell. */
     bool UpdateSnappedProjectionFrame(const FVector& ViewerNormal);
 
-    /** Proyecta una direccion de la esfera al plano tangente absoluto activo. */
+    /** Projects a sphere direction onto active absolute tangent plane. */
     FVector2D ProjectDirectionToSnappedFrame(const FVector& Direction) const;
 
-    /** Configura todos los niveles con centros enteros alineados entre LODs. */
+    /** Configures all levels with integer centers aligned across LODs. */
     bool ConfigureLevelsForViewer(const FVector& ViewerNormal);
 
     /**
-     * Genera o actualiza la colisión cercana al jugador.
+     * Generates or updates near collision around player.
      */
     bool UpdateCollisionNearPlayer(const FVector& SurfacePos, const FVector& SurfaceNormal, const double DistanceToSurface);
 
     /**
-     * Construye la instancia dinámica del material planetario.
+     * Builds dynamic instance of planetary material.
      */
     void BuildDynamicMaterial();
 
     /**
-     * Calcula la rotación correcta de un patch
-     * respecto a la normal de superficie.
+     * Calculates correct patch rotation
+     * relative to surface normal.
      */
     FRotator GetPatchRotation(const FVector& SurfacePos) const;
 
     /**
-     * Calcula la distancia real a la superficie utilizando ruido.
+     * Calculates true distance to surface using noise.
      */
     double GetDistanceToSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N);
 
     /**
-     * Calcula la distancia aproximada a la superficie sin ruido.
+     * Calculates approximate distance to surface without noise.
      */
     double GetFastDistanceToSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N);
 
     /**
-     * Calcula la distancia a una superficie plana.
+     * Calculates distance to a planar surface.
      */
     float GetDistanceToPlainSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N);
 
     /**
-     * Obtiene la posición actual del jugador o cámara.
+     * Gets current player or camera position.
      */
     FVector GetPlayerLocation();
 
     /**
-     * Calcula el desplazamiento del grid en modo plano.
+     * Calculates grid offset in planar mode.
      */
     FIntPoint ComputeGridShiftPlanar(const FVector& PlayerPos, float GridSpacing);
 
     /**
-     * Calcula el desplazamiento del grid sobre superficie esférica.
+     * Calculates grid offset on spherical surface.
      */
     FIntPoint ComputeGridShiftSpherical(const FVector& PlayerPos, const FVector& CurrentSurfacePos, int64 GridSpacing);
 
     /**
-     * Calcula el desplazamiento del grid según el tipo de superficie.
+     * Calculates grid offset according to surface type.
      */
     FIntPoint ComputeGridShift(const FVector& PlayerPos, const FVector& CurrentSurfacePos, float GridSpacing);
 
     /**
-     * Obtiene los ángulos esféricos de una posición de superficie.
+     * Gets spherical angles for a surface position.
      */
     FVector2D GetSurfaceAngles(const FVector& SurfacePos);
 
     /**
-     * Calcula cuántos niveles deben reducirse.
+     * Calculates how many levels should be decreased.
      */
     int32 CalculateDecreaseSteps(const double DistanceToSurface) const;
 
     /**
-     * Calcula cuántos niveles deben incrementarse.
+     * Calculates how many levels should be increased.
      */
     int32 CalculateIncreaseSteps(const double DistanceToSurface) const;
 
     /**
-     * Comprueba si un anillo del clipmap es visible.
+     * Checks if a clipmap ring is visible.
      */
     bool IsClipmapRingVisible(const int32 LevelIndex, const double DistanceToSurface) const;
 
     /**
-     * Comprueba si un anillo del clipmap es visible utilizando spacing manual.
+     * Checks if a clipmap ring is visible using manual spacing.
      */
     bool IsClipmapRingVisible(const int64 GridSpacing, const int64 Resolution, const double DistanceToSurface) const;
 
     /**
-     * Reduce el detalle global del clipmap.
+     * Decreases overall clipmap detail.
      */
     void DecreaseClipmapLevelFull(int32 Steps = 1);
 
     /**
-     * Incrementa el detalle global del clipmap.
+     * Increases overall clipmap detail.
      */
     void IncreaseClipmapLevelFull(int32 Steps = 1);
 
 
 private:
 
-    /** Material dinámico utilizado por el planeta */
+    /** Dynamic material used by planet */
     UPROPERTY(Transient, DuplicateTransient)
     UMaterialInstanceDynamic* DynamicPlanetMat;
 
-    /** Última posición conocida sobre la superficie */
+    /** Last known position on surface */
     FVector PreviousSurfacePos = FVector::ZeroVector;
 
-    /** Últimos ángulos esféricos registrados del jugador */
+    /** Last recorded spherical angles of player */
     FVector2D LastSurfaceAngles;
 
-    /** Delta lineal acumulado sobre la superficie */
+    /** Accumulated linear delta on surface */
     FVector2D AccumulatedLinearDelta;
 
-    /** Marco tangente fijo y celda angular que lo origino. */
+    /** Fixed tangent frame and angular cell that originated it. */
     FTransform SnappedProjectionFrame = FTransform::Identity;
     FIntPoint SnappedProjectionKey = FIntPoint::ZeroValue;
     bool bSnappedProjectionValid = false;
     uint64 SnappedProjectionRevision = 0;
 
-    /** Centro comun expresado en celdas del nivel mas grueso. */
+    /** Common center expressed in coarsest level cells. */
     FIntPoint CoarsestGridCenter = FIntPoint::ZeroValue;
     bool bCoarsestGridCenterValid = false;
 };

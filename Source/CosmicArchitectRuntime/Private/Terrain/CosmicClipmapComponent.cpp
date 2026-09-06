@@ -31,7 +31,7 @@ bool UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePo
 {
     if (!CollisionComponent) return false;
 
-    // Solo generar colisión si el jugador está cerca de la superficie
+    // Only generate collision if player is near surface
     if (DistanceToSurface < CollisionComponent->MaxCollisionDistance)
     {
         if (!CollisionComponent->IsBuilt()) 
@@ -43,14 +43,14 @@ bool UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePo
             GetPatchRotation(SurfaceNormal),
             false, 
             nullptr,
-            ETeleportType::TeleportPhysics // teleport limpio
+            ETeleportType::TeleportPhysics // clean teleport
         );
         CollisionComponent->UpdateCollisionMesh(NoiseGenerationStrategy, CurrentActorPosition);
         return true;
     }
     else if(CollisionComponent->IsBuilt())
     {
-        // Limpiar colisión si está lejos
+        // Clear collision if far away
         CollisionComponent->ClearCollision();
         return true;
     }
@@ -66,7 +66,7 @@ void UCosmicClipmapComponent::BeginPlay()
 
     TimeToRefreshActive = TimeToRefresh;
 
-    // Inicializar valores para el shift
+    // Initialize values for shift
     LastSurfaceAngles = FVector2D::ZeroVector;
     AccumulatedLinearDelta = FVector2D::ZeroVector;
 
@@ -126,7 +126,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         double PhaseStart = FPlatformTime::Seconds();
 
-        // EJECUCION POR FASE
+        // PER-PHASE EXECUTION
         switch (CurrentPhase)
         {
         case EUpdatePhase::Foliage:
@@ -142,7 +142,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             break;
         }
 
-        //Si no hay que actualizar colisión pedimos actualizar foliage
+        // If collision doesn't need update, request foliage update
         if (UpdateFoliageExtra)
         {
             //CurrentPhase = EUpdatePhase::Foliage;
@@ -186,7 +186,7 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
 {
     if (!FarLevel) return;
 
-    // Actualización permanente del FarLevel (rendimiento) 
+    // Permanent update of FarLevel (performance)
     if (!bPerformanceBuild)
     {
         FarLevel->RequestMeshUpdate(NoiseGenerationStrategy);
@@ -195,32 +195,32 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
 
     if (!UseClipmap) return;
 
-    // Detección de cambio de modo 
+    // Mode change detection
     bool bPrevPerformanceMode = bPerformaceMode;
     bPerformaceMode = DistanceToSurface > PlanetRadius * HeightVisibility;
 
-    // Crear niveles normales si es necesario y no estamos en rendimiento 
+    // Create normal levels if necessary and not in performance mode
     if (!bInit && !bPerformaceMode)
     {
         CreateLevels();
     }
 
-    // Manejar transiciones de modo
+    // Handle mode transitions
     if (bPrevPerformanceMode != bPerformaceMode)
     {
-        if (bPerformaceMode) // Ir a modo rendimiento (esperar tareas pendientes)
+        if (bPerformaceMode) // Go to performance mode (wait for pending tasks)
         {
-            // Activar FarLevel inmediatamente (ya está construido)
+            // Activate FarLevel immediately (already built)
             FarLevel->SetMeshActive(true);
 
             for (size_t i = 0; i < Levels.Num(); i++)
             {
                 Levels[i]->SetMeshActive(false);
             }
-            // Iniciar espera para ocultar niveles cuando sus tareas terminen
+            // Start waiting to hide levels once their tasks finish
             bWaitingForPerformanceTransition = true;
         }
-        else // Ir a modo normal (esperar a que los niveles estén listos)
+        else // Go to normal mode (wait for levels to be ready)
         {
             bWaitingForNormalTransition = true;
 
@@ -235,7 +235,7 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
         }
     }
 
-    // Si estamos en espera de transición a rendimiento
+    // If waiting for transition to performance
     if (bWaitingForPerformanceTransition)
     {
         bool allTasksDone = true;
@@ -250,20 +250,20 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
 
         if (!allTasksDone)
         {
-            return;  // Seguir esperando, FarLevel ya está visible mientras tanto
+            return;  // Keep waiting, FarLevel is already visible meanwhile
         }
 
-        // Tareas terminadas: descartar resultados y ocultar niveles
+        // Tasks finished: discard results and hide levels
         for (size_t i = 0; i < Levels.Num(); i++)
         {
             Levels[i]->CancelAsyncWork();
         }
 
         bWaitingForPerformanceTransition = false;
-        return;  // No continuar con la lógica normal
+        return;  // Do not continue with normal logic
     }
 
-    // Si estamos en espera de transición a normal
+    // If waiting for transition to normal
     if (bWaitingForNormalTransition)
     {
         bool allTasksDone = true;
@@ -278,10 +278,10 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
 
         if (!allTasksDone)
         {
-            return;  // Seguir esperando, FarLevel sigue visible
+            return;  // Keep waiting, FarLevel remains visible
         }
 
-        // Todas las tareas terminadas: aplicar resultados y mostrar niveles
+        // All tasks finished: apply results and show levels
         for (size_t i = 0; i < Levels.Num(); i++)
         {
             Levels[i]->CheckAndApplyMeshUpdate();
@@ -292,10 +292,10 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
         bWaitingForNormalTransition = false;
     }
 
-    // Si estamos en modo rendimiento o congelado, no continuar 
+    // If in performance mode or frozen, do not continue
     if (bPerformaceMode || FreezeGeneration) return;
 
-    // Verificar si las actualizaciones han terminado
+    // Check whether updates have finished
     bool MeshesUpdated = true;
     for (size_t i = 0; i < Levels.Num(); i++)
     {
@@ -308,15 +308,15 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
 
     if (!MeshesUpdated) return;
 
-    // Tareas terminadas: aplicar actualizaciones
+    // Tasks finished: apply updates
     for (size_t i = 0; i < Levels.Num(); i++)
     {
         Levels[i]->CheckAndApplyMeshUpdate();
     }
 
-    // Lógica normal de clipmap (modo normal ya establecido) 
+    // Normal clipmap logic (normal mode already set)
 
-    // Verificar si hay que reducir o incrementar niveles del clipmap
+    // Check whether clipmap levels need to be decreased or increased
     bool UpdateClipmapLevels = false;
     if (Levels.Num() > 1)
     {
@@ -340,9 +340,9 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
         }
     }
 
-    // El movimiento se calcula en coordenadas absolutas del plano tangente.
-    // El centro comun se cuantiza al spacing mas grueso para que todos los
-    // niveles conserven vertices coincidentes en sus bordes 2:1.
+    // Movement is computed in absolute tangent plane coordinates.
+    // Common center is quantized to coarsest spacing so that all
+    // levels retain coincident vertices on their 2:1 borders.
     const bool bProjectionUpdate = ConfigureLevelsForViewer(N);
 
     if (bProjectionUpdate || UpdateClipmapLevels)
@@ -367,7 +367,7 @@ void UCosmicClipmapComponent::PostEditChangeProperty(FPropertyChangedEvent& Prop
         ? PropertyChangedEvent.Property->GetFName()
         : NAME_None;
 
-    // REBUILD COMPLETO 
+    // FULL REBUILD
     if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, BaseResolution) ||
         PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, NumLevels))
     {
@@ -383,7 +383,7 @@ void UCosmicClipmapComponent::PostEditChangeProperty(FPropertyChangedEvent& Prop
         return;
     }
 
-    //  MATERIAL BASE / TEXTURA
+    //  BASE MATERIAL / TEXTURE
     if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, BaseMaterial) ||
         PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, DefaultTexture))
     {
@@ -427,7 +427,7 @@ void UCosmicClipmapComponent::CreateLevels()
         CollisionComponent->GenerateCollisionMesh(PlanetRadius);
     }
 
-    // Validar parámetros
+    // Validate parameters
     if (NumLevels <= 0 || BaseResolution <= 0 || PlanetRadius <= 0)
     {
         UE_LOG(LogTemp, Error, TEXT("Parámetros inválidos para CreateLevels"));
@@ -462,23 +462,23 @@ void UCosmicClipmapComponent::CreateLevels()
     UpdateSnappedProjectionFrame(N);
     const FRotator PatchRotation = SnappedProjectionFrame.GetRotation().Rotator();
 
-    // Asegurar que exista material dinamico antes de instanciar niveles
+    // Ensure dynamic material exists before instantiating levels
     if (!DynamicPlanetMat && BaseMaterial)
     {
         BuildDynamicMaterial();
     }
 
-    // Crear cada nivel
+    // Create each level
     for (int32 L = 0; L < NumLevels; ++L)
     {
-        // Crear nombre único para el componente
+        // Create unique name for component
         FName ComponentName = *FString::Printf(TEXT("TerrainClipmapMesh_Level_%d"), L);
 
-        // Crear componente
+        // Create component
         UCosmicMeshComponent* Mesh = NewObject<UCosmicMeshComponent>(
             GetOwner(),
             ComponentName,
-            RF_Transient | RF_DuplicateTransient  // Marcar como transitorio
+            RF_Transient | RF_DuplicateTransient  // Mark as transient
         );
 
         if (!Mesh)
@@ -487,36 +487,36 @@ void UCosmicClipmapComponent::CreateLevels()
             continue;
         }
 
-        // Registrar componente
+        // Register component
         Mesh->RegisterComponent();
 
-        // Adjuntar al root
+        // Attach to root
         if (ParentRoot)
         {
             Mesh->AttachToComponent(ParentRoot, FAttachmentTransformRules::KeepRelativeTransform);
         }
 
-        // Configurar propiedades
+        // Configure properties
         Mesh->LevelIndex = L;
         Mesh->Resolution = BaseResolution;
-        Mesh->GridSpacing = BaseGridSpacing * FMath::Pow(2.0f, L); // (1 << L) para ints
+        Mesh->GridSpacing = BaseGridSpacing * FMath::Pow(2.0f, L); // (1 << L) for ints
         Mesh->bIsRing = (L > 0);
         Mesh->PlanetRadius = PlanetRadius;
         Mesh->bIsPlanet = true;
 
         Mesh->SetPositionAndRotation(SnappedProjectionFrame.GetTranslation(), PatchRotation);
 
-        // Construir malla
+        // Build mesh
         Mesh->BuildBaseProjectedMesh();
         Mesh->SetMeshActive(false);
         
-        // Asignar material
+        // Assign material
         if (DynamicPlanetMat)
         {
             Mesh->SetMaterial(0, DynamicPlanetMat);
         }
 
-        // Guardar referencia
+        // Store reference
         Levels[L] = Mesh;
     }
 
@@ -541,7 +541,7 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
     UCosmicMeshComponent* Mesh = NewObject<UCosmicMeshComponent>(
         GetOwner(),
         ComponentName,
-        RF_Transient | RF_DuplicateTransient  // Marcar como transitorio
+        RF_Transient | RF_DuplicateTransient  // Mark as transient
     );
 
     if (Mesh)
@@ -586,17 +586,17 @@ void UCosmicClipmapComponent::ClearLevels()
     bSnappedProjectionValid = false;
     bCoarsestGridCenterValid = false;
 
-    // Destruir componentes del array Levels
+    // Destroy components in Levels array
     for (UCosmicMeshComponent* Mesh : Levels)
     {
-        // Desactivar y limpiar la malla
+        // Disable and clear mesh
         Mesh->ClearAllMeshSections();
         Mesh->CancelAsyncWork();
         Mesh->DestroyComponent();
         Mesh = nullptr;
     }
 
-    // Destruir nivel exterior
+    // Destroy outer level
     if (FarLevel)
     {
         FarLevel->ClearAllMeshSections();
@@ -695,7 +695,7 @@ void UCosmicClipmapComponent::UpdateNoiseEvaluator()
     }
     else
     {
-        // fallback default
+        // default fallback
         TSharedPtr<FCosmicDefaultNoiseStrategy> Strategy = MakeShared<FCosmicDefaultNoiseStrategy>();
 
         Strategy->Initialize(
@@ -716,8 +716,8 @@ void UCosmicClipmapComponent::RequestCompleteMeshUpdate()
     
     if(!bPerformaceMode)
     {
-        // Una revision nueva invalida las caches aun cuando el observador no
-        // se haya desplazado (por ejemplo, tras cambiar la semilla de ruido).
+        // A new revision invalidates caches even when observer has
+        // not moved (for example, after changing noise seed).
         ++SnappedProjectionRevision;
 
         const AActor* Owner = GetOwner();
@@ -742,16 +742,16 @@ FRotator UCosmicClipmapComponent::GetPatchRotation(const FVector& N) const
 {
     const FVector Up = N;
 
-    // Elegimos un vector no colineal 
+    // Choose a non-collinear vector
     const FVector Tangent = (FMath::Abs(Up.Z) < 0.99f)
         ? FVector(0, 0, 1)
         : FVector(1, 0, 0);
 
-    // Right sale normalizado si Up y Tangent son unitarios
+    // Right ends up normalized if Up and Tangent are unit vectors
     FVector Right = FVector::CrossProduct(Tangent, Up);
     Right.Normalize(); 
 
-    const FVector Forward = FVector::CrossProduct(Up, Right); // ya unitario
+    const FVector Forward = FVector::CrossProduct(Up, Right); // already unit
 
     return FRotationMatrix::MakeFromXZ(Forward, Up).Rotator();
 }
@@ -901,7 +901,7 @@ FIntPoint UCosmicClipmapComponent::ComputeGridShiftSpherical(const FVector& Play
 {
     FVector PlanetCenter = CurrentActorPosition;
 
-    // Si es la primera vez, no hay movimiento
+    // If first time, no movement
     if (LastPlayerPos.IsZero())
     {
         LastPlayerPos = PlayerPos;
@@ -909,33 +909,33 @@ FIntPoint UCosmicClipmapComponent::ComputeGridShiftSpherical(const FVector& Play
         return FIntPoint::ZeroValue;
     }
 
-    // Obtener ángulos esféricos (longitud y latitud) de ambas posiciones
+    // Get spherical angles (longitude and latitude) for both positions
     FVector2D CurrentAngles = GetSurfaceAngles(CurrentSurfacePos - CurrentActorPosition);
     FVector2D PreviousAngles = LastSurfaceAngles;
 
-    // Calcular el desplazamiento angular (en radianes)
+    // Calculate angular displacement (in radians)
     FVector2D DeltaAngles = CurrentAngles - PreviousAngles;
 
-    // Normalizar la longitud al rango [-PI, PI] para tomar el camino más corto
+    // Normalize longitude to [-PI, PI] range to take shortest path
     if (DeltaAngles.X > PI) DeltaAngles.X -= 2 * PI;
     if (DeltaAngles.X < -PI) DeltaAngles.X += 2 * PI;
 
-    // Convertir el desplazamiento angular a distancia lineal en la superficie
+    // Convert angular displacement to surface linear distance
     FVector2D LinearDelta = DeltaAngles * PlanetRadius;
 
-    // Acumular el desplazamiento lineal
+    // Accumulate linear displacement
     AccumulatedLinearDelta += LinearDelta;
 
-    // Calcular cuántos "grid steps" nos hemos movido
-    // GridSpacing es la distancia entre vértices en el plano tangente
+    // Calculate how many "grid steps" we moved
+    // GridSpacing is the distance between vertices on tangent plane
     int32 ShiftX = FMath::FloorToInt(AccumulatedLinearDelta.X / GridSpacing);
     int32 ShiftY = FMath::FloorToInt(AccumulatedLinearDelta.Y / GridSpacing);
 
-    // Restar lo que ya hemos usado
+    // Subtract what was already used
     AccumulatedLinearDelta.X -= ShiftX * GridSpacing;
     AccumulatedLinearDelta.Y -= ShiftY * GridSpacing;
 
-    // Guardar para el próximo frame
+    // Save for next frame
     LastPlayerPos = PlayerPos;
     LastSurfaceAngles = CurrentAngles;
     PreviousSurfacePos = CurrentSurfacePos;
@@ -947,25 +947,25 @@ FIntPoint UCosmicClipmapComponent::ComputeGridShift(const FVector& PlayerPos, co
 {
     if (IsPlanet)
     {
-        // Usar la versión esférica
+        // Use spherical version
         return ComputeGridShiftSpherical(PlayerPos, CurrentSurfacePos, GridSpacing);
     }
     else
     {
-        // Usar la versión plana original
+        // Use original planar version
         return ComputeGridShiftPlanar(PlayerPos, GridSpacing);
     }
 }
 
 FVector2D UCosmicClipmapComponent::GetSurfaceAngles(const FVector& SurfacePos)
 {
-    // Asumiendo que el centro del planeta está en (0,0,0) o ajustando
+    // Assuming planet center is at (0,0,0) or adjusting
     FVector Normalized = SurfacePos.GetSafeNormal();
 
-    // Longitud: ángulo en el plano XY (-PI a PI)
+    // Longitude: angle on XY plane (-PI to PI)
     double Longitude = FMath::Atan2(Normalized.Y, Normalized.X);
 
-    // Latitud: ángulo desde el ecuador (-PI/2 a PI/2)
+    // Latitude: angle from equator (-PI/2 to PI/2)
     double Latitude = FMath::Asin(FMath::Clamp(Normalized.Z, -0.999999f, 0.999999f));
 
     return FVector2D(Longitude, Latitude);
@@ -989,7 +989,7 @@ FVector UCosmicClipmapComponent::GetPlayerLocation()
     }
 
 #if WITH_EDITOR
-    // En editor, si no tenemos cámara de juego, usar la cámara del editor
+    // In editor, if no game camera, use editor camera
     if (PlayerLocation.IsZero())
     {
         PlayerLocation = FCosmicCameraBridge::CameraLocation;
@@ -1068,22 +1068,22 @@ float UCosmicClipmapComponent::GetDistanceToPlainSurface(FVector& OutViewerPos, 
     AActor* Owner = GetOwner();
     if (!Owner) return 0.f;
 
-    // Posición del viewer
+    // Viewer position
     OutViewerPos = GetPlayerLocation();
 
-    // Punto base del plano 
+    // Plane base point
     CurrentActorPosition = Owner->GetActorLocation();
 
-    // Normal del plano
+    // Plane normal
     OutN = FVector::UpVector;
 
-    // Vector del plano al viewer
+    // Vector from plane to viewer
     FVector PlaneToViewer = OutViewerPos - CurrentActorPosition;
 
-    // Distancia firmada al plano
+    // Signed distance to plane
     float Distance = FVector::DotProduct(PlaneToViewer, OutN);
 
-    // Proyeccion del viewer sobre el plano 
+    // Projection of viewer onto plane
     OutSurfacePos = OutViewerPos - Distance * OutN;
 
     return Distance;
@@ -1091,8 +1091,8 @@ float UCosmicClipmapComponent::GetDistanceToPlainSurface(FVector& OutViewerPos, 
 
 int32 UCosmicClipmapComponent::CalculateDecreaseSteps(const double DistanceToSurface) const
 {
-    // hay que bajar al menos 1, buscamos el mínimo n tal que
-    // el último anillo sea visible tras n halvings
+    // must decrease at least 1, find minimum n such that
+    // last ring is visible after n halvings
     int32 Steps = 1;
     const int64 LastResolution = Levels.Last()->Resolution;
     const int64 LastSpacing = Levels.Last()->GridSpacing;
@@ -1100,7 +1100,7 @@ int32 UCosmicClipmapComponent::CalculateDecreaseSteps(const double DistanceToSur
 
     while (!IsClipmapRingVisible(LastSpacing >> Steps, LastResolution, DistanceToSurface))
     {
-        // No bajar más si el primer nivel ya tocaría el límite mínimo
+        // Do not decrease further if first level would reach minimum limit
         if ((FirstSpacing >> (Steps + 1)) <= MinTriangleSize)
             break;
         Steps++;
@@ -1110,8 +1110,8 @@ int32 UCosmicClipmapComponent::CalculateDecreaseSteps(const double DistanceToSur
 
 int32 UCosmicClipmapComponent::CalculateIncreaseSteps(const double DistanceToSurface) const
 {
-    // buscamos cuántos doublings
-    // consecutivos siguen siendo visibles sin superar el spacing máximo permitido
+    // find how many consecutive doublings
+    // remain visible without exceeding maximum allowed spacing
     int32 Steps = 1;
     const int64 LastResolution = Levels.Last()->Resolution;
     const int64 LastSpacing = Levels.Last()->GridSpacing;
@@ -1129,13 +1129,13 @@ int32 UCosmicClipmapComponent::CalculateIncreaseSteps(const double DistanceToSur
 bool UCosmicClipmapComponent::IsClipmapRingVisible(const int32 LevelIndex, const double DistanceToSurface) const
 {  
     
-    // Calcular el radio del clipmap en la superficie
+    // Calculate clipmap radius on surface
     int64 ClipmapSurfaceRadius = Levels[LevelIndex]->GridSpacing * (Levels[LevelIndex]->Resolution - 2) / 2;
 
-    // Radio maximo visible desde esta altura (proyeccion en la superficie)
+    // Maximum visible radius from this altitude (projection on surface)
     double VisibleRadius = PlanetRadius * FMath::Sin(FMath::Acos(PlanetRadius / (PlanetRadius + DistanceToSurface)));
 
-    // El clipmap es visible si su radio es menor que el radio visible
+    // Clipmap is visible if its radius is smaller than visible radius
     return ClipmapSurfaceRadius <= VisibleRadius * 2.f; 
 }
 
@@ -1143,10 +1143,10 @@ bool UCosmicClipmapComponent::IsClipmapRingVisible(const int64 GridSpacing, cons
 {
     int64 ClipmapSurfaceRadius = GridSpacing * (Resolution - 2) / 2;
 
-    // Radio maximo visible desde esta altura (proyeccion en la superficie)
+    // Maximum visible radius from this altitude (projection on surface)
     double VisibleRadius = PlanetRadius * FMath::Sin(FMath::Acos(PlanetRadius / (PlanetRadius + DistanceToSurface)));
 
-    // El clipmap es visible si su radio es menor que el radio visible
+    // Clipmap is visible if its radius is smaller than visible radius
     return ClipmapSurfaceRadius <= VisibleRadius * 2.f;
 }
 
@@ -1155,12 +1155,12 @@ void UCosmicClipmapComponent::DecreaseClipmapLevelFull(int32 Steps)
 {
     if (NumLevels <= 1 || Steps <= 0) return;
 
-    // Aplicar todos los halvings al BaseGridSpacing de una vez
+    // Apply all halvings to BaseGridSpacing at once
     const int64 Divisor = static_cast<int64>(1) << Steps; // 2^Steps
     BaseGridSpacing /= Divisor;
     TotalShift *= Divisor;
 
-    // Reconstruir spacings desde la nueva base
+    // Rebuild spacings from new base
     float NewGridSpacing = BaseGridSpacing;
     for (int32 i = 0; i < NumLevels; i++)
     {
@@ -1177,7 +1177,7 @@ void UCosmicClipmapComponent::IncreaseClipmapLevelFull(int32 Steps)
     BaseGridSpacing *= Multiplier;
     TotalShift /= Multiplier;
 
-    // Reconstruir spacings desde la nueva base
+    // Rebuild spacings from new base
     float NewGridSpacing = BaseGridSpacing;
     for (int32 i = 0; i < NumLevels; i++)
     {

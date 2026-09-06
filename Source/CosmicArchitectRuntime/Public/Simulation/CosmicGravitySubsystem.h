@@ -8,21 +8,21 @@
 class UCosmicGravityComponent;
 
 /**
- * Subsistema de mundo responsable de gestionar la simulacion gravitacional completa del nivel.
+ * World subsystem responsible for managing full gravitational simulation of the level.
  *
- * Actua como coordinador central de todos los cuerpos registrados, calculando y distribuyendo
- * fuerzas gravitacionales cada frame segun el modo configurado en cada UCosmicGravityComponent.
+ * Acts as central coordinator for all registered bodies, calculating and distributing
+ * gravitational forces each frame according to the mode configured on each UCosmicGravityComponent.
  *
- * Responsabilidades principales:
- *   - Mantener dos listas internas: Bodies (todos los cuerpos) y Planets (solo planetas).
- *   - Calcular fuerzas gravitacionales en Tick() y acumularlas en cada componente.
- *   - Invocar Integrate() en cada cuerpo activo tras acumular todas las fuerzas del frame.
- *   - Proveer RegisterBody() y UnregisterBody() como punto de entrada para los componentes. 
+ * Main responsibilities:
+ *   - Maintain two internal lists: Bodies (all bodies) and Planets (planets only).
+ *   - Calculate gravitational forces in Tick() and accumulate them in each component.
+ *   - Invoke Integrate() on each active body after accumulating all frame forces.
+ *   - Provide RegisterBody() and UnregisterBody() as entry points for components. 
  *
- * Restricciones y contratos de uso:
- *   - Solo se activa el Tick cuando hay cuerpos registrados (optimizacion automatica).
- *   - No debe modificarse Bodies ni Planets directamente desde fuera del subsistema.
- *   - Los componentes deben registrarse en BeginPlay y desregistrarse en EndPlay.
+ * Restrictions and usage contracts:
+ *   - Tick only activates when bodies are registered (automatic optimization).
+ *   - Bodies and Planets must not be modified directly from outside subsystem.
+ *   - Components must register in BeginPlay and unregister in EndPlay.
  */
 UCLASS()
 class COSMICARCHITECTRUNTIME_API UCosmicGravitySubsystem : public UWorldSubsystem, public FTickableGameObject
@@ -31,41 +31,41 @@ class COSMICARCHITECTRUNTIME_API UCosmicGravitySubsystem : public UWorldSubsyste
 
 public:
     /**
-     * Inicializa el subsistema al crearse o cargarse el nivel.
-     * Punto de entrada para inicializaciones futuras que dependan del World.
+     * Initializes subsystem when level is created or loaded.
+     * Entry point for future initializations depending on the World.
      */
     virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 
     /**
-     * Vacia las listas internas y libera referencias al destruirse el nivel.
-     * Garantiza que no queden referencias colgantes a componentes destruidos.
+     * Empties internal lists and releases references when level is destroyed.
+     * Guarantees no dangling references remain to destroyed components.
      */
     virtual void Deinitialize() override;
 
     /**
-     * Nucleo de la simulacion. Se ejecuta una vez por frame mientras haya cuerpos registrados.
+     * Core of the simulation. Executes once per frame while bodies are registered.
      *
-     * Fase 1: Acumulacion de fuerzas.
-     *   Recorre todos los cuerpos y calcula las fuerzas gravitacionales segun su GravityMode,
-     *   acumulandolas en AccumulatedForce de cada componente afectado.
+     * Phase 1: Force accumulation.
+     *   Traverses all bodies and calculates gravitational forces according to GravityMode,
+     *   accumulating them into AccumulatedForce on each affected component.
      *
-     * Fase 2: Integracion.
-     *   Invoca Integrate(DeltaTime) en cada cuerpo activo para aplicar el movimiento resultante.
+     * Phase 2: Integration.
+     *   Invokes Integrate(DeltaTime) on each active body to apply resulting movement.
      *
-     * @param DeltaTime Tiempo en segundos transcurrido desde el ultimo frame.
+     * @param DeltaTime Time in seconds elapsed since last frame.
      */
     virtual void Tick(float DeltaTime) override;
 
     /**
-     * Indica si el subsistema debe ejecutar Tick este frame.
-     * Retorna false si no hay cuerpos registrados o si el World no es valido,
-     * evitando coste de CPU cuando la simulacion esta inactiva.
+     * Indicates whether subsystem should execute Tick this frame.
+     * Returns false if no bodies registered or World invalid,
+     * avoiding CPU cost when simulation is idle.
      */
     virtual bool IsTickable() const override;
 
     /**
-     * Identificador de estadisticas requerido por FTickableGameObject.
-     * Permite al profiler de Unreal medir el coste de este subsistema por separado.
+     * Stat identifier required by FTickableGameObject.
+     * Allows Unreal profiler to measure subsystem cost separately.
      */
     virtual TStatId GetStatId() const override
     {
@@ -73,73 +73,73 @@ public:
     }
 
     /**
-     * Devuelve la lista de planetas registrados para lectura externa.
-     * Permite a otros sistemas consultar los planetas activos sin acceder a Bodies completo.
+     * Returns registered planets list for external reading.
+     * Allows other systems to query active planets without accessing full Bodies list.
      */
     const TArray<UCosmicGravityComponent*>& GetPlanets() const { return Planets; }
 
     /**
-     * Registra un componente en la simulacion gravitacional.
-     * Si el componente es un planeta, tambien se anade a la sublista Planets.
-     * Usa AddUnique para evitar duplicados en caso de llamadas multiples.
+     * Registers a component into gravitational simulation.
+     * If component is a planet, also added to Planets sublist.
+     * Uses AddUnique to avoid duplicates on multiple calls.
      *
-     * @param Body Componente a registrar. Se ignora si es nullptr.
+     * @param Body Component to register. Ignored if nullptr.
      */
     void RegisterBody(UCosmicGravityComponent* Body);
 
     /**
-     * Elimina un componente de la simulacion gravitacional.
-     * Si el componente era un planeta, tambien se elimina de la sublista Planets.
+     * Removes a component from gravitational simulation.
+     * If component was a planet, also removed from Planets sublist.
      *
-     * @param Body Componente a desregistrar. Se ignora si es nullptr.
+     * @param Body Component to unregister. Ignored if nullptr.
      */
     void UnregisterBody(UCosmicGravityComponent* Body);
 
     /**
-     * Devuelve la constante gravitacional G en unidades SI (m3 / kg * s2).
-     * Usada por UCosmicGravityComponent para calcular la masa de los planetas en BeginPlay.
+     * Returns gravitational constant G in SI units (m³ / (kg * s²)).
+     * Used by UCosmicGravityComponent to calculate planet masses in BeginPlay.
      */
     double GetGravityConstant() const;
 
     /**
-     * Devuelve el World en el que opera este objeto tickeable.
-     * Requerido por la interfaz FTickableGameObject para validar el contexto de ejecucion.
+     * Returns World in which this tickable object operates.
+     * Required by FTickableGameObject interface to validate execution context.
      */
     virtual UWorld* GetTickableGameObjectWorld() const override;
 
 private:
     /**
-     * Calcula la fuerza gravitacional que BodyB ejerce sobre BodyA y la acumula en BodyA.
-     * Operacion unidireccional: solo BodyA recibe la fuerza resultante.
-     * Usada por los modos NearestPlanet, SpecificPlanet y AllPlanets.
+     * Calculates gravitational force BodyB exerts on BodyA and accumulates it in BodyA.
+     * Unidirectional operation: only BodyA receives resulting force.
+     * Used by NearestPlanet, SpecificPlanet, and AllPlanets modes.
      *
-     * @param BodyA Cuerpo que recibe la fuerza gravitacional.
-     * @param BodyB Cuerpo que actua como fuente de gravedad.
+     * @param BodyA Body receiving gravitational force.
+     * @param BodyB Body acting as gravity source.
      */
     void BodyAddForce(UCosmicGravityComponent* BodyA, UCosmicGravityComponent* BodyB);
 
     /**
-     * Calcula y aplica fuerzas gravitacionales mutuas entre dos cuerpos (Tercera Ley de Newton).
-     * BodyA recibe fuerza hacia BodyB y BodyB recibe fuerza hacia BodyA en el mismo calculo.
-     * Usada exclusivamente por el modo NBody para evitar calculos redundantes (j > i).
+     * Calculates and applies mutual gravitational forces between two bodies (Newton's Third Law).
+     * BodyA receives force towards BodyB and BodyB receives force towards BodyA in same calculation.
+     * Used exclusively by NBody mode to avoid redundant calculations (j > i).
      *
-     * @param BodyA Primer cuerpo del par.
-     * @param BodyB Segundo cuerpo del par.
+     * @param BodyA First body of pair.
+     * @param BodyB Second body of pair.
      */
     void ApplyMutualForce(UCosmicGravityComponent* BodyA, UCosmicGravityComponent* BodyB);
 
     /**
-     * Lista de todos los cuerpos activos registrados en la simulacion del nivel actual.
-     * Incluye tanto planetas como cuerpos orbitales. Se marca con UPROPERTY para
-     * que el recolector de basura de Unreal no invalide las referencias.
+     * List of all active bodies registered in current level simulation.
+     * Includes both planets and orbital bodies. Marked UPROPERTY so
+     * Unreal garbage collector does not invalidate references.
      */
     UPROPERTY()
     TArray<UCosmicGravityComponent*> Bodies;
 
     /**
-     * Sublista optimizada que contiene unicamente los cuerpos con IsPlanet == true.
-     * Permite a los modos NearestPlanet, SpecificPlanet y AllPlanets iterar solo sobre
-     * planetas sin filtrar Bodies completo en cada frame.
+     * Optimized sublist containing only bodies with IsPlanet == true.
+     * Allows NearestPlanet, SpecificPlanet, and AllPlanets modes to iterate only
+     * over planets without filtering full Bodies list every frame.
      */
     TArray<UCosmicGravityComponent*> Planets;
 };

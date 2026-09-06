@@ -6,10 +6,10 @@
 #include "CosmicCraterNoiseSettings.generated.h"
 
 /**
- * Configuración utilizada para generar una estrategia de ruido basada en cráteres.
+ * Configuration used to generate a crater-based noise strategy.
  *
- * Esta clase encapsula todos los parámetros necesarios para inicializar
- * una instancia de FCosmicCraterNoiseStrategy.
+ * This class encapsulates all parameters required to initialize
+ * an instance of FCosmicCraterNoiseStrategy.
  */
 UCLASS()
 class COSMICARCHITECTNOISE_API UCosmicCraterNoiseSettings : public UCosmicNoiseClass
@@ -19,34 +19,34 @@ class COSMICARCHITECTNOISE_API UCosmicCraterNoiseSettings : public UCosmicNoiseC
 public:
 
     /**
-     * Semilla utilizada para la generación procedural del ruido.
+     * Seed used for procedural noise generation.
      */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     int32 Seed;
 
     /**
-     * Parámetros generales de las capas de ruido.
+     * General parameters of the noise layers.
      */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseLayer LayerParameters;
 
     /**
-     * Parámetros relacionados con la generación de biomas.
+     * Parameters related to biome generation.
      */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseBiomeParameters BiomeParameters;
 
     /**
-     * Parámetros específicos para la generación de cráteres.
+     * Specific parameters for crater generation.
      */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseCraterParameters CraterParameters;
 
     /**
-     * Crea e inicializa la estrategia de ruido de cráteres
-     * utilizando los parámetros configurados en esta clase.
+     * Creates and initializes the crater noise strategy
+     * using parameters configured in this class.
      *
-     * @return Estrategia de ruido completamente inicializada.
+     * @return Fully initialized noise strategy.
      */
     virtual TSharedPtr<ICosmicNoiseStrategy> CreateStrategy() const override;
 };

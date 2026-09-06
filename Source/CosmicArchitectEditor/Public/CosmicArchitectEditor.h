@@ -4,29 +4,29 @@
 #include "Modules/ModuleManager.h"
 
 /**
- * Módulo principal del editor para Cosmic Architect.
+ * Main editor module for Cosmic Architect.
  *
- * Este módulo se encarga de inicializar y liberar
- * los sistemas específicos del editor, incluyendo
- * actualizadores y herramientas de integración.
+ * This module is responsible for initializing and releasing
+ * editor-specific systems, including
+ * updaters and integration tools.
  */
 class FCosmicArchitectEditorModule : public IModuleInterface
 {
 public:
 
 	/**
-	 * Inicializa el módulo al cargarse en memoria.
+	 * Initializes the module upon being loaded into memory.
 	 *
-	 * Aquí se registran e inicializan los sistemas
-	 * necesarios para el funcionamiento del editor.
+	 * Here, systems required for editor operation
+	 * are registered and initialized.
 	 */
 	virtual void StartupModule() override;
 
 	/**
-	 * Libera los recursos del módulo antes de descargarse.
+	 * Releases module resources before being unloaded.
 	 * 
-	 * Se utiliza para destruir objetos persistentes
-	 * y realizar limpieza de memoria.
+	 * Used to destroy persistent objects
+	 * and perform memory cleanup.
 	 */
 	virtual void ShutdownModule() override;
 };
