@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "1.0",
+	"VersionName": "1.1",
 	"FriendlyName": "CosmicArchitect",
 	"Description": "Procedural planetary system generator, featuring terrain, vegetation, orbital simulation, and dynamic LOD using clipmaps.",
 	"Category": "Other",
