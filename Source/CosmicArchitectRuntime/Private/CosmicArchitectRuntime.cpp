@@ -1,12 +1,26 @@
 // Javier Bravo, David Rubio, Sergio Perez 2026 All Rights Reserved.
 
 #include "CosmicArchitectRuntime.h"
+#include "Interfaces/IPluginManager.h"
+#include "Misc/Paths.h"
+#include "ShaderCore.h"
 
 #define LOCTEXT_NAMESPACE "FCosmicArchitectRuntimeModule"
 
 void FCosmicArchitectRuntimeModule::StartupModule()
 {
-	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
+	// Register virtual shader source directory so that .ush files under
+	// <PluginDir>/Shaders/ can be referenced as "/CosmicArchitect/..." 
+	// inside UMaterialExpressionCustom include paths.
+	TSharedPtr<IPlugin> Plugin = IPluginManager::Get().FindPlugin(TEXT("CosmicArchitect"));
+	if (Plugin.IsValid())
+	{
+		FString PluginShaderDir = FPaths::Combine(
+			Plugin->GetBaseDir(),
+			TEXT("Shaders")
+		);
+		AddShaderSourceDirectoryMapping(TEXT("/CosmicArchitect"), PluginShaderDir);
+	}
 }
 
 void FCosmicArchitectRuntimeModule::ShutdownModule()

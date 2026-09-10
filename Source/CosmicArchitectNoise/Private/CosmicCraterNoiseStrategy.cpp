@@ -62,11 +62,11 @@ void FCosmicCraterNoiseStrategy::EvaluatePoint(const FVector& NoiseDir, float& O
     const float Y = NoiseDir.Y;
     const float Z = NoiseDir.Z;
 
-    // --- BASE HEIGHT ---
+    // Base Height
     float BaseNoise = Noise.GetNoise(X, Y, Z); // [-1, 1]
     float Height = BaseNoise * LayerParameters.Amplitude;
 
-    // --- CRATERS ---
+    // Craters
     float FinalCraterHeight = 0.0f;
     float FreqScale = 1.0f;
     float AmpScale = 1.0f;
@@ -91,7 +91,7 @@ void FCosmicCraterNoiseStrategy::EvaluatePoint(const FVector& NoiseDir, float& O
             const float t = CellDistance / DynamicRadius; // 0=center, 1=rim
             float CraterShape = 0.0f;
 
-            // --- CAVITY (interior, t < 1) ---
+            // Cavity (interior, t < 1)
             if (t < 1.0f)
             {
                 // FloorHeight=0  complete bowl with no flat floor
@@ -116,7 +116,7 @@ void FCosmicCraterNoiseStrategy::EvaluatePoint(const FVector& NoiseDir, float& O
                 CraterShape -= Bowl * CurrentDepth; // negative = sinks
             }
 
-            // --- RIM (gaussian bell centered at t=1) ---
+            // Rim (gaussian bell centered at t=1)
             // CraterRimSharpness controls how sharp the rim is
             // CraterRimHeight scales its height relative to depth
             const float RimExponent = FMath::Pow((t - 1.0f) / 0.15f, 2.0f) * CraterParameters.CraterRimSharpness;
@@ -132,7 +132,7 @@ void FCosmicCraterNoiseStrategy::EvaluatePoint(const FVector& NoiseDir, float& O
 
     Height += FinalCraterHeight;
 
-    // --- HUMIDITY ---
+    // Humidity
     const float RawHum = HumidityNoise.GetNoise(X, Y, Z);
     float Humidity = (RawHum + 1.0f) * 0.5f; // [0, 1]
     Humidity = FMath::Clamp(
@@ -140,17 +140,17 @@ void FCosmicCraterNoiseStrategy::EvaluatePoint(const FVector& NoiseDir, float& O
         0.0f, 1.0f
     );
 
-    // --- TEMPERATURE ---
+    // Temperature
     const float Latitude = FMath::Abs(Z);
     const float BaseTemp = 1.0f - (Latitude * BiomeParameters.LatitudeEffect);
     const float TempNoisVal = TempNoise.GetNoise(X, Y, Z) * 0.2f;
     const float Temperature = FMath::Clamp(BaseTemp + TempNoisVal, 0.0f, 1.0f);
 
-    // --- BIOME MODIFICATION ---
+    // Biome Modification
     const float BiomeInfluence = FMath::Lerp(0.8f, 1.2f, Humidity);
     Height *= BiomeInfluence;
 
-    // --- OUTPUT ---
+    // Output
     const float AltitudeNormalized = FMath::Clamp(
         Height / FMath::Max(LayerParameters.Amplitude, 1.0f),
         0.0f, 1.0f

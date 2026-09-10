@@ -71,7 +71,7 @@ void FCosmicRealisticNoiseStrategy::EvaluatePoint(
     const float Y = NoiseDir.Y;
     const float Z = NoiseDir.Z;
 
-    // ------------------ CONTINENTAL LAYER (ocean vs land) ------------------
+    // Continental Layer (ocean vs land)
     float ContinentRaw = ContinentalNoise.GetNoise(X, Y, Z);
     float Continent = (ContinentRaw + 1.0f) * 0.5f;          // [0,1]
     float BaseHeight = (Continent - 0.5f) * ContinentalLayer.Amplitude;
@@ -79,7 +79,7 @@ void FCosmicRealisticNoiseStrategy::EvaluatePoint(
     float OceanMask = FMath::SmoothStep(0.4f, 0.5f, Continent);
     float LandMask = 1.0f - OceanMask;
 
-    // ------------------ RELIEF MASK (mountain vs hill) ------------------
+    // Relief Mask (mountain vs hill)
     // Get a mask value between 0 and 1 from DifferNoise
     float DiffRaw = DifferNoise.GetNoise(X, Y, Z);
     // Normalize from [-1,1] or [0,1] depending on noise. ValueCubic usually gives [-1,1].
@@ -87,7 +87,7 @@ void FCosmicRealisticNoiseStrategy::EvaluatePoint(
     // Optional: apply contrast for more defined zones
     DiffMask = FMath::Clamp((DiffMask - 0.5f) * 2.0f + 0.5f, 0.0f, 1.0f); // optional contrast
 
-    // ------------------ MOUNTAIN AND HILL GENERATION ------------------
+    // Mountain and Hill Generation
     // Mountains (Ridged)
     float MountainRaw = MountainNoise.GetNoise(X, Y, Z);
     float Mountain = FMath::Max(0.0f, MountainRaw);    // Ridged already gives approx [0,1]
@@ -101,7 +101,7 @@ void FCosmicRealisticNoiseStrategy::EvaluatePoint(
     // Blend according to DiffMask: where DiffMask is high -> mountains, low -> hills
     float ReliefHeight = FMath::Lerp(HillHeight, MountainHeight, DiffMask);
 
-    // ------------------ FINAL COMBINATION ------------------
+    // Final Combination
     // Only apply relief over dry land
     float Height = BaseHeight + (ReliefHeight * LandMask);
 
@@ -111,7 +111,7 @@ void FCosmicRealisticNoiseStrategy::EvaluatePoint(
     // (Optional) Add a small extra detail noise if desired, but DifferLayer is no longer used for that.
     // If microdetail is desired, another layer can be added separately, but this is sufficient.
 
-    // ------------------ NORMALIZATION AND COLOR ------------------
+    // Normalization and Color
     float TrueMinHeight = -0.6f * ContinentalLayer.Amplitude;
     float TrueMaxHeight = 0.5f * ContinentalLayer.Amplitude
         + FMath::Max(MountainLayer.Amplitude, HillLayer.Amplitude); // the greater of the two

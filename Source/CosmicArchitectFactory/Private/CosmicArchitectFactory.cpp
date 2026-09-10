@@ -4,6 +4,8 @@
 #include "CosmicNoiseESettingsActions.h"
 #include "CosmicNoiseCSettingsActions.h"
 #include "CosmicNoiseRSettingsActions.h"
+#include "CosmicNoiseMultiSettingsActions.h"
+#include "CosmicNoiseErosionSettingsActions.h"
 #include "CosmicFoliageCollectionActions.h"
 
 #define LOCTEXT_NAMESPACE "FCosmicArchitectFactoryModule"
@@ -37,6 +39,12 @@ void FCosmicArchitectFactoryModule::StartupModule()
     TSharedPtr<FCosmicNoiseRealisticSettingsActions> RealisticNoiseActions = MakeShareable(new FCosmicNoiseRealisticSettingsActions());
     RealisticNoiseActions->MyAssetCategory = CosmicCategory;
 
+    TSharedPtr<FCosmicNoiseMultiSettingsActions> MultiNoiseActions = MakeShareable(new FCosmicNoiseMultiSettingsActions());
+    MultiNoiseActions->MyAssetCategory = CosmicCategory;
+
+    TSharedPtr<FCosmicNoiseErosionSettingsActions> ErosionNoiseActions = MakeShareable(new FCosmicNoiseErosionSettingsActions());
+    ErosionNoiseActions->MyAssetCategory = CosmicCategory;
+
     TSharedPtr<FCosmicFoliageCollectionActions> FoliageActions = MakeShareable(new FCosmicFoliageCollectionActions());
     FoliageActions->MyAssetCategory = CosmicCategory;
 
@@ -44,6 +52,8 @@ void FCosmicArchitectFactoryModule::StartupModule()
     AssetTools.RegisterAssetTypeActions(EarthNoiseActions.ToSharedRef());
     AssetTools.RegisterAssetTypeActions(CraterNoiseActions.ToSharedRef());
     AssetTools.RegisterAssetTypeActions(RealisticNoiseActions.ToSharedRef());
+    AssetTools.RegisterAssetTypeActions(MultiNoiseActions.ToSharedRef());
+    AssetTools.RegisterAssetTypeActions(ErosionNoiseActions.ToSharedRef());
     AssetTools.RegisterAssetTypeActions(FoliageActions.ToSharedRef());
 }
 

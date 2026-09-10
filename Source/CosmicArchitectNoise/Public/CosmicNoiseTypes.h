@@ -203,12 +203,96 @@ struct COSMICARCHITECTNOISE_API FCosmicNoiseDomainWarpParameters
 {
     GENERATED_BODY()
 
-    UPROPERTY(EditAnywhere, Category = "DomainWarp")
+    UPROPERTY(EditAnywhere, Category = "DomainWarp", BlueprintReadWrite)
     bool bUseDomainWarp = false;
 
-    UPROPERTY(EditAnywhere, Category = "DomainWarp")
-    float DomainWarpStrength = 1000.0f;
+    UPROPERTY(EditAnywhere, Category = "DomainWarp", BlueprintReadWrite)
+    float DomainWarpStrength = 0.25f;
 
-    UPROPERTY(EditAnywhere, Category = "DomainWarp")
-    float DomainWarpFrequency = 0.001f;
+    UPROPERTY(EditAnywhere, Category = "DomainWarp", BlueprintReadWrite)
+    float DomainWarpFrequency = 1.0f;
+
+    UPROPERTY(EditAnywhere, Category = "DomainWarp", BlueprintReadWrite, meta = (ClampMin = "1", ClampMax = "8"))
+    int32 DomainWarpOctaves = 3;
 };
+
+USTRUCT(BlueprintType)
+struct COSMICARCHITECTNOISE_API FCosmicOrographicParameters
+{
+    GENERATED_BODY()
+
+    /** Enable orographic precipitation and rain shadow simulation */
+    UPROPERTY(EditAnywhere, Category = "Orographic Climatology", BlueprintReadWrite)
+    bool bEnableOrographicEffect = true;
+
+    /** If true, uses realistic planetary atmospheric circulation cells (Hadley / Ferrel / Polar reversals). If false, uses PrevailingWindDirection. */
+    UPROPERTY(EditAnywhere, Category = "Orographic Climatology", BlueprintReadWrite)
+    bool bUsePlanetaryZonalWinds = true;
+
+    /** Global prevailing wind direction if bUsePlanetaryZonalWinds is false */
+    UPROPERTY(EditAnywhere, Category = "Orographic Climatology", BlueprintReadWrite)
+    FVector PrevailingWindDirection = FVector(1.0f, 0.0f, 0.0f);
+
+    /** Boost to precipitation / humidity on windward mountain slopes (0.0 to 5.0) */
+    UPROPERTY(EditAnywhere, Category = "Orographic Climatology", BlueprintReadWrite, meta = (ClampMin = "0.0", ClampMax = "5.0"))
+    float OrographicLiftStrength = 1.2f;
+
+    /** Drying intensity on leeward slopes and rain shadow zones behind mountain ranges (0.0 to 5.0) */
+    UPROPERTY(EditAnywhere, Category = "Orographic Climatology", BlueprintReadWrite, meta = (ClampMin = "0.0", ClampMax = "5.0"))
+    float RainShadowStrength = 1.5f;
+
+    /** Angular/spatial offset distance along wind vector to sample slope for orographic lift */
+    UPROPERTY(EditAnywhere, Category = "Orographic Climatology", BlueprintReadWrite, meta = (ClampMin = "0.001", ClampMax = "0.2"))
+    float WindwardSampleOffset = 0.015f;
+
+    /** Angular/spatial offset distance along wind vector to detect upwind mountain barriers for rain shadow */
+    UPROPERTY(EditAnywhere, Category = "Orographic Climatology", BlueprintReadWrite, meta = (ClampMin = "0.005", ClampMax = "0.5"))
+    float RainShadowDistance = 0.06f;
+};
+
+USTRUCT(BlueprintType)
+struct COSMICARCHITECTNOISE_API FCosmicMultiNoiseParameters
+{
+    GENERATED_BODY()
+
+    /** Sea level threshold in continentalness [0, 1]. Values below this are submerged oceans. Default: 0.45 */
+    UPROPERTY(EditAnywhere, Category = "MultiNoise - Continentalness", BlueprintReadWrite, meta = (ClampMin = "0.1", ClampMax = "0.9"))
+    float SeaLevelThreshold = 0.45f;
+
+    /** Multiplier for deep oceanic crust and trenches relative to continental amplitude */
+    UPROPERTY(EditAnywhere, Category = "MultiNoise - Continentalness", BlueprintReadWrite, meta = (ClampMin = "0.0", ClampMax = "3.0"))
+    float OceanDepthScale = 0.7f;
+
+    /** Width of continental shelf transition zone around sea level */
+    UPROPERTY(EditAnywhere, Category = "MultiNoise - Continentalness", BlueprintReadWrite, meta = (ClampMin = "0.005", ClampMax = "0.4"))
+    float ContinentalShelfWidth = 0.08f;
+
+    /** Base elevation boost for high continental interiors and tectonic plateaus */
+    UPROPERTY(EditAnywhere, Category = "MultiNoise - Continentalness", BlueprintReadWrite, meta = (ClampMin = "0.0", ClampMax = "2.0"))
+    float InlandPlateauBoost = 0.35f;
+
+    /** How strongly high erosion flattens the terrain relief (0.0 = totally flat peneplain, 1.0 = no flattening) */
+    UPROPERTY(EditAnywhere, Category = "MultiNoise - Erosion", BlueprintReadWrite, meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float HighErosionFlattening = 0.15f;
+
+    /** Contrast exponent for erosion distribution curve */
+    UPROPERTY(EditAnywhere, Category = "MultiNoise - Erosion", BlueprintReadWrite, meta = (ClampMin = "0.5", ClampMax = "4.0"))
+    float ErosionContrast = 1.4f;
+
+    /** Mountain peak sharpness exponent (PV^Sharpness). Higher values create knife-edge alpine horns */
+    UPROPERTY(EditAnywhere, Category = "MultiNoise - Peaks & Valleys", BlueprintReadWrite, meta = (ClampMin = "0.5", ClampMax = "5.0"))
+    float MountainPeakSharpness = 2.2f;
+
+    /** Canyon and valley depth multiplier relative to PeaksValleysLayer amplitude */
+    UPROPERTY(EditAnywhere, Category = "MultiNoise - Peaks & Valleys", BlueprintReadWrite, meta = (ClampMin = "0.0", ClampMax = "3.0"))
+    float ValleyDepthMultiplier = 0.85f;
+
+    /** Terracing / geological stepped strata strength for plateaus and canyons (0.0 = disabled) */
+    UPROPERTY(EditAnywhere, Category = "MultiNoise - Geological Features", BlueprintReadWrite, meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float TerracingStrength = 0.0f;
+
+    /** Number of terrace steps per 1000m */
+    UPROPERTY(EditAnywhere, Category = "MultiNoise - Geological Features", BlueprintReadWrite, meta = (ClampMin = "1.0", ClampMax = "20.0"))
+    float TerraceSteps = 6.0f;
+};
+

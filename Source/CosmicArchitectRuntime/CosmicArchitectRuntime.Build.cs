@@ -14,13 +14,16 @@ public class CosmicArchitectRuntime : ModuleRules
                 "Core",
                 "CoreUObject",
                 "Engine",
+                "Projects",
                 "CosmicArchitectCommon",
                 "ProceduralMeshComponent", 
                 "CosmicArchitectNoise",
                 "CosmicArchitectFoliage",
                 "InputCore",
                 "PhysicsCore",
-                "EnhancedInput",  
+                "EnhancedInput",
+                "RenderCore",
+                "RHI",
 			}
             );
 
@@ -32,7 +35,7 @@ public class CosmicArchitectRuntime : ModuleRules
 
         if (Target.bBuildEditor)
         {
-            PrivateDependencyModuleNames.AddRange(new string[] { "UnrealEd", "AssetRegistry" });
+            PrivateDependencyModuleNames.AddRange(new string[] { "UnrealEd", "AssetRegistry", "MaterialEditor" });
         }
     }
 }

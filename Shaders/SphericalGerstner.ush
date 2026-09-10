@@ -1,0 +1,285 @@
+// Copyright Javier Bravo, David Rubio, Sergio Perez 2026 All Rights Reserved.
+// SphericalGerstner.ush - Spherical Gerstner Wave Implementation for Planetary Oceans
+// Based on Michelic 2018: "Real-Time Rendering of Procedurally Generated Planets"
+#pragma once
+
+// ============================================================================
+// Spherical Gerstner Wave Calculation
+// 
+// Computes vertex displacement and analytical normals for trochoidal (Gerstner)
+// waves projected onto a spherical planetary surface. Handles:
+//   - Geodesic distance via great-circle arc length
+//   - Singularity damping near epicenters and antipodes
+//   - Configurable action radius with smooth falloff
+//   - Camera distance LOD fade for anti-aliasing
+//   - Analytical normals (no finite-difference sampling)
+// ============================================================================
+
+// Gravity constant in cm/s^2 (Unreal units)
+#define GERSTNER_GRAVITY 980.0f
+#define GERSTNER_TWO_PI 6.2831853f
+#define GERSTNER_MAX_WAVES 4
+
+/**
+ * Compute spherical Gerstner wave displacement and normal.
+ *
+ * @param InWorldPos       - Vertex world position
+ * @param PlanetCenter     - Planet center world position
+ * @param PlanetRadius     - Planet radius in cm
+ * @param InTime           - Current game time
+ * @param WaveOrigins      - 4x float4: xyz = wave origin direction (normalized), w = unused
+ * @param WaveParams       - 4x float4: x = Amplitude, y = Wavelength, z = Steepness, w = Speed
+ * @param AmplitudeScale   - Global amplitude multiplier
+ * @param SteepnessScale   - Global steepness multiplier  
+ * @param SpeedScale       - Global speed multiplier
+ * @param ActionRadius     - Wave action radius in cm (from planet surface point)
+ * @param ActionFalloff    - Falloff transition width in cm
+ * @param CameraWorldPos   - Camera position for LOD fade
+ * @param OutDisplacement  - Output: vertex offset in world space
+ * @param OutNormal        - Output: perturbed surface normal in world space
+ * @param OutRoughnessBias - Output: distance-based roughness addition for specular AA
+ */
+void CalculateSphericalGerstner(
+    in float3 InWorldPos,
+    in float3 PlanetCenter,
+    in float  PlanetRadius,
+    in float  InTime,
+    in float3 WaveOrigins[GERSTNER_MAX_WAVES],
+    in float4 WaveParams[GERSTNER_MAX_WAVES],
+    in float  AmplitudeScale,
+    in float  SteepnessScale,
+    in float  SpeedScale,
+    in float  ActionRadius,
+    in float  ActionFalloff,
+    in float3 CameraWorldPos,
+    out float3 OutDisplacement,
+    out float3 OutNormal,
+    out float  OutRoughnessBias)
+{
+    // --- Planetary Surface Basis ---
+    float3 RadialVec = InWorldPos - PlanetCenter;
+    float CurrentDist = length(RadialVec);
+    float3 N_base = RadialVec / max(CurrentDist, 1.0f); // Radial surface normal
+
+    // --- Camera Distance LOD Fade ---
+    // Fade out high-frequency displacement at distance to prevent aliasing
+    float CameraDist = length(InWorldPos - CameraWorldPos);
+    // Start fading at 15000cm (150m), fully gone at 50000cm (500m)
+    float LODFade = saturate(1.0f - (CameraDist - 15000.0f) / 35000.0f);
+    
+    // Roughness bias for specular anti-aliasing (Toksvig approximation)
+    OutRoughnessBias = saturate((CameraDist - 10000.0f) / 50000.0f) * 0.35f;
+
+    // --- Accumulators ---
+    float3 DispAccum = float3(0.0f, 0.0f, 0.0f);
+    float3 TangentPerturb = float3(0.0f, 0.0f, 0.0f);
+
+    // --- Wave Summation ---
+    [unroll]
+    for (int i = 0; i < GERSTNER_MAX_WAVES; ++i)
+    {
+        float3 O = normalize(WaveOrigins[i]);
+        float Amp = WaveParams[i].x * AmplitudeScale;
+        float L   = max(WaveParams[i].y, 10.0f);
+        float Q   = WaveParams[i].z * SteepnessScale;
+        float Spd = WaveParams[i].w * SpeedScale;
+
+        // Skip negligible waves
+        if (Amp < 0.01f) continue;
+
+        // --- Geodesic Distance (Great Circle Arc Length) ---
+        float DotNO = clamp(dot(N_base, O), -0.9999f, 0.9999f);
+        float Angle = acos(DotNO);
+        float ArcLen = PlanetRadius * Angle;
+
+        // --- Action Radius Attenuation ---
+        // Waves attenuate beyond ActionRadius from the wave origin on the sphere
+        float ActionAtten = 1.0f;
+        if (ActionRadius > 0.0f)
+        {
+            float FalloffStart = max(ActionRadius - ActionFalloff, 0.0f);
+            ActionAtten = 1.0f - smoothstep(FalloffStart, ActionRadius, ArcLen);
+        }
+
+        // Skip if completely attenuated
+        if (ActionAtten < 0.001f) continue;
+
+        // --- Surface Tangent along Great Circle ---
+        // Direction from origin O to current point along the sphere surface
+        float SinAngle = sqrt(max(1.0f - DotNO * DotNO, 0.0f));
+        float3 T_dir = float3(0.0f, 0.0f, 0.0f);
+        if (SinAngle > 0.001f)
+        {
+            T_dir = (N_base - O * DotNO) / SinAngle;
+        }
+
+        // --- Singularity Damping ---
+        // Near the origin and its antipode, tangent degenerates → damp steepness
+        float Damping = smoothstep(0.0f, 0.05f, SinAngle);
+        float Q_eff = clamp(Q * Damping, 0.0f, 1.0f);
+
+        // --- Wave Kinematics ---
+        float K = GERSTNER_TWO_PI / L;      // Wavenumber
+        float Omega = sqrt(GERSTNER_GRAVITY * K);  // Angular frequency (deep water)
+        float Phase = K * ArcLen - (Omega * Spd * InTime);
+
+        float SinP, CosP;
+        sincos(Phase, SinP, CosP);
+
+        // --- Combined Attenuation ---
+        float TotalAtten = ActionAtten * Damping * LODFade;
+
+        // --- Displacement ---
+        // Horizontal: along sphere tangent (creates sharp crests)
+        // Vertical: along radial normal (raises/lowers water)
+        DispAccum += T_dir * (Q_eff * Amp * CosP * TotalAtten);
+        DispAccum += N_base * (Amp * SinP * TotalAtten);
+
+        // --- Analytical Normal Perturbation ---
+        // Accumulate tangent-space derivatives for correct normal without sampling
+        TangentPerturb += T_dir * (K * Amp * CosP * TotalAtten);
+    }
+
+    OutDisplacement = DispAccum;
+
+    // --- Perturbed Normal ---
+    // Subtract tangent perturbation from the radial normal
+    OutNormal = normalize(N_base - TangentPerturb);
+}
+
+
+// ============================================================================
+// Simplified entry points for Material Custom Node
+// Unpacks material parameters into the full calculation
+// ============================================================================
+
+/**
+ * Primary material entry point.
+ * Called from UMaterialExpressionCustom node.
+ * 
+ * WaveDir is float3 (origin on sphere).
+ * WaveParams is float4 (Amplitude, Wavelength, Steepness, Speed).
+ */
+float3 EvaluateOceanGerstner(
+    float3 WorldPos,
+    float3 PlanetCenter,
+    float  PlanetRadius,
+    float  Time,
+    float3 WaveDir1, float3 WaveDir2, float3 WaveDir3, float3 WaveDir4,
+    float4 WaveP1,   float4 WaveP2,   float4 WaveP3,   float4 WaveP4,
+    float  AmplitudeScale,
+    float  SteepnessScale,
+    float  SpeedScale,
+    float  ActionRadius,
+    float  ActionFalloff,
+    float3 CameraPos,
+    out float3 OutNormal,
+    out float  OutRoughnessBias)
+{
+    float3 Origins[GERSTNER_MAX_WAVES];
+    Origins[0] = WaveDir1;
+    Origins[1] = WaveDir2;
+    Origins[2] = WaveDir3;
+    Origins[3] = WaveDir4;
+
+    float4 Params[GERSTNER_MAX_WAVES];
+    Params[0] = WaveP1;
+    Params[1] = WaveP2;
+    Params[2] = WaveP3;
+    Params[3] = WaveP4;
+
+    float3 Displacement;
+    CalculateSphericalGerstner(
+        WorldPos, PlanetCenter, PlanetRadius, Time,
+        Origins, Params,
+        AmplitudeScale, SteepnessScale, SpeedScale,
+        ActionRadius, ActionFalloff, CameraPos,
+        Displacement, OutNormal, OutRoughnessBias);
+
+    return Displacement;
+}
+
+/**
+ * Overload 1: Tolerates WaveParams as float3 (defaults Speed to 1.0).
+ * Prevents compilation failure if VectorParameter RGB pin is connected directly.
+ */
+float3 EvaluateOceanGerstner(
+    float3 WorldPos,
+    float3 PlanetCenter,
+    float  PlanetRadius,
+    float  Time,
+    float3 WaveDir1, float3 WaveDir2, float3 WaveDir3, float3 WaveDir4,
+    float3 WaveP1,   float3 WaveP2,   float3 WaveP3,   float3 WaveP4,
+    float  AmplitudeScale,
+    float  SteepnessScale,
+    float  SpeedScale,
+    float  ActionRadius,
+    float  ActionFalloff,
+    float3 CameraPos,
+    out float3 OutNormal,
+    out float  OutRoughnessBias)
+{
+    return EvaluateOceanGerstner(
+        WorldPos, PlanetCenter, PlanetRadius, Time,
+        WaveDir1, WaveDir2, WaveDir3, WaveDir4,
+        float4(WaveP1, 1.0f), float4(WaveP2, 1.0f), float4(WaveP3, 1.0f), float4(WaveP4, 1.0f),
+        AmplitudeScale, SteepnessScale, SpeedScale,
+        ActionRadius, ActionFalloff, CameraPos,
+        OutNormal, OutRoughnessBias);
+}
+
+/**
+ * Overload 2: Tolerates WaveDirs as float4.
+ */
+float3 EvaluateOceanGerstner(
+    float3 WorldPos,
+    float3 PlanetCenter,
+    float  PlanetRadius,
+    float  Time,
+    float4 WaveDir1, float4 WaveDir2, float4 WaveDir3, float4 WaveDir4,
+    float4 WaveP1,   float4 WaveP2,   float4 WaveP3,   float4 WaveP4,
+    float  AmplitudeScale,
+    float  SteepnessScale,
+    float  SpeedScale,
+    float  ActionRadius,
+    float  ActionFalloff,
+    float3 CameraPos,
+    out float3 OutNormal,
+    out float  OutRoughnessBias)
+{
+    return EvaluateOceanGerstner(
+        WorldPos, PlanetCenter, PlanetRadius, Time,
+        WaveDir1.xyz, WaveDir2.xyz, WaveDir3.xyz, WaveDir4.xyz,
+        WaveP1, WaveP2, WaveP3, WaveP4,
+        AmplitudeScale, SteepnessScale, SpeedScale,
+        ActionRadius, ActionFalloff, CameraPos,
+        OutNormal, OutRoughnessBias);
+}
+
+/**
+ * Overload 3: Tolerates both WaveDirs as float4 and WaveParams as float3.
+ */
+float3 EvaluateOceanGerstner(
+    float3 WorldPos,
+    float3 PlanetCenter,
+    float  PlanetRadius,
+    float  Time,
+    float4 WaveDir1, float4 WaveDir2, float4 WaveDir3, float4 WaveDir4,
+    float3 WaveP1,   float3 WaveP2,   float3 WaveP3,   float3 WaveP4,
+    float  AmplitudeScale,
+    float  SteepnessScale,
+    float  SpeedScale,
+    float  ActionRadius,
+    float  ActionFalloff,
+    float3 CameraPos,
+    out float3 OutNormal,
+    out float  OutRoughnessBias)
+{
+    return EvaluateOceanGerstner(
+        WorldPos, PlanetCenter, PlanetRadius, Time,
+        WaveDir1.xyz, WaveDir2.xyz, WaveDir3.xyz, WaveDir4.xyz,
+        float4(WaveP1, 1.0f), float4(WaveP2, 1.0f), float4(WaveP3, 1.0f), float4(WaveP4, 1.0f),
+        AmplitudeScale, SteepnessScale, SpeedScale,
+        ActionRadius, ActionFalloff, CameraPos,
+        OutNormal, OutRoughnessBias);
+}
