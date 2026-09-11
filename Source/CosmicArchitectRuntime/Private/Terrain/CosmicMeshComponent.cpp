@@ -231,25 +231,6 @@ void UCosmicMeshComponent::ReScaleLevel(int64 NewGridSpacing)
     CachedHeights.Reset();
     CachedColors.Reset();
     CachedProjectionRevision = MAX_uint64;
-
-    const int32 HalfRes = Resolution / 2;
-    const int32 VertRes = Resolution + 1;
-
-    for (int32 y = 0; y < VertRes; ++y)
-    {
-        for (int32 x = 0; x < VertRes; ++x)
-        {
-            const double WorldX = (x - HalfRes) * GridSpacing;
-            const double WorldY = (y - HalfRes) * GridSpacing;
-
-            FVector Position;
-            FVector DummyNormal;
-            FCosmicClipmapGeometry::ProjectPlanarGridPointToSphere(
-                WorldX, WorldY, PlanetRadius, Position, DummyNormal);
-
-            BaseVertices[x + y * VertRes] = Position;
-        }
-    }
 }
 
 void UCosmicMeshComponent::SetPositionAndRotation(const FVector& SurfacePos, const FRotator& PatchRotation)
