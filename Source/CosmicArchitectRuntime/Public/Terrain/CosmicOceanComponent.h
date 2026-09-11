@@ -54,7 +54,7 @@ public:
 	 */
 	void ResetPointersAfterDuplicate(USceneComponent* NewRoot);
 
-	// ===== OCEAN TOGGLE =====
+	// OCEAN TOGGLE
 
 	/**
 	 * Indicates whether the planet has an ocean.
@@ -74,7 +74,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean", meta = (EditCondition = "bHasOcean", ClampMin = "8", ClampMax = "256"))
 	int32 OceanResolution = 128;
 
-	// ===== MATERIAL MODE =====
+	// MATERIAL MODE 
 
 	/**
 	 * If true, uses the auto-generated Gerstner wave material.
@@ -90,7 +90,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean", meta = (EditCondition = "bHasOcean && !bUseGeneratedMaterial"))
 	UMaterialInstance* OceanMaterial;
 
-	// ===== WAVE CONFIGURATION =====
+	// WAVE CONFIGURATION 
 
 	/**
 	 * Global wave amplitude multiplier. Higher = taller waves.
@@ -130,7 +130,7 @@ public:
 		meta = (EditCondition = "bHasOcean && bUseGeneratedMaterial", ClampMin = "0.001"))
 	float WaveActionFalloffKm = 1.0f;
 
-	// ===== APPEARANCE =====
+	// APPEARANCE 
 
 	/**
 	 * Shallow water tint color.

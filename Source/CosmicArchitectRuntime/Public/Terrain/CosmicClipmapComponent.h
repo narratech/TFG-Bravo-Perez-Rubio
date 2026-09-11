@@ -226,20 +226,11 @@ protected:
     /** System update interval */
     float TimeToRefresh = 0.01f;
 
-    /** Last known player position */
-    FVector LastPlayerPos;
-
     /** Last position used to update collision */
     FVector LastMeshPlayerPos;
 
     /** Current position of owning actor */
     FVector CurrentActorPosition;
-
-    /** Accumulated delta in planar mode */
-    FVector AccumulatedDelta = FVector::ZeroVector;
-
-    /** Total accumulated clipmap shift */
-    FIntPoint TotalShift = FIntPoint::ZeroValue;
 
     /** Current update phase */
     EUpdatePhase CurrentPhase = EUpdatePhase::Mesh;
@@ -326,25 +317,6 @@ protected:
      */
     FVector GetPlayerLocation();
 
-    /**
-     * Calculates grid offset in planar mode.
-     */
-    FIntPoint ComputeGridShiftPlanar(const FVector& PlayerPos, float GridSpacing);
-
-    /**
-     * Calculates grid offset on spherical surface.
-     */
-    FIntPoint ComputeGridShiftSpherical(const FVector& PlayerPos, const FVector& CurrentSurfacePos, int64 GridSpacing);
-
-    /**
-     * Calculates grid offset according to surface type.
-     */
-    FIntPoint ComputeGridShift(const FVector& PlayerPos, const FVector& CurrentSurfacePos, float GridSpacing);
-
-    /**
-     * Gets spherical angles for a surface position.
-     */
-    FVector2D GetSurfaceAngles(const FVector& SurfacePos);
 
     /**
      * Calculates how many levels should be decreased.
@@ -383,14 +355,6 @@ private:
     UPROPERTY(Transient, DuplicateTransient)
     UMaterialInstanceDynamic* DynamicPlanetMat;
 
-    /** Last known position on surface */
-    FVector PreviousSurfacePos = FVector::ZeroVector;
-
-    /** Last recorded spherical angles of player */
-    FVector2D LastSurfaceAngles;
-
-    /** Accumulated linear delta on surface */
-    FVector2D AccumulatedLinearDelta;
 
     /** Fixed tangent frame and angular cell that originated it. */
     FTransform SnappedProjectionFrame = FTransform::Identity;

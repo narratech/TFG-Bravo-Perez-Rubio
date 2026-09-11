@@ -66,9 +66,6 @@ void UCosmicClipmapComponent::BeginPlay()
 
     TimeToRefreshActive = TimeToRefresh;
 
-    // Initialize values for shift
-    LastSurfaceAngles = FVector2D::ZeroVector;
-    AccumulatedLinearDelta = FVector2D::ZeroVector;
 
     FVector SurfacePos;
     FVector N;
@@ -85,8 +82,6 @@ void UCosmicClipmapComponent::BeginPlay()
 
     UpdateCollisionNearPlayer(SurfacePos, N, DistanceToSurface);
 
-    LastSurfaceAngles = GetSurfaceAngles(SurfacePos);
-    LastPlayerPos = ViewerPos;
     LastMeshPlayerPos = ViewerPos;
 }
 
@@ -443,11 +438,6 @@ void UCosmicClipmapComponent::CreateLevels()
     Levels.Empty();
     Levels.SetNum(NumLevels);
 
-    TotalShift = FIntPoint::ZeroValue;
-
-    AActor* Owner = GetOwner();
-    if (!Owner) LastPlayerPos = FVector::Zero();
-    else LastPlayerPos = Owner->GetActorLocation();
         
     BaseGridSpacing = BaseSpacing = (PlanetRadius * 2.0f) / (BaseResolution * FMath::Pow(2.0f, NumLevels - 1));
      
@@ -582,7 +572,6 @@ void UCosmicClipmapComponent::ClearLevels()
 
     int LevelsCleared = 0;  
 
-    TotalShift = FIntPoint::ZeroValue;
     bSnappedProjectionValid = false;
     bCoarsestGridCenterValid = false;
 
@@ -628,7 +617,6 @@ void UCosmicClipmapComponent::ResetPointersAfterDuplicate(USceneComponent* NewRo
     bInit = false;
     bPerformanceBuild = false;
     bPerformaceMode = false;
-    TotalShift = FIntPoint::ZeroValue;
     bSnappedProjectionValid = false;
     bCoarsestGridCenterValid = false;
     ++SnappedProjectionRevision;
@@ -876,101 +864,6 @@ bool UCosmicClipmapComponent::ConfigureLevelsForViewer(const FVector& ViewerNorm
     return bRequiresUpdate;
 }
 
-FIntPoint UCosmicClipmapComponent::ComputeGridShiftPlanar(
-    const FVector& PlayerPos,
-    float GridSpacing)
-{
-    FVector PlanetCenter = GetOwner()->GetActorLocation();
-
-    FVector FrameDelta = PlayerPos - LastPlayerPos;
-
-    LastPlayerPos = PlayerPos;
-
-    AccumulatedDelta += FrameDelta;
-
-    int32 ShiftX = FMath::FloorToInt(AccumulatedDelta.X / GridSpacing);
-    int32 ShiftY = FMath::FloorToInt(AccumulatedDelta.Y / GridSpacing);
-
-    AccumulatedDelta.X -= ShiftX * GridSpacing;
-    AccumulatedDelta.Y -= ShiftY * GridSpacing;
-
-    return FIntPoint(ShiftX, ShiftY);
-}
-
-FIntPoint UCosmicClipmapComponent::ComputeGridShiftSpherical(const FVector& PlayerPos, const FVector& CurrentSurfacePos, int64 GridSpacing)
-{
-    FVector PlanetCenter = CurrentActorPosition;
-
-    // If first time, no movement
-    if (LastPlayerPos.IsZero())
-    {
-        LastPlayerPos = PlayerPos;
-        LastSurfaceAngles = GetSurfaceAngles(CurrentSurfacePos);
-        return FIntPoint::ZeroValue;
-    }
-
-    // Get spherical angles (longitude and latitude) for both positions
-    FVector2D CurrentAngles = GetSurfaceAngles(CurrentSurfacePos - CurrentActorPosition);
-    FVector2D PreviousAngles = LastSurfaceAngles;
-
-    // Calculate angular displacement (in radians)
-    FVector2D DeltaAngles = CurrentAngles - PreviousAngles;
-
-    // Normalize longitude to [-PI, PI] range to take shortest path
-    if (DeltaAngles.X > PI) DeltaAngles.X -= 2 * PI;
-    if (DeltaAngles.X < -PI) DeltaAngles.X += 2 * PI;
-
-    // Convert angular displacement to surface linear distance
-    FVector2D LinearDelta = DeltaAngles * PlanetRadius;
-
-    // Accumulate linear displacement
-    AccumulatedLinearDelta += LinearDelta;
-
-    // Calculate how many "grid steps" we moved
-    // GridSpacing is the distance between vertices on tangent plane
-    int32 ShiftX = FMath::FloorToInt(AccumulatedLinearDelta.X / GridSpacing);
-    int32 ShiftY = FMath::FloorToInt(AccumulatedLinearDelta.Y / GridSpacing);
-
-    // Subtract what was already used
-    AccumulatedLinearDelta.X -= ShiftX * GridSpacing;
-    AccumulatedLinearDelta.Y -= ShiftY * GridSpacing;
-
-    // Save for next frame
-    LastPlayerPos = PlayerPos;
-    LastSurfaceAngles = CurrentAngles;
-    PreviousSurfacePos = CurrentSurfacePos;
-
-    return FIntPoint(ShiftX, ShiftY);
-}
-
-FIntPoint UCosmicClipmapComponent::ComputeGridShift(const FVector& PlayerPos, const FVector& CurrentSurfacePos, float GridSpacing)
-{
-    if (IsPlanet)
-    {
-        // Use spherical version
-        return ComputeGridShiftSpherical(PlayerPos, CurrentSurfacePos, GridSpacing);
-    }
-    else
-    {
-        // Use original planar version
-        return ComputeGridShiftPlanar(PlayerPos, GridSpacing);
-    }
-}
-
-FVector2D UCosmicClipmapComponent::GetSurfaceAngles(const FVector& SurfacePos)
-{
-    // Assuming planet center is at (0,0,0) or adjusting
-    FVector Normalized = SurfacePos.GetSafeNormal();
-
-    // Longitude: angle on XY plane (-PI to PI)
-    double Longitude = FMath::Atan2(Normalized.Y, Normalized.X);
-
-    // Latitude: angle from equator (-PI/2 to PI/2)
-    double Latitude = FMath::Asin(FMath::Clamp(Normalized.Z, -0.999999f, 0.999999f));
-
-    return FVector2D(Longitude, Latitude);
-}
-
 FVector UCosmicClipmapComponent::GetPlayerLocation()
 {
     FVector PlayerLocation = FVector::ZeroVector;
@@ -1158,7 +1051,6 @@ void UCosmicClipmapComponent::DecreaseClipmapLevelFull(int32 Steps)
     // Apply all halvings to BaseGridSpacing at once
     const int64 Divisor = static_cast<int64>(1) << Steps; // 2^Steps
     BaseGridSpacing /= Divisor;
-    TotalShift *= Divisor;
 
     // Rebuild spacings from new base
     float NewGridSpacing = BaseGridSpacing;
@@ -1175,7 +1067,6 @@ void UCosmicClipmapComponent::IncreaseClipmapLevelFull(int32 Steps)
 
     const int64 Multiplier = static_cast<int64>(1) << Steps; // 2^Steps
     BaseGridSpacing *= Multiplier;
-    TotalShift /= Multiplier;
 
     // Rebuild spacings from new base
     float NewGridSpacing = BaseGridSpacing;
