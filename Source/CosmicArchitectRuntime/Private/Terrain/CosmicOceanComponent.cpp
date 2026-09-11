@@ -76,6 +76,7 @@ void UCosmicOceanComponent::ClearOcean()
     }
 
     DynamicOceanMat = nullptr;
+    DynamicFarOceanMat = nullptr;
     bInit = false;
     bPerformanceMode = true;
     bNearMeshPositioned = false;
@@ -95,6 +96,7 @@ void UCosmicOceanComponent::ResetPointersAfterDuplicate(USceneComponent* NewRoot
     NearOceanMesh = nullptr;
     FarOceanMesh = nullptr;
     DynamicOceanMat = nullptr;
+    DynamicFarOceanMat = nullptr;
     bInit = false;
     bPerformanceMode = true;
     bNearMeshPositioned = false;
@@ -263,7 +265,11 @@ void UCosmicOceanComponent::BuildFarOceanMesh()
     FarOceanMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     FarOceanMesh->SetMeshActive(bPerformanceMode);
 
-    if (DynamicOceanMat)
+    if (DynamicFarOceanMat)
+    {
+        FarOceanMesh->SetMaterial(0, DynamicFarOceanMat);
+    }
+    else if (DynamicOceanMat)
     {
         FarOceanMesh->SetMaterial(0, DynamicOceanMat);
     }
@@ -307,10 +313,12 @@ void UCosmicOceanComponent::BuildDynamicMaterial()
     if (BaseMaterial)
     {
         DynamicOceanMat = UMaterialInstanceDynamic::Create(BaseMaterial, this);
+        DynamicFarOceanMat = UMaterialInstanceDynamic::Create(BaseMaterial, this);
     }
     else
     {
         DynamicOceanMat = nullptr;
+        DynamicFarOceanMat = nullptr;
     }
 
     if (NearOceanMesh && DynamicOceanMat)
@@ -318,12 +326,16 @@ void UCosmicOceanComponent::BuildDynamicMaterial()
         NearOceanMesh->SetMaterial(0, DynamicOceanMat);
     }
 
-    if (FarOceanMesh && DynamicOceanMat)
+    if (FarOceanMesh && DynamicFarOceanMat)
+    {
+        FarOceanMesh->SetMaterial(0, DynamicFarOceanMat);
+    }
+    else if (FarOceanMesh && DynamicOceanMat)
     {
         FarOceanMesh->SetMaterial(0, DynamicOceanMat);
     }
 
-    if (DynamicOceanMat && bUseGeneratedMaterial)
+    if (bUseGeneratedMaterial)
     {
         UpdateWaveParameters();
     }
@@ -331,32 +343,64 @@ void UCosmicOceanComponent::BuildDynamicMaterial()
 
 void UCosmicOceanComponent::UpdateWaveParameters()
 {
-    if (!DynamicOceanMat || !bUseGeneratedMaterial) return;
+    if (!bUseGeneratedMaterial) return;
 
     const double EffectiveRadius = PlanetRadiusCm + SeaLevelKm * 100000.0;
-    DynamicOceanMat->SetScalarParameterValue(FName("PlanetRadius"), static_cast<float>(EffectiveRadius));
+    const FVector OwnerLocation = GetOwner() ? GetOwner()->GetActorLocation() : FVector::ZeroVector;
 
-    if (GetOwner())
+    // --- Near Clipmap Ocean Material ---
+    if (DynamicOceanMat)
     {
-        DynamicOceanMat->SetVectorParameterValue(FName("PlanetCenter"), GetOwner()->GetActorLocation());
+        DynamicOceanMat->SetScalarParameterValue(FName("PlanetRadius"), static_cast<float>(EffectiveRadius));
+        DynamicOceanMat->SetVectorParameterValue(FName("PlanetCenter"), OwnerLocation);
+
+        // Wave parameters (M_CosmicOceanV3 / SphericalGerstner)
+        DynamicOceanMat->SetScalarParameterValue(FName("WaveHeight"), WaveHeight);
+        DynamicOceanMat->SetScalarParameterValue(FName("WaveLength"), WaveLength);
+        DynamicOceanMat->SetScalarParameterValue(FName("WaveSpeed"), WaveSpeed);
+        DynamicOceanMat->SetScalarParameterValue(FName("WaveSteepness"), WaveSteepness);
+        DynamicOceanMat->SetScalarParameterValue(FName("WaveChop"), WaveChop);
+        DynamicOceanMat->SetScalarParameterValue(FName("WaveCount"), WaveCount);
+        DynamicOceanMat->SetScalarParameterValue(FName("WaveSpread"), WaveSpread);
+        DynamicOceanMat->SetVectorParameterValue(FName("WindDirection"), WindDirection);
+
+        // Distance Fade Range (in centimeters for UE material parameters)
+        DynamicOceanMat->SetScalarParameterValue(FName("WaveFadeStart"), WaveFadeStartKm * 100000.0f);
+        DynamicOceanMat->SetScalarParameterValue(FName("WaveFadeEnd"), WaveFadeEndKm * 100000.0f);
+        DynamicOceanMat->SetScalarParameterValue(FName("DistanceWaterBegin"), WaveFadeStartKm * 100000.0f);
+        DynamicOceanMat->SetScalarParameterValue(FName("DistanceWaterFade"), (WaveFadeEndKm - WaveFadeStartKm) * 100000.0f);
+
+        // Appearance / SingleLayerWater
+        DynamicOceanMat->SetVectorParameterValue(FName("WaterColor"), WaterColor);
+        DynamicOceanMat->SetVectorParameterValue(FName("WaterAbsortion"), WaterAbsortion);
+        DynamicOceanMat->SetVectorParameterValue(FName("WaterScattering"), WaterScattering);
+        DynamicOceanMat->SetScalarParameterValue(FName("WaterScatteringAmount"), WaterScatteringAmount);
+        DynamicOceanMat->SetScalarParameterValue(FName("WaterRoughness"), WaterRoughness);
     }
 
-    // Wave parameters (M_CosmicOceanV3 / SphericalGerstner)
-    DynamicOceanMat->SetScalarParameterValue(FName("WaveHeight"), WaveHeight);
-    DynamicOceanMat->SetScalarParameterValue(FName("WaveLength"), WaveLength);
-    DynamicOceanMat->SetScalarParameterValue(FName("WaveSpeed"), WaveSpeed);
-    DynamicOceanMat->SetScalarParameterValue(FName("WaveSteepness"), WaveSteepness);
-    DynamicOceanMat->SetScalarParameterValue(FName("WaveChop"), WaveChop);
-    DynamicOceanMat->SetScalarParameterValue(FName("WaveCount"), WaveCount);
-    DynamicOceanMat->SetScalarParameterValue(FName("WaveSpread"), WaveSpread);
-    DynamicOceanMat->SetVectorParameterValue(FName("WindDirection"), WindDirection);
+    // --- Distant Sphere Ocean Material (Solution 3: Zero Displacement for Orbital Efficiency) ---
+    if (DynamicFarOceanMat)
+    {
+        DynamicFarOceanMat->SetScalarParameterValue(FName("PlanetRadius"), static_cast<float>(EffectiveRadius));
+        DynamicFarOceanMat->SetVectorParameterValue(FName("PlanetCenter"), OwnerLocation);
 
-    // Appearance / SingleLayerWater
-    DynamicOceanMat->SetVectorParameterValue(FName("WaterColor"), WaterColor);
-    DynamicOceanMat->SetVectorParameterValue(FName("WaterAbsortion"), WaterAbsortion);
-    DynamicOceanMat->SetVectorParameterValue(FName("WaterScattering"), WaterScattering);
-    DynamicOceanMat->SetScalarParameterValue(FName("WaterScatteringAmount"), WaterScatteringAmount);
-    DynamicOceanMat->SetScalarParameterValue(FName("WaterRoughness"), WaterRoughness);
+        // Force wave displacement to ZERO on the distant global sphere
+        DynamicFarOceanMat->SetScalarParameterValue(FName("WaveHeight"), 0.0f);
+        DynamicFarOceanMat->SetScalarParameterValue(FName("WaveCount"), 0.0f);
+        DynamicFarOceanMat->SetScalarParameterValue(FName("WaveSteepness"), 0.0f);
+        DynamicFarOceanMat->SetScalarParameterValue(FName("WaveChop"), 0.0f);
+        DynamicFarOceanMat->SetScalarParameterValue(FName("WaveSpeed"), 0.0f);
+        DynamicFarOceanMat->SetScalarParameterValue(FName("WaveLength"), WaveLength);
+        DynamicFarOceanMat->SetScalarParameterValue(FName("WaveSpread"), WaveSpread);
+        DynamicFarOceanMat->SetVectorParameterValue(FName("WindDirection"), WindDirection);
+
+        // Appearance matches the near ocean seamlessly
+        DynamicFarOceanMat->SetVectorParameterValue(FName("WaterColor"), WaterColor);
+        DynamicFarOceanMat->SetVectorParameterValue(FName("WaterAbsortion"), WaterAbsortion);
+        DynamicFarOceanMat->SetVectorParameterValue(FName("WaterScattering"), WaterScattering);
+        DynamicFarOceanMat->SetScalarParameterValue(FName("WaterScatteringAmount"), WaterScatteringAmount);
+        DynamicFarOceanMat->SetScalarParameterValue(FName("WaterRoughness"), WaterRoughness);
+    }
 }
 
 void UCosmicOceanComponent::UpdateOceanLOD(
@@ -628,6 +672,8 @@ void UCosmicOceanComponent::PostEditChangeProperty(FPropertyChangedEvent& Proper
         PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaveChop) ||
         PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaveCount) ||
         PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaveSpread) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaveFadeStartKm) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaveFadeEndKm) ||
         PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WindDirection) ||
         PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaterColor) ||
         PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaterAbsortion) ||
@@ -647,11 +693,22 @@ void UCosmicOceanComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 
     if (!bHasOcean || !bInit) return;
 
-    if (DynamicOceanMat && GetOwner())
+    if (GetOwner())
     {
-        DynamicOceanMat->SetVectorParameterValue(FName("PlanetCenter"), GetOwner()->GetActorLocation());
+        const FVector OwnerLocation = GetOwner()->GetActorLocation();
         const double EffectiveRadius = PlanetRadiusCm + SeaLevelKm * 100000.0;
-        DynamicOceanMat->SetScalarParameterValue(FName("PlanetRadius"), static_cast<float>(EffectiveRadius));
+
+        if (DynamicOceanMat)
+        {
+            DynamicOceanMat->SetVectorParameterValue(FName("PlanetCenter"), OwnerLocation);
+            DynamicOceanMat->SetScalarParameterValue(FName("PlanetRadius"), static_cast<float>(EffectiveRadius));
+        }
+
+        if (DynamicFarOceanMat)
+        {
+            DynamicFarOceanMat->SetVectorParameterValue(FName("PlanetCenter"), OwnerLocation);
+            DynamicFarOceanMat->SetScalarParameterValue(FName("PlanetRadius"), static_cast<float>(EffectiveRadius));
+        }
     }
 
     if (bAutoApplyInTick)

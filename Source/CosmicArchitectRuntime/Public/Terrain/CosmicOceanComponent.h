@@ -224,6 +224,20 @@ public:
 	float WaveSpread = 1.0f;
 
 	/**
+	 * Distance from camera in kilometers where ocean waves begin fading out.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Waves",
+		meta = (EditCondition = "bHasOcean && bUseGeneratedMaterial", ClampMin = "0.5", ClampMax = "100.0"))
+	float WaveFadeStartKm = 10.0f;
+
+	/**
+	 * Distance from camera in kilometers where ocean waves are completely faded to a calm surface (0 displacement).
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Waves",
+		meta = (EditCondition = "bHasOcean && bUseGeneratedMaterial", ClampMin = "1.0", ClampMax = "300.0"))
+	float WaveFadeEndKm = 30.0f;
+
+	/**
 	 * Primary wind and dominant swell direction vector on the sphere.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Waves",
@@ -267,9 +281,13 @@ public:
 
 protected:
 
-	/** Dynamic material instance of ocean. */
+	/** Dynamic material instance of near clipmap ocean. */
 	UPROPERTY(Transient, DuplicateTransient)
 	UMaterialInstanceDynamic* DynamicOceanMat = nullptr;
+
+	/** Dynamic material instance of distant spherical ocean (zero displacement for orbital efficiency). */
+	UPROPERTY(Transient, DuplicateTransient)
+	UMaterialInstanceDynamic* DynamicFarOceanMat = nullptr;
 
 	/** Single procedural mesh component containing all concentric near clipmap levels. */
 	UPROPERTY(Transient, DuplicateTransient)

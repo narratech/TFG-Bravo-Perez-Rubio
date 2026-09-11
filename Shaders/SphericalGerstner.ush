@@ -21,6 +21,15 @@
 #define GERSTNER_TWO_PI 6.2831853f
 #define GERSTNER_MAX_WAVES 12
 
+// Default Configurable Distance LOD Ranges in Kilometers
+#ifndef GERSTNER_FADE_START_KM
+#define GERSTNER_FADE_START_KM 10.0f
+#endif
+
+#ifndef GERSTNER_FADE_END_KM
+#define GERSTNER_FADE_END_KM   30.0f
+#endif
+
 /**
  * Compute spherical Gerstner wave displacement and normal.
  *
@@ -64,23 +73,45 @@ void CalculateSphericalGerstner(
     float CurrentDist = length(RadialVec);
     float3 N_base = RadialVec / max(CurrentDist, 1.0f); // Radial surface normal
 
-    // --- Camera Distance LOD Fade ---
-    // Prevent aliasing at extreme planetary distances, but do NOT fade out at close/medium range.
-    // If CameraWorldPos is unhooked or (0,0,0), disable LOD fade completely (LODFade = 1.0).
-    float LODFade = 1.0f;
-    float CamLenSq = dot(CameraWorldPos, CameraWorldPos);
-    if (CamLenSq > 100.0f) // Valid camera position supplied
+    // --- Fast Early-Exit for Calm / Disabled Water ---
+    if (AmplitudeScale < 0.001f || NumActiveWaves <= 0)
     {
-        float CameraDist = length(InWorldPos - CameraWorldPos);
-        // Start fading only beyond 20km (2,000,000cm), fully gone at 100km (10,000,000cm)
-        LODFade = saturate(1.0f - (CameraDist - 2000000.0f) / 8000000.0f);
+        OutDisplacement = float3(0.0f, 0.0f, 0.0f);
+        OutNormal = N_base;
+        OutRoughnessBias = 0.0f;
+        return;
+    }
+
+    // --- Camera Distance LOD Fade ---
+    // Prevent aliasing at extreme planetary distances, and smoothly taper displacement.
+    float LODFade = 1.0f;
+    float CameraDist = 0.0f;
+    float CamLenSq = dot(CameraWorldPos, CameraWorldPos);
+    bool bHasCamera = (CamLenSq > 100.0f);
+
+    float FadeStartCm = GERSTNER_FADE_START_KM * 100000.0f;
+    float FadeEndCm   = max(GERSTNER_FADE_END_KM * 100000.0f, FadeStartCm + 1000.0f);
+    float FadeRangeCm = FadeEndCm - FadeStartCm;
+
+    if (bHasCamera)
+    {
+        CameraDist = length(InWorldPos - CameraWorldPos);
+        LODFade = saturate(1.0f - (CameraDist - FadeStartCm) / FadeRangeCm);
+
+        // Early-Exit: Beyond FadeEnd, vertex displacement is zero and normal is unperturbed
+        if (LODFade < 0.001f)
+        {
+            OutDisplacement = float3(0.0f, 0.0f, 0.0f);
+            OutNormal = N_base;
+            OutRoughnessBias = saturate((CameraDist - 50000.0f) / 500000.0f) * 0.35f;
+            return;
+        }
     }
     
     // Roughness bias for specular anti-aliasing (Toksvig approximation)
     OutRoughnessBias = 0.0f;
-    if (CamLenSq > 100.0f)
+    if (bHasCamera)
     {
-        float CameraDist = length(InWorldPos - CameraWorldPos);
         OutRoughnessBias = saturate((CameraDist - 50000.0f) / 500000.0f) * 0.35f;
     }
 
@@ -173,6 +204,19 @@ void CalculateSphericalGerstner(
         // Skip negligible waves
         if (Amp < 0.005f) continue;
 
+        // --- Octave / Frequency-Based Distance LOD (Solution 2) ---
+        // High frequency ripples (small L) cannot be resolved by vertices at distance,
+        // causing subpixel geometric aliasing. Cull them progressively as distance increases.
+        float WaveLOD = 1.0f;
+        if (bHasCamera)
+        {
+            // Waves are culled when CameraDist exceeds ~500 wavelengths, capped by FadeEndCm
+            float WaveCutoff = clamp(L * 500.0f, 30000.0f, FadeEndCm);
+            float WaveStart  = WaveCutoff * 0.5f;
+            WaveLOD = saturate(1.0f - (CameraDist - WaveStart) / max(WaveCutoff - WaveStart, 1.0f));
+            if (WaveLOD < 0.001f) continue;
+        }
+
         // --- Geodesic Distance (Great Circle Arc Length) ---
         float DotNO = clamp(dot(N_base, O), -0.9999f, 0.9999f);
         float Angle = acos(DotNO);
@@ -214,7 +258,7 @@ void CalculateSphericalGerstner(
         sincos(Phase, SinP, CosP);
 
         // --- Combined Attenuation ---
-        float TotalAtten = ActionAtten * Damping * LODFade;
+        float TotalAtten = ActionAtten * Damping * LODFade * WaveLOD;
 
         // --- Displacement ---
         // Horizontal: along sphere tangent T_dir (draws water toward crests, creating sharp trochoidal crests)
@@ -442,6 +486,20 @@ float3 EvaluateOceanArtist(
     float C = clamp(WaveChop, 0.0f, 2.0f);
     int ActiveWaves = clamp((int)(WaveCount + 0.5f), 1, GERSTNER_MAX_WAVES);
     float Spread = clamp(WaveSpread, 0.0f, 2.0f);
+
+    // Fast Early-Exit: Calm water / Far sphere in orbital mode (Solution 3)
+    if (H < 0.001f || ActiveWaves <= 0)
+    {
+        float3 RadialVec = WorldPos - PlanetCenter;
+        OutNormal = RadialVec / max(length(RadialVec), 1.0f);
+        OutRoughnessBias = 0.0f;
+        if (dot(CameraPos, CameraPos) > 100.0f)
+        {
+            float CameraDist = length(WorldPos - CameraPos);
+            OutRoughnessBias = saturate((CameraDist - 50000.0f) / 500000.0f) * 0.35f;
+        }
+        return float3(0.0f, 0.0f, 0.0f);
+    }
 
     // Natural 12-Tier Oceanographic Spectrum:
     // Swell (0..1) + Wind waves (2..5) + Choppy waves (6..8) + Capillary ripples (9..11)
