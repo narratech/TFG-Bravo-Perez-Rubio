@@ -99,6 +99,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
     if (DynamicPlanetMat) {
         DynamicPlanetMat->SetVectorParameterValue("PlanetCenter", GetOwner()->GetActorLocation());
+        DynamicPlanetMat->SetScalarParameterValue(FName("PlanetRadius"), static_cast<float>(PlanetRadius));
     }
 
     if (ElapsedTime <= TimeToRefresh)
