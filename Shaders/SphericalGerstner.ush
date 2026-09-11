@@ -13,12 +13,13 @@
 //   - Configurable action radius with smooth falloff
 //   - Camera distance LOD fade for anti-aliasing
 //   - Analytical normals (no finite-difference sampling)
+//   - Multi-tier harmonic oceanographic spectrum (up to 12 octaves)
 // ============================================================================
 
 // Gravity constant in cm/s^2 (Unreal units)
 #define GERSTNER_GRAVITY 980.0f
 #define GERSTNER_TWO_PI 6.2831853f
-#define GERSTNER_MAX_WAVES 4
+#define GERSTNER_MAX_WAVES 12
 
 /**
  * Compute spherical Gerstner wave displacement and normal.
@@ -27,14 +28,15 @@
  * @param PlanetCenter     - Planet center world position
  * @param PlanetRadius     - Planet radius in cm
  * @param InTime           - Current game time
- * @param WaveOrigins      - 4x float4: xyz = wave origin direction (normalized), w = unused
- * @param WaveParams       - 4x float4: x = Amplitude, y = Wavelength, z = Steepness, w = Speed
+ * @param WaveOrigins      - 12x float3: origin direction on the sphere (normalized)
+ * @param WaveParams       - 12x float4: x = Amplitude, y = Wavelength, z = Steepness, w = Speed
  * @param AmplitudeScale   - Global amplitude multiplier
  * @param SteepnessScale   - Global steepness multiplier  
  * @param SpeedScale       - Global speed multiplier
  * @param ActionRadius     - Wave action radius in cm (from planet surface point)
  * @param ActionFalloff    - Falloff transition width in cm
  * @param CameraWorldPos   - Camera position for LOD fade
+ * @param NumActiveWaves   - Number of waves to evaluate (1 to GERSTNER_MAX_WAVES)
  * @param OutDisplacement  - Output: vertex offset in world space
  * @param OutNormal        - Output: perturbed surface normal in world space
  * @param OutRoughnessBias - Output: distance-based roughness addition for specular AA
@@ -52,6 +54,7 @@ void CalculateSphericalGerstner(
     in float  ActionRadius,
     in float  ActionFalloff,
     in float3 CameraWorldPos,
+    in int    NumActiveWaves,
     out float3 OutDisplacement,
     out float3 OutNormal,
     out float  OutRoughnessBias)
@@ -98,30 +101,44 @@ void CalculateSphericalGerstner(
     float3 CrossUp = cross(PrimaryOrigin, UpVec);
     float3 U_spread = CrossUp / max(length(CrossUp), 0.001f);
     float3 V_spread = cross(PrimaryOrigin, U_spread);
-    float3 UV_diag  = normalize(U_spread + V_spread);
+    float3 UV_diag1 = normalize(U_spread + V_spread);
+    float3 UV_diag2 = normalize(U_spread - V_spread);
+
+    int ActiveLimit = clamp(NumActiveWaves, 1, GERSTNER_MAX_WAVES);
+
+    // Dynamic orthonormal cross-spread fallback angles and axes
+    static const float FallbackAngles[12] = {
+         0.000f,  0.488f, -0.663f,  0.907f, -0.838f,  0.314f,
+        -0.419f,  1.187f, -1.117f,  0.628f, -0.733f,  1.326f
+    };
+    static const int FallbackAxes[12] = {
+        0, 0, 1, 2, 3, 0, 1, 2, 3, 2, 3, 2
+    };
 
     // --- Wave Summation ---
     [unroll]
     for (int i = 0; i < GERSTNER_MAX_WAVES; ++i)
     {
+        if (i >= ActiveLimit) continue;
+
         // --- Wave Direction / Origin on Sphere ---
         float3 O = PrimaryOrigin;
         float lenO = length(WaveOrigins[i]);
         float3 NormO = WaveOrigins[i] / max(lenO, 0.001f);
-        if (lenO > 0.001f && (i == 0 || dot(NormO, PrimaryOrigin) < 0.98f))
+        if (lenO > 0.001f && (i == 0 || dot(NormO, PrimaryOrigin) < 0.999f))
         {
             // Use explicit origin if valid and distinct from primary
             O = NormO;
         }
         else if (i > 0)
         {
-            // Synthesize cross-wave origins around PrimaryOrigin (+38 deg, -48 deg, +72 deg)
-            // to break up parallel 1D stripes and produce organic ocean interference
-            float ang = 0.0f;
-            float3 axis = float3(0.0f, 0.0f, 0.0f);
-            if (i == 1)      { ang =  0.663f; axis = U_spread; }
-            else if (i == 2) { ang = -0.838f; axis = V_spread; }
-            else if (i == 3) { ang =  1.257f; axis = UV_diag; }
+            // Fallback cross-wave origins synthesized around PrimaryOrigin
+            float3 axis = U_spread;
+            if (FallbackAxes[i] == 1) axis = V_spread;
+            else if (FallbackAxes[i] == 2) axis = UV_diag1;
+            else if (FallbackAxes[i] == 3) axis = UV_diag2;
+
+            float ang = FallbackAngles[i];
             O = normalize(PrimaryOrigin * cos(ang) + axis * sin(ang));
         }
 
@@ -140,33 +157,21 @@ void CalculateSphericalGerstner(
             float BaseQ   = max(WaveParams[0].z * SteepnessScale, 0.3f);
             float BaseSpd = WaveParams[0].w * SpeedScale;
 
-            if (i == 1)
-            {
-                Amp = BaseAmp * 0.55f;
-                L   = BaseL * 0.45f;
-                Q   = clamp(BaseQ * 1.10f, 0.0f, 1.0f);
-                Spd = BaseSpd * 1.15f;
-            }
-            else if (i == 2)
-            {
-                Amp = BaseAmp * 0.28f;
-                L   = BaseL * 0.20f;
-                Q   = clamp(BaseQ * 1.20f, 0.0f, 1.0f);
-                Spd = BaseSpd * 1.30f;
-            }
-            else if (i == 3)
-            {
-                Amp = BaseAmp * 0.14f;
-                L   = BaseL * 0.09f;
-                Q   = clamp(BaseQ * 1.35f, 0.0f, 1.0f);
-                Spd = BaseSpd * 1.50f;
-            }
+            static const float LScale[12] = { 1.0f, 0.73f, 0.51f, 0.38f, 0.28f, 0.20f, 0.14f, 0.098f, 0.068f, 0.047f, 0.032f, 0.021f };
+            static const float AScale[12] = { 1.0f, 0.65f, 0.46f, 0.36f, 0.28f, 0.22f, 0.18f, 0.15f,  0.12f,  0.10f,  0.08f,  0.06f };
+            static const float QScale[12] = { 1.0f, 1.05f, 1.10f, 1.15f, 1.20f, 1.25f, 1.30f, 1.35f,  1.40f,  1.45f,  1.50f,  1.55f };
+            static const float SScale[12] = { 1.0f, 1.08f, 0.94f, 1.14f, 1.02f, 1.22f, 0.91f, 1.18f,  1.05f,  1.28f,  0.97f,  1.32f };
+
+            Amp = BaseAmp * AScale[i];
+            L   = BaseL * LScale[i];
+            Q   = clamp(BaseQ * QScale[i], 0.0f, 1.0f);
+            Spd = BaseSpd * SScale[i];
         }
 
         L = max(L, 10.0f);
 
         // Skip negligible waves
-        if (Amp < 0.01f) continue;
+        if (Amp < 0.005f) continue;
 
         // --- Geodesic Distance (Great Circle Arc Length) ---
         float DotNO = clamp(dot(N_base, O), -0.9999f, 0.9999f);
@@ -201,8 +206,8 @@ void CalculateSphericalGerstner(
         float Q_eff = clamp(Q * Damping, 0.0f, 1.0f);
 
         // --- Wave Kinematics ---
-        float K = GERSTNER_TWO_PI / L;      // Wavenumber
-        float Omega = sqrt(GERSTNER_GRAVITY * K);  // Angular frequency (deep water)
+        float K = GERSTNER_TWO_PI / L;             // Wavenumber
+        float Omega = sqrt(GERSTNER_GRAVITY * K);  // Angular frequency (deep water dispersion)
         float Phase = K * ArcLen - (Omega * Spd * InTime);
 
         float SinP, CosP;
@@ -231,19 +236,41 @@ void CalculateSphericalGerstner(
     OutNormal = normalize(N_base - TangentPerturb);
 }
 
-
-// ============================================================================
-// Simplified entry points for Material Custom Node
-// Unpacks material parameters into the full calculation
-// ============================================================================
-
 /**
- * Primary material entry point.
- * Called from UMaterialExpressionCustom node.
- * 
- * WaveDir is float3 (origin on sphere).
- * WaveParams is float4 (Amplitude, Wavelength, Steepness, Speed).
+ * Backward-compatible overload for CalculateSphericalGerstner without NumActiveWaves.
  */
+void CalculateSphericalGerstner(
+    in float3 InWorldPos,
+    in float3 PlanetCenter,
+    in float  PlanetRadius,
+    in float  InTime,
+    in float3 WaveOrigins[GERSTNER_MAX_WAVES],
+    in float4 WaveParams[GERSTNER_MAX_WAVES],
+    in float  AmplitudeScale,
+    in float  SteepnessScale,
+    in float  SpeedScale,
+    in float  ActionRadius,
+    in float  ActionFalloff,
+    in float3 CameraWorldPos,
+    out float3 OutDisplacement,
+    out float3 OutNormal,
+    out float  OutRoughnessBias)
+{
+    CalculateSphericalGerstner(
+        InWorldPos, PlanetCenter, PlanetRadius, InTime,
+        WaveOrigins, WaveParams,
+        AmplitudeScale, SteepnessScale, SpeedScale,
+        ActionRadius, ActionFalloff, CameraWorldPos,
+        GERSTNER_MAX_WAVES,
+        OutDisplacement, OutNormal, OutRoughnessBias);
+}
+
+
+// ============================================================================
+// Manual 4-Wave entry points for backwards compatibility
+// Unpacks 4 explicit wave parameters into the full calculation
+// ============================================================================
+
 float3 EvaluateOceanGerstner(
     float3 WorldPos,
     float3 PlanetCenter,
@@ -261,12 +288,18 @@ float3 EvaluateOceanGerstner(
     out float  OutRoughnessBias)
 {
     float3 Origins[GERSTNER_MAX_WAVES];
+    float4 Params[GERSTNER_MAX_WAVES];
+    [unroll]
+    for (int k = 0; k < GERSTNER_MAX_WAVES; ++k)
+    {
+        Origins[k] = float3(0.0f, 0.0f, 0.0f);
+        Params[k]  = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    }
     Origins[0] = WaveDir1;
     Origins[1] = WaveDir2;
     Origins[2] = WaveDir3;
     Origins[3] = WaveDir4;
 
-    float4 Params[GERSTNER_MAX_WAVES];
     Params[0] = WaveP1;
     Params[1] = WaveP2;
     Params[2] = WaveP3;
@@ -278,15 +311,12 @@ float3 EvaluateOceanGerstner(
         Origins, Params,
         AmplitudeScale, SteepnessScale, SpeedScale,
         ActionRadius, ActionFalloff, CameraPos,
+        4,
         Displacement, OutNormal, OutRoughnessBias);
 
     return Displacement;
 }
 
-/**
- * Overload 1: Tolerates WaveParams as float3 (defaults Speed to 1.0).
- * Prevents compilation failure if VectorParameter RGB pin is connected directly.
- */
 float3 EvaluateOceanGerstner(
     float3 WorldPos,
     float3 PlanetCenter,
@@ -312,9 +342,6 @@ float3 EvaluateOceanGerstner(
         OutNormal, OutRoughnessBias);
 }
 
-/**
- * Overload 2: Tolerates WaveDirs as float4.
- */
 float3 EvaluateOceanGerstner(
     float3 WorldPos,
     float3 PlanetCenter,
@@ -340,9 +367,6 @@ float3 EvaluateOceanGerstner(
         OutNormal, OutRoughnessBias);
 }
 
-/**
- * Overload 3: Tolerates both WaveDirs as float4 and WaveParams as float3.
- */
 float3 EvaluateOceanGerstner(
     float3 WorldPos,
     float3 PlanetCenter,
@@ -371,12 +395,11 @@ float3 EvaluateOceanGerstner(
 
 // ============================================================================
 // User-Friendly / Commercial Artist Entry Point
-// Simplifies 16+ abstract vector/color parameters into intuitive ocean sliders
+// Multi-Tier Oceanographic Spectrum (up to 12 harmonic waves)
 // ============================================================================
 
 /**
- * Commercial Artist-Friendly Entry Point for Spherical Gerstner Waves.
- * Replaces abstract packed color vectors with intuitive physical sliders.
+ * Commercial Artist-Friendly Entry Point with configurable WaveCount and WaveSpread.
  *
  * @param WorldPos        - Absolute World Position (cm)
  * @param PlanetCenter    - Planet center in world space (cm)
@@ -389,6 +412,8 @@ float3 EvaluateOceanGerstner(
  * @param WaveChop        - Secondary cross-waves and surface turbulence (0.0 = uniform swell, 1.0 = open sea)
  * @param WindDirection   - Primary wind/swell direction vector on the sphere (default: float3(0, 0, 1))
  * @param CameraPos       - Camera world position (for distance specular AA)
+ * @param WaveCount       - Number of active Gerstner waves (1 to 12, recommended: 8 or 12)
+ * @param WaveSpread      - Directional dispersion of cross-waves (0.0 = aligned, 1.0 = normal, 1.5 = wild)
  * @param OutNormal       - Output: analytical perturbed normal in world space
  * @param OutRoughnessBias- Output: Toksvig roughness addition for specular anti-aliasing
  * @return                - Vertex displacement in world space (plug directly into World Position Offset)
@@ -405,6 +430,8 @@ float3 EvaluateOceanArtist(
     float  WaveChop,
     float3 WindDirection,
     float3 CameraPos,
+    float  WaveCount,
+    float  WaveSpread,
     out float3 OutNormal,
     out float  OutRoughnessBias)
 {
@@ -413,29 +440,98 @@ float3 EvaluateOceanArtist(
     float S = max(WaveSpeed, 0.0f);
     float Q = clamp(WaveSteepness, 0.0f, 1.0f);
     float C = clamp(WaveChop, 0.0f, 2.0f);
+    int ActiveWaves = clamp((int)(WaveCount + 0.5f), 1, GERSTNER_MAX_WAVES);
+    float Spread = clamp(WaveSpread, 0.0f, 2.0f);
 
-    // 4-Tier Oceanographic Spectrum:
-    // Swell + Cross-Swell + Wind Chop + Capillary Ripples
-    float ChopNorm = max(0.48f + 0.52f * C, 0.001f);
-    float AmpScale = H / ChopNorm;
+    // Natural 12-Tier Oceanographic Spectrum:
+    // Swell (0..1) + Wind waves (2..5) + Choppy waves (6..8) + Capillary ripples (9..11)
+    static const float WaveLenRatios[12] = {
+        1.000f, 0.730f, 0.510f, 0.380f, 0.280f, 0.200f,
+        0.140f, 0.098f, 0.068f, 0.047f, 0.032f, 0.021f
+    };
+
+    static const float BaseAmpWeights[12] = {
+        0.260f, 0.170f, 0.120f, 0.095f, 0.075f, 0.060f,
+        0.050f, 0.042f, 0.036f, 0.032f, 0.028f, 0.022f
+    };
+
+    static const float WaveSteepMults[12] = {
+        0.80f, 0.88f, 0.95f, 1.02f, 1.08f, 1.15f,
+        1.20f, 1.25f, 1.30f, 1.35f, 1.40f, 1.45f
+    };
+
+    static const float WaveSpeedMults[12] = {
+        1.00f, 1.08f, 0.94f, 1.14f, 1.02f, 1.22f,
+        0.91f, 1.18f, 1.05f, 1.28f, 0.97f, 1.32f
+    };
+
+    static const float WaveSpreadAngles[12] = {
+         0.000f,  0.488f, -0.663f,  0.907f, -0.838f,  0.314f,
+        -0.419f,  1.187f, -1.117f,  0.628f, -0.733f,  1.326f
+    };
+
+    static const int WaveSpreadAxes[12] = {
+        0, 0, 1, 2, 3, 0, 1, 2, 3, 2, 3, 2
+    };
+
+    // Calculate normalized energy distribution so total wave amplitude strictly equals H
+    float TotalWeight = BaseAmpWeights[0];
+    [unroll]
+    for (int w = 1; w < GERSTNER_MAX_WAVES; ++w)
+    {
+        if (w < ActiveWaves)
+        {
+            TotalWeight += BaseAmpWeights[w] * C;
+        }
+    }
+    TotalWeight = max(TotalWeight, 0.001f);
+
+    // Primary wind direction & orthonormal surface tangent basis
+    float3 Primary = length(WindDirection) > 0.001f ? normalize(WindDirection) : float3(0.0f, 0.0f, 1.0f);
+    float3 UpVec = abs(Primary.z) < 0.9f ? float3(0.0f, 0.0f, 1.0f) : float3(1.0f, 0.0f, 0.0f);
+    float3 CrossUp = cross(Primary, UpVec);
+    float3 U_spread = CrossUp / max(length(CrossUp), 0.001f);
+    float3 V_spread = cross(Primary, U_spread);
+    float3 UV_diag1 = normalize(U_spread + V_spread);
+    float3 UV_diag2 = normalize(U_spread - V_spread);
 
     float4 Params[GERSTNER_MAX_WAVES];
-    // Tier 0: Dominant Swell (deep ocean rolling wave)
-    Params[0] = float4(AmpScale * 0.48f,       L,               Q * 0.85f, S);
-    // Tier 1: Cross-Swell (medium transverse swell creating diamond peaks)
-    Params[1] = float4(AmpScale * 0.28f * C,   L * 0.46f,       Q * 0.95f, S * 1.15f);
-    // Tier 2: Wind Waves (short choppy surface waves)
-    Params[2] = float4(AmpScale * 0.16f * C,   L * 0.21f,       clamp(Q * 1.15f, 0.0f, 1.0f), S * 1.30f);
-    // Tier 3: Capillary Ripples (fine surface texture and sharp crest tips)
-    Params[3] = float4(AmpScale * 0.08f * C,   L * 0.09f,       clamp(Q * 1.30f, 0.0f, 1.0f), S * 1.50f);
-
-    // Directions: primary from WindDirection, secondary automatically spread
     float3 Origins[GERSTNER_MAX_WAVES];
-    float3 Primary = length(WindDirection) > 0.001f ? normalize(WindDirection) : float3(0.0f, 0.0f, 1.0f);
-    Origins[0] = Primary;
-    Origins[1] = float3(0.0f, 0.0f, 0.0f); // Triggers automatic +38 deg cross-angle in CalculateSphericalGerstner
-    Origins[2] = float3(0.0f, 0.0f, 0.0f); // Triggers automatic -48 deg cross-angle
-    Origins[3] = float3(0.0f, 0.0f, 0.0f); // Triggers automatic +72 deg cross-angle
+
+    [unroll]
+    for (int i = 0; i < GERSTNER_MAX_WAVES; ++i)
+    {
+        if (i < ActiveWaves)
+        {
+            float Weight = (i == 0) ? BaseAmpWeights[0] : (BaseAmpWeights[i] * C);
+            float WaveAmp = H * (Weight / TotalWeight);
+            float WaveLen = L * WaveLenRatios[i];
+            float WaveQ   = clamp(Q * WaveSteepMults[i], 0.0f, 1.0f);
+            float WaveSpd = S * WaveSpeedMults[i];
+
+            Params[i] = float4(WaveAmp, WaveLen, WaveQ, WaveSpd);
+
+            if (i == 0)
+            {
+                Origins[0] = Primary;
+            }
+            else
+            {
+                float3 axis = U_spread;
+                if (WaveSpreadAxes[i] == 1) axis = V_spread;
+                else if (WaveSpreadAxes[i] == 2) axis = UV_diag1;
+                else if (WaveSpreadAxes[i] == 3) axis = UV_diag2;
+
+                float ang = WaveSpreadAngles[i] * Spread;
+                Origins[i] = normalize(Primary * cos(ang) + axis * sin(ang));
+            }
+        }
+        else
+        {
+            Params[i]  = float4(0.0f, 100.0f, 0.0f, 0.0f);
+            Origins[i] = Primary;
+        }
+    }
 
     float3 Displacement;
     CalculateSphericalGerstner(
@@ -444,14 +540,67 @@ float3 EvaluateOceanArtist(
         1.0f, 1.0f, 1.0f,
         0.0f, 0.0f, // Global ocean across the whole planet
         CameraPos,
+        ActiveWaves,
         Displacement, OutNormal, OutRoughnessBias);
 
     return Displacement;
 }
 
 /**
- * Artist Overload: Accepts WindDirection as float4 (VectorParameter RGBA in UE).
+ * Backward-compatible 13-argument overload for EvaluateOceanArtist.
+ * Automatically enables all 12 waves with natural spread without requiring changes in existing materials.
  */
+float3 EvaluateOceanArtist(
+    float3 WorldPos,
+    float3 PlanetCenter,
+    float  PlanetRadius,
+    float  Time,
+    float  WaveHeight,
+    float  WaveLength,
+    float  WaveSpeed,
+    float  WaveSteepness,
+    float  WaveChop,
+    float3 WindDirection,
+    float3 CameraPos,
+    out float3 OutNormal,
+    out float  OutRoughnessBias)
+{
+    return EvaluateOceanArtist(
+        WorldPos, PlanetCenter, PlanetRadius, Time,
+        WaveHeight, WaveLength, WaveSpeed, WaveSteepness, WaveChop,
+        WindDirection, CameraPos,
+        12.0f, 1.0f,
+        OutNormal, OutRoughnessBias);
+}
+
+/**
+ * Artist Overloads for float4 WindDirection (VectorParameter in UE).
+ */
+float3 EvaluateOceanArtist(
+    float3 WorldPos,
+    float3 PlanetCenter,
+    float  PlanetRadius,
+    float  Time,
+    float  WaveHeight,
+    float  WaveLength,
+    float  WaveSpeed,
+    float  WaveSteepness,
+    float  WaveChop,
+    float4 WindDirection,
+    float3 CameraPos,
+    float  WaveCount,
+    float  WaveSpread,
+    out float3 OutNormal,
+    out float  OutRoughnessBias)
+{
+    return EvaluateOceanArtist(
+        WorldPos, PlanetCenter, PlanetRadius, Time,
+        WaveHeight, WaveLength, WaveSpeed, WaveSteepness, WaveChop,
+        WindDirection.xyz, CameraPos,
+        WaveCount, WaveSpread,
+        OutNormal, OutRoughnessBias);
+}
+
 float3 EvaluateOceanArtist(
     float3 WorldPos,
     float3 PlanetCenter,
@@ -471,12 +620,38 @@ float3 EvaluateOceanArtist(
         WorldPos, PlanetCenter, PlanetRadius, Time,
         WaveHeight, WaveLength, WaveSpeed, WaveSteepness, WaveChop,
         WindDirection.xyz, CameraPos,
+        12.0f, 1.0f,
         OutNormal, OutRoughnessBias);
 }
 
 /**
- * Alias for EvaluateOceanArtist.
+ * Aliases for EvaluateOceanSimple.
  */
+float3 EvaluateOceanSimple(
+    float3 WorldPos,
+    float3 PlanetCenter,
+    float  PlanetRadius,
+    float  Time,
+    float  WaveHeight,
+    float  WaveLength,
+    float  WaveSpeed,
+    float  WaveSteepness,
+    float  WaveChop,
+    float3 WindDirection,
+    float3 CameraPos,
+    float  WaveCount,
+    float  WaveSpread,
+    out float3 OutNormal,
+    out float  OutRoughnessBias)
+{
+    return EvaluateOceanArtist(
+        WorldPos, PlanetCenter, PlanetRadius, Time,
+        WaveHeight, WaveLength, WaveSpeed, WaveSteepness, WaveChop,
+        WindDirection, CameraPos,
+        WaveCount, WaveSpread,
+        OutNormal, OutRoughnessBias);
+}
+
 float3 EvaluateOceanSimple(
     float3 WorldPos,
     float3 PlanetCenter,
@@ -496,6 +671,32 @@ float3 EvaluateOceanSimple(
         WorldPos, PlanetCenter, PlanetRadius, Time,
         WaveHeight, WaveLength, WaveSpeed, WaveSteepness, WaveChop,
         WindDirection, CameraPos,
+        12.0f, 1.0f,
+        OutNormal, OutRoughnessBias);
+}
+
+float3 EvaluateOceanSimple(
+    float3 WorldPos,
+    float3 PlanetCenter,
+    float  PlanetRadius,
+    float  Time,
+    float  WaveHeight,
+    float  WaveLength,
+    float  WaveSpeed,
+    float  WaveSteepness,
+    float  WaveChop,
+    float4 WindDirection,
+    float3 CameraPos,
+    float  WaveCount,
+    float  WaveSpread,
+    out float3 OutNormal,
+    out float  OutRoughnessBias)
+{
+    return EvaluateOceanArtist(
+        WorldPos, PlanetCenter, PlanetRadius, Time,
+        WaveHeight, WaveLength, WaveSpeed, WaveSteepness, WaveChop,
+        WindDirection.xyz, CameraPos,
+        WaveCount, WaveSpread,
         OutNormal, OutRoughnessBias);
 }
 
@@ -518,12 +719,38 @@ float3 EvaluateOceanSimple(
         WorldPos, PlanetCenter, PlanetRadius, Time,
         WaveHeight, WaveLength, WaveSpeed, WaveSteepness, WaveChop,
         WindDirection.xyz, CameraPos,
+        12.0f, 1.0f,
         OutNormal, OutRoughnessBias);
 }
 
 /**
- * Simple Overload for EvaluateOceanGerstner: allows calling EvaluateOceanGerstner with artist parameters.
+ * Aliases for EvaluateOceanGerstner with artist parameters.
  */
+float3 EvaluateOceanGerstner(
+    float3 WorldPos,
+    float3 PlanetCenter,
+    float  PlanetRadius,
+    float  Time,
+    float  WaveHeight,
+    float  WaveLength,
+    float  WaveSpeed,
+    float  WaveSteepness,
+    float  WaveChop,
+    float3 WindDirection,
+    float3 CameraPos,
+    float  WaveCount,
+    float  WaveSpread,
+    out float3 OutNormal,
+    out float  OutRoughnessBias)
+{
+    return EvaluateOceanArtist(
+        WorldPos, PlanetCenter, PlanetRadius, Time,
+        WaveHeight, WaveLength, WaveSpeed, WaveSteepness, WaveChop,
+        WindDirection, CameraPos,
+        WaveCount, WaveSpread,
+        OutNormal, OutRoughnessBias);
+}
+
 float3 EvaluateOceanGerstner(
     float3 WorldPos,
     float3 PlanetCenter,
@@ -543,6 +770,32 @@ float3 EvaluateOceanGerstner(
         WorldPos, PlanetCenter, PlanetRadius, Time,
         WaveHeight, WaveLength, WaveSpeed, WaveSteepness, WaveChop,
         WindDirection, CameraPos,
+        12.0f, 1.0f,
+        OutNormal, OutRoughnessBias);
+}
+
+float3 EvaluateOceanGerstner(
+    float3 WorldPos,
+    float3 PlanetCenter,
+    float  PlanetRadius,
+    float  Time,
+    float  WaveHeight,
+    float  WaveLength,
+    float  WaveSpeed,
+    float  WaveSteepness,
+    float  WaveChop,
+    float4 WindDirection,
+    float3 CameraPos,
+    float  WaveCount,
+    float  WaveSpread,
+    out float3 OutNormal,
+    out float  OutRoughnessBias)
+{
+    return EvaluateOceanArtist(
+        WorldPos, PlanetCenter, PlanetRadius, Time,
+        WaveHeight, WaveLength, WaveSpeed, WaveSteepness, WaveChop,
+        WindDirection.xyz, CameraPos,
+        WaveCount, WaveSpread,
         OutNormal, OutRoughnessBias);
 }
 
@@ -565,5 +818,6 @@ float3 EvaluateOceanGerstner(
         WorldPos, PlanetCenter, PlanetRadius, Time,
         WaveHeight, WaveLength, WaveSpeed, WaveSteepness, WaveChop,
         WindDirection.xyz, CameraPos,
+        12.0f, 1.0f,
         OutNormal, OutRoughnessBias);
 }
