@@ -340,17 +340,13 @@ bool UCosmicMeshComponent::CheckAndApplyMeshUpdate()
 
     bIsGeneratingNoise = false;
 
-    // Update mesh section (Do not upload irrelevant data)
-    UpdateMeshSection_LinearColor(
-        0,
-        CurrentVertices,
-        CurrentNormals,
-        TArray<FVector2D>(),
-        CurrentColors,
-        TArray<FProcMeshTangent>()
+    // Fast update path using MoveTemp directly without FProcMeshVertex intermediate allocations
+    UpdateMeshSection_FastVectors(
+        MoveTemp(CurrentVertices),
+        MoveTemp(CurrentNormals),
+        MoveTemp(CurrentColors),
+        false
     );
-
-    SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
     return true; // Mesh has been updated
 }

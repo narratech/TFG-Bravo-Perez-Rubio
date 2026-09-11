@@ -181,7 +181,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         UpdateMeshPhase(ViewerPos, SurfacePos, N, DistanceToSurface);
     }
 
-   /* FString PhaseName = TEXT("Performance");
+    /*FString PhaseName = TEXT("Performance");
     if (!bPerformaceMode)
     {
         switch (ExecutedPhase)
@@ -199,7 +199,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
     }
 
     const double ElapsedMs = (FPlatformTime::Seconds() - StartTime) * 1000.0;
-    if (ElapsedMs > 0.5)
+    if (ElapsedMs > 1.5)
     {
         const FString Message = FString::Printf(TEXT("CosmicClipmapComponent Tick [%s]: %.4f ms"), *PhaseName, ElapsedMs);
         if (GEngine)

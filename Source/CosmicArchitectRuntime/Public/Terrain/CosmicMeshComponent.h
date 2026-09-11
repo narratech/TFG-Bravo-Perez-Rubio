@@ -2,7 +2,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "ProceduralMeshComponent.h"
+#include "Terrain/CosmicFastMeshComponent.h"
 #include "CosmicNoiseGenerationTask.h"
 #include "CosmicMeshComponent.generated.h"
 
@@ -40,7 +40,7 @@ enum class EClipmapQuadrant : uint8
  * - Visibility and transformation management.
  */
 UCLASS()
-class UCosmicMeshComponent : public UProceduralMeshComponent
+class COSMICARCHITECTRUNTIME_API UCosmicMeshComponent : public UCosmicFastMeshComponent
 {
     GENERATED_BODY()
 
