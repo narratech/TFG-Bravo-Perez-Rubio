@@ -55,6 +55,7 @@ void UCosmicCollisionComponent::EnsureCompanionCreated()
         CompanionPatch->bIsCompanion = true;
         CompanionPatch->CollisionTriangleSize = CollisionTriangleSize;
         CompanionPatch->CollisionResolution = CollisionResolution;
+        CompanionPatch->UpdateCellInterval = UpdateCellInterval;
         CompanionPatch->bUseComplexAsSimpleCollision = bUseComplexAsSimpleCollision;
         CompanionPatch->bUseAsyncCooking = bUseAsyncCooking;
         CompanionPatch->bShowCollisionMesh = false; // Primary component handles debug drawing
@@ -149,6 +150,15 @@ void UCosmicCollisionComponent::PostEditChangeProperty(FPropertyChangedEvent& Pr
         if (IsBuilt())
         {
             RebuildCollision();
+        }
+        return;
+    }
+
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicCollisionComponent, UpdateCellInterval))
+    {
+        if (CompanionPatch)
+        {
+            CompanionPatch->UpdateCellInterval = UpdateCellInterval;
         }
         return;
     }

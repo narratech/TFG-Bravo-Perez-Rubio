@@ -42,7 +42,11 @@ public:
 
     /** Collision grid resolution */
     UPROPERTY(EditAnywhere, Category = "Collision")
-    int32 CollisionResolution = 12;
+    int32 CollisionResolution = 16;
+
+    /** Number of grid cells the player must travel before triggering a collision update */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collision", meta = (ClampMin = "1"))
+    int32 UpdateCellInterval = 4;
 
     /** Maximum distance at which collision is generated */
     UPROPERTY(EditAnywhere, Category = "Collision")
@@ -131,6 +135,14 @@ public:
      * @return Rotator aligned to the tangent plane.
      */
     static FRotator ComputePatchRotation(const FVector& Normal);
+
+    /**
+     * Returns the movement threshold in world units (cm) required to trigger a collision update.
+     *
+     * @return Distance in cm (CollisionTriangleSize * UpdateCellInterval).
+     */
+    UFUNCTION(BlueprintPure, Category = "Collision")
+    float GetUpdateDistanceThreshold() const { return CollisionTriangleSize * static_cast<float>(FMath::Max(1, UpdateCellInterval)); }
 
 protected:
 

@@ -203,7 +203,7 @@ bool UCosmicClipmapComponent::UpdateCollisionPhase(const FVector& ViewerPos, con
     const FVector& N, float DistanceToSurface)
 {
     if (CollisionComponent &&
-        !LastMeshPlayerPos.Equals(ViewerPos, CollisionComponent->CollisionTriangleSize))
+        !LastMeshPlayerPos.Equals(ViewerPos, CollisionComponent->GetUpdateDistanceThreshold()))
     {
         LastMeshPlayerPos = ViewerPos;
         return UpdateCollisionNearPlayer(SurfacePos, N, DistanceToSurface);
