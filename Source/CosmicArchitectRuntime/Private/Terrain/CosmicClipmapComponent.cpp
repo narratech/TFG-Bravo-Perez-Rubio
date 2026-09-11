@@ -7,6 +7,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Terrain/CosmicMeshComponent.h"
+#include "Terrain/CosmicClipmapGeometry.h"
 #include "Terrain/CosmicCollisionComponent.h"
 #include "Terrain/CosmicOceanComponent.h"
 #include "CosmicNoiseClass.h"
@@ -234,7 +235,9 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
                     SnappedProjectionFrame,
                     CoarsestGridCenter,
                     SnappedProjectionRevision,
-                    false
+                    false,
+                    DistanceToSurface,
+                    LastViewerCoordinates
                 );
             }
 
@@ -383,7 +386,9 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
             SnappedProjectionFrame,
             CoarsestGridCenter,
             SnappedProjectionRevision,
-            bPerformaceMode
+            bPerformaceMode,
+            DistanceToSurface,
+            LastViewerCoordinates
         );
     }
 
@@ -566,7 +571,9 @@ void UCosmicClipmapComponent::CreateLevels()
             SnappedProjectionFrame,
             CoarsestGridCenter,
             SnappedProjectionRevision,
-            bPerformaceMode
+            bPerformaceMode,
+            -1.0,
+            LastViewerCoordinates
         );
     }
     for (UCosmicMeshComponent* Mesh : Levels)
@@ -880,6 +887,7 @@ bool UCosmicClipmapComponent::ConfigureLevelsForViewer(const FVector& ViewerNorm
 
     const bool bFrameChanged = UpdateSnappedProjectionFrame(ViewerNormal);
     const FVector2D ViewerCoordinates = ProjectDirectionToSnappedFrame(ViewerNormal);
+    LastViewerCoordinates = ViewerCoordinates;
     const int64 CoarsestSpacing = Levels.Last()->GridSpacing;
     if (CoarsestSpacing <= 0)
     {
@@ -1041,63 +1049,29 @@ float UCosmicClipmapComponent::GetDistanceToPlainSurface(FVector& OutViewerPos, 
 
 int32 UCosmicClipmapComponent::CalculateDecreaseSteps(const double DistanceToSurface) const
 {
-    // must decrease at least 1, find minimum n such that
-    // last ring is visible after n halvings
-    int32 Steps = 1;
-    const int64 LastResolution = Levels.Last()->Resolution;
-    const int64 LastSpacing = Levels.Last()->GridSpacing;
-    const int64 FirstSpacing = Levels[0]->GridSpacing;
-
-    while (!IsClipmapRingVisible(LastSpacing >> Steps, LastResolution, DistanceToSurface))
-    {
-        // Do not decrease further if first level would reach minimum limit
-        if ((FirstSpacing >> (Steps + 1)) <= MinTriangleSize)
-            break;
-        Steps++;
-    }
-    return Steps;
+    if (Levels.IsEmpty() || !Levels[0]) return 1;
+    return FCosmicClipmapGeometry::CalculateDecreaseSteps(
+        Levels[0]->GridSpacing, NumLevels, Levels.Last()->Resolution, PlanetRadius, MinTriangleSize, DistanceToSurface);
 }
 
 int32 UCosmicClipmapComponent::CalculateIncreaseSteps(const double DistanceToSurface) const
 {
-    // find how many consecutive doublings
-    // remain visible without exceeding maximum allowed spacing
-    int32 Steps = 1;
-    const int64 LastResolution = Levels.Last()->Resolution;
-    const int64 LastSpacing = Levels.Last()->GridSpacing;
-    const int64 MaxSpacing = static_cast<int64>(BaseSpacing * FMath::Pow(2.0f, NumLevels - 1));
-
-    while (IsClipmapRingVisible(LastSpacing << (Steps + 1), LastResolution, DistanceToSurface)
-        && (LastSpacing << Steps) < MaxSpacing)
-    {
-        Steps++;
-    }
-    return Steps;
+    if (Levels.IsEmpty() || !Levels[0]) return 1;
+    return FCosmicClipmapGeometry::CalculateIncreaseSteps(
+        Levels[0]->GridSpacing, NumLevels, Levels.Last()->Resolution, PlanetRadius, BaseSpacing, DistanceToSurface);
 }
-
 
 bool UCosmicClipmapComponent::IsClipmapRingVisible(const int32 LevelIndex, const double DistanceToSurface) const
 {  
-    
-    // Calculate clipmap radius on surface
-    int64 ClipmapSurfaceRadius = Levels[LevelIndex]->GridSpacing * (Levels[LevelIndex]->Resolution - 2) / 2;
-
-    // Maximum visible radius from this altitude (projection on surface)
-    double VisibleRadius = PlanetRadius * FMath::Sin(FMath::Acos(PlanetRadius / (PlanetRadius + DistanceToSurface)));
-
-    // Clipmap is visible if its radius is smaller than visible radius
-    return ClipmapSurfaceRadius <= VisibleRadius * 2.f; 
+    if (!Levels.IsValidIndex(LevelIndex) || !Levels[LevelIndex]) return false;
+    return FCosmicClipmapGeometry::IsClipmapRingVisible(
+        Levels[LevelIndex]->GridSpacing, Levels[LevelIndex]->Resolution, PlanetRadius, DistanceToSurface);
 }
 
 bool UCosmicClipmapComponent::IsClipmapRingVisible(const int64 GridSpacing, const int64 Resolution, const double DistanceToSurface) const
 {
-    int64 ClipmapSurfaceRadius = GridSpacing * (Resolution - 2) / 2;
-
-    // Maximum visible radius from this altitude (projection on surface)
-    double VisibleRadius = PlanetRadius * FMath::Sin(FMath::Acos(PlanetRadius / (PlanetRadius + DistanceToSurface)));
-
-    // Clipmap is visible if its radius is smaller than visible radius
-    return ClipmapSurfaceRadius <= VisibleRadius * 2.f;
+    return FCosmicClipmapGeometry::IsClipmapRingVisible(
+        GridSpacing, static_cast<int32>(Resolution), PlanetRadius, DistanceToSurface);
 }
 
 

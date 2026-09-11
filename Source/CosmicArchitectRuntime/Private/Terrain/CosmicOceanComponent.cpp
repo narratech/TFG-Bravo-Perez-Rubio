@@ -81,6 +81,11 @@ void UCosmicOceanComponent::ClearOcean()
     bNearMeshPositioned = false;
     AppliedCoarsestCenter = FIntPoint(MAX_int32, MAX_int32);
     AppliedProjectionRevision = MAX_uint64;
+    CurrentOceanBaseGridSpacing = GetCalculatedBaseGridSpacing();
+    AppliedBaseGridSpacing = CurrentOceanBaseGridSpacing;
+    CurrentDistanceToSurface = -1.0;
+    LastAppliedDistanceToSurface = -1.0;
+    CurrentViewerCoordinates = FVector2D::ZeroVector;
 }
 
 void UCosmicOceanComponent::ResetPointersAfterDuplicate(USceneComponent* NewRoot)
@@ -95,6 +100,11 @@ void UCosmicOceanComponent::ResetPointersAfterDuplicate(USceneComponent* NewRoot
     bNearMeshPositioned = false;
     AppliedCoarsestCenter = FIntPoint(MAX_int32, MAX_int32);
     AppliedProjectionRevision = MAX_uint64;
+    CurrentOceanBaseGridSpacing = GetCalculatedBaseGridSpacing();
+    AppliedBaseGridSpacing = CurrentOceanBaseGridSpacing;
+    CurrentDistanceToSurface = -1.0;
+    LastAppliedDistanceToSurface = -1.0;
+    CurrentViewerCoordinates = FVector2D::ZeroVector;
 }
 
 void UCosmicOceanComponent::BuildNearOceanMesh()
@@ -130,7 +140,9 @@ void UCosmicOceanComponent::BuildNearOceanMesh()
     const int32 HalfRes = Res / 2;
 
     const double EffectiveRadius = PlanetRadiusCm + SeaLevelKm * 100000.0;
-    const int64 BaseGridSpacing = GetCalculatedBaseGridSpacing();
+    CurrentOceanBaseGridSpacing = GetCalculatedBaseGridSpacing();
+    AppliedBaseGridSpacing = CurrentOceanBaseGridSpacing;
+    const int64 BaseGridSpacing = CurrentOceanBaseGridSpacing;
 
     // Determine initial patch transform
     FVector AnchorNormal = CurrentProjectionFrame.GetUnitAxis(EAxis::Z);
@@ -351,7 +363,9 @@ void UCosmicOceanComponent::UpdateOceanLOD(
     const FTransform& InProjectionFrame,
     const FIntPoint& InCoarsestCenter,
     uint64 InProjectionRevision,
-    bool bInPerformanceMode)
+    bool bInPerformanceMode,
+    double InDistanceToSurface,
+    const FVector2D& InViewerCoordinates)
 {
     if (!bHasOcean || !bInit) return;
 
@@ -365,15 +379,35 @@ void UCosmicOceanComponent::UpdateOceanLOD(
         return;
     }
 
-    const bool bNeedsUpdate =
+    const bool bCenterOrRevisionChanged =
         InProjectionRevision != AppliedProjectionRevision ||
         InCoarsestCenter != AppliedCoarsestCenter;
 
-    if (bNeedsUpdate)
+    bool bDistanceChangedSignificantly = false;
+    if (InDistanceToSurface >= 0.0)
+    {
+        if (LastAppliedDistanceToSurface < 0.0)
+        {
+            bDistanceChangedSignificantly = true;
+        }
+        else
+        {
+            const double DeltaDist = FMath::Abs(InDistanceToSurface - LastAppliedDistanceToSurface);
+            const double RefDist = FMath::Max(100.0, FMath::Min(InDistanceToSurface, LastAppliedDistanceToSurface));
+            if (DeltaDist / RefDist > 0.15)
+            {
+                bDistanceChangedSignificantly = true;
+            }
+        }
+    }
+
+    if (bCenterOrRevisionChanged || bDistanceChangedSignificantly)
     {
         CurrentProjectionFrame = InProjectionFrame;
         CurrentCoarsestCenter = InCoarsestCenter;
         CurrentProjectionRevision = InProjectionRevision;
+        CurrentDistanceToSurface = InDistanceToSurface;
+        CurrentViewerCoordinates = InViewerCoordinates;
 
         RequestOceanMeshUpdate();
     }
@@ -449,10 +483,15 @@ void UCosmicOceanComponent::RequestOceanMeshUpdate()
     FCosmicOceanClipmapSettings Settings;
     Settings.NumLevels = FMath::Clamp(OceanNumLevels, 1, 8);
     Settings.Resolution = OceanResolution;
-    Settings.BaseGridSpacing = GetCalculatedBaseGridSpacing();
+    Settings.BaseGridSpacing = CurrentOceanBaseGridSpacing;
+    Settings.MaxBaseGridSpacing = GetCalculatedBaseGridSpacing();
+    Settings.MinTriangleSize = FMath::Max(10, MinTriangleSize);
     Settings.OceanRadius = EffectiveRadius;
+    Settings.DistanceToSurface = CurrentDistanceToSurface;
     Settings.PatchTransform = PatchTransform;
     Settings.CoarsestGridCenter = CurrentCoarsestCenter;
+    Settings.ViewerCoordinates = CurrentViewerCoordinates;
+    Settings.bUseViewerCoordinates = !CurrentViewerCoordinates.IsZero();
     Settings.ProjectionRevision = CurrentProjectionRevision;
 
     bIsGeneratingOcean = true;
@@ -469,6 +508,9 @@ bool UCosmicOceanComponent::CheckAndApplyOceanMeshUpdate()
 
     AppliedCoarsestCenter = CompletedTask.CalculatedGridCenter;
     AppliedProjectionRevision = CompletedTask.CalculatedProjectionRevision;
+    AppliedBaseGridSpacing = CompletedTask.CalculatedBaseGridSpacing;
+    CurrentOceanBaseGridSpacing = CompletedTask.CalculatedBaseGridSpacing;
+    LastAppliedDistanceToSurface = CurrentDistanceToSurface;
 
     if (NearOceanMesh && !bPerformanceMode)
     {
@@ -497,11 +539,27 @@ bool UCosmicOceanComponent::CheckAndApplyOceanMeshUpdate()
     OceanTask = nullptr;
     bIsGeneratingOcean = false;
 
-    if (!bPerformanceMode &&
-        (CurrentProjectionRevision != AppliedProjectionRevision ||
-         CurrentCoarsestCenter != AppliedCoarsestCenter))
+    if (!bPerformanceMode)
     {
-        RequestOceanMeshUpdate();
+        const bool bNeedsCenterOrRevision =
+            CurrentProjectionRevision != AppliedProjectionRevision ||
+            CurrentCoarsestCenter != AppliedCoarsestCenter;
+
+        bool bNeedsDistanceUpdate = false;
+        if (CurrentDistanceToSurface >= 0.0 && LastAppliedDistanceToSurface >= 0.0)
+        {
+            const double DeltaDist = FMath::Abs(CurrentDistanceToSurface - LastAppliedDistanceToSurface);
+            const double RefDist = FMath::Max(100.0, FMath::Min(CurrentDistanceToSurface, LastAppliedDistanceToSurface));
+            if (DeltaDist / RefDist > 0.15)
+            {
+                bNeedsDistanceUpdate = true;
+            }
+        }
+
+        if (bNeedsCenterOrRevision || bNeedsDistanceUpdate)
+        {
+            RequestOceanMeshUpdate();
+        }
     }
 
     return true;

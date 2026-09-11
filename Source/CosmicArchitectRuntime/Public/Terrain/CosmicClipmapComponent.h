@@ -366,7 +366,10 @@ private:
     bool bSnappedProjectionValid = false;
     uint64 SnappedProjectionRevision = 0;
 
-    /** Common center expressed in coarsest level cells. */
-    FIntPoint CoarsestGridCenter = FIntPoint::ZeroValue;
-    bool bCoarsestGridCenterValid = false;
+	/** Common center expressed in coarsest level cells. */
+	FIntPoint CoarsestGridCenter = FIntPoint::ZeroValue;
+	bool bCoarsestGridCenterValid = false;
+
+	/** Last computed viewer coordinates in tangent projection plane. */
+	FVector2D LastViewerCoordinates = FVector2D::ZeroVector;
 };

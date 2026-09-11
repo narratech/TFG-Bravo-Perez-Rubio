@@ -267,4 +267,88 @@ struct COSMICARCHITECTRUNTIME_API FCosmicClipmapGeometry
             }
         }
     }
+
+    /**
+     * Checks if a clipmap ring at the given spacing and resolution is visible from the specified distance to surface.
+     * Uses horizon angle geometry on the spherical planet.
+     *
+     * @param GridSpacing Spacing between grid vertices in cm.
+     * @param Resolution Grid resolution along one edge.
+     * @param PlanetRadius Sphere radius in cm.
+     * @param DistanceToSurface Altitude/distance from observer to sphere surface in cm.
+     */
+    FORCEINLINE static bool IsClipmapRingVisible(
+        int64 GridSpacing,
+        int32 Resolution,
+        double PlanetRadius,
+        double DistanceToSurface)
+    {
+        const int64 ClipmapSurfaceRadius = GridSpacing * (Resolution - 2) / 2;
+        const double SafeRadius = FMath::Max(100.0, PlanetRadius);
+        const double ClampedRatio = FMath::Clamp(SafeRadius / FMath::Max(1.0, SafeRadius + DistanceToSurface), 0.0, 1.0);
+        const double VisibleRadius = SafeRadius * FMath::Sin(FMath::Acos(ClampedRatio));
+        return ClipmapSurfaceRadius <= VisibleRadius * 2.0;
+    }
+
+    /**
+     * Calculates how many levels to decrease (halve spacing) when zooming in close to the surface.
+     *
+     * @param BaseGridSpacing Current base grid spacing of LOD 0 in cm.
+     * @param NumLevels Number of concentric clipmap LOD levels.
+     * @param Resolution Grid resolution per level.
+     * @param PlanetRadius Sphere radius in cm.
+     * @param MinTriangleSize Minimum allowed triangle spacing in cm.
+     * @param DistanceToSurface Distance to surface in cm.
+     */
+    static int32 CalculateDecreaseSteps(
+        int64 BaseGridSpacing,
+        int32 NumLevels,
+        int32 Resolution,
+        double PlanetRadius,
+        int32 MinTriangleSize,
+        double DistanceToSurface)
+    {
+        int32 Steps = 1;
+        const int64 LastSpacing = BaseGridSpacing * (1LL << (NumLevels - 1));
+
+        while (!IsClipmapRingVisible(LastSpacing >> Steps, Resolution, PlanetRadius, DistanceToSurface))
+        {
+            if ((BaseGridSpacing >> (Steps + 1)) <= MinTriangleSize)
+            {
+                break;
+            }
+            Steps++;
+        }
+        return Steps;
+    }
+
+    /**
+     * Calculates how many levels to increase (double spacing) when zooming out away from the surface.
+     *
+     * @param BaseGridSpacing Current base grid spacing of LOD 0 in cm.
+     * @param NumLevels Number of concentric clipmap LOD levels.
+     * @param Resolution Grid resolution per level.
+     * @param PlanetRadius Sphere radius in cm.
+     * @param MaxBaseSpacing Maximum allowed base spacing of LOD 0 in cm.
+     * @param DistanceToSurface Distance to surface in cm.
+     */
+    static int32 CalculateIncreaseSteps(
+        int64 BaseGridSpacing,
+        int32 NumLevels,
+        int32 Resolution,
+        double PlanetRadius,
+        int64 MaxBaseSpacing,
+        double DistanceToSurface)
+    {
+        int32 Steps = 1;
+        const int64 LastSpacing = BaseGridSpacing * (1LL << (NumLevels - 1));
+        const int64 MaxCoarsestSpacing = MaxBaseSpacing * (1LL << (NumLevels - 1));
+
+        while (IsClipmapRingVisible(LastSpacing << (Steps + 1), Resolution, PlanetRadius, DistanceToSurface)
+            && (LastSpacing << Steps) < MaxCoarsestSpacing)
+        {
+            Steps++;
+        }
+        return Steps;
+    }
 };

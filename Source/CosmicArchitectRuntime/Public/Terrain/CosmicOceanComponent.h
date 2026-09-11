@@ -57,14 +57,16 @@ public:
 	void ResetPointersAfterDuplicate(USceneComponent* NewRoot);
 
 	/**
-	 * Updates the ocean LOD state, projection frame, and snapping coordinates.
+	 * Updates the ocean LOD state, projection frame, snapping coordinates, and altitude.
 	 * Coordinated by UCosmicClipmapComponent to maintain unified frame synchronization.
 	 */
 	void UpdateOceanLOD(
 		const FTransform& InProjectionFrame,
 		const FIntPoint& InCoarsestCenter,
 		uint64 InProjectionRevision,
-		bool bInPerformanceMode);
+		bool bInPerformanceMode,
+		double InDistanceToSurface = -1.0,
+		const FVector2D& InViewerCoordinates = FVector2D::ZeroVector);
 
 	/**
 	 * Switches between near clipmap mesh and distant sphere mesh.
@@ -91,8 +93,6 @@ public:
 	 */
 	int64 GetCalculatedBaseGridSpacing() const;
 
-	// --- OCEAN CONFIGURATION ---
-
 	/**
 	 * Indicates whether the planet has an ocean.
 	 */
@@ -110,28 +110,28 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Clipmap",
 		meta = (EditCondition = "bHasOcean", ClampMin = "8", ClampMax = "256"))
-	int32 OceanResolution = 128;
+	int32 OceanResolution = 64;
 
 	/**
 	 * Number of concentric LOD levels packed into the single near procedural mesh.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Clipmap",
 		meta = (EditCondition = "bHasOcean", ClampMin = "1", ClampMax = "8"))
-	int32 OceanNumLevels = 4;
+	int32 OceanNumLevels = 6;
 
 	/**
 	 * Minimum triangle size allowed in centimeters.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Clipmap",
-		meta = (EditCondition = "bHasOcean", ClampMin = "10"))
-	int32 MinTriangleSize = 100;
+		meta = (EditCondition = "bHasOcean", ClampMin = "50"))
+	int32 MinTriangleSize = 300;
 
 	/**
 	 * Base grid spacing for level 0. If bAutoCalculateGridSpacing is true, this is calculated automatically.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Clipmap",
 		meta = (EditCondition = "bHasOcean && !bAutoCalculateGridSpacing"))
-	int64 OceanBaseGridSpacing = 200;
+	int64 OceanBaseGridSpacing = 300;
 
 	/**
 	 * Automatically derives OceanBaseGridSpacing from planet radius and NumLevels (matching clipmap).
@@ -145,9 +145,7 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|FarSphere",
 		meta = (EditCondition = "bHasOcean", ClampMin = "16", ClampMax = "256"))
-	int32 FarSphereResolution = 64;
-
-	// --- MATERIAL MODE ---
+	int32 FarSphereResolution = 96;
 
 	/**
 	 * If true, uses the default M_CosmicOceanV3 dynamic material.
@@ -163,8 +161,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Material",
 		meta = (EditCondition = "bHasOcean && !bUseGeneratedMaterial"))
 	UMaterialInstance* OceanMaterial = nullptr;
-
-	// --- WAVE CONFIGURATION (M_CosmicOceanV3) ---
 
 	/**
 	 * Maximum wave height in cm (peak-to-trough amplitude, e.g. 150 = 1.5m).
@@ -222,8 +218,6 @@ public:
 		meta = (EditCondition = "bHasOcean && bUseGeneratedMaterial"))
 	FVector WindDirection = FVector(0.0f, 0.0f, 1.0f);
 
-	// --- APPEARANCE (SingleLayerWater) ---
-
 	/**
 	 * Base surface water tint color.
 	 */
@@ -258,23 +252,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Appearance",
 		meta = (EditCondition = "bHasOcean && bUseGeneratedMaterial", ClampMin = "0.0", ClampMax = "1.0"))
 	float WaterRoughness = 0.05f;
-
-	// --- BACKWARD COMPATIBILITY PROPERTIES ---
-
-	UPROPERTY()
-	float WaveAmplitudeScale = 1.0f;
-
-	UPROPERTY()
-	float WaveActionRadiusKm = 5.0f;
-
-	UPROPERTY()
-	float WaveActionFalloffKm = 1.0f;
-
-	UPROPERTY()
-	FLinearColor WaterShallowColor = FLinearColor(0.1f, 0.4f, 0.6f, 1.0f);
-
-	UPROPERTY()
-	FLinearColor WaterDeepColor = FLinearColor(0.02f, 0.05f, 0.15f, 1.0f);
 
 protected:
 
@@ -320,6 +297,21 @@ protected:
 	/** Last applied center and revision. */
 	FIntPoint AppliedCoarsestCenter = FIntPoint(MAX_int32, MAX_int32);
 	uint64 AppliedProjectionRevision = MAX_uint64;
+
+	/** Current dynamically rescaled base grid spacing. */
+	int64 CurrentOceanBaseGridSpacing = 200;
+
+	/** Last applied base grid spacing. */
+	int64 AppliedBaseGridSpacing = 200;
+
+	/** Current distance to surface used for rescaling evaluation. */
+	double CurrentDistanceToSurface = -1.0;
+
+	/** Last distance to surface that triggered an applied update. */
+	double LastAppliedDistanceToSurface = -1.0;
+
+	/** Current viewer coordinates in tangent projection plane. */
+	FVector2D CurrentViewerCoordinates = FVector2D::ZeroVector;
 
 	/** Builds the combined multi-level near clipmap mesh. */
 	void BuildNearOceanMesh();

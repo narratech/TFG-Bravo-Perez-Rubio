@@ -12,9 +12,14 @@ struct FCosmicOceanClipmapSettings
     int32 NumLevels = 3;
     int32 Resolution = 128;
     int64 BaseGridSpacing = 200;
+    int64 MaxBaseGridSpacing = 200;
+    int32 MinTriangleSize = 100;
     double OceanRadius = 100000.0;
+    double DistanceToSurface = -1.0;
     FTransform PatchTransform = FTransform::Identity;
     FIntPoint CoarsestGridCenter = FIntPoint::ZeroValue;
+    FVector2D ViewerCoordinates = FVector2D::ZeroVector;
+    bool bUseViewerCoordinates = false;
     uint64 ProjectionRevision = 0;
 };
 
@@ -41,6 +46,9 @@ public:
     /** Center and revision to which results belong. */
     FIntPoint CalculatedGridCenter = FIntPoint::ZeroValue;
     uint64 CalculatedProjectionRevision = 0;
+
+    /** Base grid spacing calculated after evaluating rescaling on background thread. */
+    int64 CalculatedBaseGridSpacing = 200;
 
     /**
      * Constructor for ocean mesh generation async task.
