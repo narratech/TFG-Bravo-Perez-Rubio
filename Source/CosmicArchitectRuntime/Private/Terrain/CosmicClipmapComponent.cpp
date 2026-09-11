@@ -13,6 +13,7 @@
 #include "CosmicNoiseClass.h"
 #include "CosmicDefaultNoiseStrategy.h"
 #include "CosmicFoliageSpawner.h"
+#include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Engine/Texture2D.h"
 #include "Engine/Texture.h"
@@ -36,18 +37,13 @@ bool UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePo
     // Only generate collision if player is near surface
     if (DistanceToSurface < CollisionComponent->MaxCollisionDistance)
     {
-        if (!CollisionComponent->IsBuilt()) 
-        {
-            CollisionComponent->GenerateCollisionMesh(PlanetRadius);
-        }
-        CollisionComponent->SetWorldLocationAndRotation(
+        CollisionComponent->RequestCollisionUpdate(
             SurfacePos,
-            GetPatchRotation(SurfaceNormal),
-            false, 
-            nullptr,
-            ETeleportType::TeleportPhysics // clean teleport
+            SurfaceNormal,
+            PlanetRadius,
+            NoiseGenerationStrategy,
+            CurrentActorPosition
         );
-        CollisionComponent->UpdateCollisionMesh(NoiseGenerationStrategy, CurrentActorPosition);
         return true;
     }
     else if(CollisionComponent->IsBuilt())
@@ -101,7 +97,6 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
     if (DynamicPlanetMat) {
         DynamicPlanetMat->SetVectorParameterValue("PlanetCenter", GetOwner()->GetActorLocation());
-        DynamicPlanetMat->SetScalarParameterValue(FName("PlanetRadius"), static_cast<float>(PlanetRadius));
     }
 
     if (ElapsedTime <= TimeToRefresh)
@@ -109,6 +104,8 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
     if (!UseClipmap && bPerformanceBuild)
         return;
+
+    const double StartTime = FPlatformTime::Seconds();
 
     ElapsedTime = ElapsedTime - TimeToRefresh;
 
@@ -132,8 +129,34 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
             break;
 
         case EUpdatePhase::Collision:
-            UpdateFoliageExtra = !UpdateCollisionPhase(ViewerPos, SurfacePos, N, DistanceToSurface);
+        {
+            const bool bCollisionUpdated = UpdateCollisionPhase(ViewerPos, SurfacePos, N, DistanceToSurface);
+            bool bOceanApplied = false;
+
+            if (OceanComponent && OceanComponent->HasCompletedTask())
+            {
+                // Prioritize applying ocean mesh update when collision is free to avoid accumulating frame work.
+                // If collision was updated, defer at most 2 collision cycles before applying anyway.
+                if (!bCollisionUpdated || DeferredOceanPhaseCount >= 2)
+                {
+                    OceanComponent->CheckAndApplyOceanMeshUpdate();
+                    bOceanApplied = true;
+                    DeferredOceanPhaseCount = 0;
+                }
+                else
+                {
+                    DeferredOceanPhaseCount++;
+                }
+            }
+            else
+            {
+                DeferredOceanPhaseCount = 0;
+            }
+
+            // Only run extra foliage if neither collision nor ocean consumed this frame's budget
+            UpdateFoliageExtra = !bCollisionUpdated && !bOceanApplied;
             break;
+        }
 
         case EUpdatePhase::Mesh:
             UpdateMeshPhase(ViewerPos, SurfacePos, N, DistanceToSurface);
@@ -153,6 +176,15 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
     {
         DistanceToSurface = GetFastDistanceToSurface(ViewerPos, SurfacePos, N);
         UpdateMeshPhase(ViewerPos, SurfacePos, N, DistanceToSurface);
+    }
+
+    const double ElapsedMs = (FPlatformTime::Seconds() - StartTime) * 1000.0;
+    if (ElapsedMs > 0.5)
+    {
+        if (GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, FString::Printf(TEXT("CosmicClipmapComponent Tick: %.4f ms"), ElapsedMs));
+        }
     }
 }
 
@@ -669,6 +701,7 @@ void UCosmicClipmapComponent::ClearLevels()
     
 
     bPerformanceBuild = false;
+    DeferredOceanPhaseCount = 0;
 }
 
 void UCosmicClipmapComponent::ResetPointersAfterDuplicate(USceneComponent* NewRoot)
@@ -681,6 +714,7 @@ void UCosmicClipmapComponent::ResetPointersAfterDuplicate(USceneComponent* NewRo
     bPerformanceBuild = false;
     bPerformaceMode = false;
     OceanComponent = nullptr;
+    DeferredOceanPhaseCount = 0;
     bSnappedProjectionValid = false;
     bCoarsestGridCenterValid = false;
     ++SnappedProjectionRevision;

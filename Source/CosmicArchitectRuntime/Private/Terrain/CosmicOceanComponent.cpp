@@ -501,8 +501,7 @@ void UCosmicOceanComponent::RequestOceanMeshUpdate()
 
 bool UCosmicOceanComponent::CheckAndApplyOceanMeshUpdate()
 {
-    if (!OceanTask) return true;
-    if (!OceanTask->IsDone()) return false;
+    if (!OceanTask || !OceanTask->IsDone()) return false;
 
     FCosmicOceanGenerationTask& CompletedTask = OceanTask->GetTask();
 
@@ -664,5 +663,8 @@ void UCosmicOceanComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
         DynamicOceanMat->SetScalarParameterValue(FName("PlanetRadius"), static_cast<float>(EffectiveRadius));
     }
 
-    CheckAndApplyOceanMeshUpdate();
+    if (bAutoApplyInTick)
+    {
+        CheckAndApplyOceanMeshUpdate();
+    }
 }

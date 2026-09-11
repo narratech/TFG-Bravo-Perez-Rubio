@@ -89,6 +89,11 @@ public:
 	bool CheckAndApplyOceanMeshUpdate();
 
 	/**
+	 * Checks whether a background task exists and has completed its computation.
+	 */
+	FORCEINLINE bool HasCompletedTask() const { return OceanTask != nullptr && OceanTask->IsDone(); }
+
+	/**
 	 * Calculates the base grid spacing in centimeters for Level 0.
 	 */
 	int64 GetCalculatedBaseGridSpacing() const;
@@ -98,6 +103,13 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean")
 	bool bHasOcean = true;
+
+	/**
+	 * If true, CheckAndApplyOceanMeshUpdate is automatically called on every TickComponent.
+	 * If false, external systems (such as UCosmicClipmapComponent) control when the mesh update is applied (e.g. during collision phase).
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean")
+	bool bAutoApplyInTick = false;
 
 	/**
 	 * Sea level relative to planet radius in kilometers.

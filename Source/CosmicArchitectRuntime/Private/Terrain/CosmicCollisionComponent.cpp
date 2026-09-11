@@ -1,34 +1,115 @@
 // Javier Bravo, David Rubio, Sergio Perez 2026 All Rights Reserved.
 
 #include "Terrain/CosmicCollisionComponent.h"
+#include "Terrain/CosmicCollisionGenerationTask.h"
 #include "Terrain/CosmicClipmapGeometry.h"
 #include "PhysicsEngine/BodySetup.h"
 #include "PhysicsEngine/PhysicsSettings.h"
 #include "PhysicsEngine/BodyInstance.h"
 #include "ICosmicNoiseStrategy.h"
 #include "DrawDebugHelpers.h"
-#include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/World.h"
 
 UCosmicCollisionComponent::UCosmicCollisionComponent()
 {
     bTickInEditor = true;
-
     PrimaryComponentTick.bCanEverTick = true;
+
+    SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
+    SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    SetGenerateOverlapEvents(false);
+    CanCharacterStepUpOn = ECB_Yes;
+    bCastDynamicShadow = false;
+}
+
+void UCosmicCollisionComponent::BeginPlay()
+{
+    Super::BeginPlay();
+
+    if (!bIsCompanion)
+    {
+        EnsureCompanionCreated();
+    }
 }
 
 void UCosmicCollisionComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     ClearCollision();
 
+    if (CompanionPatch)
+    {
+        CompanionPatch->DestroyComponent();
+        CompanionPatch = nullptr;
+    }
+
     Super::EndPlay(EndPlayReason);
+}
+
+void UCosmicCollisionComponent::EnsureCompanionCreated()
+{
+    if (bIsCompanion) return;
+
+    if (!CompanionPatch && GetOwner())
+    {
+        CompanionPatch = NewObject<UCosmicCollisionComponent>(GetOwner(), TEXT("CollisionPatch_Companion"), RF_Transient);
+        CompanionPatch->bIsCompanion = true;
+        CompanionPatch->CollisionTriangleSize = CollisionTriangleSize;
+        CompanionPatch->CollisionResolution = CollisionResolution;
+        CompanionPatch->bUseComplexAsSimpleCollision = bUseComplexAsSimpleCollision;
+        CompanionPatch->bUseAsyncCooking = bUseAsyncCooking;
+        CompanionPatch->bShowCollisionMesh = false; // Primary component handles debug drawing
+        CompanionPatch->SetupAttachment(GetAttachParent() ? GetAttachParent() : this);
+        CompanionPatch->RegisterComponent();
+        CompanionPatch->DeactivatePhysics();
+
+        CompanionPatch->Tris = Tris;
+        CompanionPatch->BaseVertices = BaseVertices;
+        CompanionPatch->BaseNormals = BaseNormals;
+        CompanionPatch->PlanetRadius = PlanetRadius;
+        CompanionPatch->bBaseGeometryGenerated = bBaseGeometryGenerated;
+    }
 }
 
 void UCosmicCollisionComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
-    Super::TickComponent(DeltaTime, TickType, ThisTickFunction); 
+    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-    if (bShowCollisionMesh) {
+    if (bIsCompanion) return;
+
+    // Monitor async noise task
+    if (UpdateState == ECollisionUpdateState::NoiseTaskRunning)
+    {
+        if (NoiseTask && NoiseTask->IsDone())
+        {
+            TArray<FVector> CalculatedVertices = MoveTemp(NoiseTask->GetTask().CalculatedVertices);
+            delete NoiseTask;
+            NoiseTask = nullptr;
+
+            EnsureCompanionCreated();
+
+            UCosmicCollisionComponent* StandbyPatch = bPrimaryIsActiveBody ? CompanionPatch : this;
+            if (StandbyPatch)
+            {
+                UpdateState = ECollisionUpdateState::PhysicsCooking;
+                StandbyPatch->StartPatchCook(
+                    MoveTemp(CalculatedVertices),
+                    PendingTransform,
+                    bUseAsyncCooking,
+                    [this](bool bSuccess)
+                    {
+                        OnStandbyCookFinished(bSuccess);
+                    }
+                );
+            }
+            else
+            {
+                UpdateState = ECollisionUpdateState::Idle;
+            }
+        }
+    }
+
+    if (bShowCollisionMesh)
+    {
         DrawDebugCollisionMesh();
     }
 }
@@ -42,44 +123,50 @@ void UCosmicCollisionComponent::PostEditChangeProperty(FPropertyChangedEvent& Pr
         ? PropertyChangedEvent.Property->GetFName()
         : NAME_None;
 
-    // CHANGES THAT BREAK GEOMETRY (FULL REBUILD)
+    // Geometry breaking changes -> full rebuild
     if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicCollisionComponent, CollisionTriangleSize) ||
         PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicCollisionComponent, CollisionResolution))
     {
         ClearCollision();
 
-        if (AActor* Owner = GetOwner())
+        if (GetOwner())
         {
             GenerateCollisionMesh(PlanetRadius);
         }
-
         return;
     }
 
-    // CHANGES IN PHYSICS CONFIG (RECOOK)
+    // Physics configuration changes
     if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicCollisionComponent, bUseComplexAsSimpleCollision) ||
         PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicCollisionComponent, bUseAsyncCooking))
     {
+        if (CompanionPatch)
+        {
+            CompanionPatch->bUseComplexAsSimpleCollision = bUseComplexAsSimpleCollision;
+            CompanionPatch->bUseAsyncCooking = bUseAsyncCooking;
+        }
+
         if (IsBuilt())
         {
-            BuildCollision();
+            RebuildCollision();
         }
         return;
     }
-
 }
 #endif
-
 
 void UCosmicCollisionComponent::RebuildCollision()
 {
     bNeedsRebuild = true;
+    bBaseGeometryGenerated = false;
+    if (PlanetRadius > 0.0)
+    {
+        BuildBaseGrid(PlanetRadius);
+    }
 }
 
-void UCosmicCollisionComponent::GenerateCollisionMesh(double Radius)
+void UCosmicCollisionComponent::BuildBaseGrid(double Radius)
 {
-    if (bIsActive) return;
-
     const int32 VertRes = CollisionResolution + 1;
     const int32 TotalVertices = VertRes * VertRes;
     const int32 HalfRes = CollisionResolution / 2;
@@ -91,9 +178,6 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(double Radius)
 
     BaseVertices.Reserve(TotalVertices);
     BaseNormals.Reserve(TotalVertices);
-
-    // 3. COMPUTE VERTICES
-    int32 ActualVerticesCalculated = 0;
 
     for (int32 y = 0; y < VertRes; ++y)
     {
@@ -108,22 +192,15 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(double Radius)
                 WorldX, WorldY, Radius, BasePosition, Normal);
 
             BaseVertices.Add(BasePosition);
-            ActualVerticesCalculated++;
             BaseNormals.Add(Normal);
         }
     }
 
-    //UE_LOG(LogTemp, Warning, TEXT("Creating collision"));
-
-    // 4. COMPUTE TRIANGLES (CORRECTED)
     Tris.Empty();
-    int32 TriangleCount = 0;
-
     for (int32 y = 0; y < CollisionResolution; ++y)
     {
         for (int32 x = 0; x < CollisionResolution; ++x)
         {
-            // Vertex indices
             int32 i0 = y * VertRes + x;
             int32 i1 = i0 + 1;
             int32 i2 = i0 + VertRes;
@@ -132,7 +209,6 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(double Radius)
             if (i0 >= TotalVertices || i1 >= TotalVertices ||
                 i2 >= TotalVertices || i3 >= TotalVertices)
             {
-                UE_LOG(LogTemp, Error, TEXT("Índice de triángulo inválido en [%d,%d]"), x, y);
                 continue;
             }
 
@@ -147,40 +223,243 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(double Radius)
     }
 
     Verts = BaseVertices;
+    bBaseGeometryGenerated = true;
 
-    BuildCollision();
+    if (CompanionPatch)
+    {
+        CompanionPatch->Tris = Tris;
+        CompanionPatch->BaseVertices = BaseVertices;
+        CompanionPatch->BaseNormals = BaseNormals;
+        CompanionPatch->PlanetRadius = Radius;
+        CompanionPatch->bBaseGeometryGenerated = true;
+    }
+}
+
+void UCosmicCollisionComponent::GenerateCollisionMesh(double Radius)
+{
+    if (bIsCompanion) return;
+
+    EnsureCompanionCreated();
+    BuildBaseGrid(Radius);
+}
+
+FRotator UCosmicCollisionComponent::ComputePatchRotation(const FVector& Normal)
+{
+    const FVector Up = Normal;
+
+    // Choose a non-collinear vector
+    const FVector Tangent = (FMath::Abs(Up.Z) < 0.99f)
+        ? FVector(0, 0, 1)
+        : FVector(1, 0, 0);
+
+    FVector Right = FVector::CrossProduct(Tangent, Up);
+    Right.Normalize();
+
+    const FVector Forward = FVector::CrossProduct(Up, Right);
+
+    return FRotationMatrix::MakeFromXZ(Forward, Up).Rotator();
+}
+
+void UCosmicCollisionComponent::RequestCollisionUpdate(
+    const FVector& SurfacePos,
+    const FVector& SurfaceNormal,
+    double InPlanetRadius,
+    TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy,
+    const FVector& PlanetCenter)
+{
+    if (bIsCompanion) return;
+
+    EnsureCompanionCreated();
+
+    if (!bBaseGeometryGenerated || PlanetRadius != InPlanetRadius)
+    {
+        BuildBaseGrid(InPlanetRadius);
+    }
+
+    if (!NoiseGenerationStrategy.IsValid()) return;
+
+    // If an update is currently in flight, queue the newest request
+    if (UpdateState != ECollisionUpdateState::Idle)
+    {
+        bHasQueuedUpdate = true;
+        QueuedSurfacePos = SurfacePos;
+        QueuedSurfaceNormal = SurfaceNormal;
+        QueuedPlanetRadius = InPlanetRadius;
+        QueuedNoiseStrategy = NoiseGenerationStrategy;
+        QueuedPlanetCenter = PlanetCenter;
+        return;
+    }
+
+    PendingTransform = FTransform(ComputePatchRotation(SurfaceNormal), SurfacePos);
+    LastUpdatedLocation = SurfacePos;
+
+    NoiseTask = new FAsyncTask<FCosmicCollisionGenerationTask>(
+        BaseVertices,
+        BaseNormals,
+        PendingTransform,
+        PlanetCenter,
+        NoiseGenerationStrategy
+    );
+
+    NoiseTask->StartBackgroundTask();
+    UpdateState = ECollisionUpdateState::NoiseTaskRunning;
 }
 
 void UCosmicCollisionComponent::UpdateCollisionMesh(TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy, const FVector& PlanetCenter)
 {
-    if (!bIsActive) return;
-    //double CreateStartTime = FPlatformTime::Seconds();
+    if (bIsCompanion) return;
 
-    const FTransform& ComponentTransform = GetComponentTransform();
-
-    for (size_t i = 0; i < BaseVertices.Num(); i++)
-    {
-        FVector WorldPos = ComponentTransform.TransformPosition(BaseVertices[i]);
-        FVector NoiseDir = (WorldPos - PlanetCenter).GetSafeNormal();
-
-        float FinalHeight;
-        FLinearColor FinalColor; // Computed but ignored for collisions
-
-        NoiseGenerationStrategy->EvaluatePoint(NoiseDir, FinalHeight, FinalColor);
-
-        Verts[i] = BaseVertices[i] + BaseNormals[i] * FinalHeight;
-    }
-
-    UpdateCollisionVertices();
-
-    //double CreateEndTime = FPlatformTime::Seconds();
-
-    //UE_LOG(LogTemp, Warning, TEXT("Update collision mesh took: %.4f ms"), (CreateEndTime - CreateStartTime) * 1000.0);
+    RequestCollisionUpdate(
+        GetComponentLocation(),
+        GetComponentRotation().Vector(),
+        PlanetRadius,
+        NoiseGenerationStrategy,
+        PlanetCenter
+    );
 }
 
-void UCosmicCollisionComponent::ClearCollision() 
-{   
-    // Cancel async cooking
+void UCosmicCollisionComponent::StartPatchCook(
+    TArray<FVector>&& InVerts,
+    const FTransform& InTransform,
+    bool bAsync,
+    TFunction<void(bool)> OnComplete)
+{
+    PatchCookFinishedCallback = MoveTemp(OnComplete);
+
+    // Abort previous async creations if any
+    for (UBodySetup* OldBody : AsyncBodySetupQueue)
+    {
+        if (OldBody)
+        {
+            OldBody->AbortPhysicsMeshAsyncCreation();
+        }
+    }
+    AsyncBodySetupQueue.Empty();
+
+    Verts = MoveTemp(InVerts);
+
+    // Teleport to target transform with NoCollision active
+    SetWorldLocationAndRotation(
+        InTransform.GetLocation(),
+        InTransform.Rotator(),
+        false,
+        nullptr,
+        ETeleportType::TeleportPhysics
+    );
+
+    UWorld* World = GetWorld();
+    if (!World || !World->IsGameWorld())
+    {
+        if (PatchCookFinishedCallback)
+        {
+            auto Callback = MoveTemp(PatchCookFinishedCallback);
+            Callback(false);
+        }
+        return;
+    }
+
+    if (bAsync)
+    {
+        UBodySetup* NewSetup = CreateBodySetupHelper();
+        AsyncBodySetupQueue.Add(NewSetup);
+
+        NewSetup->CreatePhysicsMeshesAsync(
+            FOnAsyncPhysicsCookFinished::CreateUObject(
+                this,
+                &UCosmicCollisionComponent::FinishPhysicsAsyncCook,
+                NewSetup
+            )
+        );
+    }
+    else
+    {
+        CreateProcMeshBodySetup();
+        BodySetup->InvalidatePhysicsData();
+        BodySetup->CreatePhysicsMeshes();
+        RecreatePhysicsState();
+        FinishPhysicsAsyncCook(true, BodySetup);
+    }
+}
+
+void UCosmicCollisionComponent::FinishPhysicsAsyncCook(bool bSuccess, UBodySetup* FinishedBodySetup)
+{
+    if (bSuccess && FinishedBodySetup)
+    {
+        if (BodySetup && BodySetup != FinishedBodySetup)
+        {
+            BodySetup->ClearPhysicsMeshes();
+        }
+        BodySetup = FinishedBodySetup;
+        RecreatePhysicsState();
+    }
+
+    AsyncBodySetupQueue.Remove(FinishedBodySetup);
+
+    if (PatchCookFinishedCallback)
+    {
+        auto Callback = MoveTemp(PatchCookFinishedCallback);
+        Callback(bSuccess);
+    }
+}
+
+void UCosmicCollisionComponent::OnStandbyCookFinished(bool bSuccess)
+{
+    if (bSuccess)
+    {
+        UCosmicCollisionComponent* StandbyPatch = bPrimaryIsActiveBody ? CompanionPatch : this;
+        UCosmicCollisionComponent* ActivePatch = bPrimaryIsActiveBody ? this : CompanionPatch;
+
+        // Atomically handover collision
+        if (StandbyPatch)
+        {
+            StandbyPatch->ActivatePhysics();
+        }
+
+        if (ActivePatch && bIsActive)
+        {
+            ActivePatch->DeactivatePhysics();
+        }
+
+        bPrimaryIsActiveBody = !bPrimaryIsActiveBody;
+        bIsActive = true;
+    }
+
+    UpdateState = ECollisionUpdateState::Idle;
+
+    // Process any request that arrived while cooking
+    if (bHasQueuedUpdate)
+    {
+        bHasQueuedUpdate = false;
+        RequestCollisionUpdate(
+            QueuedSurfacePos,
+            QueuedSurfaceNormal,
+            QueuedPlanetRadius,
+            QueuedNoiseStrategy,
+            QueuedPlanetCenter
+        );
+    }
+}
+
+void UCosmicCollisionComponent::ActivatePhysics()
+{
+    SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
+    SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+}
+
+void UCosmicCollisionComponent::DeactivatePhysics()
+{
+    SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
+void UCosmicCollisionComponent::ClearCollision()
+{
+    if (NoiseTask)
+    {
+        NoiseTask->EnsureCompletion();
+        delete NoiseTask;
+        NoiseTask = nullptr;
+    }
+
     for (UBodySetup* Setup : AsyncBodySetupQueue)
     {
         if (Setup)
@@ -190,27 +469,31 @@ void UCosmicCollisionComponent::ClearCollision()
     }
     AsyncBodySetupQueue.Empty();
 
-    // Clear current BodySetup
     if (BodySetup)
     {
         BodySetup->ClearPhysicsMeshes();
         BodySetup = nullptr;
     }
 
-    // Remove from physics system
     DestroyPhysicsState();
+    DeactivatePhysics();
 
-    // Clear data
     Verts.Empty();
-    Tris.Empty();
-    BaseVertices.Empty();
-    BaseNormals.Empty();
-
     bIsActive = false;
     bNeedsRebuild = false;
+    UpdateState = ECollisionUpdateState::Idle;
+    bHasQueuedUpdate = false;
+    LastUpdatedLocation = FVector(MAX_flt);
+
+    if (CompanionPatch)
+    {
+        CompanionPatch->ClearCollision();
+    }
+
+    bPrimaryIsActiveBody = true;
 }
 
-bool UCosmicCollisionComponent::IsBuilt() const 
+bool UCosmicCollisionComponent::IsBuilt() const
 {
     return bIsActive;
 }
@@ -220,18 +503,40 @@ void UCosmicCollisionComponent::DrawDebugCollisionMesh()
     UWorld* World = GetWorld();
     if (!World) return;
 
-    const FColor OrbitColor = DebugColor;
-    const float OrbitThickness = DebugLineWidth;
+    UCosmicCollisionComponent* ActivePatch = bPrimaryIsActiveBody ? this : CompanionPatch;
+    if (ActivePatch && ActivePatch->Verts.Num() > 0 && ActivePatch->Tris.Num() > 0)
+    {
+        const FTransform& ActiveTransform = ActivePatch->GetComponentTransform();
+        for (int32 i = 0; i < ActivePatch->Tris.Num(); i += 3)
+        {
+            FVector A = ActiveTransform.TransformPosition(ActivePatch->Verts[ActivePatch->Tris[i]]);
+            FVector B = ActiveTransform.TransformPosition(ActivePatch->Verts[ActivePatch->Tris[i + 1]]);
+            FVector C = ActiveTransform.TransformPosition(ActivePatch->Verts[ActivePatch->Tris[i + 2]]);
 
-    for (int32 i = 0; i < Tris.Num(); i += 3) {
+            DrawDebugLine(World, A, B, DebugColor, false, -1.0f, 0, DebugLineWidth);
+            DrawDebugLine(World, B, C, DebugColor, false, -1.0f, 0, DebugLineWidth);
+            DrawDebugLine(World, C, A, DebugColor, false, -1.0f, 0, DebugLineWidth);
+        }
+    }
 
-        FVector A = GetComponentTransform().TransformPosition(Verts[Tris[i]]);
-        FVector B = GetComponentTransform().TransformPosition(Verts[Tris[i + 1]]);
-        FVector C = GetComponentTransform().TransformPosition(Verts[Tris[i + 2]]);
+    // In-flight standby patch visualization
+    if (UpdateState != ECollisionUpdateState::Idle)
+    {
+        UCosmicCollisionComponent* StandbyPatch = bPrimaryIsActiveBody ? CompanionPatch : this;
+        if (StandbyPatch && StandbyPatch->Verts.Num() > 0 && StandbyPatch->Tris.Num() > 0)
+        {
+            const FTransform& StandbyTransform = StandbyPatch->GetComponentTransform();
+            for (int32 i = 0; i < StandbyPatch->Tris.Num(); i += 3)
+            {
+                FVector A = StandbyTransform.TransformPosition(StandbyPatch->Verts[StandbyPatch->Tris[i]]);
+                FVector B = StandbyTransform.TransformPosition(StandbyPatch->Verts[StandbyPatch->Tris[i + 1]]);
+                FVector C = StandbyTransform.TransformPosition(StandbyPatch->Verts[StandbyPatch->Tris[i + 2]]);
 
-        DrawDebugLine(World, A, B, OrbitColor, false, -1.0f, 0, OrbitThickness);
-        DrawDebugLine(World, B, C, OrbitColor, false, -1.0f, 0, OrbitThickness);
-        DrawDebugLine(World, C, A, OrbitColor, false, -1.0f, 0, OrbitThickness);
+                DrawDebugLine(World, A, B, StandbyDebugColor, false, -1.0f, 0, DebugLineWidth * 0.5f);
+                DrawDebugLine(World, B, C, StandbyDebugColor, false, -1.0f, 0, DebugLineWidth * 0.5f);
+                DrawDebugLine(World, C, A, StandbyDebugColor, false, -1.0f, 0, DebugLineWidth * 0.5f);
+            }
+        }
     }
 }
 
@@ -269,89 +574,11 @@ UBodySetup* UCosmicCollisionComponent::GetBodySetup()
     return BodySetup;
 }
 
-void UCosmicCollisionComponent::BuildCollision()
-{
-    if (Verts.Num() == 0 || Tris.Num() == 0)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("Collision mesh empty"));
-        return;
-    }
-
-    bIsActive = true;
-
-    UWorld* World = GetWorld();
-
-    if (!World->IsGameWorld()) return;
-
-    bool bAsync = World && bUseAsyncCooking;
-
-    if (bAsync)
-    {
-        for (UBodySetup* OldBody : AsyncBodySetupQueue)
-        {
-            if (OldBody)
-                OldBody->AbortPhysicsMeshAsyncCreation();
-        }
-
-        AsyncBodySetupQueue.Add(CreateBodySetupHelper());
-    }
-    else
-    {
-        AsyncBodySetupQueue.Empty();
-        CreateProcMeshBodySetup();
-    }
-
-    UBodySetup* UseBodySetup =
-        bAsync ? AsyncBodySetupQueue.Last() : BodySetup;
-
-    UseBodySetup->CollisionTraceFlag =
-        bUseComplexAsSimpleCollision ?
-        CTF_UseComplexAsSimple :
-        CTF_UseDefault;
-
-    if (bAsync)
-    {
-        UseBodySetup->CreatePhysicsMeshesAsync(
-            FOnAsyncPhysicsCookFinished::CreateUObject(
-                this,
-                &UCosmicCollisionComponent::FinishPhysicsAsyncCook,
-                UseBodySetup));
-    }
-    else
-    {
-        UseBodySetup->InvalidatePhysicsData();
-        UseBodySetup->CreatePhysicsMeshes();
-        RecreatePhysicsState();
-    }
-}
-
-void UCosmicCollisionComponent::UpdateCollisionVertices()
-{
-    if (Verts.Num() == 0)
-        return;
-
-    if (BodyInstance.IsValidBodyInstance())
-    {
-        BodyInstance.UpdateTriMeshVertices(Verts);
-    }
-}
-
-void UCosmicCollisionComponent::FinishPhysicsAsyncCook(bool bSuccess, UBodySetup* FinishedBodySetup)
-{
-    if (bSuccess)
-    {
-        BodySetup = FinishedBodySetup;
-        RecreatePhysicsState();
-    }
-
-    AsyncBodySetupQueue.Remove(FinishedBodySetup);
-}
-
 bool UCosmicCollisionComponent::GetPhysicsTriMeshData(
     FTriMeshCollisionData* CollisionData,
     bool InUseAllTriData)
 {
-    if (!CollisionData) return false;
+    if (!CollisionData || Verts.Num() == 0 || Tris.Num() == 0) return false;
 
     bool bCopyUVs = UPhysicsSettings::Get()->bSupportUVFromHitResults;
 
@@ -387,7 +614,7 @@ bool UCosmicCollisionComponent::GetPhysicsTriMeshData(
 
 bool UCosmicCollisionComponent::ContainsPhysicsTriMeshData(bool InUseAllTriData) const
 {
-    return Tris.Num() >= 3;
+    return Tris.Num() >= 3 && Verts.Num() > 0;
 }
 
 bool UCosmicCollisionComponent::GetTriMeshSizeEstimates(

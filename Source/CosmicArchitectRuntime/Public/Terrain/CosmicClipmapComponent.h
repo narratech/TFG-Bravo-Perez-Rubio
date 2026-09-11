@@ -372,4 +372,7 @@ private:
 
 	/** Last computed viewer coordinates in tangent projection plane. */
 	FVector2D LastViewerCoordinates = FVector2D::ZeroVector;
+
+	/** Number of collision phases the ocean update was deferred because collision was busy. */
+	int32 DeferredOceanPhaseCount = 0;
 };

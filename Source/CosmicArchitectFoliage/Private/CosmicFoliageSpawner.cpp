@@ -60,6 +60,11 @@ void UCosmicFoliageSpawner::InitFoliageSpawner(float RadiusKm)
 
 void UCosmicFoliageSpawner::UpdateFoliageSpawner(float DeltaTime, const FVector& ViewerLocation, const FVector& PlanetCenter, double PlanetRadius, double DistanceToSurface, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy)
 {
+    if (!FoliageCollection || FoliageCollection->FoliageEntries.IsEmpty())
+    {
+        return;
+    }
+
     UpdateFoliageGeneration();
     UpdateOctreeAndGenerate(ViewerLocation, DistanceToSurface, PlanetCenter);
 
