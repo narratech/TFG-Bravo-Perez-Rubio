@@ -2,6 +2,7 @@
 
 #include "Terrain/CosmicOceanComponent.h"
 #include "Terrain/CosmicMeshComponent.h"
+#include "Terrain/CosmicClipmapGeometry.h"
 #include "Terrain/CosmicOceanGenerationTask.h"
 #include "Materials/MaterialInstance.h"
 #include "Materials/MaterialInstanceConstant.h"
@@ -172,48 +173,14 @@ void UCosmicOceanComponent::BuildNearOceanMesh()
         {
             for (int32 x = 0; x < VertRes; ++x)
             {
-                // Exact formula from CosmicMeshComponent::BuildBaseProjectedMesh
                 const double WorldX = (LevelCenter.X + (x - HalfRes)) * LevelSpacing;
                 const double WorldY = (LevelCenter.Y + (y - HalfRes)) * LevelSpacing;
-                const double Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
+
                 FVector BasePosition;
-
-                if (Distance2D <= EffectiveRadius && Distance2D > 0.001)
-                {
-                    const double ZOffset = FMath::Sqrt(EffectiveRadius * EffectiveRadius - Distance2D * Distance2D);
-                    BasePosition = FVector(WorldX, WorldY, -EffectiveRadius + ZOffset);
-                }
-                else if (Distance2D <= 0.001)
-                {
-                    BasePosition = FVector::ZeroVector;
-                }
-                else
-                {
-                    const double Scale = EffectiveRadius / Distance2D;
-                    BasePosition = FVector(WorldX * Scale, WorldY * Scale, -EffectiveRadius);
-                }
-
-                // Normal from local sphere center
-                FVector Normal = (BasePosition - SphereCenter);
-                if (Normal.SizeSquared() > 0.001)
-                {
-                    Normal.Normalize();
-                }
-                else
-                {
-                    Normal = FVector::UpVector;
-                }
-
-                // Tangent
-                FVector TangentDir = FVector(-Normal.Y, Normal.X, 0.0);
-                if (TangentDir.SizeSquared() > 0.001)
-                {
-                    TangentDir.Normalize();
-                }
-                else
-                {
-                    TangentDir = FVector(1.0, 0.0, 0.0);
-                }
+                FVector Normal;
+                FVector TangentDir;
+                FCosmicClipmapGeometry::ProjectPlanarGridPointToSphere(
+                    WorldX, WorldY, EffectiveRadius, BasePosition, Normal, TangentDir);
 
                 // Transform to planet / component space
                 InitialVertices.Add(TransformMatrix.TransformPosition(BasePosition));
@@ -228,164 +195,12 @@ void UCosmicOceanComponent::BuildNearOceanMesh()
     }
 
     // Build triangles matching CosmicMeshComponent::BuildBaseProjectedMesh exactly
+    Triangles.Reserve(NumLevels * Res * Res * 6);
     for (int32 L = 0; L < NumLevels; ++L)
     {
         const int32 LevelOffset = L * VertsPerLevel;
-        const int32 LevelMaxVertex = LevelOffset + VertsPerLevel;
         const bool bIsRing = (L > 0);
-
-        for (int32 y = 0; y < Res; ++y)
-        {
-            for (int32 x = 0; x < Res; ++x)
-            {
-                const int32 i0 = LevelOffset + y * VertRes + x;
-                const int32 i1 = i0 + 1;
-                const int32 i2 = i0 + VertRes;
-                const int32 i3 = i2 + 1;
-
-                if (bIsRing)
-                {
-                    const bool bInsideInner =
-                        x > HalfRes / 2 &&
-                        x < Res - HalfRes / 2 &&
-                        y > HalfRes / 2 &&
-                        y < Res - HalfRes / 2;
-
-                    if (bInsideInner)
-                    {
-                        continue;
-                    }
-                }
-
-                if (i0 >= TotalVerts || i1 >= TotalVerts ||
-                    i2 >= TotalVerts || i3 >= TotalVerts)
-                {
-                    continue;
-                }
-
-                const bool bBorder =
-                    (x == 0) ||
-                    (x == Res - 1) ||
-                    (y == 0) ||
-                    (y == Res - 1);
-
-                // LEVEL BORDER STITCHING (2:1 quad transition)
-                if (bBorder)
-                {
-                    // Horizontal borders
-                    if ((y == 0 || y == Res - 1) && (x % 2 == 0) && x < Res - 1)
-                    {
-                        const int32 i4 = i1 + 1;
-                        const int32 i5 = i3 + 1;
-
-                        if (i4 < LevelMaxVertex && i5 < LevelMaxVertex)
-                        {
-                            if (y == Res - 1) // Bottom border
-                            {
-                                if (x != Res - 2)
-                                {
-                                    Triangles.Add(i1);
-                                    Triangles.Add(i5);
-                                    Triangles.Add(i4);
-                                }
-
-                                if (x != 0)
-                                {
-                                    Triangles.Add(i1);
-                                    Triangles.Add(i0);
-                                    Triangles.Add(i2);
-                                }
-
-                                Triangles.Add(i2);
-                                Triangles.Add(i5);
-                                Triangles.Add(i1);
-                            }
-                            else // Top border
-                            {
-                                if (x != 0)
-                                {
-                                    Triangles.Add(i0);
-                                    Triangles.Add(i2);
-                                    Triangles.Add(i3);
-                                }
-
-                                if (x != Res - 2)
-                                {
-                                    Triangles.Add(i3);
-                                    Triangles.Add(i5);
-                                    Triangles.Add(i4);
-                                }
-
-                                Triangles.Add(i0);
-                                Triangles.Add(i3);
-                                Triangles.Add(i4);
-                            }
-                        }
-                    }
-                    // Vertical borders
-                    else if ((x == 0 || x == Res - 1) && (y % 2 == 0) && y < Res - 1)
-                    {
-                        const int32 i4 = i2 + VertRes;
-                        const int32 i5 = i3 + VertRes;
-
-                        if (i4 < LevelMaxVertex && i5 < LevelMaxVertex)
-                        {
-                            if (x == Res - 1) // Right border
-                            {
-                                Triangles.Add(i1);
-                                Triangles.Add(i2);
-                                Triangles.Add(i5);
-
-                                if (y != 0)
-                                {
-                                    Triangles.Add(i2);
-                                    Triangles.Add(i1);
-                                    Triangles.Add(i0);
-                                }
-
-                                if (y != Res - 2)
-                                {
-                                    Triangles.Add(i2);
-                                    Triangles.Add(i4);
-                                    Triangles.Add(i5);
-                                }
-                            }
-                            else // Left border
-                            {
-                                if (y != 0)
-                                {
-                                    Triangles.Add(i0);
-                                    Triangles.Add(i3);
-                                    Triangles.Add(i1);
-                                }
-
-                                if (y != Res - 2)
-                                {
-                                    Triangles.Add(i3);
-                                    Triangles.Add(i4);
-                                    Triangles.Add(i5);
-                                }
-
-                                Triangles.Add(i0);
-                                Triangles.Add(i4);
-                                Triangles.Add(i3);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    // NORMAL INTERIOR (Exact winding matching CosmicMeshComponent)
-                    Triangles.Add(i0);
-                    Triangles.Add(i2);
-                    Triangles.Add(i1);
-
-                    Triangles.Add(i1);
-                    Triangles.Add(i2);
-                    Triangles.Add(i3);
-                }
-            }
-        }
+        FCosmicClipmapGeometry::GenerateClipmapLevelTriangles(Res, bIsRing, LevelOffset, Triangles);
     }
 
     NearOceanMesh->CreateMeshSection_LinearColor(

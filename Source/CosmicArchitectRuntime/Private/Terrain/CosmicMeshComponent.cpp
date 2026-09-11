@@ -2,6 +2,7 @@
 
 
 #include "Terrain/CosmicMeshComponent.h"
+#include "Terrain/CosmicClipmapGeometry.h"
 #include "ICosmicNoiseStrategy.h"
 
 
@@ -46,54 +47,17 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
     {
         for (int32 x = 0; x < VertRes; ++x)
         {
-            double WorldX = (x - HalfRes) * GridSpacing;
-            double WorldY = (y - HalfRes) * GridSpacing;
+            const double WorldX = (x - HalfRes) * GridSpacing;
+            const double WorldY = (y - HalfRes) * GridSpacing;
 
-            // Compute position on sphere
-            FVector SphereCenter = FVector(0, 0, -PlanetRadius);
-            double Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
             FVector BasePosition;
-
-            if (Distance2D <= PlanetRadius && Distance2D > 0.001f) // Avoid division by 0
-            {
-                double ZOffset = FMath::Sqrt(PlanetRadius * PlanetRadius - Distance2D * Distance2D);
-                BasePosition = FVector(WorldX, WorldY, -PlanetRadius + ZOffset);
-            }
-            else if (Distance2D <= 0.001f)
-            {
-                // Center - avoid NaN
-                BasePosition = FVector(0, 0, 0);
-            }
-            else
-            {
-                double Scale = PlanetRadius / Distance2D;
-                BasePosition = FVector(WorldX * Scale, WorldY * Scale, -PlanetRadius);
-            }
+            FVector Normal;
+            FVector TangentDir;
+            FCosmicClipmapGeometry::ProjectPlanarGridPointToSphere(
+                WorldX, WorldY, PlanetRadius, BasePosition, Normal, TangentDir);
 
             BaseVertices.Add(BasePosition);
-
-            // Normal
-            FVector Normal = (BasePosition - SphereCenter);
-            if (Normal.SizeSquared() > 0.001f)
-            {
-                Normal.Normalize();
-            }
-            else
-            {
-                Normal = FVector::UpVector;
-            }
             BaseNormals.Add(Normal);
-
-            // Tangent
-            FVector TangentDir = FVector(-Normal.Y, Normal.X, 0);
-            if (TangentDir.SizeSquared() > 0.001f)
-            {
-                TangentDir.Normalize();
-            }
-            else
-            {
-                TangentDir = FVector(1, 0, 0);
-            }
             BaseTangents.Add(FProcMeshTangent(TangentDir.X, TangentDir.Y, TangentDir.Z));
 
             // UVs
@@ -105,171 +69,8 @@ void UCosmicMeshComponent::BuildBaseProjectedMesh()
     }
 
     // COMPUTE TRIANGLES 
-    Triangles.Empty();
-    int32 TriangleCount = 0;
-
-    for (int32 y = 0; y < Resolution; ++y)
-    {
-        for (int32 x = 0; x < Resolution; ++x)
-        {
-            // Vertex indices
-            int32 i0 = y * VertRes + x;
-            int32 i1 = i0 + 1;
-            int32 i2 = i0 + VertRes;
-            int32 i3 = i2 + 1;
-
-            if (bIsRing)
-            {
-                bool bInsideInner =
-                    x > HalfRes / 2 &&
-                    x < Resolution - HalfRes / 2 &&
-                    y > HalfRes / 2 &&
-                    y < Resolution - HalfRes / 2;
-
-                if (bInsideInner)
-                {
-                    continue;
-                }
-            }
-
-            if (i0 >= TotalVertices || i1 >= TotalVertices ||
-                i2 >= TotalVertices || i3 >= TotalVertices)
-            {
-                UE_LOG(LogTemp, Error, TEXT("Índice de triángulo inválido en [%d,%d]"), x, y);
-                continue;
-            }
-
-            bool bBorder =
-                (x == 0) ||
-                (x == Resolution - 1) ||
-                (y == 0) ||
-                (y == Resolution - 1);
-
-            // LEVEL BORDER 
-            if (bBorder)
-            {
-                // horizontal borders
-                if ((y == 0 || y == Resolution - 1) && (x % 2 == 0) && x < Resolution - 1)
-                {
-                    int32 i4 = i1 + 1;
-                    int32 i5 = i3 + 1;
-
-                    if (i4 < TotalVertices)
-                    {
-                        if (y == Resolution - 1) // bottom border 
-                        {
-
-                            if (x != Resolution - 2) {
-                                Triangles.Add(i1);
-                                Triangles.Add(i5);
-                                Triangles.Add(i4);
-                                TriangleCount++;
-                            }
-
-                            if (x != 0) {
-                                Triangles.Add(i1);
-                                Triangles.Add(i0);
-                                Triangles.Add(i2);
-                                TriangleCount++;
-                            }
-
-                            Triangles.Add(i2);
-                            Triangles.Add(i5);
-                            Triangles.Add(i1);
-                            TriangleCount++;
-                        }
-                        else // top border 
-                        {
-                            if (x != 0) {
-                                Triangles.Add(i0);
-                                Triangles.Add(i2);
-                                Triangles.Add(i3);
-                                TriangleCount++;
-                            }
-
-                            if (x != Resolution - 2) {
-                                Triangles.Add(i3);
-                                Triangles.Add(i5);
-                                Triangles.Add(i4);
-                                TriangleCount++;
-                            }
-
-                            Triangles.Add(i0);
-                            Triangles.Add(i3);
-                            Triangles.Add(i4);
-                            TriangleCount++;
-                        }
-                    }
-                }
-                // vertical borders
-                else if ((x == 0 || x == Resolution - 1) && (y % 2 == 0) && y < Resolution - 1)
-                {
-                    int32 i4 = i2 + VertRes;
-                    int32 i5 = i3 + VertRes;
-
-                    if (i4 < TotalVertices)
-                    {
-                        if (x == Resolution - 1) // right border
-                        {
-                            Triangles.Add(i1);
-                            Triangles.Add(i2);
-                            Triangles.Add(i5);
-                            TriangleCount++;
-
-                            if (y != 0) {
-                                Triangles.Add(i2);
-                                Triangles.Add(i1);
-                                Triangles.Add(i0);
-                                TriangleCount++;
-                            }
-
-                            if (y != Resolution - 2) {
-                                Triangles.Add(i2);
-                                Triangles.Add(i4);
-                                Triangles.Add(i5);
-                                TriangleCount++;
-                            }
-                        }
-                        else // left border 
-                        {
-                            if (y != 0) {
-                                Triangles.Add(i0);
-                                Triangles.Add(i3);
-                                Triangles.Add(i1);
-                                TriangleCount++;
-                            }
-
-                            if (y != Resolution - 2) {
-                                Triangles.Add(i3);
-                                Triangles.Add(i4);
-                                Triangles.Add(i5);
-                                TriangleCount++;
-                            }
-
-                            Triangles.Add(i0);
-                            Triangles.Add(i4);
-                            Triangles.Add(i3);
-                            TriangleCount++;
-                        }
-                    }
-                }
-            }
-            else
-            {
-                // NORMAL INTERIOR 
-
-                Triangles.Add(i0);
-                Triangles.Add(i2);
-                Triangles.Add(i1);
-                TriangleCount++;
-
-                Triangles.Add(i1);
-                Triangles.Add(i2);
-                Triangles.Add(i3);
-                TriangleCount++;
-            }
-        }
-    }
+    Triangles.Empty(Resolution * Resolution * 6);
+    FCosmicClipmapGeometry::GenerateClipmapLevelTriangles(Resolution, bIsRing, 0, Triangles);
 
     TArray<FVector> RotatedVertices;
     RotatedVertices.Reserve(TotalVertices);
@@ -438,29 +239,13 @@ void UCosmicMeshComponent::ReScaleLevel(int64 NewGridSpacing)
     {
         for (int32 x = 0; x < VertRes; ++x)
         {
-            double WorldX = (x - HalfRes) * GridSpacing;
-            double WorldY = (y - HalfRes) * GridSpacing;
+            const double WorldX = (x - HalfRes) * GridSpacing;
+            const double WorldY = (y - HalfRes) * GridSpacing;
 
-            // Compute position on sphere
-            FVector SphereCenter = FVector(0, 0, -PlanetRadius);
-            double Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
             FVector Position;
-
-            if (Distance2D <= PlanetRadius && Distance2D > 0.001f) // Avoid division by 0
-            {
-                double ZOffset = FMath::Sqrt(PlanetRadius * PlanetRadius - Distance2D * Distance2D);
-                Position = FVector(WorldX, WorldY, -PlanetRadius + ZOffset);
-            }
-            else if (Distance2D <= 0.001f)
-            {
-                // Center - avoid NaN
-                Position = FVector(0, 0, 0);
-            }
-            else
-            {
-                double Scale = PlanetRadius / Distance2D;
-                Position = FVector(WorldX * Scale, WorldY * Scale, -PlanetRadius);
-            }
+            FVector DummyNormal;
+            FCosmicClipmapGeometry::ProjectPlanarGridPointToSphere(
+                WorldX, WorldY, PlanetRadius, Position, DummyNormal);
 
             BaseVertices[x + y * VertRes] = Position;
         }

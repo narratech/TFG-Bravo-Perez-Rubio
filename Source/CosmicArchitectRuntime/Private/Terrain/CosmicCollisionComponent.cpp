@@ -1,6 +1,7 @@
 // Javier Bravo, David Rubio, Sergio Perez 2026 All Rights Reserved.
 
 #include "Terrain/CosmicCollisionComponent.h"
+#include "Terrain/CosmicClipmapGeometry.h"
 #include "PhysicsEngine/BodySetup.h"
 #include "PhysicsEngine/PhysicsSettings.h"
 #include "PhysicsEngine/BodyInstance.h"
@@ -98,43 +99,16 @@ void UCosmicCollisionComponent::GenerateCollisionMesh(double Radius)
     {
         for (int32 x = 0; x < VertRes; ++x)
         {
-            double WorldX = (x - HalfRes) * CollisionTriangleSize;
-            double WorldY = (y - HalfRes) * CollisionTriangleSize;
+            const double WorldX = (x - HalfRes) * CollisionTriangleSize;
+            const double WorldY = (y - HalfRes) * CollisionTriangleSize;
 
-            // Compute position on sphere
-            FVector SphereCenter = FVector(0, 0, -Radius);
-            double Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
             FVector BasePosition;
-
-            if (Distance2D <= Radius && Distance2D > 0.001f) // Avoid division by 0
-            {
-                double ZOffset = FMath::Sqrt(Radius * Radius - Distance2D * Distance2D);
-                BasePosition = FVector(WorldX, WorldY, -Radius + ZOffset);
-            }
-            else if (Distance2D <= 0.001f)
-            {
-                // Center - avoid NaN
-                BasePosition = FVector(0, 0, 0);
-            }
-            else
-            {
-                double Scale = Radius / Distance2D;
-                BasePosition = FVector(WorldX * Scale, WorldY * Scale, -Radius);
-            }
+            FVector Normal;
+            FCosmicClipmapGeometry::ProjectPlanarGridPointToSphere(
+                WorldX, WorldY, Radius, BasePosition, Normal);
 
             BaseVertices.Add(BasePosition);
             ActualVerticesCalculated++;
-
-            // Normal
-            FVector Normal = (BasePosition - SphereCenter);
-            if (Normal.SizeSquared() > 0.001f)
-            {
-                Normal.Normalize();
-            }
-            else
-            {
-                Normal = FVector::UpVector;
-            }
             BaseNormals.Add(Normal);
         }
     }

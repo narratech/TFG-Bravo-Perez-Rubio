@@ -1,6 +1,7 @@
 // Javier Bravo, David Rubio, Sergio Perez 2026 All Rights Reserved.
 
 #include "Terrain/CosmicOceanGenerationTask.h"
+#include "Terrain/CosmicClipmapGeometry.h"
 
 FCosmicOceanGenerationTask::FCosmicOceanGenerationTask(FCosmicOceanClipmapSettings InSettings)
     : Settings(MoveTemp(InSettings))
@@ -31,7 +32,6 @@ void FCosmicOceanGenerationTask::DoWork()
 
     const double OceanRadius = FMath::Max(100.0, Settings.OceanRadius);
     const int64 BaseGridSpacing = FMath::Max(static_cast<int64>(1), Settings.BaseGridSpacing);
-    const FVector SphereCenter(0.0, 0.0, -OceanRadius);
     const FMatrix TransformMatrix = Settings.PatchTransform.ToMatrixWithScale();
 
     for (int32 LevelIndex = 0; LevelIndex < NumLevels; ++LevelIndex)
@@ -51,38 +51,13 @@ void FCosmicOceanGenerationTask::DoWork()
 
             for (int32 x = 0; x < VertRes; ++x)
             {
-                // Exact formula from CosmicMeshComponent::BuildBaseProjectedMesh
-                // with integer LevelCenter snapping offset
                 const double WorldX = (LevelCenter.X + (x - HalfRes)) * LevelSpacing;
                 const double WorldY = (LevelCenter.Y + (y - HalfRes)) * LevelSpacing;
-                const double Distance2D = FMath::Sqrt(WorldX * WorldX + WorldY * WorldY);
+
                 FVector BasePosition;
-
-                if (Distance2D <= OceanRadius && Distance2D > 0.001)
-                {
-                    const double ZOffset = FMath::Sqrt(OceanRadius * OceanRadius - Distance2D * Distance2D);
-                    BasePosition = FVector(WorldX, WorldY, -OceanRadius + ZOffset);
-                }
-                else if (Distance2D <= 0.001)
-                {
-                    BasePosition = FVector::ZeroVector;
-                }
-                else
-                {
-                    const double Scale = OceanRadius / Distance2D;
-                    BasePosition = FVector(WorldX * Scale, WorldY * Scale, -OceanRadius);
-                }
-
-                // Normal from local sphere center
-                FVector Normal = (BasePosition - SphereCenter);
-                if (Normal.SizeSquared() > 0.001)
-                {
-                    Normal.Normalize();
-                }
-                else
-                {
-                    Normal = FVector::UpVector;
-                }
+                FVector Normal;
+                FCosmicClipmapGeometry::ProjectPlanarGridPointToSphere(
+                    WorldX, WorldY, OceanRadius, BasePosition, Normal);
 
                 // Transform to planet space using PatchTransform
                 const int32 VertexIndex = RowOffset + x;
