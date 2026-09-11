@@ -105,7 +105,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
     if (!UseClipmap && bPerformanceBuild)
         return;
 
-    const double StartTime = FPlatformTime::Seconds();
+    //const double StartTime = FPlatformTime::Seconds();
 
     ElapsedTime = ElapsedTime - TimeToRefresh;
 
@@ -114,12 +114,13 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
     FVector ViewerPos;
     float DistanceToSurface;  
  
+    const EUpdatePhase ExecutedPhase = CurrentPhase;
+    bool bOceanAppliedThisTick = false;
+
     if (!bPerformaceMode) {
 
         bool UpdateFoliageExtra = false;
         DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
-
-        double PhaseStart = FPlatformTime::Seconds();
 
         // PER-PHASE EXECUTION
         switch (CurrentPhase)
@@ -153,6 +154,8 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
                 DeferredOceanPhaseCount = 0;
             }
 
+            bOceanAppliedThisTick = bOceanApplied;
+
             // Only run extra foliage if neither collision nor ocean consumed this frame's budget
             UpdateFoliageExtra = !bCollisionUpdated && !bOceanApplied;
             break;
@@ -178,14 +181,33 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
         UpdateMeshPhase(ViewerPos, SurfacePos, N, DistanceToSurface);
     }
 
+   /* FString PhaseName = TEXT("Performance");
+    if (!bPerformaceMode)
+    {
+        switch (ExecutedPhase)
+        {
+        case EUpdatePhase::Foliage:
+            PhaseName = TEXT("Foliage");
+            break;
+        case EUpdatePhase::Collision:
+            PhaseName = bOceanAppliedThisTick ? TEXT("Collision (Ocean)") : TEXT("Collision");
+            break;
+        case EUpdatePhase::Mesh:
+            PhaseName = TEXT("Mesh");
+            break;
+        }
+    }
+
     const double ElapsedMs = (FPlatformTime::Seconds() - StartTime) * 1000.0;
     if (ElapsedMs > 0.5)
     {
+        const FString Message = FString::Printf(TEXT("CosmicClipmapComponent Tick [%s]: %.4f ms"), *PhaseName, ElapsedMs);
         if (GEngine)
         {
-            GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, FString::Printf(TEXT("CosmicClipmapComponent Tick: %.4f ms"), ElapsedMs));
+            GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, Message);
         }
-    }
+        UE_LOG(LogTemp, Log, TEXT("%s"), *Message);
+    }*/
 }
 
 void UCosmicClipmapComponent::UpdateFoliagePhase(float DeltaTime, const FVector& ViewerPos, float DistanceToSurface)

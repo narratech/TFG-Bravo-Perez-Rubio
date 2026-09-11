@@ -8,6 +8,7 @@
 #include "PhysicsEngine/BodyInstance.h"
 #include "ICosmicNoiseStrategy.h"
 #include "DrawDebugHelpers.h"
+#include "Engine/Engine.h"
 #include "Engine/World.h"
 
 UCosmicCollisionComponent::UCosmicCollisionComponent()

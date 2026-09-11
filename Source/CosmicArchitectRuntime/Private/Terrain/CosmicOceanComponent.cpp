@@ -379,9 +379,22 @@ void UCosmicOceanComponent::UpdateOceanLOD(
         return;
     }
 
+    // Compute the expected ocean center in ocean coarsest grid units
+    const int32 NumLevels = FMath::Clamp(OceanNumLevels, 1, 8);
+    const int64 OceanCoarsestSpacing = CurrentOceanBaseGridSpacing * (1LL << (NumLevels - 1));
+
+    FIntPoint OceanCoarsestCenter = InCoarsestCenter;
+    if (OceanCoarsestSpacing > 0 && !InViewerCoordinates.IsZero())
+    {
+        OceanCoarsestCenter = FIntPoint(
+            FMath::RoundToInt(InViewerCoordinates.X / static_cast<double>(OceanCoarsestSpacing)),
+            FMath::RoundToInt(InViewerCoordinates.Y / static_cast<double>(OceanCoarsestSpacing))
+        );
+    }
+
     const bool bCenterOrRevisionChanged =
         InProjectionRevision != AppliedProjectionRevision ||
-        InCoarsestCenter != AppliedCoarsestCenter;
+        OceanCoarsestCenter != AppliedCoarsestCenter;
 
     bool bDistanceChangedSignificantly = false;
     if (InDistanceToSurface >= 0.0)
@@ -404,7 +417,7 @@ void UCosmicOceanComponent::UpdateOceanLOD(
     if (bCenterOrRevisionChanged || bDistanceChangedSignificantly)
     {
         CurrentProjectionFrame = InProjectionFrame;
-        CurrentCoarsestCenter = InCoarsestCenter;
+        CurrentCoarsestCenter = OceanCoarsestCenter;
         CurrentProjectionRevision = InProjectionRevision;
         CurrentDistanceToSurface = InDistanceToSurface;
         CurrentViewerCoordinates = InViewerCoordinates;
@@ -506,6 +519,7 @@ bool UCosmicOceanComponent::CheckAndApplyOceanMeshUpdate()
     FCosmicOceanGenerationTask& CompletedTask = OceanTask->GetTask();
 
     AppliedCoarsestCenter = CompletedTask.CalculatedGridCenter;
+    CurrentCoarsestCenter = CompletedTask.CalculatedGridCenter;
     AppliedProjectionRevision = CompletedTask.CalculatedProjectionRevision;
     AppliedBaseGridSpacing = CompletedTask.CalculatedBaseGridSpacing;
     CurrentOceanBaseGridSpacing = CompletedTask.CalculatedBaseGridSpacing;
@@ -537,29 +551,6 @@ bool UCosmicOceanComponent::CheckAndApplyOceanMeshUpdate()
     delete OceanTask;
     OceanTask = nullptr;
     bIsGeneratingOcean = false;
-
-    if (!bPerformanceMode)
-    {
-        const bool bNeedsCenterOrRevision =
-            CurrentProjectionRevision != AppliedProjectionRevision ||
-            CurrentCoarsestCenter != AppliedCoarsestCenter;
-
-        bool bNeedsDistanceUpdate = false;
-        if (CurrentDistanceToSurface >= 0.0 && LastAppliedDistanceToSurface >= 0.0)
-        {
-            const double DeltaDist = FMath::Abs(CurrentDistanceToSurface - LastAppliedDistanceToSurface);
-            const double RefDist = FMath::Max(100.0, FMath::Min(CurrentDistanceToSurface, LastAppliedDistanceToSurface));
-            if (DeltaDist / RefDist > 0.15)
-            {
-                bNeedsDistanceUpdate = true;
-            }
-        }
-
-        if (bNeedsCenterOrRevision || bNeedsDistanceUpdate)
-        {
-            RequestOceanMeshUpdate();
-        }
-    }
 
     return true;
 }
