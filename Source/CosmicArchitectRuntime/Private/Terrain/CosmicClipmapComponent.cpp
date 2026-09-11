@@ -8,6 +8,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Terrain/CosmicMeshComponent.h"
 #include "Terrain/CosmicCollisionComponent.h"
+#include "Terrain/CosmicOceanComponent.h"
 #include "CosmicNoiseClass.h"
 #include "CosmicDefaultNoiseStrategy.h"
 #include "CosmicFoliageSpawner.h"
@@ -209,6 +210,11 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
             // Activate FarLevel immediately (already built)
             FarLevel->SetMeshActive(true);
 
+            if (OceanComponent)
+            {
+                OceanComponent->SetPerformanceMode(true);
+            }
+
             for (size_t i = 0; i < Levels.Num(); i++)
             {
                 Levels[i]->SetMeshActive(false);
@@ -221,6 +227,16 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
             bWaitingForNormalTransition = true;
 
             ConfigureLevelsForViewer(N);
+
+            if (OceanComponent)
+            {
+                OceanComponent->UpdateOceanLOD(
+                    SnappedProjectionFrame,
+                    CoarsestGridCenter,
+                    SnappedProjectionRevision,
+                    false
+                );
+            }
 
             for (size_t i = 0; i < Levels.Num(); i++)
             {
@@ -244,6 +260,11 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
             }
         }
 
+        if (OceanComponent && OceanComponent->IsTaskActive())
+        {
+            allTasksDone = false;
+        }
+
         if (!allTasksDone)
         {
             return;  // Keep waiting, FarLevel is already visible meanwhile
@@ -253,6 +274,11 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
         for (size_t i = 0; i < Levels.Num(); i++)
         {
             Levels[i]->CancelAsyncWork();
+        }
+
+        if (OceanComponent)
+        {
+            OceanComponent->CancelAsyncWork();
         }
 
         bWaitingForPerformanceTransition = false;
@@ -272,6 +298,11 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
             }
         }
 
+        if (OceanComponent && OceanComponent->IsTaskActive())
+        {
+            allTasksDone = false;
+        }
+
         if (!allTasksDone)
         {
             return;  // Keep waiting, FarLevel remains visible
@@ -284,6 +315,11 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
             Levels[i]->SetMeshActive(true);
         }
         FarLevel->SetMeshActive(false);
+
+        if (OceanComponent)
+        {
+            OceanComponent->CheckAndApplyOceanMeshUpdate();
+        }
 
         bWaitingForNormalTransition = false;
     }
@@ -340,6 +376,16 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
     // Common center is quantized to coarsest spacing so that all
     // levels retain coincident vertices on their 2:1 borders.
     const bool bProjectionUpdate = ConfigureLevelsForViewer(N);
+
+    if (OceanComponent)
+    {
+        OceanComponent->UpdateOceanLOD(
+            SnappedProjectionFrame,
+            CoarsestGridCenter,
+            SnappedProjectionRevision,
+            bPerformaceMode
+        );
+    }
 
     if (bProjectionUpdate || UpdateClipmapLevels)
     {
@@ -514,6 +560,15 @@ void UCosmicClipmapComponent::CreateLevels()
     bInit = true;
 
     ConfigureLevelsForViewer(N);
+    if (OceanComponent)
+    {
+        OceanComponent->UpdateOceanLOD(
+            SnappedProjectionFrame,
+            CoarsestGridCenter,
+            SnappedProjectionRevision,
+            bPerformaceMode
+        );
+    }
     for (UCosmicMeshComponent* Mesh : Levels)
     {
         if (Mesh)
@@ -618,6 +673,7 @@ void UCosmicClipmapComponent::ResetPointersAfterDuplicate(USceneComponent* NewRo
     bInit = false;
     bPerformanceBuild = false;
     bPerformaceMode = false;
+    OceanComponent = nullptr;
     bSnappedProjectionValid = false;
     bCoarsestGridCenterValid = false;
     ++SnappedProjectionRevision;

@@ -11,6 +11,7 @@ class UCosmicMeshComponent;
 class UCosmicFoliageSpawner;
 class UCosmicCollisionComponent;
 class UCosmicNoiseClass;
+class UCosmicOceanComponent;
 
 /**
  * Component responsible for managing the planetary clipmap system.
@@ -143,6 +144,9 @@ public:
 
     /** Component responsible for procedural foliage */
     UCosmicFoliageSpawner* FoliageSpawnerComponent;
+
+    /** Component responsible for ocean clipmap and far sphere */
+    UCosmicOceanComponent* OceanComponent = nullptr;
 
 protected:
 

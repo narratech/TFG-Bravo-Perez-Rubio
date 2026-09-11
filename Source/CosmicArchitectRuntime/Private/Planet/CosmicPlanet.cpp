@@ -128,6 +128,7 @@ void ACosmicPlanet::InitClipmap()
         ClipmapComponent->ClearLevels();
         ClipmapComponent->CollisionComponent = CollisionComponent;
         ClipmapComponent->FoliageSpawnerComponent = FoliageSpawnerComponent;
+        ClipmapComponent->OceanComponent = OceanComponent;
         ClipmapComponent->CreatePerformanceLevel(true);
         bInitializedInEditor = true;
     }

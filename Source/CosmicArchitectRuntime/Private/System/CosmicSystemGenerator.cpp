@@ -679,21 +679,27 @@ void ACosmicSystemGenerator::GenerateBodies()
         {
             // Scale wave intensity loosely with planet radius
             const float RadiusFactor = FMath::Clamp(NewRadius / 1.0f, 0.5f, 3.0f);
-            Planet->OceanComponent->WaveAmplitudeScale = Stream.FRandRange(0.5f, 2.0f) * RadiusFactor;
+            Planet->OceanComponent->WaveHeight = Stream.FRandRange(100.0f, 250.0f) * RadiusFactor;
+            Planet->OceanComponent->WaveLength = Stream.FRandRange(4000.0f, 8000.0f) * RadiusFactor;
             Planet->OceanComponent->WaveSteepness = Stream.FRandRange(0.3f, 0.7f);
             Planet->OceanComponent->WaveSpeed = Stream.FRandRange(0.5f, 2.0f);
+            Planet->OceanComponent->WaveChop = Stream.FRandRange(0.6f, 1.4f);
+            Planet->OceanComponent->WaveSpread = Stream.FRandRange(0.8f, 1.2f);
+            Planet->OceanComponent->WaveAmplitudeScale = Stream.FRandRange(0.5f, 2.0f) * RadiusFactor;
             Planet->OceanComponent->WaveActionRadiusKm = Stream.FRandRange(2.0f, 10.0f) * RadiusFactor;
             Planet->OceanComponent->WaveActionFalloffKm = Planet->OceanComponent->WaveActionRadiusKm * Stream.FRandRange(0.1f, 0.3f);
 
             // Randomize ocean color within plausible aquatic ranges
-            Planet->OceanComponent->WaterShallowColor = FLinearColor(
-                Stream.FRandRange(0.05f, 0.15f),
-                Stream.FRandRange(0.25f, 0.5f),
-                Stream.FRandRange(0.4f, 0.7f), 1.0f);
+            Planet->OceanComponent->WaterColor = FLinearColor(
+                Stream.FRandRange(0.01f, 0.05f),
+                Stream.FRandRange(0.10f, 0.30f),
+                Stream.FRandRange(0.30f, 0.55f), 1.0f);
+            Planet->OceanComponent->WaterShallowColor = Planet->OceanComponent->WaterColor;
             Planet->OceanComponent->WaterDeepColor = FLinearColor(
                 Stream.FRandRange(0.01f, 0.05f),
                 Stream.FRandRange(0.02f, 0.08f),
                 Stream.FRandRange(0.1f, 0.2f), 1.0f);
+            Planet->OceanComponent->WaterAbsortion = FLinearColor(0.45f, 0.05f, 0.01f, 1.0f);
         }
 
         UCosmicGravityComponent* Gravity = NewObject<UCosmicGravityComponent>(Planet);
