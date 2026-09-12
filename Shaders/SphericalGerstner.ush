@@ -23,11 +23,11 @@
 
 // Default Configurable Distance LOD Ranges in Kilometers
 #ifndef GERSTNER_FADE_START_KM
-#define GERSTNER_FADE_START_KM 10.0f
+#define GERSTNER_FADE_START_KM 1.0f
 #endif
 
 #ifndef GERSTNER_FADE_END_KM
-#define GERSTNER_FADE_END_KM   30.0f
+#define GERSTNER_FADE_END_KM   1.5f
 #endif
 
 /**
@@ -96,6 +96,16 @@ void CalculateSphericalGerstner(
     if (bHasCamera)
     {
         CameraDist = length(InWorldPos - CameraWorldPos);
+
+        // Strict cutoff: beyond FadeEnd, displacement is strictly zero to eliminate subpixel geometric aliasing
+        if (CameraDist >= FadeEndCm)
+        {
+            OutDisplacement = float3(0.0f, 0.0f, 0.0f);
+            OutNormal = N_base;
+            OutRoughnessBias = saturate((CameraDist - 50000.0f) / 500000.0f) * 0.35f;
+            return;
+        }
+
         LODFade = saturate(1.0f - (CameraDist - FadeStartCm) / FadeRangeCm);
 
         // Early-Exit: Beyond FadeEnd, vertex displacement is zero and normal is unperturbed
@@ -137,13 +147,13 @@ void CalculateSphericalGerstner(
 
     int ActiveLimit = clamp(NumActiveWaves, 1, GERSTNER_MAX_WAVES);
 
-    // Dynamic orthonormal cross-spread fallback angles and axes
+    // Dynamic orthonormal cross-spread fallback angles and axes (Trimodal Swell base)
     static const float FallbackAngles[12] = {
-         0.000f,  0.488f, -0.663f,  0.907f, -0.838f,  0.314f,
-        -0.419f,  1.187f, -1.117f,  0.628f, -0.733f,  1.326f
+         0.052f, -0.366f,  0.436f,  0.785f, -0.820f,  1.100f,
+        -0.550f,  1.300f, -1.200f,  0.600f, -0.950f,  1.450f
     };
     static const int FallbackAxes[12] = {
-        0, 0, 1, 2, 3, 0, 1, 2, 3, 2, 3, 2
+        0, 0, 0, 1, 2, 3, 0, 1, 2, 3, 2, 3
     };
 
     // --- Wave Summation ---
@@ -188,8 +198,8 @@ void CalculateSphericalGerstner(
             float BaseQ   = max(WaveParams[0].z * SteepnessScale, 0.3f);
             float BaseSpd = WaveParams[0].w * SpeedScale;
 
-            static const float LScale[12] = { 1.0f, 0.73f, 0.51f, 0.38f, 0.28f, 0.20f, 0.14f, 0.098f, 0.068f, 0.047f, 0.032f, 0.021f };
-            static const float AScale[12] = { 1.0f, 0.65f, 0.46f, 0.36f, 0.28f, 0.22f, 0.18f, 0.15f,  0.12f,  0.10f,  0.08f,  0.06f };
+            static const float LScale[12] = { 1.000f, 0.940f, 0.880f, 0.510f, 0.380f, 0.280f, 0.200f, 0.140f, 0.098f, 0.068f, 0.047f, 0.032f };
+            static const float AScale[12] = { 1.000f, 0.940f, 0.880f, 0.650f, 0.500f, 0.380f, 0.280f, 0.200f, 0.150f, 0.120f, 0.090f, 0.060f };
             static const float QScale[12] = { 1.0f, 1.05f, 1.10f, 1.15f, 1.20f, 1.25f, 1.30f, 1.35f,  1.40f,  1.45f,  1.50f,  1.55f };
             static const float SScale[12] = { 1.0f, 1.08f, 0.94f, 1.14f, 1.02f, 1.22f, 0.91f, 1.18f,  1.05f,  1.28f,  0.97f,  1.32f };
 
@@ -502,44 +512,49 @@ float3 EvaluateOceanArtist(
     }
 
     // Natural 12-Tier Oceanographic Spectrum:
-    // Swell (0..1) + Wind waves (2..5) + Choppy waves (6..8) + Capillary ripples (9..11)
+    // Trimodal Swell (0..2) + Wind waves (3..5) + Choppy waves (6..8) + Capillary ripples (9..11)
     static const float WaveLenRatios[12] = {
-        1.000f, 0.730f, 0.510f, 0.380f, 0.280f, 0.200f,
-        0.140f, 0.098f, 0.068f, 0.047f, 0.032f, 0.021f
+        1.000f, 0.940f, 0.880f,
+        0.510f, 0.380f, 0.280f, 0.200f,
+        0.140f, 0.098f, 0.068f, 0.047f, 0.032f
     };
 
     static const float BaseAmpWeights[12] = {
-        0.260f, 0.170f, 0.120f, 0.095f, 0.075f, 0.060f,
-        0.050f, 0.042f, 0.036f, 0.032f, 0.028f, 0.022f
+        0.160f, 0.150f, 0.140f,
+        0.110f, 0.090f, 0.075f, 0.060f,
+        0.050f, 0.045f, 0.040f, 0.040f, 0.040f
     };
 
     static const float WaveSteepMults[12] = {
-        0.80f, 0.88f, 0.95f, 1.02f, 1.08f, 1.15f,
-        1.20f, 1.25f, 1.30f, 1.35f, 1.40f, 1.45f
+        0.80f, 0.85f, 0.90f, 0.98f, 1.05f, 1.12f,
+        1.18f, 1.25f, 1.30f, 1.35f, 1.40f, 1.45f
     };
 
     static const float WaveSpeedMults[12] = {
-        1.00f, 1.08f, 0.94f, 1.14f, 1.02f, 1.22f,
-        0.91f, 1.18f, 1.05f, 1.28f, 0.97f, 1.32f
+        1.00f, 1.04f, 0.96f, 1.12f, 1.02f, 1.20f,
+        0.92f, 1.18f, 1.05f, 1.26f, 0.98f, 1.32f
     };
 
     static const float WaveSpreadAngles[12] = {
-         0.000f,  0.488f, -0.663f,  0.907f, -0.838f,  0.314f,
-        -0.419f,  1.187f, -1.117f,  0.628f, -0.733f,  1.326f
+         0.052f, -0.366f,  0.436f,
+         0.785f, -0.820f,  1.100f, -0.550f,
+         1.300f, -1.200f,  0.600f, -0.950f,  1.450f
     };
 
     static const int WaveSpreadAxes[12] = {
-        0, 0, 1, 2, 3, 0, 1, 2, 3, 2, 3, 2
+        0, 0, 0, 1, 2, 3, 0, 1, 2, 3, 2, 3
     };
 
     // Calculate normalized energy distribution so total wave amplitude strictly equals H
-    float TotalWeight = BaseAmpWeights[0];
+    // Waves 0, 1, 2 form the primary trimodal swell (independent of WaveChop C)
+    float TotalWeight = 0.0f;
     [unroll]
-    for (int w = 1; w < GERSTNER_MAX_WAVES; ++w)
+    for (int w = 0; w < GERSTNER_MAX_WAVES; ++w)
     {
         if (w < ActiveWaves)
         {
-            TotalWeight += BaseAmpWeights[w] * C;
+            float WeightW = (w < 3) ? BaseAmpWeights[w] : (BaseAmpWeights[w] * C);
+            TotalWeight += WeightW;
         }
     }
     TotalWeight = max(TotalWeight, 0.001f);
@@ -561,7 +576,7 @@ float3 EvaluateOceanArtist(
     {
         if (i < ActiveWaves)
         {
-            float Weight = (i == 0) ? BaseAmpWeights[0] : (BaseAmpWeights[i] * C);
+            float Weight = (i < 3) ? BaseAmpWeights[i] : (BaseAmpWeights[i] * C);
             float WaveAmp = H * (Weight / TotalWeight);
             float WaveLen = L * WaveLenRatios[i];
             float WaveQ   = clamp(Q * WaveSteepMults[i], 0.0f, 1.0f);
@@ -569,20 +584,13 @@ float3 EvaluateOceanArtist(
 
             Params[i] = float4(WaveAmp, WaveLen, WaveQ, WaveSpd);
 
-            if (i == 0)
-            {
-                Origins[0] = Primary;
-            }
-            else
-            {
-                float3 axis = U_spread;
-                if (WaveSpreadAxes[i] == 1) axis = V_spread;
-                else if (WaveSpreadAxes[i] == 2) axis = UV_diag1;
-                else if (WaveSpreadAxes[i] == 3) axis = UV_diag2;
+            float3 axis = U_spread;
+            if (WaveSpreadAxes[i] == 1) axis = V_spread;
+            else if (WaveSpreadAxes[i] == 2) axis = UV_diag1;
+            else if (WaveSpreadAxes[i] == 3) axis = UV_diag2;
 
-                float ang = WaveSpreadAngles[i] * Spread;
-                Origins[i] = normalize(Primary * cos(ang) + axis * sin(ang));
-            }
+            float ang = WaveSpreadAngles[i] * Spread;
+            Origins[i] = normalize(Primary * cos(ang) + axis * sin(ang));
         }
         else
         {

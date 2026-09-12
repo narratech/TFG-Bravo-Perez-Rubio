@@ -121,7 +121,7 @@ public:
 	 * Base vertex resolution per LOD level (must be divisible by 4, e.g. 64, 128, 256).
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Clipmap",
-		meta = (EditCondition = "bHasOcean", ClampMin = "8", ClampMax = "256"))
+		meta = (EditCondition = "bHasOcean", ClampMin = "8", ClampMax = "128"))
 	int32 OceanResolution = 64;
 
 	/**
@@ -193,14 +193,14 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Waves",
 		meta = (EditCondition = "bHasOcean && bUseGeneratedMaterial", ClampMin = "0.0", ClampMax = "10.0"))
-	float WaveSpeed = 1.0f;
+	float WaveSpeed = 0.7f;
 
 	/**
 	 * Crest sharpness / trochoid peak [0.0 = smooth swell, 1.0 = sharp peaked waves].
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Waves",
 		meta = (EditCondition = "bHasOcean && bUseGeneratedMaterial", ClampMin = "0.0", ClampMax = "1.0"))
-	float WaveSteepness = 0.5f;
+	float WaveSteepness = 0.7f;
 
 	/**
 	 * Secondary cross-waves and surface turbulence [0.0 = uniform swell, 1.0 = open sea, 2.0 = stormy].
@@ -221,21 +221,21 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Waves",
 		meta = (EditCondition = "bHasOcean && bUseGeneratedMaterial", ClampMin = "0.0", ClampMax = "2.0"))
-	float WaveSpread = 1.0f;
+	float WaveSpread = 2.0f;
 
 	/**
 	 * Distance from camera in kilometers where ocean waves begin fading out.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Waves",
-		meta = (EditCondition = "bHasOcean && bUseGeneratedMaterial", ClampMin = "0.5", ClampMax = "100.0"))
-	float WaveFadeStartKm = 10.0f;
+		meta = (EditCondition = "bHasOcean && bUseGeneratedMaterial", ClampMin = "0.1", ClampMax = "100.0"))
+	float WaveFadeStartKm = 1.0f;
 
 	/**
 	 * Distance from camera in kilometers where ocean waves are completely faded to a calm surface (0 displacement).
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Waves",
-		meta = (EditCondition = "bHasOcean && bUseGeneratedMaterial", ClampMin = "1.0", ClampMax = "300.0"))
-	float WaveFadeEndKm = 30.0f;
+		meta = (EditCondition = "bHasOcean && bUseGeneratedMaterial", ClampMin = "0.2", ClampMax = "300.0"))
+	float WaveFadeEndKm = 1.5f;
 
 	/**
 	 * Primary wind and dominant swell direction vector on the sphere.
@@ -249,21 +249,21 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Appearance",
 		meta = (EditCondition = "bHasOcean && bUseGeneratedMaterial"))
-	FLinearColor WaterColor = FLinearColor(0.02f, 0.15f, 0.35f, 1.0f);
+	FLinearColor WaterColor = FLinearColor(0.15f, 0.5f, 0.66f, 1.0f);
 
 	/**
 	 * Deep water absorption color coefficients.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Appearance",
 		meta = (EditCondition = "bHasOcean && bUseGeneratedMaterial"))
-	FLinearColor WaterAbsortion = FLinearColor(0.45f, 0.05f, 0.01f, 1.0f);
+	FLinearColor WaterAbsortion = FLinearColor(0.35f, 0.07f, 0.03f, 1.0f);
 
 	/**
 	 * Water scattering color coefficients.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Appearance",
 		meta = (EditCondition = "bHasOcean && bUseGeneratedMaterial"))
-	FLinearColor WaterScattering = FLinearColor(0.05f, 0.15f, 0.2f, 1.0f);
+	FLinearColor WaterScattering = FLinearColor(0.029f, 0.0875f, 0.104f, 1.0f);
 
 	/**
 	 * Water scattering amount multiplier.
@@ -277,7 +277,7 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Appearance",
 		meta = (EditCondition = "bHasOcean && bUseGeneratedMaterial", ClampMin = "0.0", ClampMax = "1.0"))
-	float WaterRoughness = 0.05f;
+	float WaterRoughness = 0.005f;
 
 protected:
 
