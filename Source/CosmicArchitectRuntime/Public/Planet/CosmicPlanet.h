@@ -20,7 +20,7 @@ class UMaterialInstance;
  * dynamic collision systems, and large-scale foliage distribution.
  */
 UCLASS(HideCategories = (
-	Replication, Input, Actor, LOD, Activation, Cooking, Networking,
+	Input, Actor, LOD, Activation, Cooking,
 	Physics, Navigation, Tags, DataLayers, LevelInstance))
 	class COSMICARCHITECTRUNTIME_API ACosmicPlanet : public AActor
 {
@@ -28,8 +28,14 @@ UCLASS(HideCategories = (
 
 public:
 
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	/** Called on clients when replicated planet configuration is received. */
+	UFUNCTION()
+	void OnRep_PlanetConfig();
+
 	/** Base planet radius in Kilometers (supports Large World Coordinates). */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Planet")
+	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig, EditAnywhere, BlueprintReadOnly, Category = "Planet")
 	double RadiusKm = 1.0;
 
 	/** Root component of the actor hierarchy. */
@@ -49,7 +55,7 @@ public:
 	UCosmicOceanComponent* OceanComponent;
 
 	/** Asset defining noise algorithms for terrain relief. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Planet|Noise")
+	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig, EditAnywhere, BlueprintReadWrite, Category = "Planet|Noise")
 	UCosmicNoiseClass* NoiseClass;
 
 	/** Mass instantiation system for vegetation and rocks on the surface. */
@@ -59,39 +65,76 @@ public:
 	// --- MATERIAL COLOR CONFIGURATION ---
 
 	/** Predominant color for mid-altitude zones. */
-	UPROPERTY(EditAnywhere, Category = "Materials|Color")
+	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig, EditAnywhere, Category = "Materials|Color")
 	FColor PlanetMainColor1 = FColor::Red;
 
 	/** Secondary color for terrain chromatic variation. */
-	UPROPERTY(EditAnywhere, Category = "Materials|Color")
+	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig, EditAnywhere, Category = "Materials|Color")
 	FColor PlanetMainColor2 = FColor::Orange;
 
 	/** Tint applied to low temperature areas or deep valleys. */
-	UPROPERTY(EditAnywhere, Category = "Materials|Color")
+	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig, EditAnywhere, Category = "Materials|Color")
 	FColor PlanetColdColor = FColor::White;
 
 	/** Tint applied to peaks or high activity/temperature areas. */
-	UPROPERTY(EditAnywhere, Category = "Materials|Color")
+	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig, EditAnywhere, Category = "Materials|Color")
 	FColor PlanetHotColor = FColor::Red;
 
 	/** Color used to highlight steep slopes and cliffs. */
-	UPROPERTY(EditAnywhere, Category = "Materials|Color")
+	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig, EditAnywhere, Category = "Materials|Color")
 	FColor PlanetSlopeColor = FColor::Black;
 
 	// --- NOISE SCALES ---
 
 	/** Fine terrain detail (Micro-relief). */
-	UPROPERTY(EditAnywhere, Category = "Materials|Noise", meta = (ClampMin = "0.01"))
+	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig, EditAnywhere, Category = "Materials|Noise", meta = (ClampMin = "0.01"))
 	float NoiseScaleSmall = 1.f;
 
 	/** Medium terrain detail (Hills and formations). */
-	UPROPERTY(EditAnywhere, Category = "Materials|Noise", meta = (ClampMin = "0.01"))
+	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig, EditAnywhere, Category = "Materials|Noise", meta = (ClampMin = "0.01"))
 	float NoiseScaleMedium = 3.f;
 
 	/** Macro terrain detail (Mountains and continents). */
-	UPROPERTY(EditAnywhere, Category = "Materials|Noise", meta = (ClampMin = "0.01"))
+	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig, EditAnywhere, Category = "Materials|Noise", meta = (ClampMin = "0.01"))
 	float NoiseScaleLarge = 100.f;
 
+	// --- REPLICATED GENERATION CONFIGURATION ---
+
+	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig)
+	UMaterialInstance* BaseMaterial = nullptr;
+
+	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig)
+	UTexture2D* DefaultTexture = nullptr;
+
+	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig)
+	bool bUseClipmap = true;
+
+	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig)
+	int32 BaseResolution = 128;
+
+	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig)
+	int32 NumLevels = 4;
+
+	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig)
+	int32 MinTriangleSize = 100;
+
+	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig)
+	float HeightVisibility = 5.0f;
+
+	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig)
+	bool bHasOcean = true;
+
+	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig)
+	double SeaLevelKm = 0.0;
+
+	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig)
+	int32 OceanResolution = 128;
+
+	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig)
+	UMaterialInstance* OceanMaterial = nullptr;
+
+	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig)
+	UCosmicFoliageCollection* FoliageCollection = nullptr;
 
 	/** Initializes default components and basic structure. */
 	ACosmicPlanet();
@@ -110,8 +153,8 @@ public:
 		UCosmicNoiseClass* NewNoiseClass,
 		FColor Color1, FColor Color2, FColor ColorCold, FColor ColorHot,
 		FColor ColorSlope, float ScaleL, float ScaleM, float ScaleS,
-		UMaterialInstance* BaseMaterial,
-		UTexture2D* DefaultTexture,
+		UMaterialInstance* InBaseMaterial,
+		UTexture2D* InDefaultTexture,
 		// Clipmap
 		bool UseClipmap = true,
 		int32 InBaseResolution = 128,

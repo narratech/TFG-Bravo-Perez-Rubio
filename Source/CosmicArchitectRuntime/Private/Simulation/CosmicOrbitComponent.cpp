@@ -155,8 +155,15 @@ void UCosmicOrbitComponent::TickComponent(
 
 	AActor* Owner = GetOwner();
 
+	// In multiplayer game worlds, only the server integrates the orbit and updates the actor transform.
+	// Clients receive the replicated transform via Unreal's replicated movement.
+	if (!Owner || (GetWorld() && GetWorld()->IsGameWorld() && !Owner->HasAuthority()))
+	{
+		return;
+	}
+
 	// Avoid invalid or degenerate calculations.
-	if (!ParentBody || OrbitalPeriod <= 0.0f || ScaledDelta <= KINDA_SMALL_NUMBER || !Owner)
+	if (!ParentBody || OrbitalPeriod <= 0.0f || ScaledDelta <= KINDA_SMALL_NUMBER)
 	{
 		return;
 	}

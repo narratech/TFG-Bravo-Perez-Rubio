@@ -4,6 +4,7 @@
 #include "Simulation/CosmicGravitySubsystem.h"
 #include "Engine/World.h"
 #include "Components/PrimitiveComponent.h"
+#include "GameFramework/Character.h"
 
 UCosmicGravityComponent::UCosmicGravityComponent()
 {
@@ -31,7 +32,8 @@ void UCosmicGravityComponent::BeginPlay()
             // Orbital bodies use Unreal physics engine to resolve collisions
             // and force response. Engine internal gravity is disabled because gravity
             // is exclusively managed by CosmicGravitySubsystem.
-            if (!IsPlanet) {
+            // Characters manage their own kinematic movement and gravity orientation.
+            if (!IsPlanet && !Owner->IsA<ACharacter>()) {
                 RootPrimitive->SetSimulatePhysics(true);
                 RootPrimitive->SetEnableGravity(false);
                 RootPrimitive->SetMassOverrideInKg(NAME_None, Mass, true);
@@ -74,6 +76,21 @@ void UCosmicGravityComponent::Integrate(double DeltaTime)
     // to convert from meters to centimeters (Unreal Engine internal unit system).
     // Formula: a = F / m  ->  a_ue = (F / m) * 100
     FVector Acceleration = AccumulatedForce * 100 / Mass;
+
+    if (AActor* Owner = GetOwner())
+    {
+        if (Owner->IsA<ACharacter>())
+        {
+            // Characters manage their own movement and gravity through CharacterMovementComponent.
+            // Only update CurrentGravityDirection for reference and do not apply forces or translations.
+            if (!AccumulatedForce.IsNearlyZero())
+            {
+                CurrentGravityDirection = Acceleration;
+            }
+            AccumulatedForce = FVector::ZeroVector;
+            return;
+        }
+    }
 
     if (!IsPlanet && RootPrimitive && RootPrimitive->IsSimulatingPhysics())
     {

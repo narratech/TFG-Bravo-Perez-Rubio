@@ -16,6 +16,11 @@ UCosmicOceanComponent::UCosmicOceanComponent()
 
 void UCosmicOceanComponent::InitOcean(double PlanetRadiusKm, USceneComponent* Parent)
 {
+    if (IsRunningDedicatedServer() || (GetWorld() && GetWorld()->GetNetMode() == NM_DedicatedServer))
+    {
+        return;
+    }
+
     PlanetRadiusCm = PlanetRadiusKm * 100000.0;
     ParentRoot = Parent;
 }
@@ -36,6 +41,11 @@ int64 UCosmicOceanComponent::GetCalculatedBaseGridSpacing() const
 
 void UCosmicOceanComponent::RegenerateOcean()
 {
+    if (IsRunningDedicatedServer() || (GetWorld() && GetWorld()->GetNetMode() == NM_DedicatedServer))
+    {
+        return;
+    }
+
     if (bInit)
     {
         ClearOcean();

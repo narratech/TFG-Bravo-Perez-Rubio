@@ -27,6 +27,12 @@ void UCosmicCollisionComponent::BeginPlay()
 {
     Super::BeginPlay();
 
+    if (IsRunningDedicatedServer() || (GetWorld() && GetWorld()->GetNetMode() == NM_DedicatedServer))
+    {
+        SetComponentTickEnabled(false);
+        return;
+    }
+
     if (!bIsCompanion)
     {
         EnsureCompanionCreated();
@@ -59,9 +65,22 @@ void UCosmicCollisionComponent::EnsureCompanionCreated()
         CompanionPatch->UpdateCellInterval = UpdateCellInterval;
         CompanionPatch->bUseComplexAsSimpleCollision = bUseComplexAsSimpleCollision;
         CompanionPatch->bUseAsyncCooking = bUseAsyncCooking;
-        CompanionPatch->bShowCollisionMesh = false; // Primary component handles debug drawing
-        CompanionPatch->SetupAttachment(GetAttachParent() ? GetAttachParent() : this);
+        CompanionPatch->bShowCollisionMesh = bShowCollisionMesh;
+        CompanionPatch->DebugColor = DebugColor;
+        CompanionPatch->DebugLineWidth = DebugLineWidth;
         CompanionPatch->RegisterComponent();
+
+        USceneComponent* ParentToAttach = GetAttachParent();
+        if (!ParentToAttach || ParentToAttach == this)
+        {
+            ParentToAttach = GetOwner() ? GetOwner()->GetRootComponent() : nullptr;
+        }
+
+        if (ParentToAttach && ParentToAttach != this)
+        {
+            CompanionPatch->AttachToComponent(ParentToAttach, FAttachmentTransformRules::KeepWorldTransform);
+        }
+
         CompanionPatch->DeactivatePhysics();
 
         CompanionPatch->Tris = Tris;
@@ -75,6 +94,11 @@ void UCosmicCollisionComponent::EnsureCompanionCreated()
 void UCosmicCollisionComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+    if (IsRunningDedicatedServer() || (GetWorld() && GetWorld()->GetNetMode() == NM_DedicatedServer))
+    {
+        return;
+    }
 
     if (bIsCompanion) return;
 

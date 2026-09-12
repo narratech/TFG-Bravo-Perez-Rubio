@@ -59,11 +59,17 @@ bool UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePo
 
 void UCosmicClipmapComponent::BeginPlay()
 {
-
     Super::BeginPlay();
 
-    TimeToRefreshActive = TimeToRefresh;
+    // On dedicated server, procedural terrain meshes and clipmaps are disabled
+    if (IsRunningDedicatedServer() || (GetWorld() && GetWorld()->GetNetMode() == NM_DedicatedServer))
+    {
+        SetComponentTickEnabled(false);
+        ClearLevels();
+        return;
+    }
 
+    TimeToRefreshActive = TimeToRefresh;
 
     FVector SurfacePos;
     FVector N;
@@ -73,6 +79,16 @@ void UCosmicClipmapComponent::BeginPlay()
     bPerformaceMode = true;
 
     ElapsedTime = FMath::FRandRange(0.f, TimeToRefresh);
+
+    if (GetWorld() && GetWorld()->IsGameWorld())
+    {
+        ViewerPos = GetPlayerLocation();
+        if (ViewerPos.IsZero())
+        {
+            // Player pawn not ready yet; wait for TickComponent when pawn is valid
+            return;
+        }
+    }
 
     DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
 
@@ -93,6 +109,12 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+    // On dedicated server, procedural terrain meshes and clipmaps are disabled
+    if (IsRunningDedicatedServer() || (GetWorld() && GetWorld()->GetNetMode() == NM_DedicatedServer))
+    {
+        return;
+    }
+
     ElapsedTime += DeltaTime;
 
     if (DynamicPlanetMat) {
@@ -105,7 +127,15 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
     if (!UseClipmap && bPerformanceBuild)
         return;
 
-    //const double StartTime = FPlatformTime::Seconds();
+    // In game world, ensure player pawn has a valid location before triggering terrain/collision/foliage updates
+    if (GetWorld() && GetWorld()->IsGameWorld())
+    {
+        const FVector CurrentPlayerLoc = GetPlayerLocation();
+        if (CurrentPlayerLoc.IsZero())
+        {
+            return;
+        }
+    }
 
     ElapsedTime = ElapsedTime - TimeToRefresh;
 
@@ -516,6 +546,10 @@ void UCosmicClipmapComponent::PostEditChangeProperty(FPropertyChangedEvent& Prop
 
 void UCosmicClipmapComponent::CreateLevels()
 {
+    if (IsRunningDedicatedServer() || (GetWorld() && GetWorld()->GetNetMode() == NM_DedicatedServer))
+    {
+        return;
+    }
 
     if (bInit)
     {
@@ -641,6 +675,11 @@ void UCosmicClipmapComponent::CreateLevels()
 
 void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
 {
+    if (IsRunningDedicatedServer() || (GetWorld() && GetWorld()->GetNetMode() == NM_DedicatedServer))
+    {
+        return;
+    }
+
     if (FarLevel) return;
 
     FName ComponentName = *FString::Printf(TEXT("TerrainClipmapMesh_Performance_%d"), 0);
@@ -991,7 +1030,7 @@ FVector UCosmicClipmapComponent::GetPlayerLocation()
 
     if (GetWorld()->IsGameWorld())
     {
-        APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+        APlayerController* PC = GetWorld()->GetFirstPlayerController();
         if (PC)
         {
             APawn* Pawn = PC->GetPawn();
