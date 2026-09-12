@@ -41,11 +41,8 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 protected:
-
 	virtual void BeginPlay() override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
-	// COMPONENTS
 
 	/**
 	 * Visual root aligned with local gravity.
@@ -73,8 +70,6 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Components")
 	TObjectPtr<UCosmicGravityComponent> GravityComp;
 
-	// MOVEMENT STATE (READ BY ANIMATION BLUEPRINT)
-
 	/**
 	 * Indicates whether the player is grounded on a valid surface.
 	 * Read by ABP_CosmicPlayer for transition logic.
@@ -95,7 +90,11 @@ protected:
 	UFUNCTION(BlueprintPure, Category = "CosmicArchitect|Movement")
 	bool IsGrounded() const { return bIsGroundedState; }
 
-	// MOVEMENT & CAMERA PARAMETERS
+	/**
+	 * Returns the current planetary gravity magnitude in cm/s².
+	 */
+	UFUNCTION(BlueprintPure, Category = "CosmicArchitect|Movement")
+	float GetCurrentGravityMagnitude() const;
 
 	/** Mouse sensitivity for camera control */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Input")
@@ -116,12 +115,6 @@ protected:
 	/** Accumulated pitch rotation for camera (degrees) */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Camera")
 	float CameraPitch = -20.0f;
-
-	// ENHANCED INPUT SYSTEM
-
-	/** Default input mapping context (fallback if not assigned in PlayerController) */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")
-	TObjectPtr<UInputMappingContext> DefaultMappingContext;
 
 	/** Player movement action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Input")

@@ -22,6 +22,11 @@ ACosmicSpherePlayer::ACosmicSpherePlayer()
 	bReplicates = true;
 	SetReplicateMovement(true);
 
+	// Disable controller rotation so the character freely turns toward movement direction
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationYaw = false;
+	bUseControllerRotationRoll = false;
+
 	// Capsule configuration
 	UCapsuleComponent* Capsule = GetCapsuleComponent();
 	if (Capsule)
@@ -30,6 +35,13 @@ ACosmicSpherePlayer::ACosmicSpherePlayer()
 		Capsule->SetCollisionProfileName(TEXT("Pawn"));
 		Capsule->SetSimulatePhysics(false);
 		Capsule->SetEnableGravity(false);
+	}
+
+	// Default orientation and ground alignment for character skeletal mesh
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	{
+		MeshComp->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
+		MeshComp->SetRelativeRotation(FRotator(0.0f, 0.0f, 0.0f));
 	}
 
 	// Visual root strictly aligned with local gravitational normal (TargetUp)
@@ -63,6 +75,7 @@ ACosmicSpherePlayer::ACosmicSpherePlayer()
 		MoveComp->JumpZVelocity = BaseJumpVelocity;
 		MoveComp->AirControl = 0.35f;
 		MoveComp->bOrientRotationToMovement = true;
+		MoveComp->bUseControllerDesiredRotation = false;
 		MoveComp->RotationRate = FRotator(0.0f, 540.0f, 0.0f);
 		MoveComp->bConstrainToPlane = false;
 		MoveComp->bRunPhysicsWithNoController = true;
@@ -82,23 +95,27 @@ void ACosmicSpherePlayer::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Fallback mapping context registration if not using ACosmicPlayerController
-	/*if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	// Ensure controller rotation doesn't lock character yaw, even if enabled in BP details
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationYaw = false;
+	bUseControllerRotationRoll = false;
+
+	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
 	{
-		if (PC->IsLocalController())
-		{
-			if (ULocalPlayer* LP = PC->GetLocalPlayer())
-			{
-				if (UEnhancedInputLocalPlayerSubsystem* Subsystem = LP->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>())
-				{
-					if (DefaultMappingContext && !Subsystem->HasMappingContext(DefaultMappingContext))
-					{
-						Subsystem->AddMappingContext(DefaultMappingContext, 0);
-					}
-				}
-			}
-		}
-	}*/
+		MoveComp->bOrientRotationToMovement = true;
+		MoveComp->bUseControllerDesiredRotation = false;
+		MoveComp->JumpZVelocity = BaseJumpVelocity;
+		MoveComp->MaxWalkSpeed = BaseWalkSpeed;
+	}
+}
+
+float ACosmicSpherePlayer::GetCurrentGravityMagnitude() const
+{
+	if (GravityComp && !GravityComp->CurrentGravityDirection.IsNearlyZero())
+	{
+		return static_cast<float>(GravityComp->CurrentGravityDirection.Length());
+	}
+	return 980.0f;
 }
 
 void ACosmicSpherePlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -127,20 +144,29 @@ void ACosmicSpherePlayer::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// 1. Determine local gravitational down direction
+	// Determine local gravitational down direction and magnitude from CosmicGravityComponent
 	FVector GravityDown = FVector::DownVector;
+	float GravityMagnitude = 980.0f;
+
 	if (GravityComp && !GravityComp->CurrentGravityDirection.IsNearlyZero())
 	{
-		GravityDown = GravityComp->CurrentGravityDirection.GetSafeNormal();
+		GravityMagnitude = static_cast<float>(GravityComp->CurrentGravityDirection.Length());
+		GravityDown = (GravityComp->CurrentGravityDirection / GravityMagnitude);
 	}
 
-	// 2. Feed gravity direction to CharacterMovementComponent (UE 5.7 native feature)
+	// Feed gravity direction and planetary gravity scale to CharacterMovementComponent 
 	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
 	{
 		MoveComp->SetGravityDirection(GravityDown);
+
+		const float DefaultGravityZ = (GetWorld() && FMath::Abs(GetWorld()->GetDefaultGravityZ()) > 0.0f)
+			? FMath::Abs(GetWorld()->GetDefaultGravityZ())
+			: 980.0f;
+
+		MoveComp->GravityScale = GravityMagnitude / DefaultGravityZ;
 	}
 
-	// 3. Update VisualRoot orientation to strictly align with planet normal (TargetUp)
+	// Update VisualRoot orientation to strictly align with planet normal 
 	if (VisualRoot)
 	{
 		FVector TargetUp = -GravityDown;
@@ -166,7 +192,7 @@ void ACosmicSpherePlayer::Tick(float DeltaTime)
 		}
 	}
 
-	// 4. Update grounded state and vertical velocity for animation blueprint
+	// Update grounded state and vertical velocity for animation blueprint
 	if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
 	{
 		bIsGroundedState = MoveComp->IsMovingOnGround();
