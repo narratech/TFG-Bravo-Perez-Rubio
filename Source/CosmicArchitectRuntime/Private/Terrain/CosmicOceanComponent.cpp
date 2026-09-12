@@ -631,11 +631,32 @@ void UCosmicOceanComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 #if WITH_EDITOR
 void UCosmicOceanComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
-    Super::PostEditChangeProperty(PropertyChangedEvent);
-
     const FName PropertyName = PropertyChangedEvent.Property
         ? PropertyChangedEvent.Property->GetFName()
         : NAME_None;
+
+    // Wave and appearance parameters (update MID directly without rebuilding geometry or reregistering components)
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaveHeight) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaveLength) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaveSpeed) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaveSteepness) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaveChop) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaveCount) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaveSpread) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaveFadeStartKm) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaveFadeEndKm) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WindDirection) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaterColor) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaterAbsortion) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaterScattering) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaterScatteringAmount) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaterRoughness))
+    {
+        UpdateWaveParameters();
+        return;
+    }
+
+    Super::PostEditChangeProperty(PropertyChangedEvent);
 
     if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, bHasOcean))
     {
@@ -661,27 +682,6 @@ void UCosmicOceanComponent::PostEditChangeProperty(FPropertyChangedEvent& Proper
         PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, OceanMaterial))
     {
         BuildDynamicMaterial();
-        return;
-    }
-
-    // Wave and appearance parameters (update MID directly without rebuilding geometry)
-    if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaveHeight) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaveLength) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaveSpeed) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaveSteepness) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaveChop) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaveCount) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaveSpread) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaveFadeStartKm) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaveFadeEndKm) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WindDirection) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaterColor) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaterAbsortion) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaterScattering) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaterScatteringAmount) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, WaterRoughness))
-    {
-        UpdateWaveParameters();
         return;
     }
 }

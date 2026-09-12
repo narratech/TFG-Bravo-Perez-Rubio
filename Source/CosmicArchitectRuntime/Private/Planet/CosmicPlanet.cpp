@@ -354,11 +354,29 @@ void ACosmicPlanet::CleanupNoiseSettings()
  */
 void ACosmicPlanet::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
-    Super::PostEditChangeProperty(PropertyChangedEvent);
-
-    FName PropertyName = PropertyChangedEvent.Property
+    const FName PropertyName = PropertyChangedEvent.Property
         ? PropertyChangedEvent.Property->GetFName()
         : NAME_None;
+
+    // Category: Ocean wave & appearance parameters (handled directly on MID by UCosmicOceanComponent, skip actor reregistration)
+    if (PropertyName == FName("WaveHeight") ||
+        PropertyName == FName("WaveLength") ||
+        PropertyName == FName("WaveSpeed") ||
+        PropertyName == FName("WaveSteepness") ||
+        PropertyName == FName("WaveChop") ||
+        PropertyName == FName("WaveCount") ||
+        PropertyName == FName("WaveSpread") ||
+        PropertyName == FName("WaveFadeStartKm") ||
+        PropertyName == FName("WaveFadeEndKm") ||
+        PropertyName == FName("WindDirection") ||
+        PropertyName == FName("WaterColor") ||
+        PropertyName == FName("WaterAbsortion") ||
+        PropertyName == FName("WaterScattering") ||
+        PropertyName == FName("WaterScatteringAmount") ||
+        PropertyName == FName("WaterRoughness"))
+    {
+        return;
+    }
 
     // Category: Quick visual material update.
     if (PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, PlanetMainColor1) ||
@@ -373,6 +391,8 @@ void ACosmicPlanet::PostEditChangeProperty(FPropertyChangedEvent& PropertyChange
         UpdateMaterialOnly();
         return;
     }
+
+    Super::PostEditChangeProperty(PropertyChangedEvent);
 
     // Category: Changes to noise generator.
     if (PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, NoiseClass))

@@ -434,6 +434,18 @@ void UCosmicFastMeshComponent::UpdateMeshSection_LinearColor(
 
 	LocalBounds = FBoxSphereBounds(Payload->LocalBox);
 
+	// Update SectionData so that if SceneProxy is destroyed and recreated, the mesh data is preserved
+	SectionData.Positions = Payload->Positions;
+	if (Payload->Normals.Num() == NumVerts)
+	{
+		SectionData.Normals = Payload->Normals;
+	}
+	if (Payload->Colors.Num() == NumVerts)
+	{
+		SectionData.Colors = Payload->Colors;
+	}
+	SectionData.LocalBox = Payload->LocalBox;
+
 	if (SceneProxy && !IsRenderStateDirty())
 	{
 		FCosmicFastMeshSceneProxy* FastProxy = static_cast<FCosmicFastMeshSceneProxy*>(SceneProxy);
@@ -443,6 +455,10 @@ void UCosmicFastMeshComponent::UpdateMeshSection_LinearColor(
 				FastProxy->UpdateSection_RenderThread(RHICmdList, Payload);
 			}
 		);
+	}
+	else
+	{
+		MarkRenderStateDirty();
 	}
 
 	UpdateBounds();
@@ -461,6 +477,20 @@ void UCosmicFastMeshComponent::UpdateMeshSection_Fast(
 		return;
 	}
 
+	const int32 NumVerts = InPositions.Num();
+
+	// Update SectionData so that if SceneProxy is destroyed and recreated, the mesh data is preserved
+	SectionData.Positions = InPositions;
+	if (InNormals.Num() == NumVerts)
+	{
+		SectionData.Normals = InNormals;
+	}
+	if (InColors.Num() == NumVerts)
+	{
+		SectionData.Colors = InColors;
+	}
+	SectionData.LocalBox = InBounds;
+
 	TSharedPtr<FCosmicFastMeshUpdatePayload> Payload = MakeShared<FCosmicFastMeshUpdatePayload>();
 	Payload->Positions = MoveTemp(InPositions);
 	Payload->Normals = MoveTemp(InNormals);
@@ -478,6 +508,10 @@ void UCosmicFastMeshComponent::UpdateMeshSection_Fast(
 				FastProxy->UpdateSection_RenderThread(RHICmdList, Payload);
 			}
 		);
+	}
+	else
+	{
+		MarkRenderStateDirty();
 	}
 
 	UpdateBounds();
@@ -528,6 +562,18 @@ void UCosmicFastMeshComponent::UpdateMeshSection_FastVectors(
 
 	LocalBounds = FBoxSphereBounds(Payload->LocalBox);
 
+	// Update SectionData so that if SceneProxy is destroyed and recreated, the mesh data is preserved
+	SectionData.Positions = Payload->Positions;
+	if (Payload->Normals.Num() == NumVerts)
+	{
+		SectionData.Normals = Payload->Normals;
+	}
+	if (Payload->Colors.Num() == NumVerts)
+	{
+		SectionData.Colors = Payload->Colors;
+	}
+	SectionData.LocalBox = Payload->LocalBox;
+
 	if (SceneProxy && !IsRenderStateDirty())
 	{
 		FCosmicFastMeshSceneProxy* FastProxy = static_cast<FCosmicFastMeshSceneProxy*>(SceneProxy);
@@ -537,6 +583,10 @@ void UCosmicFastMeshComponent::UpdateMeshSection_FastVectors(
 				FastProxy->UpdateSection_RenderThread(RHICmdList, Payload);
 			}
 		);
+	}
+	else
+	{
+		MarkRenderStateDirty();
 	}
 
 	UpdateBounds();

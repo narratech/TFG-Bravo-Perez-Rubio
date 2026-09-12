@@ -199,7 +199,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
     }
 
     const double ElapsedMs = (FPlatformTime::Seconds() - StartTime) * 1000.0;
-    if (ElapsedMs > 1.5)
+    if (ElapsedMs > 0.5)
     {
         const FString Message = FString::Printf(TEXT("CosmicClipmapComponent Tick [%s]: %.4f ms"), *PhaseName, ElapsedMs);
         if (GEngine)
@@ -462,11 +462,19 @@ void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FV
 #if WITH_EDITOR
 void UCosmicClipmapComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
-    Super::PostEditChangeProperty(PropertyChangedEvent);
-
     const FName PropertyName = PropertyChangedEvent.Property
         ? PropertyChangedEvent.Property->GetFName()
         : NAME_None;
+
+    // BASE MATERIAL / TEXTURE (update MID directly without reregistering components)
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, BaseMaterial) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, DefaultTexture))
+    {
+        BuildDynamicMaterial();
+        return;
+    }
+
+    Super::PostEditChangeProperty(PropertyChangedEvent);
 
     // FULL REBUILD
     if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, BaseResolution) ||
@@ -481,14 +489,6 @@ void UCosmicClipmapComponent::PostEditChangeProperty(FPropertyChangedEvent& Prop
             CreateLevels();
         }
 
-        return;
-    }
-
-    //  BASE MATERIAL / TEXTURE
-    if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, BaseMaterial) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, DefaultTexture))
-    {
-        BuildDynamicMaterial();
         return;
     }
 
