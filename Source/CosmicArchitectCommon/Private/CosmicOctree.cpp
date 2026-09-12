@@ -264,6 +264,51 @@ void FCosmicOctree::TraverseCell(
     }
 }
 
+int32 FCosmicOctree::GetDepthForDistance(float ViewDistanceKm) const
+{
+    if (SphereRadius <= 0.0f)
+    {
+        return MaxDepth;
+    }
+
+    const float ViewDistanceCm = ViewDistanceKm * 100000.0f;
+    const float ViewAngleRad = ViewDistanceCm / SphereRadius;
+    const float TargetAngularSize = FMath::Max(ViewAngleRad * 0.5f, 0.08f / SphereRadius);
+
+    const int32 DistanceCacheKey = FMath::RoundToInt(ViewDistanceCm);
+    if (const int32* CachedDepth = RequiredDepthCache.Find(DistanceCacheKey))
+    {
+        return *CachedDepth;
+    }
+
+    int32 RequiredDepth = MaxDepth;
+    for (int32 Depth = 0; Depth <= MaxDepth; Depth++)
+    {
+        FCubeMapCell TestCell;
+        TestCell.Face = 0;
+        TestCell.Depth = Depth;
+        if (Depth == 0)
+        {
+            TestCell.X = 0;
+            TestCell.Y = 0;
+        }
+        else
+        {
+            const int32 HalfCells = 1 << (Depth - 1);
+            TestCell.X = HalfCells - 1;
+            TestCell.Y = HalfCells - 1;
+        }
+
+        if (GetCellAngularSize(TestCell) <= TargetAngularSize)
+        {
+            RequiredDepth = Depth;
+            break;
+        }
+    }
+    RequiredDepthCache.Add(DistanceCacheKey, RequiredDepth);
+    return RequiredDepth;
+}
+
 void FCosmicOctree::GetNodesInRadius(
     const FVector& ViewerLocation,
     const FVector& PlanetCenter,
@@ -272,43 +317,8 @@ void FCosmicOctree::GetNodesInRadius(
 {
     OutNodes.Reset();
 
-    float ViewDistanceCm = ViewDistanceKm * 100000.0f;
-    float ViewAngleRad = ViewDistanceCm / SphereRadius;
-    float TargetAngularSize = FMath::Max(ViewAngleRad * 0.5f, 0.08f / SphereRadius);
-
-    const int32 DistanceCacheKey = FMath::RoundToInt(ViewDistanceCm);
-    int32 RequiredDepth = MaxDepth;
-    if (const int32* CachedDepth = RequiredDepthCache.Find(DistanceCacheKey))
-    {
-        RequiredDepth = *CachedDepth;
-    }
-    else
-    {
-        for (int32 Depth = 0; Depth <= MaxDepth; Depth++)
-        {
-            FCubeMapCell TestCell;
-            TestCell.Face = 0;
-            TestCell.Depth = Depth;
-            if (Depth == 0)
-            {
-                TestCell.X = 0;
-                TestCell.Y = 0;
-            }
-            else
-            {
-                const int32 HalfCells = 1 << (Depth - 1);
-                TestCell.X = HalfCells - 1;
-                TestCell.Y = HalfCells - 1;
-            }
-
-            if (GetCellAngularSize(TestCell) <= TargetAngularSize)
-            {
-                RequiredDepth = Depth;
-                break;
-            }
-        }
-        RequiredDepthCache.Add(DistanceCacheKey, RequiredDepth);
-    }
+    const float ViewDistanceCm = ViewDistanceKm * 100000.0f;
+    const int32 RequiredDepth = GetDepthForDistance(ViewDistanceKm);
 
     // Traverse the 6 faces
     for (int32 Face = 0; Face < 6; Face++)

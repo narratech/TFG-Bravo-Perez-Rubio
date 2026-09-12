@@ -52,6 +52,14 @@ public:
         TArray<FCubeMapCell>& OutNodes) const;
 
     /**
+     * Calculates the required subdivision depth for a given view distance in kilometers.
+     *
+     * @param ViewDistanceKm View distance in kilometers.
+     * @return Target depth level in the octree.
+     */
+    int32 GetDepthForDistance(float ViewDistanceKm) const;
+
+    /**
      * Gets the geometric bounds of a cell.
      *
      * @param Cell Target cell.

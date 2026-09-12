@@ -45,7 +45,9 @@ UCosmicFoliageSpawner::UCosmicFoliageSpawner()
 
 void UCosmicFoliageSpawner::InitFoliageSpawner(float RadiusKm)
 {
+    CurrentPlanetRadius = static_cast<double>(RadiusKm) * 100000.0;
     Octree.Initialize(RadiusKm * 100000, 16); // 16 depth levels
+    MacroDepth = Octree.GetDepthForDistance(FarLayerRadiusKm);
     ClearFoliage();
 
     if (FoliageCollection)
@@ -64,6 +66,9 @@ void UCosmicFoliageSpawner::UpdateFoliageSpawner(float DeltaTime, const FVector&
     {
         return;
     }
+
+    CurrentPlanetCenter = PlanetCenter;
+    CurrentPlanetRadius = PlanetRadius;
 
     UpdateFoliageGeneration();
     UpdateOctreeAndGenerate(ViewerLocation, DistanceToSurface, PlanetCenter);
@@ -145,15 +150,27 @@ void UCosmicFoliageSpawner::ClearFoliage()
         ResetLayerState(i);
     }
 
-    // Each mesh/collision state has a single shared ISM.
-    for (auto& Pair : SharedHISMs)
+    for (auto& ChunkPair : ActiveMacroChunks)
     {
-        if (Pair.Value.Component)
+        for (auto& Pair : ChunkPair.Value.ChunkHISMs)
         {
-            Pair.Value.Component->DestroyComponent();
+            if (Pair.Value.Component)
+            {
+                Pair.Value.Component->DestroyComponent();
+            }
         }
     }
-    SharedHISMs.Empty();
+    ActiveMacroChunks.Empty();
+
+    for (TObjectPtr<UInstancedStaticMeshComponent>& PooledComp : ISMPool)
+    {
+        if (IsValid(PooledComp))
+        {
+            PooledComp->DestroyComponent();
+        }
+    }
+    ISMPool.Empty();
+
     FoliageEntriesSnapshot.Reset();
     ConfiguredLayerMask = 0;
     bLayerMaskDirty = true;
@@ -170,6 +187,7 @@ void UCosmicFoliageSpawner::OnComponentDestroyed(bool bDestroyingHierarchy)
 {
     CancelAsyncWork();
     ClearDelegates();
+    ClearFoliage();
     Super::OnComponentDestroyed(bDestroyingHierarchy);
 }
 
@@ -177,6 +195,7 @@ void UCosmicFoliageSpawner::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     CancelAsyncWork();
     ClearDelegates();
+    ClearFoliage();
     Super::EndPlay(EndPlayReason);
 }
 
@@ -699,6 +718,98 @@ float UCosmicFoliageSpawner::GetLayerRadius(ECosmicFoliageLayer Layer) const
     }
 }
 
+FCubeMapCell UCosmicFoliageSpawner::GetMacroCellForLeaf(const FCubeMapCell& LeafCell) const
+{
+    return LeafCell.GetAncestorAtDepth(MacroDepth);
+}
+
+UInstancedStaticMeshComponent* UCosmicFoliageSpawner::AcquireISMComponent(const FCosmicHISMKey& Key, const FVector& WorldLocation)
+{
+    if (!Key.Mesh || !GetOwner()) return nullptr;
+
+    UInstancedStaticMeshComponent* Comp = nullptr;
+    while (!ISMPool.IsEmpty())
+    {
+        TObjectPtr<UInstancedStaticMeshComponent> PooledComp = ISMPool.Pop(EAllowShrinking::No);
+        if (IsValid(PooledComp))
+        {
+            Comp = PooledComp.Get();
+            break;
+        }
+    }
+
+    if (!Comp)
+    {
+        Comp = NewObject<UInstancedStaticMeshComponent>(
+            GetOwner(),
+            NAME_None,
+            RF_Transient | RF_DuplicateTransient
+        );
+        if (!Comp) return nullptr;
+
+        Comp->SetupAttachment(GetOwner()->GetRootComponent());
+        Comp->SetGenerateOverlapEvents(false);
+        Comp->SetCanEverAffectNavigation(false);
+        Comp->SetMobility(EComponentMobility::Movable);
+        Comp->RegisterComponent();
+    }
+
+    Comp->SetStaticMesh(Key.Mesh);
+    Comp->SetCollisionEnabled(Key.bHasCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
+    Comp->SetRelativeLocation(WorldLocation);
+    Comp->SetUseConservativeBounds(bUseConservativeBounds);
+    Comp->SetVisibility(true);
+    return Comp;
+}
+
+void UCosmicFoliageSpawner::ReleaseISMComponent(UInstancedStaticMeshComponent* Comp)
+{
+    if (!IsValid(Comp)) return;
+
+    Comp->ClearInstances();
+    Comp->SetVisibility(false);
+    Comp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    ISMPool.Add(Comp);
+}
+
+void UCosmicFoliageSpawner::VacateMacroChunk(const FCubeMapCell& MacroCell)
+{
+    FCosmicMacroChunk* Chunk = ActiveMacroChunks.Find(MacroCell);
+    if (!Chunk) return;
+
+    for (auto& Pair : Chunk->ChunkHISMs)
+    {
+        if (Pair.Value.Component)
+        {
+            ReleaseISMComponent(Pair.Value.Component);
+            Pair.Value.Component = nullptr;
+        }
+    }
+
+    ActiveMacroChunks.Remove(MacroCell);
+}
+
+FCosmicSharedHISMData* UCosmicFoliageSpawner::GetOrCreateChunkHISM(FCosmicMacroChunk& Chunk, const FCosmicHISMKey& Key)
+{
+    if (!Key.Mesh) return nullptr;
+
+    FCosmicSharedHISMData& SharedData = Chunk.ChunkHISMs.FindOrAdd(Key);
+    if (IsValid(SharedData.Component))
+    {
+        return &SharedData;
+    }
+
+    UInstancedStaticMeshComponent* NewComp = AcquireISMComponent(Key, Chunk.WorldCenter);
+    if (!NewComp)
+    {
+        Chunk.ChunkHISMs.Remove(Key);
+        return nullptr;
+    }
+
+    SharedData.Component = NewComp;
+    return &SharedData;
+}
+
 void UCosmicFoliageSpawner::ApplyGeneratedInstances(const FCubeMapCell& Cell, ECosmicFoliageLayer Layer,
     TArrayView<const FCosmicFoliageInstance> Instances)
 {
@@ -707,13 +818,24 @@ void UCosmicFoliageSpawner::ApplyGeneratedInstances(const FCubeMapCell& Cell, EC
     const int32 LayerIndex = GetIndexFromLayer(Layer);
     FCosmicFoliageCellData& CellData = LayerCells[LayerIndex].ActiveCells.FindOrAdd(Cell);
 
+    const FCubeMapCell MacroCell = GetMacroCellForLeaf(Cell);
+    FCosmicMacroChunk& Chunk = ActiveMacroChunks.FindOrAdd(MacroCell);
+    if (!(Chunk.MacroCell == MacroCell) || (Chunk.WorldCenter.IsZero() && CurrentPlanetRadius > 0.0))
+    {
+        Chunk.MacroCell = MacroCell;
+        Chunk.WorldCenter = Octree.GetNodeCenter(MacroCell) * CurrentPlanetRadius;
+    }
+    Chunk.ActiveLeafCells.Add(Cell);
+
     TMap<FCosmicHISMKey, TArray<FTransform>> Batch;
 
     for (const FCosmicFoliageInstance& Inst : Instances)
     {
         if (Inst.HISMKey.Mesh)
         {
-            Batch.FindOrAdd(Inst.HISMKey).Add(Inst.Transform);
+            FTransform LocalTransform = Inst.Transform;
+            LocalTransform.SetLocation(Inst.Transform.GetLocation() - Chunk.WorldCenter);
+            Batch.FindOrAdd(Inst.HISMKey).Add(LocalTransform);
         }
     }
 
@@ -722,7 +844,7 @@ void UCosmicFoliageSpawner::ApplyGeneratedInstances(const FCubeMapCell& Cell, EC
         const FCosmicHISMKey& Key = Pair.Key;
         TArray<FTransform>& Transforms = Pair.Value;
 
-        FCosmicSharedHISMData* SharedData = GetOrCreateSharedHISM(Key);
+        FCosmicSharedHISMData* SharedData = GetOrCreateChunkHISM(Chunk, Key);
         if (!SharedData || !SharedData->Component) continue;
 
         UInstancedStaticMeshComponent* Component = SharedData->Component;
@@ -747,7 +869,7 @@ void UCosmicFoliageSpawner::ApplyGeneratedInstances(const FCubeMapCell& Cell, EC
             if (!SharedData->InstanceOwners.IsValidIndex(InstanceIndex) ||
                 SharedData->InstanceOwners[InstanceIndex].LayerIndex != INDEX_NONE)
             {
-                UE_LOG(LogTemp, Error,TEXT("Slot libre invalido en ISM %s"), *GetNameSafe(Key.Mesh));
+                UE_LOG(LogTemp, Error, TEXT("Slot libre invalido en ISM %s"), *GetNameSafe(Key.Mesh));
                 continue;
             }
 
@@ -799,38 +921,6 @@ void UCosmicFoliageSpawner::ApplyGeneratedInstances(const FCubeMapCell& Cell, EC
     }
 }
 
-FCosmicSharedHISMData* UCosmicFoliageSpawner::GetOrCreateSharedHISM(const FCosmicHISMKey& Key)
-{
-    if (!Key.Mesh) return nullptr;
-
-    FCosmicSharedHISMData& SharedData = SharedHISMs.FindOrAdd(Key);
-    if (IsValid(SharedData.Component))
-    {
-        return &SharedData;
-    }
-
-    UInstancedStaticMeshComponent* NewComp = NewObject<UInstancedStaticMeshComponent>(
-        GetOwner(),
-        NAME_None,
-        RF_Transient | RF_DuplicateTransient  // Mark as transient
-    );
-    if (!NewComp)
-    {
-        SharedHISMs.Remove(Key);
-        return nullptr;
-    }
-
-    NewComp->SetupAttachment(GetOwner()->GetRootComponent());
-    NewComp->SetStaticMesh(Key.Mesh);
-    NewComp->SetCollisionEnabled(Key.bHasCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
-    NewComp->SetGenerateOverlapEvents(false);
-    NewComp->SetCanEverAffectNavigation(false);
-    NewComp->SetMobility(EComponentMobility::Movable);
-    NewComp->RegisterComponent();
-    SharedData.Component = NewComp;
-    return &SharedData;
-}
-
 int32 UCosmicFoliageSpawner::RemoveCellInstances(
     int32 LayerIndex,
     const FCubeMapCell& Cell,
@@ -839,6 +929,14 @@ int32 UCosmicFoliageSpawner::RemoveCellInstances(
     FCosmicFoliageCellData* CellData = LayerCells[LayerIndex].ActiveCells.Find(Cell);
     if (!CellData || InstanceBudget <= 0)
     {
+        return 0;
+    }
+
+    const FCubeMapCell MacroCell = GetMacroCellForLeaf(Cell);
+    FCosmicMacroChunk* MacroChunk = ActiveMacroChunks.Find(MacroCell);
+    if (!MacroChunk)
+    {
+        LayerCells[LayerIndex].ActiveCells.Remove(Cell);
         return 0;
     }
 
@@ -853,7 +951,7 @@ int32 UCosmicFoliageSpawner::RemoveCellInstances(
 
         const FCosmicHISMKey Key = MeshIterator.Key();
         TArray<int32>& CellIndices = MeshIterator.Value();
-        FCosmicSharedHISMData* SharedData = SharedHISMs.Find(Key);
+        FCosmicSharedHISMData* SharedData = MacroChunk->ChunkHISMs.Find(Key);
         if (!SharedData || !IsValid(SharedData->Component))
         {
             const int32 DiscardCount = FMath::Min(CellIndices.Num(), InstanceBudget - RemovedTotal);
@@ -953,6 +1051,12 @@ int32 UCosmicFoliageSpawner::RemoveCellInstances(
     if (CellData->InstanceIndices.IsEmpty())
     {
         LayerCells[LayerIndex].ActiveCells.Remove(Cell);
+        MacroChunk->ActiveLeafCells.Remove(Cell);
+
+        if (MacroChunk->ActiveLeafCells.IsEmpty())
+        {
+            VacateMacroChunk(MacroCell);
+        }
     }
 
     return RemovedTotal;

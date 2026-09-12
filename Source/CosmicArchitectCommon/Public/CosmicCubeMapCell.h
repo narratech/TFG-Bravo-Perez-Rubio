@@ -67,6 +67,26 @@ struct COSMICARCHITECTCOMMON_API FCubeMapCell
     {
         return FString::Printf(TEXT("F%d_X%d_Y%d_D%d"), Face, X, Y, Depth);
     }
+
+    /**
+     * Returns the ancestor cell at the specified target depth.
+     * If the cell's depth is already less than or equal to TargetDepth, returns this cell.
+     */
+    FORCEINLINE FCubeMapCell GetAncestorAtDepth(int32 TargetDepth) const
+    {
+        if (Depth <= TargetDepth || TargetDepth < 0)
+        {
+            return *this;
+        }
+
+        const int32 Shift = Depth - TargetDepth;
+        FCubeMapCell Ancestor;
+        Ancestor.Face = Face;
+        Ancestor.X = X >> Shift;
+        Ancestor.Y = Y >> Shift;
+        Ancestor.Depth = TargetDepth;
+        return Ancestor;
+    }
 };
 
 /**

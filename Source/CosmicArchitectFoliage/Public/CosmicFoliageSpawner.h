@@ -102,6 +102,10 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance")
     TArray<ECosmicFoliageLayer> FoliageLayerPriority;
 
+    /** If true, uses conservative bounds for ISM components. When false (recommended with macro-chunks), exact bounds are used. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance")
+    bool bUseConservativeBounds = false;
+
 protected:
     virtual void BeginDestroy() override;
     virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override;
@@ -156,7 +160,14 @@ private:
     TSet<FCubeMapCell> CurrentVisibleCells[3];
 
     UPROPERTY()
-    TMap<FCosmicHISMKey, FCosmicSharedHISMData> SharedHISMs;
+    TMap<FCubeMapCell, FCosmicMacroChunk> ActiveMacroChunks;
+
+    UPROPERTY()
+    TArray<TObjectPtr<UInstancedStaticMeshComponent>> ISMPool;
+
+    int32 MacroDepth = 8;
+    FVector CurrentPlanetCenter = FVector::ZeroVector;
+    double CurrentPlanetRadius = 0.0;
 
     TSet<FCubeMapCell> PendingCells[3];
     TArray<FAsyncTask<FFoliageGenerationTask>*> ActiveTasks[3];
@@ -182,7 +193,11 @@ private:
     /** Applies generated instances to the world */
     void ApplyGeneratedInstances(const FCubeMapCell& Cell, ECosmicFoliageLayer Layer, TArrayView<const FCosmicFoliageInstance> Instances);
 
-    FCosmicSharedHISMData* GetOrCreateSharedHISM(const FCosmicHISMKey& Key);
+    FCubeMapCell GetMacroCellForLeaf(const FCubeMapCell& LeafCell) const;
+    UInstancedStaticMeshComponent* AcquireISMComponent(const FCosmicHISMKey& Key, const FVector& WorldLocation);
+    void ReleaseISMComponent(UInstancedStaticMeshComponent* Comp);
+    void VacateMacroChunk(const FCubeMapCell& MacroCell);
+    FCosmicSharedHISMData* GetOrCreateChunkHISM(FCosmicMacroChunk& Chunk, const FCosmicHISMKey& Key);
     int32 RemoveCellInstances(int32 LayerIndex, const FCubeMapCell& Cell, int32 InstanceBudget);
 
 };

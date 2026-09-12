@@ -164,3 +164,28 @@ struct FCosmicSharedHISMData
 
     int32 ActiveInstanceCount = 0;
 };
+
+/**
+ * Spatial macro-chunk grouping foliage ISM components over a bounded region (~250-500m).
+ * Contains components whose local origin is at WorldCenter.
+ */
+USTRUCT()
+struct FCosmicMacroChunk
+{
+    GENERATED_BODY()
+
+    /** Cubemap macro cell identifying this spatial chunk */
+    UPROPERTY()
+    FCubeMapCell MacroCell;
+
+    /** World position of the macro cell center on the planetary surface */
+    UPROPERTY()
+    FVector WorldCenter = FVector::ZeroVector;
+
+    /** Instanced mesh components belonging to this macro-chunk: Mesh/Collision -> Shared data */
+    UPROPERTY()
+    TMap<FCosmicHISMKey, FCosmicSharedHISMData> ChunkHISMs;
+
+    /** Active leaf cells contributing instances to this macro-chunk */
+    TSet<FCubeMapCell> ActiveLeafCells;
+};
