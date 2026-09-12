@@ -106,6 +106,18 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance")
     bool bUseConservativeBounds = false;
 
+    /** If true, distant foliage clusters spawn without collision and activate collision as the player approaches. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance")
+    bool bEnableDistanceBasedCollision = true;
+
+    /** Radius from the player within which foliage clusters activate collision (in km). */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance", meta = (ClampMin = "0.01", EditCondition = "bEnableDistanceBasedCollision"))
+    float CollisionActivationRadiusKm = 0.05f;
+
+    /** Maximum number of clusters that can activate collision per frame. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage|Performance", meta = (ClampMin = "1", ClampMax = "32", EditCondition = "bEnableDistanceBasedCollision"))
+    int32 MaxCollisionActivationsPerFrame = 2;
+
 protected:
     virtual void BeginDestroy() override;
     virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override;
@@ -128,6 +140,7 @@ protected:
 
     void ProcessApplyQueue(const FVector& ViewerDir, int32& RemainingInstanceBudget);
     void ProcessDeactivationQueue(int32& RemainingInstanceBudget);
+    void ProcessCollisionActivationQueue(const FVector& ViewerRelativeToPlanet, int32& RemainingBudget);
     void UpdateOctreeAndGenerate(const FVector& ViewerLocation, double DistanceToSurface, const FVector& PlanetCenter);
     void UpdateFoliageGeneration();
     void GenerateCellFoliage(const FCubeMapCell& Cell, double PlanetRadius, ECosmicFoliageLayer Layer, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy);
@@ -194,7 +207,7 @@ private:
     void ApplyGeneratedInstances(const FCubeMapCell& Cell, ECosmicFoliageLayer Layer, TArrayView<const FCosmicFoliageInstance> Instances);
 
     FCubeMapCell GetMacroCellForLeaf(const FCubeMapCell& LeafCell) const;
-    UInstancedStaticMeshComponent* AcquireISMComponent(const FCosmicHISMKey& Key, const FVector& WorldLocation);
+    UInstancedStaticMeshComponent* AcquireISMComponent(const FCosmicHISMKey& Key, const FVector& WorldLocation, bool bEnableCollision);
     void ReleaseISMComponent(UInstancedStaticMeshComponent* Comp);
     void VacateMacroChunk(const FCubeMapCell& MacroCell);
     FCosmicSharedHISMData* GetOrCreateChunkHISM(FCosmicMacroChunk& Chunk, const FCosmicHISMKey& Key);

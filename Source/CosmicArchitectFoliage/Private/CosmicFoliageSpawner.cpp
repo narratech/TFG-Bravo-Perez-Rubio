@@ -78,9 +78,11 @@ void UCosmicFoliageSpawner::UpdateFoliageSpawner(float DeltaTime, const FVector&
 
     int32 RemainingDeactivationBudget = FMath::Max(1, MaxInstancesGeneratedPerFrame);
     int32 RemainingApplyBudget = FMath::Max(1, MaxInstancesGeneratedPerFrame);
+    int32 RemainingCollisionBudget = FMath::Max(1, MaxCollisionActivationsPerFrame);
 
     ProcessDeactivationQueue(RemainingDeactivationBudget);
     ProcessApplyQueue(ViewerDir, RemainingApplyBudget);
+    ProcessCollisionActivationQueue(ViewerLocation - PlanetCenter, RemainingCollisionBudget);
 }
 
 void UCosmicFoliageSpawner::CancelAsyncWork()
@@ -232,7 +234,9 @@ void UCosmicFoliageSpawner::PreEditChange(FProperty* PropertyAboutToChange)
     {
         ClearFoliageLayer(ECosmicFoliageLayer::Far);
     }
-    else if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicFoliageSpawner, MaxInstancesPerCell))
+    else if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicFoliageSpawner, MaxInstancesPerCell) ||
+             PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicFoliageSpawner, bEnableDistanceBasedCollision) ||
+             PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicFoliageSpawner, CollisionActivationRadiusKm))
     {
         ClearFoliage();
     }
@@ -723,7 +727,7 @@ FCubeMapCell UCosmicFoliageSpawner::GetMacroCellForLeaf(const FCubeMapCell& Leaf
     return LeafCell.GetAncestorAtDepth(MacroDepth);
 }
 
-UInstancedStaticMeshComponent* UCosmicFoliageSpawner::AcquireISMComponent(const FCosmicHISMKey& Key, const FVector& WorldLocation)
+UInstancedStaticMeshComponent* UCosmicFoliageSpawner::AcquireISMComponent(const FCosmicHISMKey& Key, const FVector& WorldLocation, bool bEnableCollision)
 {
     if (!Key.Mesh || !GetOwner()) return nullptr;
 
@@ -755,7 +759,7 @@ UInstancedStaticMeshComponent* UCosmicFoliageSpawner::AcquireISMComponent(const 
     }
 
     Comp->SetStaticMesh(Key.Mesh);
-    Comp->SetCollisionEnabled(Key.bHasCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
+    Comp->SetCollisionEnabled(bEnableCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
     Comp->SetRelativeLocation(WorldLocation);
     Comp->SetUseConservativeBounds(bUseConservativeBounds);
     Comp->SetVisibility(true);
@@ -799,7 +803,8 @@ FCosmicSharedHISMData* UCosmicFoliageSpawner::GetOrCreateChunkHISM(FCosmicMacroC
         return &SharedData;
     }
 
-    UInstancedStaticMeshComponent* NewComp = AcquireISMComponent(Key, Chunk.WorldCenter);
+    const bool bShouldHaveCollision = Key.bHasCollision && (!bEnableDistanceBasedCollision || Chunk.bCollisionActivated);
+    UInstancedStaticMeshComponent* NewComp = AcquireISMComponent(Key, Chunk.WorldCenter, bShouldHaveCollision);
     if (!NewComp)
     {
         Chunk.ChunkHISMs.Remove(Key);
@@ -824,6 +829,8 @@ void UCosmicFoliageSpawner::ApplyGeneratedInstances(const FCubeMapCell& Cell, EC
     {
         Chunk.MacroCell = MacroCell;
         Chunk.WorldCenter = Octree.GetNodeCenter(MacroCell) * CurrentPlanetRadius;
+        Chunk.MacroRadius = Octree.GetCellRadius(MacroCell);
+        Chunk.bCollisionActivated = false;
     }
     Chunk.ActiveLeafCells.Add(Cell);
 
@@ -1060,5 +1067,100 @@ int32 UCosmicFoliageSpawner::RemoveCellInstances(
     }
 
     return RemovedTotal;
+}
+
+void UCosmicFoliageSpawner::ProcessCollisionActivationQueue(const FVector& ViewerRelativeToPlanet, int32& RemainingBudget)
+{
+    if (!bEnableDistanceBasedCollision || RemainingBudget <= 0 || ActiveMacroChunks.IsEmpty())
+    {
+        return;
+    }
+
+    const double ActivationRadiusCm = static_cast<double>(CollisionActivationRadiusKm) * 100000.0;
+
+    struct FMacroChunkCandidate
+    {
+        FCubeMapCell MacroCell;
+        double DistanceCm = 0.0;
+    };
+
+    TArray<FMacroChunkCandidate> Candidates;
+
+    for (auto& Pair : ActiveMacroChunks)
+    {
+        FCosmicMacroChunk& Chunk = Pair.Value;
+        if (Chunk.bCollisionActivated)
+        {
+            continue;
+        }
+
+        bool bHasCollisionEligibleMesh = false;
+        bool bHasAnyInstances = false;
+        for (const auto& HISMPair : Chunk.ChunkHISMs)
+        {
+            if (HISMPair.Key.bHasCollision && HISMPair.Value.Component)
+            {
+                bHasCollisionEligibleMesh = true;
+                if (HISMPair.Value.ActiveInstanceCount > 0)
+                {
+                    bHasAnyInstances = true;
+                }
+            }
+        }
+
+        if (!bHasCollisionEligibleMesh)
+        {
+            Chunk.bCollisionActivated = true;
+            continue;
+        }
+
+        if (!bHasAnyInstances)
+        {
+            continue;
+        }
+
+        const double DistToCenter = FVector::Dist(ViewerRelativeToPlanet, Chunk.WorldCenter);
+        const double EffectiveDist = FMath::Max(0.0, DistToCenter - static_cast<double>(Chunk.MacroRadius));
+
+        if (EffectiveDist <= ActivationRadiusCm)
+        {
+            Candidates.Add({ Pair.Key, EffectiveDist });
+        }
+    }
+
+    if (Candidates.IsEmpty())
+    {
+        return;
+    }
+
+    Candidates.Sort([](const FMacroChunkCandidate& A, const FMacroChunkCandidate& B)
+    {
+        return A.DistanceCm < B.DistanceCm;
+    });
+
+    for (const FMacroChunkCandidate& Candidate : Candidates)
+    {
+        if (RemainingBudget <= 0)
+        {
+            break;
+        }
+
+        FCosmicMacroChunk* ChunkPtr = ActiveMacroChunks.Find(Candidate.MacroCell);
+        if (!ChunkPtr || ChunkPtr->bCollisionActivated)
+        {
+            continue;
+        }
+
+        for (auto& HISMPair : ChunkPtr->ChunkHISMs)
+        {
+            if (HISMPair.Key.bHasCollision && IsValid(HISMPair.Value.Component))
+            {
+                HISMPair.Value.Component->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+            }
+        }
+
+        ChunkPtr->bCollisionActivated = true;
+        --RemainingBudget;
+    }
 }
 

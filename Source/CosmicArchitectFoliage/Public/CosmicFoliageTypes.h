@@ -182,6 +182,14 @@ struct FCosmicMacroChunk
     UPROPERTY()
     FVector WorldCenter = FVector::ZeroVector;
 
+    /** Bounding radius of the macro cell in centimeters */
+    UPROPERTY()
+    float MacroRadius = 0.0f;
+
+    /** Indicates whether collision has been activated for this macro-chunk */
+    UPROPERTY()
+    bool bCollisionActivated = false;
+
     /** Instanced mesh components belonging to this macro-chunk: Mesh/Collision -> Shared data */
     UPROPERTY()
     TMap<FCosmicHISMKey, FCosmicSharedHISMData> ChunkHISMs;

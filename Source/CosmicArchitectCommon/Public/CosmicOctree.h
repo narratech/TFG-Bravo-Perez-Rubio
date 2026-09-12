@@ -141,6 +141,14 @@ public:
      */
     TArray<FVector> GetDebugVertices(const FCubeMapCell& Cell) const;
 
+    /**
+     * Calculates the approximate maximum radius of a cell on the sphere.
+     *
+     * @param Cell Target cell.
+     * @return Maximum radius in centimeters.
+     */
+    float GetCellRadius(const FCubeMapCell& Cell) const;
+
 private:
 
     /**
@@ -178,14 +186,6 @@ private:
      * @return Normalized direction on the sphere.
      */
     FVector CubePointToDirection(const FVector& CubePoint) const;
-
-    /**
-     * Calculates the approximate maximum radius of a cell on the sphere.
-     *
-     * @param Cell Target cell.
-     * @return Maximum radius in centimeters.
-     */
-    float GetCellRadius(const FCubeMapCell& Cell) const;
 
     /**
      * Gets the angular size of a cell in radians.
