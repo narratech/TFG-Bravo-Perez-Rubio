@@ -140,7 +140,7 @@ public:
     float PlanetGridSnapAngleDegrees = 5.0f;
 
     /** Component responsible for dynamic collision */
-    UCosmicCollisionComponent* CollisionComponent;
+    UCosmicCollisionComponent* CollisionComponent = nullptr;
 
     /** Component responsible for procedural foliage */
     UCosmicFoliageSpawner* FoliageSpawnerComponent;

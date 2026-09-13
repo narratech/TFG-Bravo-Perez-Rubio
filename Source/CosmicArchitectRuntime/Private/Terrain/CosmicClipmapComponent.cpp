@@ -10,6 +10,7 @@
 #include "Terrain/CosmicClipmapGeometry.h"
 #include "Terrain/CosmicCollisionComponent.h"
 #include "Terrain/CosmicOceanComponent.h"
+#include "Planet/CosmicPlanet.h"
 #include "CosmicNoiseClass.h"
 #include "CosmicDefaultNoiseStrategy.h"
 #include "CosmicFoliageSpawner.h"
@@ -836,6 +837,15 @@ void UCosmicClipmapComponent::BuildDynamicMaterial()
 
 void UCosmicClipmapComponent::UpdateNoiseEvaluator()
 {
+    if (ACosmicPlanet* Planet = Cast<ACosmicPlanet>(GetOwner()))
+    {
+        NoiseGenerationStrategy = Planet->GetNoiseStrategy();
+        if (NoiseGenerationStrategy.IsValid())
+        {
+            return;
+        }
+    }
+
     if (NoiseClass)
     {
         NoiseGenerationStrategy = NoiseClass->CreateStrategy();

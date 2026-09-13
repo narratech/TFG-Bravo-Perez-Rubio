@@ -27,12 +27,6 @@ void UCosmicCollisionComponent::BeginPlay()
 {
     Super::BeginPlay();
 
-    if (IsRunningDedicatedServer() || (GetWorld() && GetWorld()->GetNetMode() == NM_DedicatedServer))
-    {
-        SetComponentTickEnabled(false);
-        return;
-    }
-
     if (!bIsCompanion)
     {
         EnsureCompanionCreated();
@@ -58,7 +52,7 @@ void UCosmicCollisionComponent::EnsureCompanionCreated()
 
     if (!CompanionPatch && GetOwner())
     {
-        CompanionPatch = NewObject<UCosmicCollisionComponent>(GetOwner(), TEXT("CollisionPatch_Companion"), RF_Transient);
+        CompanionPatch = NewObject<UCosmicCollisionComponent>(GetOwner(), NAME_None, RF_Transient);
         CompanionPatch->bIsCompanion = true;
         CompanionPatch->CollisionTriangleSize = CollisionTriangleSize;
         CompanionPatch->CollisionResolution = CollisionResolution;
@@ -94,11 +88,6 @@ void UCosmicCollisionComponent::EnsureCompanionCreated()
 void UCosmicCollisionComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-    if (IsRunningDedicatedServer() || (GetWorld() && GetWorld()->GetNetMode() == NM_DedicatedServer))
-    {
-        return;
-    }
 
     if (bIsCompanion) return;
 
@@ -411,7 +400,6 @@ void UCosmicCollisionComponent::StartPatchCook(
         CreateProcMeshBodySetup();
         BodySetup->InvalidatePhysicsData();
         BodySetup->CreatePhysicsMeshes();
-        RecreatePhysicsState();
         FinishPhysicsAsyncCook(true, BodySetup);
     }
 }
@@ -425,7 +413,6 @@ void UCosmicCollisionComponent::FinishPhysicsAsyncCook(bool bSuccess, UBodySetup
             BodySetup->ClearPhysicsMeshes();
         }
         BodySetup = FinishedBodySetup;
-        RecreatePhysicsState();
     }
 
     AsyncBodySetupQueue.Remove(FinishedBodySetup);
@@ -479,11 +466,13 @@ void UCosmicCollisionComponent::ActivatePhysics()
 {
     SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
     SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+    RecreatePhysicsState();
 }
 
 void UCosmicCollisionComponent::DeactivatePhysics()
 {
     SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    DestroyPhysicsState();
 }
 
 void UCosmicCollisionComponent::ClearCollision()

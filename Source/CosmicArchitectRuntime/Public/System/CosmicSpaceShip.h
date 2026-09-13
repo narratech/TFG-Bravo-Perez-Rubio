@@ -4,6 +4,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
 #include "InputActionValue.h"
+#include "Terrain/ICosmicCollisionTarget.h"
 #include "CosmicSpaceShip.generated.h"
 
 /**
@@ -21,7 +22,7 @@
  * with zero or minimal gravity.
  */
 UCLASS(Blueprintable, BlueprintType)
-class COSMICARCHITECTRUNTIME_API ACosmicSpaceShip : public APawn
+class COSMICARCHITECTRUNTIME_API ACosmicSpaceShip : public APawn, public ICosmicCollisionTarget
 {
 	GENERATED_BODY()
 
@@ -37,6 +38,11 @@ public:
 	 * Initializes components, physics configuration, and Pawn base state.
 	 */
 	ACosmicSpaceShip();
+
+	// ~ICosmicCollisionTarget interface
+	virtual bool IsCollisionRelevant() const override;
+	virtual float GetCollisionPriority() const override;
+	// ~End ICosmicCollisionTarget interface
 
 protected:
 

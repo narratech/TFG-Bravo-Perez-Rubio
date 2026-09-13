@@ -3,8 +3,10 @@
 
 #include "Planet/CosmicPlanet.h"
 #include "Terrain/CosmicCollisionComponent.h"
+#include "Terrain/CosmicPlanetCollisionManager.h"
 #include "Terrain/CosmicClipmapComponent.h"
 #include "Terrain/CosmicOceanComponent.h"
+#include "CosmicDefaultNoiseStrategy.h"
 #include "CosmicFoliageCollection.h"
 #include "CosmicNoiseClass.h"
 #include "CosmicFoliageSpawner.h"
@@ -27,15 +29,13 @@ ACosmicPlanet::ACosmicPlanet()
     bAlwaysRelevant = true;
     SetReplicateMovement(true);
     SetNetUpdateFrequency(60.0f);
-    SetMinNetUpdateFrequency(30.0f);
 
     // Root SceneComponent initialization.
     Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
     RootComponent = Root;
 
     // Specialized components initialization for terrain, oceans, and foliage.
-    CollisionComponent = CreateDefaultSubobject<UCosmicCollisionComponent>(TEXT("CollisionComponent"));
-    CollisionComponent->SetupAttachment(Root);
+    CollisionManager = CreateDefaultSubobject<UCosmicPlanetCollisionManager>(TEXT("CollisionManager"));
     ClipmapComponent = CreateDefaultSubobject<UCosmicClipmapComponent>(TEXT("ClipmapComponent"));
     OceanComponent = CreateDefaultSubobject<UCosmicOceanComponent>(TEXT("OceanComponent"));
     FoliageSpawnerComponent = CreateDefaultSubobject<UCosmicFoliageSpawner>(TEXT("FoliageSpawnerComponent"));
@@ -136,6 +136,7 @@ void ACosmicPlanet::PostInitializeComponents()
 void ACosmicPlanet::BeginPlay()
 {
     Super::BeginPlay();
+    UpdateNoiseStrategy();
 }
 
 #if WITH_EDITOR
@@ -169,29 +170,34 @@ void ACosmicPlanet::PostDuplicate(EDuplicateMode::Type Mode)
             OceanComponent->ResetPointersAfterDuplicate(Root);
         }
 
-        // 3. Orderly reconstruct all subsystems for the new planet
-        UpdateMaterialOnly();
-        UpdateNoiseSettings();
-        InitClipmap();
-        UpdateFoliage();
-        UpdateOcean();
+        UpdateNoiseStrategy();
+        RebuildPlanet();
     }
 }
 #endif
 
+/**
+ * Cleanup logic when actor is removed from the world.
+ */
 void ACosmicPlanet::Destroyed()
 {
     ClearData();
-    bInitializedInEditor = false;
     Super::Destroyed();
 }
 
+/**
+ * Pre-destruction phase.
+ * Guarantees release of references and procedural memory.
+ */
 void ACosmicPlanet::BeginDestroy()
 {
     ClearData();
     Super::BeginDestroy();
 }
 
+/**
+ * Logic executed when execution session terminates.
+ */
 void ACosmicPlanet::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     ClearData();
@@ -208,7 +214,6 @@ void ACosmicPlanet::InitClipmap()
         ClipmapComponent->ParentRoot = Root;
         ClipmapComponent->PlanetRadius = RadiusKm * 100000;
         ClipmapComponent->ClearLevels();
-        ClipmapComponent->CollisionComponent = CollisionComponent;
         ClipmapComponent->FoliageSpawnerComponent = FoliageSpawnerComponent;
         ClipmapComponent->OceanComponent = OceanComponent;
         ClipmapComponent->CreatePerformanceLevel(true);
@@ -248,9 +253,9 @@ void ACosmicPlanet::UpdateMaterialOnly()
  */
 void ACosmicPlanet::ClearData()
 {
-    if (CollisionComponent)
+    if (CollisionManager)
     {
-        CollisionComponent->ClearCollision();
+        CollisionManager->ClearAllPatches();
     }
 
     if (NoiseClass && ClipmapComponent)
@@ -265,6 +270,8 @@ void ACosmicPlanet::ClearData()
  */
 void ACosmicPlanet::UpdateNoiseSettings()
 {
+    UpdateNoiseStrategy();
+
     if (ClipmapComponent)
     {
         if (ClipmapComponent->NoiseClass)
@@ -486,3 +493,26 @@ void ACosmicPlanet::PostEditChangeProperty(FPropertyChangedEvent& PropertyChange
     }
 }
 #endif
+
+void ACosmicPlanet::UpdateNoiseStrategy()
+{
+    if (NoiseClass)
+    {
+        NoiseGenerationStrategy = NoiseClass->CreateStrategy();
+    }
+    else
+    {
+        TSharedPtr<FCosmicDefaultNoiseStrategy> Strategy = MakeShared<FCosmicDefaultNoiseStrategy>();
+        Strategy->Initialize(1337, FCosmicNoiseLayer(), FCosmicNoiseBiomeParameters());
+        NoiseGenerationStrategy = Strategy;
+    }
+}
+
+TSharedPtr<ICosmicNoiseStrategy> ACosmicPlanet::GetNoiseStrategy()
+{
+    if (!NoiseGenerationStrategy.IsValid())
+    {
+        UpdateNoiseStrategy();
+    }
+    return NoiseGenerationStrategy;
+}

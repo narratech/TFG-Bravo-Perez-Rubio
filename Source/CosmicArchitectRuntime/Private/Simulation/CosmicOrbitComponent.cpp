@@ -148,11 +148,6 @@ void UCosmicOrbitComponent::TickComponent(
 	}
 
 #endif
-
-	// Allows accelerating or decelerating orbital simulation
-	// from editor tools.
-	const float ScaledDelta = DeltaTime * EditorSpeedMultiplier;
-
 	AActor* Owner = GetOwner();
 
 	// In multiplayer game worlds, only the server integrates the orbit and updates the actor transform.
@@ -161,6 +156,10 @@ void UCosmicOrbitComponent::TickComponent(
 	{
 		return;
 	}
+
+	// Allows accelerating or decelerating orbital simulation
+	// from editor tools.
+	const float ScaledDelta = DeltaTime * EditorSpeedMultiplier;
 
 	// Avoid invalid or degenerate calculations.
 	if (!ParentBody || OrbitalPeriod <= 0.0f || ScaledDelta <= KINDA_SMALL_NUMBER)

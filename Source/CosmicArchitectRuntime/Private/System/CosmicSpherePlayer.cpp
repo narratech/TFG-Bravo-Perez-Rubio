@@ -246,3 +246,26 @@ void ACosmicSpherePlayer::Look(const FInputActionValue& Value)
 		SpringArmComp->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.0f));
 	}
 }
+
+bool ACosmicSpherePlayer::IsCollisionRelevant() const
+{
+	return !IsPendingKillPending();
+}
+
+float ACosmicSpherePlayer::GetCollisionPriority() const
+{
+	if (IsLocallyControlled())
+	{
+		return 1.0f;
+	}
+
+	if (const UCharacterMovementComponent* MoveComp = GetCharacterMovement())
+	{
+		if (MoveComp->IsMovingOnGround() || MoveComp->IsFalling())
+		{
+			return 0.9f;
+		}
+	}
+
+	return 0.8f;
+}

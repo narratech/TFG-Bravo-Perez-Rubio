@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
+#include "Terrain/ICosmicCollisionTarget.h"
 #include "CosmicSpherePlayer.generated.h"
 
 class UCosmicGravityComponent;
@@ -20,7 +21,7 @@ class UInputAction;
  * (UCharacterMovementComponent::SetGravityDirection) and networked prediction/replication.
  */
 UCLASS(Blueprintable, BlueprintType)
-class COSMICARCHITECTRUNTIME_API ACosmicSpherePlayer : public ACharacter
+class COSMICARCHITECTRUNTIME_API ACosmicSpherePlayer : public ACharacter, public ICosmicCollisionTarget
 {
 	GENERATED_BODY()
 
@@ -39,6 +40,11 @@ public:
 	 * @param DeltaTime Time between frames.
 	 */
 	virtual void Tick(float DeltaTime) override;
+
+	// ~ICosmicCollisionTarget interface
+	virtual bool IsCollisionRelevant() const override;
+	virtual float GetCollisionPriority() const override;
+	// ~End ICosmicCollisionTarget interface
 
 protected:
 	virtual void BeginPlay() override;

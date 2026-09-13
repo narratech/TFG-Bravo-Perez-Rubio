@@ -9,6 +9,8 @@ class UCosmicClipmapComponent;
 class UCosmicNoiseClass;
 class UCosmicFoliageSpawner;
 class UCosmicCollisionComponent;
+class UCosmicPlanetCollisionManager;
+class ICosmicNoiseStrategy;
 class UCosmicOceanComponent;
 class UCosmicFoliageCollection;
 class UMaterialInstance;
@@ -46,9 +48,9 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Planet", BlueprintReadOnly)
 	TObjectPtr<UCosmicClipmapComponent> ClipmapComponent;
 
-	/** Manages real-time collision mesh generation around the observer. */
+	/** Manages multi-player and relevance-based physical collision patches on planet surface. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Planet")
-	UCosmicCollisionComponent* CollisionComponent;
+	TObjectPtr<UCosmicPlanetCollisionManager> CollisionManager;
 
 	/** Component responsible for visual and physical representation of sea level. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Planet")
@@ -180,6 +182,12 @@ public:
 	/** Frees memory of noise objects if they are not persistent assets. */
 	void CleanupNoiseSettings();
 
+	/** Returns the active procedural noise strategy shared across terrain systems. */
+	TSharedPtr<ICosmicNoiseStrategy> GetNoiseStrategy();
+
+	/** Recreates or updates the procedural noise strategy from NoiseClass. */
+	void UpdateNoiseStrategy();
+
 protected:
 	/** Startup logic when the game executes. */
 	virtual void BeginPlay() override;
@@ -224,6 +232,9 @@ protected:
 
 	/** Internal flag to avoid redundant reinitializations in the Editor. */
 	bool bInitializedInEditor = false;
+
+	/** Shared procedural noise strategy for visual terrain clipmaps and physics collision */
+	TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy;
 
 #if WITH_EDITOR
 	/** Details panel change notifier for real-time updates. */

@@ -214,3 +214,23 @@ void ACosmicSpaceShip::EndBoost(const FInputActionValue& Value)
 	// Residual braking will be managed
 	// later via Tick/runtime.
 }
+
+bool ACosmicSpaceShip::IsCollisionRelevant() const
+{
+	return !IsPendingKillPending();
+}
+
+float ACosmicSpaceShip::GetCollisionPriority() const
+{
+	if (IsLocallyControlled())
+	{
+		return 1.0f;
+	}
+
+	if (ShipMesh && ShipMesh->IsSimulatingPhysics())
+	{
+		return 0.85f;
+	}
+
+	return 0.75f;
+}
