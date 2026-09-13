@@ -1,0 +1,1500 @@
+// Copyright Javier Bravo, David Rubio, Sergio Perez 2026 All Rights Reserved.
+// PlanetarySurfaceMaster.ush - Unified Master Procedural Planetary Surface Shader
+//
+// Fuses the analytical Whittaker biome classification with geological sedimentary
+// cliff stratification, height-blended transitions, 3-sample tangent finite difference
+// normals, physical snow/wetness/magma simulation, and Toksvig specular anti-aliasing.
+//
+// Key Features:
+//   - Analytical Whittaker Biome Engine (Gaussian RBF): 0 VRAM footprint, infinitely continuous.
+//   - Optional 2D Whittaker LUT Override: Artistic texture fallback toggleable per material.
+//   - Geological Sedimentary Cliff Stratification: Procedural multi-octave sinusoidal rock
+//     bands distorted by 3D noise along altitude shells with normal shelf perturbation.
+//   - Height-Blended Layer Carving: Eliminates muddy transitions between soil, rock, and snow.
+//   - Singularity-Free Frisvad Spherical Tangent Frame & 3-Sample Tangent Space Gradient.
+//   - Physical Environmental Dynamics: Dynamic snowline with gravity slide-off, porous moisture
+//     soil darkening, water puddles (n=1.33), and HDR volcanic thermal magma emission.
+//   - Distance-Based Multi-Tier Continuous LOD & Toksvig Specular Anti-Aliasing (Firefly Elimination).
+//   - Numerical Stability with Large World Coordinates (LWC).
+//   - High-Performance Packed Custom Node Entry Points for Unreal Engine 5 Material Graph.
+#pragma once
+
+// ============================================================================
+// CONSTANTS & CONFIGURATION
+// ============================================================================
+#define PLANETARY_MAX_BIOMES 8
+#define PLANETARY_PI 3.14159265359f
+#define PLANETARY_TWO_PI 6.28318530718f
+
+// Continuous Distance LOD Ranges in Centimeters (Unreal Units)
+#ifndef PLANETARY_MICRO_FADE_START_CM
+#define PLANETARY_MICRO_FADE_START_CM 50000.0f    // 500 meters: full micro detail
+#endif
+
+#ifndef PLANETARY_MICRO_FADE_END_CM
+#define PLANETARY_MICRO_FADE_END_CM   300000.0f   // 3.0 kilometers: micro detail completely faded
+#endif
+
+#ifndef PLANETARY_MACRO_FADE_START_CM
+#define PLANETARY_MACRO_FADE_START_CM 2000000.0f  // 20 kilometers: macro relief begins fade
+#endif
+
+#ifndef PLANETARY_MACRO_FADE_END_CM
+#define PLANETARY_MACRO_FADE_END_CM   10000000.0f // 100 kilometers: macro relief faded in high orbit
+#endif
+
+// ============================================================================
+// DATA STRUCTURES
+// ============================================================================
+
+/**
+ * Biome specification in Whittaker climatological phase space (Temperature, Humidity).
+ */
+struct FPlanetaryBiomeDefinition
+{
+    float2 ClimatologicalCenter; // (Temperature 0..1, Humidity 0..1)
+    float2 ClimatologicalRadius; // (Sigma_Temp, Sigma_Humidity) for Gaussian RBF
+    float3 BaseColor;            // Linear RGB Albedo
+    float  Roughness;            // PBR Microfacet Roughness
+    float  Metallic;             // PBR Metallic
+    float  Specular;             // Dielectric Specular F0 (default 0.5)
+    float  MicroTiling;          // Normal/relief micro-tiling multiplier
+    float  NormalStrength;       // Local normal bump perturbation intensity
+};
+
+/**
+ * Configuration for procedural geological sedimentary rock stratification.
+ */
+struct FPlanetaryStrataParameters
+{
+    float  Frequency;            // Vertical repetition frequency along planetary altitude shells
+    float  Distortion;           // Intensity of 3D noise folding/undulation
+    float3 ColorTier1;           // Sedimentary stratum color tier 1 (e.g. Sandstone / Ash)
+    float3 ColorTier2;           // Sedimentary stratum color tier 2 (e.g. Iron Clay / Basalt)
+    float3 ColorTier3;           // Sedimentary stratum color tier 3 (e.g. Shale / Sulfur)
+    float  RoughnessDelta;       // Roughness variation across strata layers
+    float  NormalStrength;       // Horizontal ledge / shelf normal perturbation intensity
+};
+
+/**
+ * Complete PBR evaluation output for the planetary surface.
+ */
+struct FPlanetaryMasterOutput
+{
+    float3 BaseColor;            // Modulated PBR Base Color (Linear RGB)
+    float3 WorldNormal;          // Perturbed World Space Normal
+    float  Roughness;            // Final roughness with Toksvig AA
+    float  Metallic;             // PBR Metallic
+    float  Specular;             // PBR Specular
+    float  AmbientOcclusion;     // Micro-crevice & cavity occlusion
+    float3 Emissive;             // Surface emission (magma, bioluminescence)
+    
+    // Diagnostic / Blend Masks
+    float  SnowMask;             // Dynamic snow accumulation mask [0..1]
+    float  SlopeMask;            // Height-blended exposed cliff rock mask [0..1]
+    float  WetnessMask;          // Puddle and moisture mask [0..1]
+    float  StrataMask;           // Sedimentary stratum band coordinate [0..1]
+    float  LODFactor;            // Micro distance LOD blend factor [0..1]
+};
+
+// ============================================================================
+// GEOMETRY & MATHEMATICAL HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Computes Large World Coordinate (LWC) stable geometry context centered on the planet.
+ */
+void ComputePlanetaryMasterGeometry(
+    in float3 WorldPos,
+    in float3 PlanetCenter,
+    in float  PlanetRadius,
+    in float3 MeshNormal,
+    in float3 CameraWorldPos,
+    out float3 OutLocalPos,
+    out float3 OutRadialNormal,
+    out float3 OutGeometryNormal,
+    out float  OutAltitudeFromCenter,
+    out float  OutCameraDistance)
+{
+    // Subtract planet center for large world coordinate (LWC) precision stability
+    OutLocalPos = WorldPos - PlanetCenter;
+    float DistFromCenter = length(OutLocalPos);
+    OutRadialNormal = OutLocalPos / max(DistFromCenter, 1.0f);
+    OutAltitudeFromCenter = DistFromCenter - PlanetRadius;
+    
+    // Fallback guard for geometric normal
+    OutGeometryNormal = (length(MeshNormal) > 0.01f) ? normalize(MeshNormal) : OutRadialNormal;
+    
+    float CamLenSq = dot(CameraWorldPos, CameraWorldPos);
+    OutCameraDistance = (CamLenSq > 100.0f) ? length(WorldPos - CameraWorldPos) : 100000.0f;
+}
+
+/**
+ * Constructs a singularity-free, right-handed orthonormal tangent basis (T1, T2)
+ * orthogonal to the given planetary radial unit normal N_base.
+ * Uses an extended Frisvad / Hughes-Möller tangent formulation.
+ */
+void GetPlanetaryMasterTangentFrame(in float3 N_base, out float3 OutTangent1, out float3 OutTangent2)
+{
+    if (N_base.z < -0.9999f)
+    {
+        OutTangent1 = float3(0.0f, -1.0f, 0.0f);
+        OutTangent2 = float3(-1.0f, 0.0f, 0.0f);
+    }
+    else
+    {
+        float a = 1.0f / (1.0f + N_base.z);
+        float b = -N_base.x * N_base.y * a;
+        OutTangent1 = float3(1.0f - N_base.x * N_base.x * a, b, -N_base.x);
+        OutTangent2 = float3(b, 1.0f - N_base.y * N_base.y * a, -N_base.y);
+    }
+}
+
+/**
+ * Fast procedural 3D noise hash fallback when 3D texture is unavailable.
+ */
+float PlanetaryMasterAnalyticalNoise3D(float3 P)
+{
+    float3 i = floor(P);
+    float3 f = frac(P);
+    f = f * f * (3.0f - 2.0f * f); // Smoothstep hermite curve
+
+    float3 step = float3(110.0f, 241.0f, 17.0f);
+    float n = dot(i, step);
+
+    float4 v1 = frac(sin(n + float4(0.0f, step.x, step.y, step.x + step.y)) * 43758.5453f);
+    float4 v2 = frac(sin(n + step.z + float4(0.0f, step.x, step.y, step.x + step.y)) * 43758.5453f);
+
+    float4 v12 = lerp(v1, v2, f.z);
+    float2 v12_y = lerp(v12.xz, v12.yw, f.y);
+    return lerp(v12_y.x, v12_y.y, f.x);
+}
+
+/**
+ * Samples seamless 3D volume texture with periodic wrapping.
+ */
+float SampleMasterVolumeNoise(
+    Texture3D InTexture,
+    SamplerState InSampler,
+    float3 InSamplePosUVW)
+{
+    return InTexture.SampleLevel(InSampler, frac(InSamplePosUVW), 0.0f).r;
+}
+
+/**
+ * Computes the directional surface gradient of a 3D volume noise field directly
+ * on the sphere's tangent plane using finite forward differences.
+ * 
+ * Takes only 3 texture samples instead of 6 (or 18 in triplanar) to compute exact
+ * directional derivatives:
+ *   dH/dT1 = (H(P + eps*T1) - H(P)) / eps
+ *   dH/dT2 = (H(P + eps*T2) - H(P)) / eps
+ */
+float3 ComputeMasterVolumeSurfaceGradient(
+    Texture3D InTexture,
+    SamplerState InSampler,
+    float3 WorldPos,
+    float3 T1,
+    float3 T2,
+    float Frequency,
+    float Epsilon,
+    out float OutCenterH)
+{
+    float3 UV0 = WorldPos * Frequency;
+    float3 UV1 = (WorldPos + T1 * Epsilon) * Frequency;
+    float3 UV2 = (WorldPos + T2 * Epsilon) * Frequency;
+
+    float H0 = SampleMasterVolumeNoise(InTexture, InSampler, UV0);
+    float H1 = SampleMasterVolumeNoise(InTexture, InSampler, UV1);
+    float H2 = SampleMasterVolumeNoise(InTexture, InSampler, UV2);
+
+    OutCenterH = H0;
+
+    float InvEps = 1.0f / max(Epsilon, 0.001f);
+    float dH_dT1 = (H1 - H0) * InvEps;
+    float dH_dT2 = (H2 - H0) * InvEps;
+
+    return (T1 * dH_dT1 + T2 * dH_dT2);
+}
+
+// ============================================================================
+// HEIGHT-BLENDED LAYER TRANSITIONS
+// ============================================================================
+
+/**
+ * Two-layer height blend with contrast carving.
+ * Prevents milky/muddy alpha blends by carving sharp, realistic geological transitions.
+ * 
+ * @param WeightA       - Base blend weight of layer A
+ * @param HeightA       - Heightmap value of layer A [0..1]
+ * @param WeightB       - Base blend weight of layer B
+ * @param HeightB       - Heightmap value of layer B [0..1]
+ * @param BlendContrast - Contrast sharpness (lower = sharper transition)
+ * @return              - Normalized weight of layer B [0..1]
+ */
+float ComputeMasterHeightBlend2(
+    in float WeightA,
+    in float HeightA,
+    in float WeightB,
+    in float HeightB,
+    in float BlendContrast)
+{
+    float Contrast = max(BlendContrast, 0.001f);
+    float ElevA = WeightA + HeightA * 0.5f;
+    float ElevB = WeightB + HeightB * 0.5f;
+    
+    float Diff = ElevB - ElevA;
+    return saturate((Diff + Contrast) / (2.0f * Contrast));
+}
+
+// ============================================================================
+// GEOLOGICAL SEDIMENTARY CLIFF STRATIFICATION (SEDIMENTARY BANDING)
+// ============================================================================
+
+/**
+ * Evaluates procedural sedimentary rock strata along planetary altitude shells.
+ * Modulates cliff color, roughness, and introduces horizontal normal ribbing/ledges.
+ */
+void EvaluateMasterGeologicalStrata(
+    in float3 LocalPos,
+    in float  AltitudeFromCenter,
+    in float  NoiseSample,
+    in FPlanetaryStrataParameters StrataParams,
+    out float3 OutStrataTint,
+    out float  OutStrataRoughnessDelta,
+    out float  OutStrataNormalOffset,
+    out float  OutStrata01)
+{
+    // Radial altitude coordinate in meters
+    float BaseCoord = (AltitudeFromCenter * 0.01f) * max(StrataParams.Frequency, 0.0001f);
+    
+    // Distort strata coordinate with 3D noise to create undulating, folded sedimentary layers
+    float DistortedCoord = BaseCoord + (NoiseSample * 2.0f - 1.0f) * StrataParams.Distortion;
+    
+    // Multi-octave sinusoidal strata harmonics
+    float PrimaryBand   = sin(DistortedCoord);
+    float SecondaryBand = sin(DistortedCoord * 2.71828f + 1.414f) * 0.5f;
+    float FineBand      = cos(DistortedCoord * 7.38905f - 0.820f) * 0.25f;
+    
+    float CombinedStrata = (PrimaryBand + SecondaryBand + FineBand) / 1.75f; // [-1..1]
+    OutStrata01 = CombinedStrata * 0.5f + 0.5f;                             // [0..1]
+    
+    // Tri-color sedimentary layer interpolation (Tier 1 -> Tier 2 -> Tier 3)
+    if (OutStrata01 < 0.5f)
+    {
+        OutStrataTint = lerp(StrataParams.ColorTier1, StrataParams.ColorTier2, OutStrata01 * 2.0f);
+    }
+    else
+    {
+        OutStrataTint = lerp(StrataParams.ColorTier2, StrataParams.ColorTier3, (OutStrata01 - 0.5f) * 2.0f);
+    }
+    
+    // Physical roughness delta across rock strata
+    OutStrataRoughnessDelta = (OutStrata01 - 0.5f) * StrataParams.RoughnessDelta;
+    
+    // Shelf ledge derivative approximation for normal perturbation
+    OutStrataNormalOffset = cos(DistortedCoord) * StrataParams.NormalStrength;
+}
+
+// ============================================================================
+// WHITTAKER ANALYTICAL BIOME ENGINE
+// ============================================================================
+
+/**
+ * Evaluates continuous analytical Whittaker biomes via Gaussian Radial
+ * Basis Functions (RBF) in 2D climatological space (Temperature, Humidity).
+ * 
+ * Eliminates 2D LUT texture fetches, bilinear compression artifacts, and color banding.
+ */
+void EvaluateMasterWhittakerBiomes(
+    in float ClimatologicalTemp,
+    in float ClimatologicalHumidity,
+    in FPlanetaryBiomeDefinition Biomes[PLANETARY_MAX_BIOMES],
+    in int ActiveBiomeCount,
+    in float SoftnessFactor,
+    out float3 OutBaseColor,
+    out float  OutRoughness,
+    out float  OutMetallic,
+    out float  OutSpecular,
+    out float  OutMicroTiling,
+    out float  OutNormalStrength)
+{
+    float Weights[PLANETARY_MAX_BIOMES];
+    float TotalWeight = 0.0f;
+    float Sharpness = max(SoftnessFactor, 1.0f);
+
+    // Compute Gaussian RBF distance to each biome centroid
+    [unroll]
+    for (int i = 0; i < PLANETARY_MAX_BIOMES; ++i)
+    {
+        if (i < ActiveBiomeCount)
+        {
+            float2 Delta = (float2(ClimatologicalTemp, ClimatologicalHumidity) - Biomes[i].ClimatologicalCenter) 
+                         / max(Biomes[i].ClimatologicalRadius, float2(0.02f, 0.02f));
+            float DistSq = dot(Delta, Delta);
+            
+            // Softmin exponential kernel
+            float W = exp(-0.5f * DistSq * Sharpness);
+            Weights[i] = W;
+            TotalWeight += W;
+        }
+        else
+        {
+            Weights[i] = 0.0f;
+        }
+    }
+
+    TotalWeight = max(TotalWeight, 0.0001f);
+    float InvTotal = 1.0f / TotalWeight;
+
+    // Accumulate blended PBR attributes
+    float3 ColorAccum = float3(0.0f, 0.0f, 0.0f);
+    float  RoughAccum = 0.0f;
+    float  MetalAccum = 0.0f;
+    float  SpecAccum  = 0.0f;
+    float  TileAccum  = 0.0f;
+    float  NormAccum  = 0.0f;
+
+    [unroll]
+    for (int k = 0; k < PLANETARY_MAX_BIOMES; ++k)
+    {
+        if (k < ActiveBiomeCount)
+        {
+            float NormalizedW = Weights[k] * InvTotal;
+            ColorAccum += Biomes[k].BaseColor * NormalizedW;
+            RoughAccum += Biomes[k].Roughness * NormalizedW;
+            MetalAccum += Biomes[k].Metallic * NormalizedW;
+            SpecAccum  += Biomes[k].Specular * NormalizedW;
+            TileAccum  += Biomes[k].MicroTiling * NormalizedW;
+            NormAccum  += Biomes[k].NormalStrength * NormalizedW;
+        }
+    }
+
+    OutBaseColor      = ColorAccum;
+    OutRoughness      = saturate(RoughAccum);
+    OutMetallic       = saturate(MetalAccum);
+    OutSpecular       = saturate(SpecAccum);
+    OutMicroTiling    = max(TileAccum, 0.1f);
+    OutNormalStrength = NormAccum;
+}
+
+// ============================================================================
+// PLANETARY ARCHETYPE PRESETS
+// ============================================================================
+
+/**
+ * Initializes Earth-Like terrestrial archetype with 8 biomes & sedimentary strata:
+ *   0: Polar Ice / Glacial
+ *   1: Tundra
+ *   2: Taiga / Boreal Conifer
+ *   3: Temperate Grassland
+ *   4: Temperate Deciduous Forest
+ *   5: Arid Sand Desert
+ *   6: Savannah / Scrubland
+ *   7: Tropical Rainforest
+ */
+void InitEarthLikeMasterArchetype(
+    out FPlanetaryBiomeDefinition Biomes[PLANETARY_MAX_BIOMES],
+    out int BiomeCount,
+    out FPlanetaryStrataParameters StrataParams)
+{
+    BiomeCount = 8;
+
+    // 0: Polar Ice / Glacial
+    Biomes[0].ClimatologicalCenter = float2(0.05f, 0.20f);
+    Biomes[0].ClimatologicalRadius = float2(0.18f, 0.30f);
+    Biomes[0].BaseColor            = float3(0.88f, 0.92f, 0.96f);
+    Biomes[0].Roughness            = 0.35f;
+    Biomes[0].Metallic             = 0.00f;
+    Biomes[0].Specular             = 0.55f;
+    Biomes[0].MicroTiling          = 2.0f;
+    Biomes[0].NormalStrength       = 0.6f;
+
+    // 1: Tundra
+    Biomes[1].ClimatologicalCenter = float2(0.20f, 0.30f);
+    Biomes[1].ClimatologicalRadius = float2(0.18f, 0.25f);
+    Biomes[1].BaseColor            = float3(0.42f, 0.40f, 0.32f);
+    Biomes[1].Roughness            = 0.85f;
+    Biomes[1].Metallic             = 0.00f;
+    Biomes[1].Specular             = 0.40f;
+    Biomes[1].MicroTiling          = 1.5f;
+    Biomes[1].NormalStrength       = 1.0f;
+
+    // 2: Taiga / Boreal Conifer
+    Biomes[2].ClimatologicalCenter = float2(0.35f, 0.60f);
+    Biomes[2].ClimatologicalRadius = float2(0.20f, 0.25f);
+    Biomes[2].BaseColor            = float3(0.12f, 0.22f, 0.10f);
+    Biomes[2].Roughness            = 0.75f;
+    Biomes[2].Metallic             = 0.00f;
+    Biomes[2].Specular             = 0.45f;
+    Biomes[2].MicroTiling          = 1.2f;
+    Biomes[2].NormalStrength       = 1.1f;
+
+    // 3: Temperate Grassland
+    Biomes[3].ClimatologicalCenter = float2(0.55f, 0.30f);
+    Biomes[3].ClimatologicalRadius = float2(0.20f, 0.25f);
+    Biomes[3].BaseColor            = float3(0.32f, 0.38f, 0.16f);
+    Biomes[3].Roughness            = 0.70f;
+    Biomes[3].Metallic             = 0.00f;
+    Biomes[3].Specular             = 0.45f;
+    Biomes[3].MicroTiling          = 1.0f;
+    Biomes[3].NormalStrength       = 0.9f;
+
+    // 4: Temperate Deciduous Forest
+    Biomes[4].ClimatologicalCenter = float2(0.60f, 0.70f);
+    Biomes[4].ClimatologicalRadius = float2(0.20f, 0.25f);
+    Biomes[4].BaseColor            = float3(0.14f, 0.30f, 0.09f);
+    Biomes[4].Roughness            = 0.65f;
+    Biomes[4].Metallic             = 0.00f;
+    Biomes[4].Specular             = 0.48f;
+    Biomes[4].MicroTiling          = 1.0f;
+    Biomes[4].NormalStrength       = 0.9f;
+
+    // 5: Arid Sand Desert
+    Biomes[5].ClimatologicalCenter = float2(0.85f, 0.12f);
+    Biomes[5].ClimatologicalRadius = float2(0.22f, 0.20f);
+    Biomes[5].BaseColor            = float3(0.76f, 0.58f, 0.35f);
+    Biomes[5].Roughness            = 0.90f;
+    Biomes[5].Metallic             = 0.00f;
+    Biomes[5].Specular             = 0.35f;
+    Biomes[5].MicroTiling          = 3.0f;
+    Biomes[5].NormalStrength       = 0.7f;
+
+    // 6: Savannah / Scrubland
+    Biomes[6].ClimatologicalCenter = float2(0.80f, 0.42f);
+    Biomes[6].ClimatologicalRadius = float2(0.20f, 0.25f);
+    Biomes[6].BaseColor            = float3(0.55f, 0.48f, 0.22f);
+    Biomes[6].Roughness            = 0.80f;
+    Biomes[6].Metallic             = 0.00f;
+    Biomes[6].Specular             = 0.40f;
+    Biomes[6].MicroTiling          = 1.2f;
+    Biomes[6].NormalStrength       = 0.85f;
+
+    // 7: Tropical Rainforest
+    Biomes[7].ClimatologicalCenter = float2(0.85f, 0.85f);
+    Biomes[7].ClimatologicalRadius = float2(0.22f, 0.22f);
+    Biomes[7].BaseColor            = float3(0.06f, 0.20f, 0.05f);
+    Biomes[7].Roughness            = 0.55f;
+    Biomes[7].Metallic             = 0.00f;
+    Biomes[7].Specular             = 0.50f;
+    Biomes[7].MicroTiling          = 0.8f;
+    Biomes[7].NormalStrength       = 1.2f;
+
+    // Geological Strata: Sandstone, Iron Clay, Shale
+    StrataParams.Frequency      = 0.08f;
+    StrataParams.Distortion     = 0.45f;
+    StrataParams.ColorTier1     = float3(0.58f, 0.45f, 0.32f); // Sandstone
+    StrataParams.ColorTier2     = float3(0.42f, 0.25f, 0.18f); // Iron Clay
+    StrataParams.ColorTier3     = float3(0.22f, 0.20f, 0.22f); // Dark Shale
+    StrataParams.RoughnessDelta = 0.15f;
+    StrataParams.NormalStrength = 0.35f;
+}
+
+/**
+ * Initializes Mars-Like ferric desert / barren rocky archetype:
+ *   0: Polar CO2 Dry Ice Caps
+ *   1: High Altitude Basaltic Plateau
+ *   2: Ferric Orange Sand Dunes
+ *   3: Deep Canyon Ochre Rock
+ *   4: Dark Basalt Ejecta Plains
+ */
+void InitMarsLikeMasterArchetype(
+    out FPlanetaryBiomeDefinition Biomes[PLANETARY_MAX_BIOMES],
+    out int BiomeCount,
+    out FPlanetaryStrataParameters StrataParams)
+{
+    BiomeCount = 5;
+
+    // 0: Polar Dry Ice Caps
+    Biomes[0].ClimatologicalCenter = float2(0.10f, 0.50f);
+    Biomes[0].ClimatologicalRadius = float2(0.22f, 0.50f);
+    Biomes[0].BaseColor            = float3(0.85f, 0.82f, 0.80f);
+    Biomes[0].Roughness            = 0.40f;
+    Biomes[0].Metallic             = 0.00f;
+    Biomes[0].Specular             = 0.50f;
+    Biomes[0].MicroTiling          = 1.5f;
+    Biomes[0].NormalStrength       = 0.7f;
+
+    // 1: High Altitude Basaltic Plateau
+    Biomes[1].ClimatologicalCenter = float2(0.35f, 0.30f);
+    Biomes[1].ClimatologicalRadius = float2(0.25f, 0.40f);
+    Biomes[1].BaseColor            = float3(0.32f, 0.22f, 0.18f);
+    Biomes[1].Roughness            = 0.92f;
+    Biomes[1].Metallic             = 0.02f;
+    Biomes[1].Specular             = 0.35f;
+    Biomes[1].MicroTiling          = 2.0f;
+    Biomes[1].NormalStrength       = 1.3f;
+
+    // 2: Ferric Orange Sand Dunes
+    Biomes[2].ClimatologicalCenter = float2(0.65f, 0.20f);
+    Biomes[2].ClimatologicalRadius = float2(0.28f, 0.35f);
+    Biomes[2].BaseColor            = float3(0.68f, 0.28f, 0.12f);
+    Biomes[2].Roughness            = 0.85f;
+    Biomes[2].Metallic             = 0.00f;
+    Biomes[2].Specular             = 0.30f;
+    Biomes[2].MicroTiling          = 2.5f;
+    Biomes[2].NormalStrength       = 0.8f;
+
+    // 3: Deep Canyon Ochre Rock
+    Biomes[3].ClimatologicalCenter = float2(0.70f, 0.75f);
+    Biomes[3].ClimatologicalRadius = float2(0.25f, 0.35f);
+    Biomes[3].BaseColor            = float3(0.48f, 0.20f, 0.10f);
+    Biomes[3].Roughness            = 0.88f;
+    Biomes[3].Metallic             = 0.01f;
+    Biomes[3].Specular             = 0.35f;
+    Biomes[3].MicroTiling          = 1.8f;
+    Biomes[3].NormalStrength       = 1.4f;
+
+    // 4: Dark Basalt Ejecta Plains
+    Biomes[4].ClimatologicalCenter = float2(0.90f, 0.45f);
+    Biomes[4].ClimatologicalRadius = float2(0.25f, 0.40f);
+    Biomes[4].BaseColor            = float3(0.18f, 0.14f, 0.12f);
+    Biomes[4].Roughness            = 0.95f;
+    Biomes[4].Metallic             = 0.05f;
+    Biomes[4].Specular             = 0.32f;
+    Biomes[4].MicroTiling          = 2.2f;
+    Biomes[4].NormalStrength       = 1.2f;
+
+    // Geological Strata: Ferric Orange, Deep Ochre, Dark Basalt
+    StrataParams.Frequency      = 0.06f;
+    StrataParams.Distortion     = 0.60f;
+    StrataParams.ColorTier1     = float3(0.65f, 0.26f, 0.12f); // Ferric Sandstone
+    StrataParams.ColorTier2     = float3(0.42f, 0.16f, 0.08f); // Ochre Hematite
+    StrataParams.ColorTier3     = float3(0.16f, 0.12f, 0.10f); // Dark Basalt Bed
+    StrataParams.RoughnessDelta = 0.18f;
+    StrataParams.NormalStrength = 0.45f;
+}
+
+/**
+ * Initializes Ice Moon archetype (Europa / Enceladus):
+ *   0: Pure Translucent Blue Ice
+ *   1: White Compacted Firn & Frost
+ *   2: Tholin Organic Amber Ridges
+ *   3: Fractured Chaotic Rifts
+ */
+void InitIceMoonMasterArchetype(
+    out FPlanetaryBiomeDefinition Biomes[PLANETARY_MAX_BIOMES],
+    out int BiomeCount,
+    out FPlanetaryStrataParameters StrataParams)
+{
+    BiomeCount = 4;
+
+    // 0: Pure Glacial Blue Ice
+    Biomes[0].ClimatologicalCenter = float2(0.20f, 0.30f);
+    Biomes[0].ClimatologicalRadius = float2(0.30f, 0.40f);
+    Biomes[0].BaseColor            = float3(0.55f, 0.75f, 0.88f);
+    Biomes[0].Roughness            = 0.18f;
+    Biomes[0].Metallic             = 0.00f;
+    Biomes[0].Specular             = 0.60f;
+    Biomes[0].MicroTiling          = 1.0f;
+    Biomes[0].NormalStrength       = 0.5f;
+
+    // 1: White Compacted Firn & Frost
+    Biomes[1].ClimatologicalCenter = float2(0.20f, 0.80f);
+    Biomes[1].ClimatologicalRadius = float2(0.30f, 0.40f);
+    Biomes[1].BaseColor            = float3(0.92f, 0.94f, 0.97f);
+    Biomes[1].Roughness            = 0.65f;
+    Biomes[1].Metallic             = 0.00f;
+    Biomes[1].Specular             = 0.50f;
+    Biomes[1].MicroTiling          = 2.0f;
+    Biomes[1].NormalStrength       = 0.8f;
+
+    // 2: Tholin Organic Amber Ridges
+    Biomes[2].ClimatologicalCenter = float2(0.70f, 0.30f);
+    Biomes[2].ClimatologicalRadius = float2(0.35f, 0.40f);
+    Biomes[2].BaseColor            = float3(0.52f, 0.30f, 0.18f);
+    Biomes[2].Roughness            = 0.75f;
+    Biomes[2].Metallic             = 0.00f;
+    Biomes[2].Specular             = 0.40f;
+    Biomes[2].MicroTiling          = 2.5f;
+    Biomes[2].NormalStrength       = 1.3f;
+
+    // 3: Fractured Chaotic Rifts
+    Biomes[3].ClimatologicalCenter = float2(0.80f, 0.80f);
+    Biomes[3].ClimatologicalRadius = float2(0.35f, 0.40f);
+    Biomes[3].BaseColor            = float3(0.35f, 0.42f, 0.48f);
+    Biomes[3].Roughness            = 0.40f;
+    Biomes[3].Metallic             = 0.00f;
+    Biomes[3].Specular             = 0.55f;
+    Biomes[3].MicroTiling          = 1.8f;
+    Biomes[3].NormalStrength       = 1.5f;
+
+    // Geological Strata: Frost White, Deep Cyan Glacial, Tholin Amber
+    StrataParams.Frequency      = 0.10f;
+    StrataParams.Distortion     = 0.35f;
+    StrataParams.ColorTier1     = float3(0.88f, 0.93f, 0.98f); // Compacted Frost
+    StrataParams.ColorTier2     = float3(0.38f, 0.62f, 0.78f); // Deep Cryo Ice
+    StrataParams.ColorTier3     = float3(0.48f, 0.28f, 0.15f); // Tholin Hydrocarbon
+    StrataParams.RoughnessDelta = 0.22f;
+    StrataParams.NormalStrength = 0.30f;
+}
+
+/**
+ * Initializes Volcanic World archetype (Io / Mustafar):
+ *   0: Hardened Basalt Crust
+ *   1: Yellow/Orange Sulfur Deposition Fields
+ *   2: Dark Obsidian Glass Scree
+ *   3: Active Magma Vent / Thermal Cracks (Emissive)
+ */
+void InitVolcanicMasterArchetype(
+    out FPlanetaryBiomeDefinition Biomes[PLANETARY_MAX_BIOMES],
+    out int BiomeCount,
+    out FPlanetaryStrataParameters StrataParams)
+{
+    BiomeCount = 4;
+
+    // 0: Hardened Basalt Crust
+    Biomes[0].ClimatologicalCenter = float2(0.30f, 0.30f);
+    Biomes[0].ClimatologicalRadius = float2(0.35f, 0.40f);
+    Biomes[0].BaseColor            = float3(0.12f, 0.11f, 0.10f);
+    Biomes[0].Roughness            = 0.90f;
+    Biomes[0].Metallic             = 0.05f;
+    Biomes[0].Specular             = 0.35f;
+    Biomes[0].MicroTiling          = 2.0f;
+    Biomes[0].NormalStrength       = 1.2f;
+
+    // 1: Yellow/Orange Sulfur Fields
+    Biomes[1].ClimatologicalCenter = float2(0.30f, 0.80f);
+    Biomes[1].ClimatologicalRadius = float2(0.35f, 0.40f);
+    Biomes[1].BaseColor            = float3(0.75f, 0.62f, 0.14f);
+    Biomes[1].Roughness            = 0.82f;
+    Biomes[1].Metallic             = 0.00f;
+    Biomes[1].Specular             = 0.38f;
+    Biomes[1].MicroTiling          = 2.5f;
+    Biomes[1].NormalStrength       = 0.9f;
+
+    // 2: Dark Obsidian Glass
+    Biomes[2].ClimatologicalCenter = float2(0.75f, 0.30f);
+    Biomes[2].ClimatologicalRadius = float2(0.35f, 0.40f);
+    Biomes[2].BaseColor            = float3(0.04f, 0.04f, 0.05f);
+    Biomes[2].Roughness            = 0.15f;
+    Biomes[2].Metallic             = 0.00f;
+    Biomes[2].Specular             = 0.70f;
+    Biomes[2].MicroTiling          = 1.0f;
+    Biomes[2].NormalStrength       = 0.8f;
+
+    // 3: Active Magma Vent (Emissive thermal crust)
+    Biomes[3].ClimatologicalCenter = float2(0.85f, 0.85f);
+    Biomes[3].ClimatologicalRadius = float2(0.25f, 0.30f);
+    Biomes[3].BaseColor            = float3(0.30f, 0.05f, 0.02f);
+    Biomes[3].Roughness            = 0.60f;
+    Biomes[3].Metallic             = 0.00f;
+    Biomes[3].Specular             = 0.40f;
+    Biomes[3].MicroTiling          = 1.5f;
+    Biomes[3].NormalStrength       = 1.0f;
+
+    // Geological Strata: Volcanic Ash, Dark Basalt, Yellow Sulfur Crust
+    StrataParams.Frequency      = 0.07f;
+    StrataParams.Distortion     = 0.50f;
+    StrataParams.ColorTier1     = float3(0.20f, 0.18f, 0.16f); // Volcanic Ash
+    StrataParams.ColorTier2     = float3(0.08f, 0.07f, 0.06f); // Vitric Basalt
+    StrataParams.ColorTier3     = float3(0.68f, 0.48f, 0.10f); // Sulfur Deposit
+    StrataParams.RoughnessDelta = 0.20f;
+    StrataParams.NormalStrength = 0.40f;
+}
+
+// ============================================================================
+// MAIN UNIFIED PLANETARY SURFACE EVALUATION
+// ============================================================================
+
+/**
+ * Main evaluation function for procedural planetary surfaces.
+ * Combines analytical Whittaker biomes, optional 2D LUT override, 3D domain warping,
+ * sedimentary cliff stratification, height-blended transitions, snow, wetness,
+ * magma emission, and Toksvig specular anti-aliasing.
+ *
+ * @param InWorldPos                   - Pixel absolute world position (cm)
+ * @param InPlanetCenter               - Planet center in world space (cm)
+ * @param InPlanetRadius               - Planet radius in cm
+ * @param InCameraWorldPos             - Main camera world position (cm)
+ * @param InVertexColor                - Vertex Color (R: AltitudeNorm, G: Temp, B: Humidity, A: Mask)
+ * @param InMeshWorldNormal            - Mesh geometric normal from clipmap/terrain
+ * @param InVolumeTexture              - 3D seamless noise volume texture
+ * @param InVolumeSampler              - SamplerState for 3D volume
+ * @param InArchetypeIndex             - 0: Earth, 1: Mars, 2: Ice Moon, 3: Volcanic
+ * @param InMacroFrequency             - Spatial frequency of macro relief (default: 0.00005)
+ * @param InMicroFrequency             - Spatial frequency of micro relief (default: 0.01)
+ * @param InNormalStrength             - Global normal perturbation multiplier
+ * @param InSlopeCliffThreshold        - Slope threshold for cliff rock transition (default: 0.35)
+ * @param InSlopeCliffFalloff          - Slope transition width (default: 0.20)
+ * @param InSnowTemperatureThreshold   - Visual temperature at which snow begins (default: 0.22)
+ * @param InWetnessIntensity           - Moisture darkening & puddle reflection intensity (default: 1.0)
+ * @param bUseLUTOverride              - If true, samples 2D LUT texture for base macro albedo
+ * @param InOptionalWhittakerLUT       - Optional 2D LUT texture (X=Temp, Y=1-Hum)
+ * @param InOptionalWhittakerLUTSampler- Sampler for optional 2D LUT
+ * @param OutSurface                   - Output: Complete physical PBR surface properties
+ */
+void EvaluatePlanetaryMasterSurfaceCore(
+    in float3 InWorldPos,
+    in float3 InPlanetCenter,
+    in float  InPlanetRadius,
+    in float3 InCameraWorldPos,
+    in float4 InVertexColor,
+    in float3 InMeshWorldNormal,
+    in Texture3D InVolumeTexture,
+    in SamplerState InVolumeSampler,
+    in float  InArchetypeIndex,
+    in float  InMacroFrequency,
+    in float  InMicroFrequency,
+    in float  InNormalStrength,
+    in float  InSlopeCliffThreshold,
+    in float  InSlopeCliffFalloff,
+    in float  InSnowTemperatureThreshold,
+    in float  InWetnessIntensity,
+    out FPlanetaryMasterOutput OutSurface,
+    out float OutTempWarped,
+    out float OutHumidityWarped)
+{
+    // --- 1. LWC Geometric Basis & Tangent Frame ---
+    float3 LocalPos;
+    float3 RadialNormal;
+    float3 GeometryNormal;
+    float  AltitudeFromCenter;
+    float  CameraDistance;
+
+    ComputePlanetaryMasterGeometry(
+        InWorldPos, InPlanetCenter, InPlanetRadius, InMeshWorldNormal, InCameraWorldPos,
+        LocalPos, RadialNormal, GeometryNormal, AltitudeFromCenter, CameraDistance);
+
+    // Orthonormal tangent basis on sphere strictly perpendicular to RadialNormal
+    float3 T1, T2;
+    GetPlanetaryMasterTangentFrame(RadialNormal, T1, T2);
+
+    // --- 2. Camera Distance Continuous LOD & Toksvig Anti-Aliasing ---
+    float MicroLOD = saturate(1.0f - (CameraDistance - PLANETARY_MICRO_FADE_START_CM) 
+                            / max(PLANETARY_MICRO_FADE_END_CM - PLANETARY_MICRO_FADE_START_CM, 1000.0f));
+    float MacroLOD = saturate(1.0f - (CameraDistance - PLANETARY_MACRO_FADE_START_CM) 
+                            / max(PLANETARY_MACRO_FADE_END_CM - PLANETARY_MACRO_FADE_START_CM, 10000.0f));
+
+    // Toksvig roughness bias to absorb normal variance at orbital scale
+    float ToksvigBias = saturate((CameraDistance - PLANETARY_MICRO_FADE_START_CM) 
+                                / (PLANETARY_MICRO_FADE_END_CM * 2.0f)) * 0.32f;
+
+    // --- 3. Climatological Inputs & 3D Domain Warping ---
+    float AltitudeNorm = saturate(InVertexColor.r);
+    float VisualTemp   = saturate(InVertexColor.g);
+    float Humidity     = saturate(InVertexColor.b);
+    float SurfaceMask  = saturate(InVertexColor.a);
+
+    // 3D Macro Noise Sampling & Tangent Gradient (Only 3 samples!)
+    float MacroH = 0.5f;
+    float MacroFreq = max(InMacroFrequency, 0.000001f);
+    float MacroEps  = 200.0f; // 2 meters finite difference
+
+    float3 MacroGrad = ComputeMasterVolumeSurfaceGradient(
+        InVolumeTexture, InVolumeSampler,
+        InWorldPos, T1, T2,
+        MacroFreq, MacroEps, MacroH);
+
+    // Multi-channel organic domain warping of climate phase space
+    float TempWarped     = saturate(VisualTemp + (MacroH - 0.5f) * 0.15f);
+    float HumidityWarped = saturate(Humidity   + (MacroGrad.x + MacroGrad.y) * 0.08f);
+
+    OutTempWarped     = TempWarped;
+    OutHumidityWarped = HumidityWarped;
+
+    // --- 4. Archetype & Biome Initialization ---
+    FPlanetaryBiomeDefinition Biomes[PLANETARY_MAX_BIOMES];
+    FPlanetaryStrataParameters StrataParams;
+    int BiomeCount = 8;
+    int ArchetypeIndex = (int)round(InArchetypeIndex);
+
+    if (ArchetypeIndex == 1)
+    {
+        InitMarsLikeMasterArchetype(Biomes, BiomeCount, StrataParams);
+    }
+    else if (ArchetypeIndex == 2)
+    {
+        InitIceMoonMasterArchetype(Biomes, BiomeCount, StrataParams);
+    }
+    else if (ArchetypeIndex == 3)
+    {
+        InitVolcanicMasterArchetype(Biomes, BiomeCount, StrataParams);
+    }
+    else
+    {
+        InitEarthLikeMasterArchetype(Biomes, BiomeCount, StrataParams);
+    }
+
+    // --- 5. Whittaker Evaluation (Analytical Gaussian RBF) ---
+    float3 BiomeColor;
+    float  BiomeRoughness;
+    float  BiomeMetallic;
+    float  BiomeSpecular;
+    float  BiomeMicroTiling;
+    float  BiomeNormalScale;
+
+    // Core procedural engine: Analytical Gaussian RBF
+    EvaluateMasterWhittakerBiomes(
+        TempWarped,
+        HumidityWarped,
+        Biomes,
+        BiomeCount,
+        3.5f, // Smooth transition sharpness
+        BiomeColor,
+        BiomeRoughness,
+        BiomeMetallic,
+        BiomeSpecular,
+        BiomeMicroTiling,
+        BiomeNormalScale);
+
+    // --- 6. Micro Relief & Tangent Normal Perturbation ---
+    float3 SurfaceGradient = MacroGrad * (MacroLOD * 0.7f);
+    float MicroH = 0.5f;
+
+    // Dynamic branch: compute micro detail only within micro LOD distance
+    if (MicroLOD > 0.001f)
+    {
+        float MicroFreq = max(InMicroFrequency * BiomeMicroTiling, 0.0001f);
+        float MicroEps  = 2.0f; // 2 cm finite difference
+
+        float3 MicroGrad = ComputeMasterVolumeSurfaceGradient(
+            InVolumeTexture, InVolumeSampler,
+            InWorldPos, T1, T2,
+            MicroFreq, MicroEps, MicroH);
+
+        SurfaceGradient += MicroGrad * (MicroLOD * BiomeNormalScale);
+    }
+
+    // Tangent normal perturbation strictly perpendicular to GeometryNormal
+    float EffNormalStrength = InNormalStrength * (MacroLOD * 0.6f + MicroLOD * 0.4f);
+    float3 TangentPerturb = (T1 * dot(SurfaceGradient, T1) + T2 * dot(SurfaceGradient, T2)) * EffNormalStrength;
+    float3 PerturbedNormal = normalize(GeometryNormal - TangentPerturb);
+
+    // --- 7. Slope Calculation & Geological Sedimentary Cliff Stratification ---
+    float SlopeCos = saturate(dot(RadialNormal, PerturbedNormal));
+    float RawSlope = 1.0f - SlopeCos; // 0 on flat ground, 1 on vertical cliffs
+
+    // Perturb slope boundary slightly with 3D noise for natural irregular cliff borders
+    float PerturbedSlope = saturate(RawSlope + (MacroH - 0.5f) * 0.20f);
+
+    float HalfFalloff = max(InSlopeCliffFalloff * 0.5f, 0.001f);
+    float CliffSlopeWeight = smoothstep(InSlopeCliffThreshold - HalfFalloff, InSlopeCliffThreshold + HalfFalloff, PerturbedSlope);
+
+    // Height-blended transition between flat biome soil and bare cliff rock
+    float HeightFlat = saturate(MicroH);
+    float HeightCliff = saturate(1.0f - MicroH * 0.6f);
+    float CliffMask = ComputeMasterHeightBlend2(
+        1.0f - CliffSlopeWeight, HeightFlat,
+        CliffSlopeWeight, HeightCliff,
+        0.15f);
+
+    // Procedural Sedimentary Strata evaluation on cliffs
+    float3 StrataTint;
+    float  StrataRoughDelta;
+    float  StrataNormOffset;
+    float  Strata01;
+
+    EvaluateMasterGeologicalStrata(
+        LocalPos, AltitudeFromCenter, MacroH, StrataParams,
+        StrataTint, StrataRoughDelta, StrataNormOffset, Strata01);
+
+    // Modulate cliff albedo with geological sedimentary strata
+    float3 CliffAlbedo = StrataTint * 1.15f;
+    float  CliffRoughness = saturate(0.88f + StrataRoughDelta);
+
+    // Blend flat biome terrain with stratified cliff rock
+    float3 BaseAlbedo   = lerp(BiomeColor, CliffAlbedo, CliffMask);
+    float  EffRoughness = lerp(BiomeRoughness, CliffRoughness, CliffMask);
+
+    // Add horizontal sedimentary shelf ribbing to the normal on steep cliffs
+    if (CliffMask > 0.01f)
+    {
+        PerturbedNormal = normalize(PerturbedNormal + RadialNormal * (StrataNormOffset * CliffMask * 0.4f));
+    }
+
+    // --- 8. Dynamic Snowline & Glaciation (Gravity Slide-Off Physics) ---
+    float SnowThreshold = max(InSnowTemperatureThreshold, 0.01f);
+    float SnowRaw = saturate((SnowThreshold - TempWarped) / max(SnowThreshold * 0.6f, 0.02f));
+
+    // Slope slide-off damping: gravity prevents snow from sticking to steep cliffs
+    float SnowSlopeDamp = smoothstep(0.50f, 0.20f, RawSlope);
+    float SnowWeight = SnowRaw * SnowSlopeDamp;
+
+    // Height-blend snow accumulation: snow settles on ridges and plateaus first
+    float SnowMask = ComputeMasterHeightBlend2(
+        1.0f - SnowWeight, 1.0f - HeightFlat,
+        SnowWeight, 0.85f,
+        0.18f) * saturate(SnowWeight * 2.0f);
+
+    if (SnowMask > 0.001f)
+    {
+        float3 SnowAlbedo = float3(0.92f, 0.94f, 0.98f);
+        BaseAlbedo    = lerp(BaseAlbedo, SnowAlbedo, SnowMask);
+        EffRoughness  = lerp(EffRoughness, 0.65f, SnowMask);
+        BiomeMetallic = lerp(BiomeMetallic, 0.0f, SnowMask);
+        BiomeSpecular = lerp(BiomeSpecular, 0.50f, SnowMask);
+    }
+
+    // --- 9. Moisture, Wetness & Water Puddle Physics ---
+    float WetnessMask = 0.0f;
+    if (InWetnessIntensity > 0.01f)
+    {
+        float PuddleDepression = saturate(1.0f - RawSlope * 1.5f);
+        WetnessMask = saturate((Humidity - 0.42f) / 0.50f) * PuddleDepression * InWetnessIntensity;
+
+        WetnessMask *= (1.0f - SnowMask) * (1.0f - CliffMask * 0.75f);
+        BaseAlbedo *= (1.0f - 0.35f * WetnessMask);
+        EffRoughness = lerp(EffRoughness, 0.03f, WetnessMask * 0.90f);
+        BiomeSpecular = lerp(BiomeSpecular, 0.55f, WetnessMask);
+    }
+
+    // --- 10. Toksvig Specular Anti-Aliasing Integration ---
+    float FinalRoughness = saturate(sqrt(EffRoughness * EffRoughness + ToksvigBias * ToksvigBias));
+
+    // --- 11. Volcanic / Thermal Emission ---
+    float3 Emissive = float3(0.0f, 0.0f, 0.0f);
+    if (ArchetypeIndex == 3) // Volcanic world
+    {
+        float MagmaMask = saturate((0.32f - AltitudeNorm) / 0.20f) * saturate(1.0f - RawSlope * 1.2f);
+        MagmaMask *= saturate(1.0f - MacroH * 1.6f);
+
+        float3 MagmaHDR = float3(3.0f, 0.40f, 0.02f);
+        Emissive = MagmaHDR * (MagmaMask * 5.0f);
+        BaseAlbedo = lerp(BaseAlbedo, float3(0.04f, 0.02f, 0.01f), MagmaMask);
+    }
+
+    // --- 12. Pack Output Struct ---
+    OutSurface.BaseColor        = BaseAlbedo;
+    OutSurface.WorldNormal      = PerturbedNormal;
+    OutSurface.Roughness        = FinalRoughness;
+    OutSurface.Metallic         = BiomeMetallic;
+    OutSurface.Specular         = BiomeSpecular;
+    OutSurface.AmbientOcclusion = lerp(0.85f, 1.0f, MacroH);
+    OutSurface.Emissive         = Emissive;
+    OutSurface.SnowMask         = SnowMask;
+    OutSurface.SlopeMask        = CliffMask;
+    OutSurface.WetnessMask      = WetnessMask;
+    OutSurface.StrataMask       = Strata01;
+    OutSurface.LODFactor        = MicroLOD;
+}
+
+// 100% Pure Procedural Evaluation (No 2D LUT required)
+void EvaluatePlanetaryMasterSurface(
+    in float3 InWorldPos,
+    in float3 InPlanetCenter,
+    in float  InPlanetRadius,
+    in float3 InCameraWorldPos,
+    in float4 InVertexColor,
+    in float3 InMeshWorldNormal,
+    in Texture3D InVolumeTexture,
+    in SamplerState InVolumeSampler,
+    in float  InArchetypeIndex,
+    in float  InMacroFrequency,
+    in float  InMicroFrequency,
+    in float  InNormalStrength,
+    in float  InSlopeCliffThreshold,
+    in float  InSlopeCliffFalloff,
+    in float  InSnowTemperatureThreshold,
+    in float  InWetnessIntensity,
+    out FPlanetaryMasterOutput OutSurface)
+{
+    float DummyT, DummyH;
+    EvaluatePlanetaryMasterSurfaceCore(
+        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
+        InVertexColor, InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
+        InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
+        OutSurface, DummyT, DummyH);
+}
+
+// Evaluation with Optional 2D LUT Override
+void EvaluatePlanetaryMasterSurface(
+    in float3 InWorldPos,
+    in float3 InPlanetCenter,
+    in float  InPlanetRadius,
+    in float3 InCameraWorldPos,
+    in float4 InVertexColor,
+    in float3 InMeshWorldNormal,
+    in Texture3D InVolumeTexture,
+    in SamplerState InVolumeSampler,
+    in float  InArchetypeIndex,
+    in float  InMacroFrequency,
+    in float  InMicroFrequency,
+    in float  InNormalStrength,
+    in float  InSlopeCliffThreshold,
+    in float  InSlopeCliffFalloff,
+    in float  InSnowTemperatureThreshold,
+    in float  InWetnessIntensity,
+    in float  bUseLUTOverride,
+    in Texture2D InOptionalWhittakerLUT,
+    in SamplerState InOptionalWhittakerLUTSampler,
+    out FPlanetaryMasterOutput OutSurface)
+{
+    float TempWarped, HumWarped;
+    EvaluatePlanetaryMasterSurfaceCore(
+        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
+        InVertexColor, InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
+        InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
+        OutSurface, TempWarped, HumWarped);
+
+    if (bUseLUTOverride > 0.5f)
+    {
+        float2 LUTCoords = float2(TempWarped, 1.0f - HumWarped);
+        float3 LUTColor = InOptionalWhittakerLUT.SampleLevel(InOptionalWhittakerLUTSampler, LUTCoords, 0.0f).rgb;
+        OutSurface.BaseColor = lerp(OutSurface.BaseColor, LUTColor, 0.85f);
+    }
+}
+
+// ============================================================================
+// CONVENIENCE ENTRY POINTS FOR UNREAL ENGINE 5 CUSTOM NODES
+// ============================================================================
+
+/**
+ * Lightweight Modular Evaluator:
+ * Returns float4(WarpedTemp, WarpedHum, CliffSlope, Strata01) for graph-based logic.
+ */
+float4 EvaluatePlanetaryMasterCoordinates(
+    float3 InWorldPos,
+    float3 InPlanetCenter,
+    float  InPlanetRadius,
+    float4 InVertexColor,
+    float3 InMeshWorldNormal,
+    Texture3D InVolumeTexture,
+    SamplerState InVolumeSampler,
+    float  InMacroFrequency,
+    float  InSlopeCliffThreshold,
+    float  InSlopeCliffFalloff,
+    float  InStrataFrequency,
+    float  InStrataDistortion)
+{
+    float3 LocalPos = InWorldPos - InPlanetCenter;
+    float DistFromCenter = length(LocalPos);
+    float3 RadialNormal = LocalPos / max(DistFromCenter, 1.0f);
+    float3 GeometryNormal = (length(InMeshWorldNormal) > 0.01f) ? normalize(InMeshWorldNormal) : RadialNormal;
+    float AltitudeFromCenter = DistFromCenter - InPlanetRadius;
+
+    float3 T1, T2;
+    GetPlanetaryMasterTangentFrame(RadialNormal, T1, T2);
+
+    float MacroH = 0.5f;
+    float3 MacroGrad = ComputeMasterVolumeSurfaceGradient(
+        InVolumeTexture, InVolumeSampler,
+        InWorldPos, T1, T2,
+        max(InMacroFrequency, 0.000001f), 200.0f, MacroH);
+
+    float TempWarped = saturate(InVertexColor.g + (MacroH - 0.5f) * 0.15f);
+    float HumWarped  = saturate(InVertexColor.b + (MacroGrad.x + MacroGrad.y) * 0.08f);
+
+    float SlopeCos = saturate(dot(RadialNormal, GeometryNormal));
+    float RawSlope = 1.0f - SlopeCos;
+    float HalfFalloff = max(InSlopeCliffFalloff * 0.5f, 0.001f);
+    float CliffSlope = smoothstep(InSlopeCliffThreshold - HalfFalloff, InSlopeCliffThreshold + HalfFalloff, RawSlope);
+
+    float BaseCoord = (AltitudeFromCenter * 0.01f) * max(InStrataFrequency, 0.0001f);
+    float DistortedCoord = BaseCoord + (MacroH * 2.0f - 1.0f) * InStrataDistortion;
+    float Strata01 = (sin(DistortedCoord) + 0.5f * sin(DistortedCoord * 2.718f + 1.4f)) * 0.33f + 0.5f;
+
+    return float4(TempWarped, HumWarped, CliffSlope, saturate(Strata01));
+}
+
+float4 EvaluatePlanetaryMasterCoordinates(
+    float3 InWorldPos,
+    float3 InPlanetCenter,
+    float  InPlanetRadius,
+    float3 InVertexColor,
+    float3 InMeshWorldNormal,
+    Texture3D InVolumeTexture,
+    SamplerState InVolumeSampler,
+    float  InMacroFrequency,
+    float  InSlopeCliffThreshold,
+    float  InSlopeCliffFalloff,
+    float  InStrataFrequency,
+    float  InStrataDistortion)
+{
+    return EvaluatePlanetaryMasterCoordinates(
+        InWorldPos, InPlanetCenter, InPlanetRadius, float4(InVertexColor, 1.0f), InMeshWorldNormal,
+        InVolumeTexture, InVolumeSampler, InMacroFrequency, InSlopeCliffThreshold, InSlopeCliffFalloff,
+        InStrataFrequency, InStrataDistortion);
+}
+
+// --- Packed Diffuse & Roughness ---
+float4 EvaluatePlanetaryMasterPackedDiffuseRoughness(
+    float3 InWorldPos,
+    float3 InPlanetCenter,
+    float  InPlanetRadius,
+    float3 InCameraWorldPos,
+    float4 InVertexColor,
+    float3 InMeshWorldNormal,
+    Texture3D InVolumeTexture,
+    SamplerState InVolumeSampler,
+    float  InArchetypeIndex,
+    float  InMacroFrequency,
+    float  InMicroFrequency,
+    float  InNormalStrength,
+    float  InSlopeCliffThreshold,
+    float  InSlopeCliffFalloff,
+    float  InSnowTemperatureThreshold,
+    float  InWetnessIntensity)
+{
+    FPlanetaryMasterOutput OutSurface;
+    EvaluatePlanetaryMasterSurface(
+        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
+        InVertexColor, InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
+        InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
+        OutSurface);
+    return float4(OutSurface.BaseColor, OutSurface.Roughness);
+}
+
+float4 EvaluatePlanetaryMasterPackedDiffuseRoughness(
+    float3 InWorldPos,
+    float3 InPlanetCenter,
+    float  InPlanetRadius,
+    float3 InCameraWorldPos,
+    float3 InVertexColor,
+    float3 InMeshWorldNormal,
+    Texture3D InVolumeTexture,
+    SamplerState InVolumeSampler,
+    float  InArchetypeIndex,
+    float  InMacroFrequency,
+    float  InMicroFrequency,
+    float  InNormalStrength,
+    float  InSlopeCliffThreshold,
+    float  InSlopeCliffFalloff,
+    float  InSnowTemperatureThreshold,
+    float  InWetnessIntensity)
+{
+    return EvaluatePlanetaryMasterPackedDiffuseRoughness(
+        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, float4(InVertexColor, 1.0f), InMeshWorldNormal,
+        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity);
+}
+
+// --- Packed Normal & AO ---
+float4 EvaluatePlanetaryMasterPackedNormalAO(
+    float3 InWorldPos,
+    float3 InPlanetCenter,
+    float  InPlanetRadius,
+    float3 InCameraWorldPos,
+    float4 InVertexColor,
+    float3 InMeshWorldNormal,
+    Texture3D InVolumeTexture,
+    SamplerState InVolumeSampler,
+    float  InArchetypeIndex,
+    float  InMacroFrequency,
+    float  InMicroFrequency,
+    float  InNormalStrength,
+    float  InSlopeCliffThreshold,
+    float  InSlopeCliffFalloff,
+    float  InSnowTemperatureThreshold,
+    float  InWetnessIntensity)
+{
+    FPlanetaryMasterOutput OutSurface;
+    EvaluatePlanetaryMasterSurface(
+        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
+        InVertexColor, InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
+        InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
+        OutSurface);
+    return float4(OutSurface.WorldNormal, OutSurface.AmbientOcclusion);
+}
+
+// --- ALL-IN-ONE CUSTOM NODE EVALUATORS (8 OVERLOADS) ---
+
+// 1. Without LUT, float4 InVertexColor, out float3 OutEmissive
+float4 EvaluatePlanetaryMasterFull(
+    float3 InWorldPos,
+    float3 InPlanetCenter,
+    float  InPlanetRadius,
+    float3 InCameraWorldPos,
+    float4 InVertexColor,
+    float3 InMeshWorldNormal,
+    Texture3D InVolumeTexture,
+    SamplerState InVolumeSampler,
+    float  InArchetypeIndex,
+    float  InMacroFrequency,
+    float  InMicroFrequency,
+    float  InNormalStrength,
+    float  InSlopeCliffThreshold,
+    float  InSlopeCliffFalloff,
+    float  InSnowTemperatureThreshold,
+    float  InWetnessIntensity,
+    out float3 OutWorldNormal,
+    out float3 OutEmissive,
+    out float  OutMetallic,
+    out float  OutSpecular,
+    out float  OutAO,
+    out float4 OutMasks)
+{
+    FPlanetaryMasterOutput OutSurface;
+    EvaluatePlanetaryMasterSurface(
+        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
+        InVertexColor, InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
+        InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
+        OutSurface);
+
+    OutWorldNormal = OutSurface.WorldNormal;
+    OutEmissive    = OutSurface.Emissive;
+    OutMetallic    = OutSurface.Metallic;
+    OutSpecular    = OutSurface.Specular;
+    OutAO          = OutSurface.AmbientOcclusion;
+    OutMasks       = float4(OutSurface.SnowMask, OutSurface.SlopeMask, OutSurface.WetnessMask, OutSurface.StrataMask);
+
+    return float4(OutSurface.BaseColor, OutSurface.Roughness);
+}
+
+// 2. Without LUT, float4 InVertexColor, out float OutEmissive
+float4 EvaluatePlanetaryMasterFull(
+    float3 InWorldPos,
+    float3 InPlanetCenter,
+    float  InPlanetRadius,
+    float3 InCameraWorldPos,
+    float4 InVertexColor,
+    float3 InMeshWorldNormal,
+    Texture3D InVolumeTexture,
+    SamplerState InVolumeSampler,
+    float  InArchetypeIndex,
+    float  InMacroFrequency,
+    float  InMicroFrequency,
+    float  InNormalStrength,
+    float  InSlopeCliffThreshold,
+    float  InSlopeCliffFalloff,
+    float  InSnowTemperatureThreshold,
+    float  InWetnessIntensity,
+    out float3 OutWorldNormal,
+    out float  OutEmissive,
+    out float  OutMetallic,
+    out float  OutSpecular,
+    out float  OutAO,
+    out float4 OutMasks)
+{
+    float3 Emiss3;
+    float4 Res = EvaluatePlanetaryMasterFull(
+        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
+        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
+        OutWorldNormal, Emiss3, OutMetallic, OutSpecular, OutAO, OutMasks);
+    OutEmissive = max(Emiss3.r, max(Emiss3.g, Emiss3.b));
+    return Res;
+}
+
+// 3. Without LUT, float3 InVertexColor, out float3 OutEmissive
+float4 EvaluatePlanetaryMasterFull(
+    float3 InWorldPos,
+    float3 InPlanetCenter,
+    float  InPlanetRadius,
+    float3 InCameraWorldPos,
+    float3 InVertexColor,
+    float3 InMeshWorldNormal,
+    Texture3D InVolumeTexture,
+    SamplerState InVolumeSampler,
+    float  InArchetypeIndex,
+    float  InMacroFrequency,
+    float  InMicroFrequency,
+    float  InNormalStrength,
+    float  InSlopeCliffThreshold,
+    float  InSlopeCliffFalloff,
+    float  InSnowTemperatureThreshold,
+    float  InWetnessIntensity,
+    out float3 OutWorldNormal,
+    out float3 OutEmissive,
+    out float  OutMetallic,
+    out float  OutSpecular,
+    out float  OutAO,
+    out float4 OutMasks)
+{
+    return EvaluatePlanetaryMasterFull(
+        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, float4(InVertexColor, 1.0f), InMeshWorldNormal,
+        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
+        OutWorldNormal, OutEmissive, OutMetallic, OutSpecular, OutAO, OutMasks);
+}
+
+// 4. Without LUT, float3 InVertexColor, out float OutEmissive
+float4 EvaluatePlanetaryMasterFull(
+    float3 InWorldPos,
+    float3 InPlanetCenter,
+    float  InPlanetRadius,
+    float3 InCameraWorldPos,
+    float3 InVertexColor,
+    float3 InMeshWorldNormal,
+    Texture3D InVolumeTexture,
+    SamplerState InVolumeSampler,
+    float  InArchetypeIndex,
+    float  InMacroFrequency,
+    float  InMicroFrequency,
+    float  InNormalStrength,
+    float  InSlopeCliffThreshold,
+    float  InSlopeCliffFalloff,
+    float  InSnowTemperatureThreshold,
+    float  InWetnessIntensity,
+    out float3 OutWorldNormal,
+    out float  OutEmissive,
+    out float  OutMetallic,
+    out float  OutSpecular,
+    out float  OutAO,
+    out float4 OutMasks)
+{
+    float3 Emiss3;
+    float4 Res = EvaluatePlanetaryMasterFull(
+        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, float4(InVertexColor, 1.0f), InMeshWorldNormal,
+        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
+        OutWorldNormal, Emiss3, OutMetallic, OutSpecular, OutAO, OutMasks);
+    OutEmissive = max(Emiss3.r, max(Emiss3.g, Emiss3.b));
+    return Res;
+}
+
+// 5. With LUT, float4 InVertexColor, out float3 OutEmissive
+float4 EvaluatePlanetaryMasterFull(
+    float3 InWorldPos,
+    float3 InPlanetCenter,
+    float  InPlanetRadius,
+    float3 InCameraWorldPos,
+    float4 InVertexColor,
+    float3 InMeshWorldNormal,
+    Texture3D InVolumeTexture,
+    SamplerState InVolumeSampler,
+    float  InArchetypeIndex,
+    float  InMacroFrequency,
+    float  InMicroFrequency,
+    float  InNormalStrength,
+    float  InSlopeCliffThreshold,
+    float  InSlopeCliffFalloff,
+    float  InSnowTemperatureThreshold,
+    float  InWetnessIntensity,
+    float  bUseLUTOverride,
+    Texture2D InOptionalWhittakerLUT,
+    SamplerState InOptionalWhittakerLUTSampler,
+    out float3 OutWorldNormal,
+    out float3 OutEmissive,
+    out float  OutMetallic,
+    out float  OutSpecular,
+    out float  OutAO,
+    out float4 OutMasks)
+{
+    FPlanetaryMasterOutput OutSurface;
+    EvaluatePlanetaryMasterSurface(
+        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
+        InVertexColor, InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
+        InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
+        bUseLUTOverride, InOptionalWhittakerLUT, InOptionalWhittakerLUTSampler,
+        OutSurface);
+
+    OutWorldNormal = OutSurface.WorldNormal;
+    OutEmissive    = OutSurface.Emissive;
+    OutMetallic    = OutSurface.Metallic;
+    OutSpecular    = OutSurface.Specular;
+    OutAO          = OutSurface.AmbientOcclusion;
+    OutMasks       = float4(OutSurface.SnowMask, OutSurface.SlopeMask, OutSurface.WetnessMask, OutSurface.StrataMask);
+
+    return float4(OutSurface.BaseColor, OutSurface.Roughness);
+}
+
+// 6. With LUT, float4 InVertexColor, out float OutEmissive
+float4 EvaluatePlanetaryMasterFull(
+    float3 InWorldPos,
+    float3 InPlanetCenter,
+    float  InPlanetRadius,
+    float3 InCameraWorldPos,
+    float4 InVertexColor,
+    float3 InMeshWorldNormal,
+    Texture3D InVolumeTexture,
+    SamplerState InVolumeSampler,
+    float  InArchetypeIndex,
+    float  InMacroFrequency,
+    float  InMicroFrequency,
+    float  InNormalStrength,
+    float  InSlopeCliffThreshold,
+    float  InSlopeCliffFalloff,
+    float  InSnowTemperatureThreshold,
+    float  InWetnessIntensity,
+    float  bUseLUTOverride,
+    Texture2D InOptionalWhittakerLUT,
+    SamplerState InOptionalWhittakerLUTSampler,
+    out float3 OutWorldNormal,
+    out float  OutEmissive,
+    out float  OutMetallic,
+    out float  OutSpecular,
+    out float  OutAO,
+    out float4 OutMasks)
+{
+    float3 Emiss3;
+    float4 Res = EvaluatePlanetaryMasterFull(
+        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
+        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
+        bUseLUTOverride, InOptionalWhittakerLUT, InOptionalWhittakerLUTSampler,
+        OutWorldNormal, Emiss3, OutMetallic, OutSpecular, OutAO, OutMasks);
+    OutEmissive = max(Emiss3.r, max(Emiss3.g, Emiss3.b));
+    return Res;
+}
+
+// 7. With LUT, float3 InVertexColor, out float3 OutEmissive
+float4 EvaluatePlanetaryMasterFull(
+    float3 InWorldPos,
+    float3 InPlanetCenter,
+    float  InPlanetRadius,
+    float3 InCameraWorldPos,
+    float3 InVertexColor,
+    float3 InMeshWorldNormal,
+    Texture3D InVolumeTexture,
+    SamplerState InVolumeSampler,
+    float  InArchetypeIndex,
+    float  InMacroFrequency,
+    float  InMicroFrequency,
+    float  InNormalStrength,
+    float  InSlopeCliffThreshold,
+    float  InSlopeCliffFalloff,
+    float  InSnowTemperatureThreshold,
+    float  InWetnessIntensity,
+    float  bUseLUTOverride,
+    Texture2D InOptionalWhittakerLUT,
+    SamplerState InOptionalWhittakerLUTSampler,
+    out float3 OutWorldNormal,
+    out float3 OutEmissive,
+    out float  OutMetallic,
+    out float  OutSpecular,
+    out float  OutAO,
+    out float4 OutMasks)
+{
+    return EvaluatePlanetaryMasterFull(
+        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, float4(InVertexColor, 1.0f), InMeshWorldNormal,
+        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
+        bUseLUTOverride, InOptionalWhittakerLUT, InOptionalWhittakerLUTSampler,
+        OutWorldNormal, OutEmissive, OutMetallic, OutSpecular, OutAO, OutMasks);
+}
+
+// 8. With LUT, float3 InVertexColor, out float OutEmissive (Direct match for user screenshot setup)
+float4 EvaluatePlanetaryMasterFull(
+    float3 InWorldPos,
+    float3 InPlanetCenter,
+    float  InPlanetRadius,
+    float3 InCameraWorldPos,
+    float3 InVertexColor,
+    float3 InMeshWorldNormal,
+    Texture3D InVolumeTexture,
+    SamplerState InVolumeSampler,
+    float  InArchetypeIndex,
+    float  InMacroFrequency,
+    float  InMicroFrequency,
+    float  InNormalStrength,
+    float  InSlopeCliffThreshold,
+    float  InSlopeCliffFalloff,
+    float  InSnowTemperatureThreshold,
+    float  InWetnessIntensity,
+    float  bUseLUTOverride,
+    Texture2D InOptionalWhittakerLUT,
+    SamplerState InOptionalWhittakerLUTSampler,
+    out float3 OutWorldNormal,
+    out float  OutEmissive,
+    out float  OutMetallic,
+    out float  OutSpecular,
+    out float  OutAO,
+    out float4 OutMasks)
+{
+    float3 Emiss3;
+    float4 Res = EvaluatePlanetaryMasterFull(
+        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, float4(InVertexColor, 1.0f), InMeshWorldNormal,
+        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
+        bUseLUTOverride, InOptionalWhittakerLUT, InOptionalWhittakerLUTSampler,
+        OutWorldNormal, Emiss3, OutMetallic, OutSpecular, OutAO, OutMasks);
+    OutEmissive = max(Emiss3.r, max(Emiss3.g, Emiss3.b));
+    return Res;
+}
