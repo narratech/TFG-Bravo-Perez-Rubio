@@ -31,33 +31,6 @@ UCosmicClipmapComponent::UCosmicClipmapComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 }
 
-bool UCosmicClipmapComponent::UpdateCollisionNearPlayer(const FVector& SurfacePos, const FVector& SurfaceNormal, const double DistanceToSurface)
-{
-    if (!CollisionComponent) return false;
-
-    // Only generate collision if player is near surface
-    if (DistanceToSurface < CollisionComponent->MaxCollisionDistance)
-    {
-        CollisionComponent->RequestCollisionUpdate(
-            SurfacePos,
-            SurfaceNormal,
-            PlanetRadius,
-            NoiseGenerationStrategy,
-            CurrentActorPosition
-        );
-        return true;
-    }
-    else if(CollisionComponent->IsBuilt())
-    {
-        // Clear collision if far away
-        CollisionComponent->ClearCollision();
-        return true;
-    }
-
-    return false;
-}
-
-
 void UCosmicClipmapComponent::BeginPlay()
 {
     Super::BeginPlay();
@@ -81,21 +54,9 @@ void UCosmicClipmapComponent::BeginPlay()
 
     ElapsedTime = FMath::FRandRange(0.f, TimeToRefresh);
 
-    if (GetWorld() && GetWorld()->IsGameWorld())
-    {
-        ViewerPos = GetPlayerLocation();
-        if (ViewerPos.IsZero())
-        {
-            // Player pawn not ready yet; wait for TickComponent when pawn is valid
-            return;
-        }
-    }
-
     DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
 
     UpdateMeshPhase(ViewerPos, SurfacePos, N, DistanceToSurface);
-
-    UpdateCollisionNearPlayer(SurfacePos, N, DistanceToSurface);
 
     LastMeshPlayerPos = ViewerPos;
 }
@@ -162,7 +123,7 @@ void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType
 
         case EUpdatePhase::Collision:
         {
-            const bool bCollisionUpdated = UpdateCollisionPhase(ViewerPos, SurfacePos, N, DistanceToSurface);
+            const bool bCollisionUpdated = false;
             bool bOceanApplied = false;
 
             if (OceanComponent && OceanComponent->HasCompletedTask())
@@ -250,18 +211,6 @@ void UCosmicClipmapComponent::UpdateFoliagePhase(float DeltaTime, const FVector&
             PlanetRadius, DistanceToSurface, NoiseGenerationStrategy
         );
     }
-}
-
-bool UCosmicClipmapComponent::UpdateCollisionPhase(const FVector& ViewerPos, const FVector& SurfacePos,
-    const FVector& N, float DistanceToSurface)
-{
-    if (CollisionComponent &&
-        !LastMeshPlayerPos.Equals(ViewerPos, CollisionComponent->GetUpdateDistanceThreshold()))
-    {
-        LastMeshPlayerPos = ViewerPos;
-        return UpdateCollisionNearPlayer(SurfacePos, N, DistanceToSurface);
-    }
-    return false;
 }
 
 void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FVector& SurfacePos,
@@ -557,12 +506,6 @@ void UCosmicClipmapComponent::CreateLevels()
         ClearLevels();
     }
 
-    if (CollisionComponent && ParentRoot)
-    {
-        CollisionComponent->AttachToComponent(ParentRoot, FAttachmentTransformRules::KeepRelativeTransform);
-        CollisionComponent->GenerateCollisionMesh(PlanetRadius);
-    }
-
     // Validate parameters
     if (NumLevels <= 0 || BaseResolution <= 0 || PlanetRadius <= 0)
     {
@@ -718,7 +661,6 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
     UpdateNoiseEvaluator();
 
     bPerformaceMode = true;
-
     bInit = false;
 }
 
@@ -726,9 +668,7 @@ void UCosmicClipmapComponent::CreatePerformanceLevel(bool bActive)
 void UCosmicClipmapComponent::ClearLevels()
 {
     bInit = false;
-
     int LevelsCleared = 0;  
-
     bSnappedProjectionValid = false;
     bCoarsestGridCenterValid = false;
 
@@ -752,16 +692,7 @@ void UCosmicClipmapComponent::ClearLevels()
     }
 
     Levels.Empty();
-
-    if (CollisionComponent && CollisionComponent->IsBuilt())
-    {
-        CollisionComponent->ClearCollision();
-    }
-
-
     DynamicPlanetMat = nullptr;
-    
-
     bPerformanceBuild = false;
     DeferredOceanPhaseCount = 0;
 }
@@ -1124,32 +1055,6 @@ double UCosmicClipmapComponent::GetFastDistanceToSurface(
     }
 
     return DistanceToSurface;
-}
-
-float UCosmicClipmapComponent::GetDistanceToPlainSurface(FVector& OutViewerPos, FVector& OutSurfacePos, FVector& OutN)
-{
-    AActor* Owner = GetOwner();
-    if (!Owner) return 0.f;
-
-    // Viewer position
-    OutViewerPos = GetPlayerLocation();
-
-    // Plane base point
-    CurrentActorPosition = Owner->GetActorLocation();
-
-    // Plane normal
-    OutN = FVector::UpVector;
-
-    // Vector from plane to viewer
-    FVector PlaneToViewer = OutViewerPos - CurrentActorPosition;
-
-    // Signed distance to plane
-    float Distance = FVector::DotProduct(PlaneToViewer, OutN);
-
-    // Projection of viewer onto plane
-    OutSurfacePos = OutViewerPos - Distance * OutN;
-
-    return Distance;
 }
 
 int32 UCosmicClipmapComponent::CalculateDecreaseSteps(const double DistanceToSurface) const

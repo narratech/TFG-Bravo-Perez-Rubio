@@ -64,8 +64,6 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Planet", BlueprintReadOnly)
 	UCosmicFoliageSpawner* FoliageSpawnerComponent;
 
-	// --- MATERIAL COLOR CONFIGURATION ---
-
 	/** Predominant color for mid-altitude zones. */
 	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig, EditAnywhere, Category = "Materials|Color")
 	FColor PlanetMainColor1 = FColor::Red;
@@ -86,8 +84,6 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig, EditAnywhere, Category = "Materials|Color")
 	FColor PlanetSlopeColor = FColor::Black;
 
-	// --- NOISE SCALES ---
-
 	/** Fine terrain detail (Micro-relief). */
 	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig, EditAnywhere, Category = "Materials|Noise", meta = (ClampMin = "0.01"))
 	float NoiseScaleSmall = 1.f;
@@ -99,8 +95,6 @@ public:
 	/** Macro terrain detail (Mountains and continents). */
 	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig, EditAnywhere, Category = "Materials|Noise", meta = (ClampMin = "0.01"))
 	float NoiseScaleLarge = 100.f;
-
-	// --- REPLICATED GENERATION CONFIGURATION ---
 
 	UPROPERTY(ReplicatedUsing = OnRep_PlanetConfig)
 	UMaterialInstance* BaseMaterial = nullptr;

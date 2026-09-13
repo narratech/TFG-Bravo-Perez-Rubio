@@ -4,6 +4,7 @@
 #include "Planet/CosmicPlanet.h"
 #include "Terrain/CosmicPlanetCollisionManager.h"
 #include "Terrain/CosmicCollisionComponent.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -134,8 +135,10 @@ void ACosmicSpherePlayer::SetBase(UPrimitiveComponent* NewBaseComponent, const F
 {
 	Super::SetBase(NewBaseComponent, BoneName, bNotifyPawn);
 
-	// When walking on planetary procedural collision patches, ensure based movement keeps absolute world rotation
-	if (NewBaseComponent && NewBaseComponent->IsA<UCosmicCollisionComponent>())
+	// When walking on planetary procedural collision patches, foliage/rocks, or planet geometry,
+	// ensure based movement treats orientation as absolute world space
+	if (NewBaseComponent && (NewBaseComponent->IsA<UCosmicCollisionComponent>() ||
+	                         NewBaseComponent->IsA<UInstancedStaticMeshComponent>()))
 	{
 		BasedMovement.bRelativeRotation = false;
 	}

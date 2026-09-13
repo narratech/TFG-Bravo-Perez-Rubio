@@ -350,9 +350,6 @@ void UCosmicPlanetCollisionManager::TickComponent(float DeltaTime, ELevelTick Ti
 					if (!ExistingEntry->CollisionPatch->IsBuilt() ||
 						!ExistingEntry->LastActorLocation.Equals(ActorLoc, Threshold))
 					{
-						UE_LOG(LogCosmicCollision, Verbose, TEXT("[CollisionManager] Updating collision patch for '%s' (DistToSurface=%.1f cm)"),
-							*TargetActor->GetName(), DistToSurface);
-
 						ExistingEntry->CollisionPatch->RequestCollisionUpdate(
 							SurfacePos,
 							SurfaceNormal,
@@ -369,9 +366,6 @@ void UCosmicPlanetCollisionManager::TickComponent(float DeltaTime, ELevelTick Ti
 				UCosmicCollisionComponent* NewPatch = AcquirePatchFromPool(Planet, PlanetRadius);
 				if (NewPatch)
 				{
-					UE_LOG(LogCosmicCollision, Log, TEXT("[CollisionManager] Allocated collision patch for '%s' near surface (DistToSurface=%.1f cm, ActivePatches=%d)"),
-						*TargetActor->GetName(), DistToSurface, ActiveTrackedPatches.Num() + 1);
-
 					NewPatch->RequestCollisionUpdate(
 						SurfacePos,
 						SurfaceNormal,
@@ -393,9 +387,6 @@ void UCosmicPlanetCollisionManager::TickComponent(float DeltaTime, ELevelTick Ti
 			// Target is far from surface: only remove body when moving away past surface distance
 			if (ExistingEntry)
 			{
-				UE_LOG(LogCosmicCollision, Log, TEXT("[CollisionManager] Removing collision patch for '%s' (DistToSurface=%.1f cm > MaxCollisionDistance=%.1f cm)"),
-					*TargetActor->GetName(), DistToSurface, MaxCollisionDistance);
-
 				RecyclePatch(ExistingEntry->CollisionPatch);
 				ActiveTrackedPatches.RemoveAll([TargetActor](const FCosmicTrackedActorPatch& P) {
 					return P.TrackedActor.Get() == TargetActor;

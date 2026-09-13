@@ -436,8 +436,6 @@ void UCosmicFoliageSpawner::GenerateCellFoliage(
     Task->StartBackgroundTask();
 
     ActiveTasks[GetIndexFromLayer(Layer)].Add(MoveTemp(Task));
-
-    UE_LOG(LogTemp, Verbose, TEXT("Generando foliage para celda: %s"), *Cell.ToString());
 }
 
 void UCosmicFoliageSpawner::StartQueuedGenerationTasks(const FVector& ViewerDir, double PlanetRadius,
@@ -759,13 +757,18 @@ UInstancedStaticMeshComponent* UCosmicFoliageSpawner::AcquireISMComponent(const 
         Comp->SetupAttachment(GetOwner()->GetRootComponent());
         Comp->SetGenerateOverlapEvents(false);
         Comp->SetCanEverAffectNavigation(false);
-        Comp->SetMobility(EComponentMobility::Movable);
+        Comp->Mobility = EComponentMobility::Stationary;
         Comp->RegisterComponent();
     }
 
     Comp->SetStaticMesh(Key.Mesh);
     Comp->SetCollisionEnabled(bEnableCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
+
+    // Temporarily set mobility to Movable so SetRelativeLocation executes without static mobility warning
+    Comp->Mobility = EComponentMobility::Movable;
     Comp->SetRelativeLocation(WorldLocation);
+    Comp->Mobility = EComponentMobility::Stationary;
+
     Comp->SetUseConservativeBounds(bUseConservativeBounds);
     Comp->SetVisibility(true);
     return Comp;

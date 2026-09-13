@@ -139,9 +139,6 @@ public:
         meta = (ClampMin = "0.1", ClampMax = "45.0", UIMin = "0.5", UIMax = "15.0"))
     float PlanetGridSnapAngleDegrees = 5.0f;
 
-    /** Component responsible for dynamic collision */
-    UCosmicCollisionComponent* CollisionComponent = nullptr;
-
     /** Component responsible for procedural foliage */
     UCosmicFoliageSpawner* FoliageSpawnerComponent;
 
@@ -263,14 +260,6 @@ protected:
     void UpdateFoliagePhase(float DeltaTime, const FVector& ViewerPos, float DistanceToSurface);
 
     /**
-     * Updates near collision around player.
-     *
-     * @return True if collision was updated.
-     */
-    bool UpdateCollisionPhase(const FVector& ViewerPos, const FVector& SurfacePos,
-        const FVector& N, float DistanceToSurface);
-
-    /**
      * Updates clipmap levels.
      */
     void UpdateMeshPhase(const FVector& ViewerPos, const FVector& SurfacePos,
@@ -284,11 +273,6 @@ protected:
 
     /** Configures all levels with integer centers aligned across LODs. */
     bool ConfigureLevelsForViewer(const FVector& ViewerNormal);
-
-    /**
-     * Generates or updates near collision around player.
-     */
-    bool UpdateCollisionNearPlayer(const FVector& SurfacePos, const FVector& SurfaceNormal, const double DistanceToSurface);
 
     /**
      * Builds dynamic instance of planetary material.
@@ -312,15 +296,9 @@ protected:
     double GetFastDistanceToSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N);
 
     /**
-     * Calculates distance to a planar surface.
-     */
-    float GetDistanceToPlainSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N);
-
-    /**
      * Gets current player or camera position.
      */
     FVector GetPlayerLocation();
-
 
     /**
      * Calculates how many levels should be decreased.
