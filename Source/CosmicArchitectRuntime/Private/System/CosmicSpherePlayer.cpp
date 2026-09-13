@@ -3,6 +3,7 @@
 #include "System/CosmicSpherePlayer.h"
 #include "Planet/CosmicPlanet.h"
 #include "Terrain/CosmicPlanetCollisionManager.h"
+#include "Terrain/CosmicCollisionComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -127,6 +128,17 @@ void ACosmicSpherePlayer::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	}
 
 	Super::EndPlay(EndPlayReason);
+}
+
+void ACosmicSpherePlayer::SetBase(UPrimitiveComponent* NewBaseComponent, const FName BoneName, bool bNotifyPawn)
+{
+	Super::SetBase(NewBaseComponent, BoneName, bNotifyPawn);
+
+	// When walking on planetary procedural collision patches, ensure based movement keeps absolute world rotation
+	if (NewBaseComponent && NewBaseComponent->IsA<UCosmicCollisionComponent>())
+	{
+		BasedMovement.bRelativeRotation = false;
+	}
 }
 
 void ACosmicSpherePlayer::UpdateNearestPlanetSubscription()

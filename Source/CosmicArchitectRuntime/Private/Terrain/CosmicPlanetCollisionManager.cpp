@@ -222,6 +222,7 @@ UCosmicCollisionComponent* UCosmicPlanetCollisionManager::AcquirePatchFromPool(A
 		UCosmicCollisionComponent* PooledPatch = PatchPool.Pop();
 		if (IsValid(PooledPatch))
 		{
+			PooledPatch->Mobility = EComponentMobility::Stationary;
 			PooledPatch->CollisionTriangleSize = CollisionTriangleSize;
 			PooledPatch->CollisionResolution = CollisionResolution;
 			PooledPatch->UpdateCellInterval = UpdateCellInterval;
@@ -241,6 +242,7 @@ UCosmicCollisionComponent* UCosmicPlanetCollisionManager::AcquirePatchFromPool(A
 	UCosmicCollisionComponent* NewPatch = NewObject<UCosmicCollisionComponent>(Planet, NAME_None, RF_Transient);
 	if (NewPatch)
 	{
+		NewPatch->Mobility = EComponentMobility::Stationary;
 		NewPatch->CollisionTriangleSize = CollisionTriangleSize;
 		NewPatch->CollisionResolution = CollisionResolution;
 		NewPatch->UpdateCellInterval = UpdateCellInterval;

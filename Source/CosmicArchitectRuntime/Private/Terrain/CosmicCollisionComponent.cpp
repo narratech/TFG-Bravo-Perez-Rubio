@@ -17,6 +17,8 @@ UCosmicCollisionComponent::UCosmicCollisionComponent()
     bTickInEditor = true;
     PrimaryComponentTick.bCanEverTick = true;
 
+    Mobility = EComponentMobility::Stationary;
+
     SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
     SetCollisionEnabled(ECollisionEnabled::NoCollision);
     SetGenerateOverlapEvents(false);
@@ -55,6 +57,7 @@ void UCosmicCollisionComponent::EnsureCompanionCreated()
     {
         CompanionPatch = NewObject<UCosmicCollisionComponent>(GetOwner(), NAME_None, RF_Transient);
         CompanionPatch->bIsCompanion = true;
+        CompanionPatch->Mobility = EComponentMobility::Stationary;
         CompanionPatch->CollisionTriangleSize = CollisionTriangleSize;
         CompanionPatch->CollisionResolution = CollisionResolution;
         CompanionPatch->UpdateCellInterval = UpdateCellInterval;
@@ -405,6 +408,8 @@ void UCosmicCollisionComponent::StartPatchCook(
     Verts = MoveTemp(InVerts);
 
     // Teleport to target transform with NoCollision active
+    const EComponentMobility::Type PrevMobility = Mobility;
+    Mobility = EComponentMobility::Movable;
     SetWorldLocationAndRotation(
         InTransform.GetLocation(),
         InTransform.Rotator(),
@@ -412,6 +417,7 @@ void UCosmicCollisionComponent::StartPatchCook(
         nullptr,
         ETeleportType::TeleportPhysics
     );
+    Mobility = PrevMobility;
 
     UWorld* World = GetWorld();
     if (!World || !World->IsGameWorld())
@@ -518,6 +524,7 @@ void UCosmicCollisionComponent::OnStandbyCookFinished(bool bSuccess)
 void UCosmicCollisionComponent::ActivatePhysics()
 {
     UE_LOG(LogCosmicCollision, Log, TEXT("[CollisionComponent] ActivatePhysics on %s (Profile: BlockAll, QueryAndPhysics)"), *GetName());
+    Mobility = EComponentMobility::Stationary;
     SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
     SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
     RecreatePhysicsState();
