@@ -7,6 +7,7 @@
 #include "PhysicsEngine/PhysicsSettings.h"
 #include "PhysicsEngine/BodyInstance.h"
 #include "ICosmicNoiseStrategy.h"
+#include "Terrain/CosmicPlanetCollisionManager.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
@@ -106,10 +107,11 @@ void UCosmicCollisionComponent::TickComponent(float DeltaTime, ELevelTick TickTy
             if (StandbyPatch)
             {
                 UpdateState = ECollisionUpdateState::PhysicsCooking;
+                const bool bCookAsync = bUseAsyncCooking && bIsActive;
                 StandbyPatch->StartPatchCook(
                     MoveTemp(CalculatedVertices),
                     PendingTransform,
-                    bUseAsyncCooking,
+                    bCookAsync,
                     [this](bool bSuccess)
                     {
                         OnStandbyCookFinished(bSuccess);
@@ -305,6 +307,7 @@ void UCosmicCollisionComponent::RequestCollisionUpdate(
     // If an update is currently in flight, queue the newest request
     if (UpdateState != ECollisionUpdateState::Idle)
     {
+        UE_LOG(LogCosmicCollision, Verbose, TEXT("[CollisionComponent] Queued update on %s because state is not Idle"), *GetName());
         bHasQueuedUpdate = true;
         QueuedSurfacePos = SurfacePos;
         QueuedSurfaceNormal = SurfaceNormal;
@@ -313,6 +316,9 @@ void UCosmicCollisionComponent::RequestCollisionUpdate(
         QueuedPlanetCenter = PlanetCenter;
         return;
     }
+
+    UE_LOG(LogCosmicCollision, Log, TEXT("[CollisionComponent] Starting async noise task on %s at (%s)"),
+        *GetName(), *SurfacePos.ToCompactString());
 
     PendingTransform = FTransform(ComputePatchRotation(SurfaceNormal), SurfacePos);
     LastUpdatedLocation = SurfacePos;
@@ -325,8 +331,44 @@ void UCosmicCollisionComponent::RequestCollisionUpdate(
         NoiseGenerationStrategy
     );
 
-    NoiseTask->StartBackgroundTask();
-    UpdateState = ECollisionUpdateState::NoiseTaskRunning;
+    if (!bIsActive)
+    {
+        // First build: execute immediately and synchronously so actor has immediate ground collision
+        UE_LOG(LogCosmicCollision, Log, TEXT("[CollisionComponent] First build on %s: executing synchronously for immediate collision"), *GetName());
+        NoiseTask->StartSynchronousTask();
+
+        TArray<FVector> CalculatedVertices = MoveTemp(NoiseTask->GetTask().CalculatedVertices);
+        delete NoiseTask;
+        NoiseTask = nullptr;
+
+        EnsureCompanionCreated();
+
+        UCosmicCollisionComponent* StandbyPatch = bPrimaryIsActiveBody ? CompanionPatch : this;
+        if (StandbyPatch)
+        {
+            UpdateState = ECollisionUpdateState::PhysicsCooking;
+            StandbyPatch->StartPatchCook(
+                MoveTemp(CalculatedVertices),
+                PendingTransform,
+                false, // Synchronous cook
+                [this](bool bSuccess)
+                {
+                    OnStandbyCookFinished(bSuccess);
+                }
+            );
+        }
+        else
+        {
+            UpdateState = ECollisionUpdateState::Idle;
+        }
+    }
+    else
+    {
+        UE_LOG(LogCosmicCollision, Log, TEXT("[CollisionComponent] Starting async noise task on %s at (%s)"),
+            *GetName(), *SurfacePos.ToCompactString());
+        NoiseTask->StartBackgroundTask();
+        UpdateState = ECollisionUpdateState::NoiseTaskRunning;
+    }
 }
 
 void UCosmicCollisionComponent::UpdateCollisionMesh(TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy, const FVector& PlanetCenter)
@@ -384,6 +426,7 @@ void UCosmicCollisionComponent::StartPatchCook(
 
     if (bAsync)
     {
+        UE_LOG(LogCosmicCollision, Log, TEXT("[CollisionComponent] StartPatchCook: Cooking async on %s (Verts=%d)"), *GetName(), Verts.Num());
         UBodySetup* NewSetup = CreateBodySetupHelper();
         AsyncBodySetupQueue.Add(NewSetup);
 
@@ -397,6 +440,7 @@ void UCosmicCollisionComponent::StartPatchCook(
     }
     else
     {
+        UE_LOG(LogCosmicCollision, Log, TEXT("[CollisionComponent] StartPatchCook: Cooking synchronous on %s (Verts=%d)"), *GetName(), Verts.Num());
         CreateProcMeshBodySetup();
         BodySetup->InvalidatePhysicsData();
         BodySetup->CreatePhysicsMeshes();
@@ -406,6 +450,8 @@ void UCosmicCollisionComponent::StartPatchCook(
 
 void UCosmicCollisionComponent::FinishPhysicsAsyncCook(bool bSuccess, UBodySetup* FinishedBodySetup)
 {
+    UE_LOG(LogCosmicCollision, Log, TEXT("[CollisionComponent] FinishPhysicsAsyncCook on %s (Success=%s)"), *GetName(), bSuccess ? TEXT("true") : TEXT("false"));
+
     if (bSuccess && FinishedBodySetup)
     {
         if (BodySetup && BodySetup != FinishedBodySetup)
@@ -444,6 +490,13 @@ void UCosmicCollisionComponent::OnStandbyCookFinished(bool bSuccess)
 
         bPrimaryIsActiveBody = !bPrimaryIsActiveBody;
         bIsActive = true;
+
+        UE_LOG(LogCosmicCollision, Log, TEXT("[CollisionComponent] OnStandbyCookFinished: Handover complete. Active is now %s"),
+            bPrimaryIsActiveBody ? TEXT("Primary") : TEXT("Companion"));
+    }
+    else
+    {
+        UE_LOG(LogCosmicCollision, Error, TEXT("[CollisionComponent] OnStandbyCookFinished FAILED on %s"), *GetName());
     }
 
     UpdateState = ECollisionUpdateState::Idle;
@@ -464,6 +517,7 @@ void UCosmicCollisionComponent::OnStandbyCookFinished(bool bSuccess)
 
 void UCosmicCollisionComponent::ActivatePhysics()
 {
+    UE_LOG(LogCosmicCollision, Log, TEXT("[CollisionComponent] ActivatePhysics on %s (Profile: BlockAll, QueryAndPhysics)"), *GetName());
     SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
     SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
     RecreatePhysicsState();
@@ -471,6 +525,7 @@ void UCosmicCollisionComponent::ActivatePhysics()
 
 void UCosmicCollisionComponent::DeactivatePhysics()
 {
+    UE_LOG(LogCosmicCollision, Log, TEXT("[CollisionComponent] DeactivatePhysics on %s (NoCollision)"), *GetName());
     SetCollisionEnabled(ECollisionEnabled::NoCollision);
     DestroyPhysicsState();
 }

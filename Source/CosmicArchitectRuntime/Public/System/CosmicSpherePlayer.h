@@ -13,6 +13,8 @@ class USpringArmComponent;
 class UCameraComponent;
 class UInputMappingContext;
 class UInputAction;
+class ACosmicPlanet;
+class UCosmicPlanetCollisionManager;
 
 /**
  * Main Character used for planetary navigation.
@@ -48,6 +50,20 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+	/** Discovered planets in the world */
+	UPROPERTY(Transient)
+	TArray<TWeakObjectPtr<ACosmicPlanet>> RegisteredPlanets;
+
+	/** Currently subscribed planetary collision manager */
+	UPROPERTY(Transient)
+	TWeakObjectPtr<UCosmicPlanetCollisionManager> CurrentPlanetCollisionManager;
+
+	/** Updates subscription to the nearest planet if necessary */
+	void UpdateNearestPlanetSubscription();
+
+	float PlanetCheckCooldown = 0.0f;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	/**

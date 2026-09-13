@@ -1,5 +1,7 @@
 // Javier Bravo, David Rubio, Sergio Perez 2026 All Rights Reserved.
 #include "System/CosmicSpaceShip.h"
+#include "Planet/CosmicPlanet.h"
+#include "Terrain/CosmicPlanetCollisionManager.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
@@ -70,6 +72,74 @@ void ACosmicSpaceShip::BeginPlay()
 		if (AWorldSettings* WorldSettings = World->GetWorldSettings())
 		{
 			WorldSettings->bEnableWorldBoundsChecks = false;
+		}
+	}
+
+	// Discover planets and subscribe to the nearest planet's collision manager
+	ACosmicPlanet* NearestPlanet = ICosmicCollisionTarget::RegisterAndSubscribeToNearestPlanet(this, &RegisteredPlanets);
+	if (NearestPlanet)
+	{
+		CurrentPlanetCollisionManager = NearestPlanet->CollisionManager;
+	}
+}
+
+void ACosmicSpaceShip::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (CurrentPlanetCollisionManager.IsValid())
+	{
+		CurrentPlanetCollisionManager->UnregisterCollisionTarget(this);
+		CurrentPlanetCollisionManager = nullptr;
+	}
+
+	Super::EndPlay(EndPlayReason);
+}
+
+void ACosmicSpaceShip::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	// Periodically verify nearest planet subscription as spaceship traverses deep space
+	PlanetCheckCooldown += DeltaTime;
+	if (PlanetCheckCooldown >= 1.5f || !CurrentPlanetCollisionManager.IsValid())
+	{
+		PlanetCheckCooldown = 0.0f;
+		UpdateNearestPlanetSubscription();
+	}
+}
+
+void ACosmicSpaceShip::UpdateNearestPlanetSubscription()
+{
+	TArray<ACosmicPlanet*> ValidPlanets;
+	for (const TWeakObjectPtr<ACosmicPlanet>& PlanetPtr : RegisteredPlanets)
+	{
+		if (PlanetPtr.IsValid())
+		{
+			ValidPlanets.Add(PlanetPtr.Get());
+		}
+	}
+
+	if (ValidPlanets.Num() == 0)
+	{
+		ACosmicPlanet* Nearest = ICosmicCollisionTarget::RegisterAndSubscribeToNearestPlanet(this, &RegisteredPlanets);
+		if (Nearest)
+		{
+			CurrentPlanetCollisionManager = Nearest->CollisionManager;
+		}
+		return;
+	}
+
+	ACosmicPlanet* NearestPlanet = ICosmicCollisionTarget::FindNearestPlanet(this, ValidPlanets);
+	if (NearestPlanet && NearestPlanet->CollisionManager != CurrentPlanetCollisionManager.Get())
+	{
+		if (CurrentPlanetCollisionManager.IsValid())
+		{
+			CurrentPlanetCollisionManager->UnregisterCollisionTarget(this);
+		}
+
+		if (NearestPlanet->CollisionManager)
+		{
+			NearestPlanet->CollisionManager->RegisterCollisionTarget(this);
+			CurrentPlanetCollisionManager = NearestPlanet->CollisionManager;
 		}
 	}
 }

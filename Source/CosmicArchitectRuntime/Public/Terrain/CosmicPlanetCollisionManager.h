@@ -5,6 +5,8 @@
 #include "Components/ActorComponent.h"
 #include "CosmicPlanetCollisionManager.generated.h"
 
+COSMICARCHITECTRUNTIME_API DECLARE_LOG_CATEGORY_EXTERN(LogCosmicCollision, Log, All);
+
 class UCosmicCollisionComponent;
 class ICosmicNoiseStrategy;
 class ACosmicPlanet;
@@ -102,13 +104,16 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Planet Collision")
 	bool bUseAsyncCooking = true;
 
-	/** Manually registers an actor to be tracked for planetary collision (in addition to Pawns) */
+	/** Subscribes an actor to receive procedural planetary collision from this manager */
 	UFUNCTION(BlueprintCallable, Category = "Planet Collision")
 	void RegisterCollisionTarget(AActor* TargetActor);
 
-	/** Unregisters a custom-tracked actor */
+	/** Unsubscribes an actor from this planet's collision */
 	UFUNCTION(BlueprintCallable, Category = "Planet Collision")
 	void UnregisterCollisionTarget(AActor* TargetActor);
+
+	/** Finds the nearest planet in the world and registers the actor to its collision manager */
+	static ACosmicPlanet* SubscribeTargetToNearestPlanet(AActor* TargetActor);
 
 	/** Completely clears all active patches and returns them to pool or destroys them */
 	UFUNCTION(BlueprintCallable, Category = "Planet Collision")
@@ -130,11 +135,11 @@ private:
 	UPROPERTY(Transient)
 	TArray<FCosmicTrackedActorPatch> ActiveTrackedPatches;
 
-	/** List of explicitly registered custom targets (e.g. non-pawn physics props or vehicles) */
+	/** List of explicitly subscribed targets receiving collision updates from this manager */
 	UPROPERTY(Transient)
-	TArray<TWeakObjectPtr<AActor>> CustomRegisteredTargets;
+	TArray<TWeakObjectPtr<AActor>> SubscribedTargets;
 
-	/** Calculates multi-factor relevance score for an actor candidate */
+	/** (Temporarily bypassed) Calculates multi-factor relevance score for an actor candidate */
 	float CalculateActorRelevance(
 		AActor* Candidate,
 		const FVector& LocalViewerPos,

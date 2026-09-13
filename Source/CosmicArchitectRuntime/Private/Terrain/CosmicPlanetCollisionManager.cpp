@@ -13,6 +13,8 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 
+DEFINE_LOG_CATEGORY(LogCosmicCollision);
+
 UCosmicPlanetCollisionManager::UCosmicPlanetCollisionManager()
 {
 	PrimaryComponentTick.bCanEverTick = true;
@@ -32,9 +34,11 @@ void UCosmicPlanetCollisionManager::EndPlay(const EEndPlayReason::Type EndPlayRe
 
 void UCosmicPlanetCollisionManager::RegisterCollisionTarget(AActor* TargetActor)
 {
-	if (TargetActor && !CustomRegisteredTargets.Contains(TargetActor))
+	if (TargetActor && !SubscribedTargets.Contains(TargetActor))
 	{
-		CustomRegisteredTargets.Add(TargetActor);
+		SubscribedTargets.Add(TargetActor);
+		UE_LOG(LogCosmicCollision, Log, TEXT("[CollisionManager] Subscribed target '%s' to planet '%s'"),
+			*TargetActor->GetName(), *GetNameSafe(GetOwner()));
 	}
 }
 
@@ -42,7 +46,7 @@ void UCosmicPlanetCollisionManager::UnregisterCollisionTarget(AActor* TargetActo
 {
 	if (!TargetActor) return;
 
-	CustomRegisteredTargets.Remove(TargetActor);
+	SubscribedTargets.Remove(TargetActor);
 
 	for (int32 i = ActiveTrackedPatches.Num() - 1; i >= 0; --i)
 	{
@@ -53,6 +57,11 @@ void UCosmicPlanetCollisionManager::UnregisterCollisionTarget(AActor* TargetActo
 			break;
 		}
 	}
+}
+
+ACosmicPlanet* UCosmicPlanetCollisionManager::SubscribeTargetToNearestPlanet(AActor* TargetActor)
+{
+	return ICosmicCollisionTarget::RegisterAndSubscribeToNearestPlanet(TargetActor);
 }
 
 void UCosmicPlanetCollisionManager::ClearAllPatches()
@@ -281,77 +290,33 @@ void UCosmicPlanetCollisionManager::TickComponent(float DeltaTime, ELevelTick Ti
 	UWorld* World = GetWorld();
 	if (!World) return;
 
-	// Determine local observer viewpoint
-	const bool bIsServer = IsRunningDedicatedServer() || (World->GetNetMode() == NM_DedicatedServer) || (World->GetNetMode() == NM_ListenServer);
-	bool bHasLocalViewer = false;
-	FVector LocalViewerPos = FVector::ZeroVector;
-	FVector LocalViewerForward = FVector::ForwardVector;
-
-	if (!bIsServer)
+	// Iterate through all explicitly subscribed targets
+	for (int32 i = SubscribedTargets.Num() - 1; i >= 0; --i)
 	{
-		APlayerController* PC = World->GetFirstPlayerController();
-		if (PC)
+		AActor* TargetActor = SubscribedTargets[i].Get();
+		if (!IsValid(TargetActor) || TargetActor->IsPendingKillPending())
 		{
-			FRotator CamRot;
-			PC->GetPlayerViewPoint(LocalViewerPos, CamRot);
-			LocalViewerForward = CamRot.Vector();
-			bHasLocalViewer = !LocalViewerPos.IsZero();
-
-			if (!bHasLocalViewer && PC->GetPawn())
+			// Clean up any patch if the actor was destroyed or is invalid
+			for (int32 PatchIdx = ActiveTrackedPatches.Num() - 1; PatchIdx >= 0; --PatchIdx)
 			{
-				LocalViewerPos = PC->GetPawn()->GetActorLocation();
-				LocalViewerForward = PC->GetPawn()->GetActorForwardVector();
-				bHasLocalViewer = true;
+				if (ActiveTrackedPatches[PatchIdx].TrackedActor.Get() == TargetActor || !ActiveTrackedPatches[PatchIdx].TrackedActor.IsValid())
+				{
+					RecyclePatch(ActiveTrackedPatches[PatchIdx].CollisionPatch);
+					ActiveTrackedPatches.RemoveAt(PatchIdx);
+				}
 			}
+			SubscribedTargets.RemoveAt(i);
+			continue;
 		}
-	}
 
-	// 1. Collect all candidate actors
-	TArray<AActor*> Candidates;
-	for (TActorIterator<APawn> It(World); It; ++It)
-	{
-		APawn* Pawn = *It;
-		if (IsValid(Pawn))
-		{
-			Candidates.Add(Pawn);
-		}
-	}
-
-	for (int32 i = CustomRegisteredTargets.Num() - 1; i >= 0; --i)
-	{
-		if (CustomRegisteredTargets[i].IsValid())
-		{
-			Candidates.AddUnique(CustomRegisteredTargets[i].Get());
-		}
-		else
-		{
-			CustomRegisteredTargets.RemoveAt(i);
-		}
-	}
-
-	// Structure to hold evaluated candidates
-	struct FCandidateEvaluation
-	{
-		AActor* Actor = nullptr;
-		float Score = 0.0f;
-		FVector SurfacePos = FVector::ZeroVector;
-		FVector SurfaceNormal = FVector::UpVector;
-	};
-
-	TArray<FCandidateEvaluation> EvaluatedCandidates;
-	EvaluatedCandidates.Reserve(Candidates.Num());
-
-	for (AActor* Candidate : Candidates)
-	{
-		if (!IsValid(Candidate)) continue;
-
-		const FVector ActorLoc = Candidate->GetActorLocation();
+		const FVector ActorLoc = TargetActor->GetActorLocation();
 		const FVector CenterToActor = ActorLoc - PlanetCenter;
 		const double DistToCenter = CenterToActor.Length();
 		if (DistToCenter <= KINDA_SMALL_NUMBER) continue;
 
 		const FVector SurfaceNormal = CenterToActor / DistToCenter;
 
+		// Evaluate noise strategy to obtain procedural terrain surface height
 		float SurfaceHeight = 0.0f;
 		FLinearColor DummyColor;
 		NoiseStrategy->EvaluatePoint(SurfaceNormal, SurfaceHeight, DummyColor);
@@ -359,117 +324,92 @@ void UCosmicPlanetCollisionManager::TickComponent(float DeltaTime, ELevelTick Ti
 		const double SurfaceRadius = PlanetRadius + SurfaceHeight;
 		const double DistToSurface = FMath::Abs(DistToCenter - SurfaceRadius);
 
-		if (DistToSurface > MaxCollisionDistance)
-		{
-			continue;
-		}
-
-		const float RelevanceScore = CalculateActorRelevance(
-			Candidate,
-			LocalViewerPos,
-			LocalViewerForward,
-			bHasLocalViewer,
-			DistToSurface
-		);
-
-		if (RelevanceScore >= 0.0f)
-		{
-			const FVector SurfacePos = PlanetCenter + SurfaceNormal * PlanetRadius;
-			EvaluatedCandidates.Add({ Candidate, RelevanceScore, SurfacePos, SurfaceNormal });
-		}
-	}
-
-	// Sort candidates by descending relevance score
-	EvaluatedCandidates.Sort([](const FCandidateEvaluation& A, const FCandidateEvaluation& B)
-	{
-		return A.Score > B.Score;
-	});
-
-	// Budget limit
-	if (EvaluatedCandidates.Num() > MaxConcurrentPatches)
-	{
-		EvaluatedCandidates.SetNum(MaxConcurrentPatches);
-	}
-
-	// 2. Reconcile currently active patches
-	for (int32 i = ActiveTrackedPatches.Num() - 1; i >= 0; --i)
-	{
-		FCosmicTrackedActorPatch& Entry = ActiveTrackedPatches[i];
-		AActor* Tracked = Entry.TrackedActor.Get();
-
-		bool bKeep = false;
-		if (IsValid(Tracked))
-		{
-			for (const FCandidateEvaluation& Eval : EvaluatedCandidates)
-			{
-				if (Eval.Actor == Tracked)
-				{
-					bKeep = true;
-					break;
-				}
-			}
-		}
-
-		if (!bKeep)
-		{
-			RecyclePatch(Entry.CollisionPatch);
-			ActiveTrackedPatches.RemoveAt(i);
-		}
-	}
-
-	// 3. Assign or update patches for top candidates
-	for (const FCandidateEvaluation& Eval : EvaluatedCandidates)
-	{
+		// Find if this target already has an active patch
 		FCosmicTrackedActorPatch* ExistingEntry = nullptr;
 		for (FCosmicTrackedActorPatch& Entry : ActiveTrackedPatches)
 		{
-			if (Entry.TrackedActor.Get() == Eval.Actor)
+			if (Entry.TrackedActor.Get() == TargetActor)
 			{
 				ExistingEntry = &Entry;
 				break;
 			}
 		}
 
-		const FVector ActorLoc = Eval.Actor->GetActorLocation();
-
-		if (ExistingEntry)
+		if (DistToSurface <= MaxCollisionDistance)
 		{
-			ExistingEntry->RelevanceScore = Eval.Score;
-			if (ExistingEntry->CollisionPatch)
+			// Target is near surface: dual collision system active
+			const FVector SurfacePos = PlanetCenter + SurfaceNormal * PlanetRadius;
+
+			if (ExistingEntry)
 			{
-				if (!ExistingEntry->LastActorLocation.Equals(ActorLoc, ExistingEntry->CollisionPatch->GetUpdateDistanceThreshold()))
+				if (ExistingEntry->CollisionPatch)
 				{
-					ExistingEntry->CollisionPatch->RequestCollisionUpdate(
-						Eval.SurfacePos,
-						Eval.SurfaceNormal,
+					const float Threshold = ExistingEntry->CollisionPatch->GetUpdateDistanceThreshold();
+					if (!ExistingEntry->CollisionPatch->IsBuilt() ||
+						!ExistingEntry->LastActorLocation.Equals(ActorLoc, Threshold))
+					{
+						UE_LOG(LogCosmicCollision, Verbose, TEXT("[CollisionManager] Updating collision patch for '%s' (DistToSurface=%.1f cm)"),
+							*TargetActor->GetName(), DistToSurface);
+
+						ExistingEntry->CollisionPatch->RequestCollisionUpdate(
+							SurfacePos,
+							SurfaceNormal,
+							PlanetRadius,
+							NoiseStrategy,
+							PlanetCenter
+						);
+						ExistingEntry->LastActorLocation = ActorLoc;
+					}
+				}
+			}
+			else
+			{
+				UCosmicCollisionComponent* NewPatch = AcquirePatchFromPool(Planet, PlanetRadius);
+				if (NewPatch)
+				{
+					UE_LOG(LogCosmicCollision, Log, TEXT("[CollisionManager] Allocated collision patch for '%s' near surface (DistToSurface=%.1f cm, ActivePatches=%d)"),
+						*TargetActor->GetName(), DistToSurface, ActiveTrackedPatches.Num() + 1);
+
+					NewPatch->RequestCollisionUpdate(
+						SurfacePos,
+						SurfaceNormal,
 						PlanetRadius,
 						NoiseStrategy,
 						PlanetCenter
 					);
-					ExistingEntry->LastActorLocation = ActorLoc;
+
+					FCosmicTrackedActorPatch NewEntry;
+					NewEntry.TrackedActor = TargetActor;
+					NewEntry.CollisionPatch = NewPatch;
+					NewEntry.LastActorLocation = ActorLoc;
+					ActiveTrackedPatches.Add(NewEntry);
 				}
 			}
 		}
 		else
 		{
-			UCosmicCollisionComponent* NewPatch = AcquirePatchFromPool(Planet, PlanetRadius);
-			if (NewPatch)
+			// Target is far from surface: only remove body when moving away past surface distance
+			if (ExistingEntry)
 			{
-				NewPatch->RequestCollisionUpdate(
-					Eval.SurfacePos,
-					Eval.SurfaceNormal,
-					PlanetRadius,
-					NoiseStrategy,
-					PlanetCenter
-				);
+				UE_LOG(LogCosmicCollision, Log, TEXT("[CollisionManager] Removing collision patch for '%s' (DistToSurface=%.1f cm > MaxCollisionDistance=%.1f cm)"),
+					*TargetActor->GetName(), DistToSurface, MaxCollisionDistance);
 
-				FCosmicTrackedActorPatch NewEntry;
-				NewEntry.TrackedActor = Eval.Actor;
-				NewEntry.CollisionPatch = NewPatch;
-				NewEntry.LastActorLocation = ActorLoc;
-				NewEntry.RelevanceScore = Eval.Score;
-				ActiveTrackedPatches.Add(NewEntry);
+				RecyclePatch(ExistingEntry->CollisionPatch);
+				ActiveTrackedPatches.RemoveAll([TargetActor](const FCosmicTrackedActorPatch& P) {
+					return P.TrackedActor.Get() == TargetActor;
+				});
 			}
+		}
+	}
+
+	// Clean up any tracked patches whose actor was unsubscribed or destroyed
+	for (int32 PatchIdx = ActiveTrackedPatches.Num() - 1; PatchIdx >= 0; --PatchIdx)
+	{
+		AActor* Tracked = ActiveTrackedPatches[PatchIdx].TrackedActor.Get();
+		if (!IsValid(Tracked) || !SubscribedTargets.Contains(Tracked))
+		{
+			RecyclePatch(ActiveTrackedPatches[PatchIdx].CollisionPatch);
+			ActiveTrackedPatches.RemoveAt(PatchIdx);
 		}
 	}
 }

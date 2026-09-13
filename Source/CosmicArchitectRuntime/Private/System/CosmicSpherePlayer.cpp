@@ -1,6 +1,8 @@
 // Javier Bravo, David Rubio, Sergio Perez 2026 All Rights Reserved.
 
 #include "System/CosmicSpherePlayer.h"
+#include "Planet/CosmicPlanet.h"
+#include "Terrain/CosmicPlanetCollisionManager.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -107,6 +109,61 @@ void ACosmicSpherePlayer::BeginPlay()
 		MoveComp->JumpZVelocity = BaseJumpVelocity;
 		MoveComp->MaxWalkSpeed = BaseWalkSpeed;
 	}
+
+	// Discover planets and subscribe to the nearest planet's collision manager
+	ACosmicPlanet* NearestPlanet = ICosmicCollisionTarget::RegisterAndSubscribeToNearestPlanet(this, &RegisteredPlanets);
+	if (NearestPlanet)
+	{
+		CurrentPlanetCollisionManager = NearestPlanet->CollisionManager;
+	}
+}
+
+void ACosmicSpherePlayer::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (CurrentPlanetCollisionManager.IsValid())
+	{
+		CurrentPlanetCollisionManager->UnregisterCollisionTarget(this);
+		CurrentPlanetCollisionManager = nullptr;
+	}
+
+	Super::EndPlay(EndPlayReason);
+}
+
+void ACosmicSpherePlayer::UpdateNearestPlanetSubscription()
+{
+	TArray<ACosmicPlanet*> ValidPlanets;
+	for (const TWeakObjectPtr<ACosmicPlanet>& PlanetPtr : RegisteredPlanets)
+	{
+		if (PlanetPtr.IsValid())
+		{
+			ValidPlanets.Add(PlanetPtr.Get());
+		}
+	}
+
+	if (ValidPlanets.Num() == 0)
+	{
+		ACosmicPlanet* Nearest = ICosmicCollisionTarget::RegisterAndSubscribeToNearestPlanet(this, &RegisteredPlanets);
+		if (Nearest)
+		{
+			CurrentPlanetCollisionManager = Nearest->CollisionManager;
+		}
+		return;
+	}
+
+	ACosmicPlanet* NearestPlanet = ICosmicCollisionTarget::FindNearestPlanet(this, ValidPlanets);
+	if (NearestPlanet && NearestPlanet->CollisionManager != CurrentPlanetCollisionManager.Get())
+	{
+		if (CurrentPlanetCollisionManager.IsValid())
+		{
+			CurrentPlanetCollisionManager->UnregisterCollisionTarget(this);
+		}
+
+		if (NearestPlanet->CollisionManager)
+		{
+			NearestPlanet->CollisionManager->RegisterCollisionTarget(this);
+			CurrentPlanetCollisionManager = NearestPlanet->CollisionManager;
+		}
+	}
 }
 
 float ACosmicSpherePlayer::GetCurrentGravityMagnitude() const
@@ -143,6 +200,14 @@ void ACosmicSpherePlayer::SetupPlayerInputComponent(UInputComponent* PlayerInput
 void ACosmicSpherePlayer::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	// Periodically verify nearest planet subscription
+	PlanetCheckCooldown += DeltaTime;
+	if (PlanetCheckCooldown >= 1.5f || !CurrentPlanetCollisionManager.IsValid())
+	{
+		PlanetCheckCooldown = 0.0f;
+		UpdateNearestPlanetSubscription();
+	}
 
 	// Determine local gravitational down direction and magnitude from CosmicGravityComponent
 	FVector GravityDown = FVector::DownVector;
