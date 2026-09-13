@@ -768,15 +768,6 @@ void UCosmicClipmapComponent::BuildDynamicMaterial()
 
 void UCosmicClipmapComponent::UpdateNoiseEvaluator()
 {
-    if (ACosmicPlanet* Planet = Cast<ACosmicPlanet>(GetOwner()))
-    {
-        NoiseGenerationStrategy = Planet->GetNoiseStrategy();
-        if (NoiseGenerationStrategy.IsValid())
-        {
-            return;
-        }
-    }
-
     if (NoiseClass)
     {
         NoiseGenerationStrategy = NoiseClass->CreateStrategy();

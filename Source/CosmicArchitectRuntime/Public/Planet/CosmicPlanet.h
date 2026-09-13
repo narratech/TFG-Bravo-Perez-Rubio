@@ -182,6 +182,9 @@ protected:
 	/** Cleans collisions and unbinds active delegates. */
 	void ClearData();
 
+	/** Callback invoked when the assigned NoiseClass asset is modified in the Editor. */
+	void OnNoiseSettingsChanged();
+
 	/** Internal flag to avoid redundant reinitializations in the Editor. */
 	bool bInitializedInEditor = false;
 
@@ -189,6 +192,9 @@ protected:
 	TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy;
 
 #if WITH_EDITOR
+	/** Called before a property is modified in the Details panel. */
+	virtual void PreEditChange(FProperty* PropertyAboutToChange) override;
+
 	/** Details panel change notifier for real-time updates. */
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif

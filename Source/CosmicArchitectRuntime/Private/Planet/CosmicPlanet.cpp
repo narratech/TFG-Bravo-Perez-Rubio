@@ -184,9 +184,29 @@ void ACosmicPlanet::ClearData()
         CollisionManager->ClearAllPatches();
     }
 
-    if (NoiseClass && ClipmapComponent)
+#if WITH_EDITOR
+    if (NoiseClass)
     {
-        NoiseClass->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
+        NoiseClass->OnNoiseSettingsChanged.RemoveAll(this);
+    }
+#endif
+}
+
+/**
+ * Handles notifications when the assigned NoiseClass settings change in the Editor.
+ */
+void ACosmicPlanet::OnNoiseSettingsChanged()
+{
+    UpdateNoiseStrategy();
+
+    if (CollisionManager)
+    {
+        CollisionManager->ClearAllPatches();
+    }
+
+    if (ClipmapComponent)
+    {
+        ClipmapComponent->RequestCompleteMeshUpdate();
     }
 }
 
@@ -200,19 +220,27 @@ void ACosmicPlanet::UpdateNoiseSettings()
 
     if (ClipmapComponent)
     {
-        if (ClipmapComponent->NoiseClass)
-            ClipmapComponent->NoiseClass->OnNoiseSettingsChanged.RemoveAll(ClipmapComponent);
-
         ClipmapComponent->NoiseClass = NoiseClass;
+    }
 
-        if (NoiseClass)
-        {
-            NoiseClass->OnNoiseSettingsChanged.AddUObject(
-                ClipmapComponent,
-                &UCosmicClipmapComponent::RequestCompleteMeshUpdate
-            );
-        }
+#if WITH_EDITOR
+    if (NoiseClass)
+    {
+        NoiseClass->OnNoiseSettingsChanged.RemoveAll(this);
+        NoiseClass->OnNoiseSettingsChanged.AddUObject(
+            this,
+            &ACosmicPlanet::OnNoiseSettingsChanged
+        );
+    }
+#endif
 
+    if (CollisionManager)
+    {
+        CollisionManager->ClearAllPatches();
+    }
+
+    if (ClipmapComponent)
+    {
         ClipmapComponent->RequestCompleteMeshUpdate();
     }
 }
@@ -290,7 +318,15 @@ void ACosmicPlanet::InitPlanet(
     RadiusKm = InRadiusKm;
 
     if (NewNoiseClass)
+    {
+#if WITH_EDITOR
+        if (NoiseClass && NoiseClass != NewNoiseClass)
+        {
+            NoiseClass->OnNoiseSettingsChanged.RemoveAll(this);
+        }
+#endif
         NoiseClass = NewNoiseClass;
+    }
 
     // Clipmap component configuration.
     if (ClipmapComponent)
@@ -355,6 +391,13 @@ void ACosmicPlanet::SetFoliageParams(int32 InFoliageInstancesPerFrame, float InN
  */
 void ACosmicPlanet::CleanupNoiseSettings()
 {
+#if WITH_EDITOR
+    if (NoiseClass)
+    {
+        NoiseClass->OnNoiseSettingsChanged.RemoveAll(this);
+    }
+#endif
+
     if (NoiseClass && !NoiseClass->IsAsset())
     {
         NoiseClass->ConditionalBeginDestroy();
@@ -363,6 +406,23 @@ void ACosmicPlanet::CleanupNoiseSettings()
 }
 
 #if WITH_EDITOR
+void ACosmicPlanet::PreEditChange(FProperty* PropertyAboutToChange)
+{
+    Super::PreEditChange(PropertyAboutToChange);
+
+    const FName PropertyName = PropertyAboutToChange
+        ? PropertyAboutToChange->GetFName()
+        : NAME_None;
+
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, NoiseClass))
+    {
+        if (NoiseClass)
+        {
+            NoiseClass->OnNoiseSettingsChanged.RemoveAll(this);
+        }
+    }
+}
+
 /**
  * Handles reactive actor updates in Unreal editor.
  * Allows seeing changes in colors, radii, or noise immediately without reloading level.
