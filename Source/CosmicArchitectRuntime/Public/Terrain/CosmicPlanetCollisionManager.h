@@ -43,7 +43,8 @@ struct FCosmicTrackedActorPatch
  * and dynamically allocating, updating, and pooling ping-pong collision patches
  * (UCosmicCollisionComponent) underneath them.
  */
-UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
+UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent),
+	HideCategories = (Rendering, Tags, Activation, AssetUserData, Navigation, Replication, ComponentReplication, Cooking, Collision, Input, Actor))
 class COSMICARCHITECTRUNTIME_API UCosmicPlanetCollisionManager : public UActorComponent
 {
 	GENERATED_BODY()

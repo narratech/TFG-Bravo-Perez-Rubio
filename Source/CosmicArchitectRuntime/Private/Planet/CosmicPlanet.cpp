@@ -14,7 +14,6 @@
 #include "Engine/World.h"
 #include "UObject/Package.h"
 #include "Materials/MaterialInstance.h"
-#include "Net/UnrealNetwork.h"
 
 /**
  * Constructor of the ACosmicPlanet class.
@@ -24,11 +23,8 @@ ACosmicPlanet::ACosmicPlanet()
 {
     PrimaryActorTick.bCanEverTick = true; 
 
-    // Multiplayer replication configuration
-    bReplicates = true;
-    bAlwaysRelevant = true;
-    SetReplicateMovement(true);
-    SetNetUpdateFrequency(60.0f);
+    // Static planetary bodies do not require network replication
+    bReplicates = false;
 
     // Root SceneComponent initialization.
     Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
@@ -41,73 +37,6 @@ ACosmicPlanet::ACosmicPlanet()
     FoliageSpawnerComponent = CreateDefaultSubobject<UCosmicFoliageSpawner>(TEXT("FoliageSpawnerComponent"));
 }
 
-void ACosmicPlanet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-    DOREPLIFETIME(ACosmicPlanet, RadiusKm);
-    DOREPLIFETIME(ACosmicPlanet, NoiseClass);
-    DOREPLIFETIME(ACosmicPlanet, PlanetMainColor1);
-    DOREPLIFETIME(ACosmicPlanet, PlanetMainColor2);
-    DOREPLIFETIME(ACosmicPlanet, PlanetColdColor);
-    DOREPLIFETIME(ACosmicPlanet, PlanetHotColor);
-    DOREPLIFETIME(ACosmicPlanet, PlanetSlopeColor);
-    DOREPLIFETIME(ACosmicPlanet, NoiseScaleSmall);
-    DOREPLIFETIME(ACosmicPlanet, NoiseScaleMedium);
-    DOREPLIFETIME(ACosmicPlanet, NoiseScaleLarge);
-
-    DOREPLIFETIME(ACosmicPlanet, BaseMaterial);
-    DOREPLIFETIME(ACosmicPlanet, DefaultTexture);
-    DOREPLIFETIME(ACosmicPlanet, bUseClipmap);
-    DOREPLIFETIME(ACosmicPlanet, BaseResolution);
-    DOREPLIFETIME(ACosmicPlanet, NumLevels);
-    DOREPLIFETIME(ACosmicPlanet, MinTriangleSize);
-    DOREPLIFETIME(ACosmicPlanet, HeightVisibility);
-    DOREPLIFETIME(ACosmicPlanet, bHasOcean);
-    DOREPLIFETIME(ACosmicPlanet, SeaLevelKm);
-    DOREPLIFETIME(ACosmicPlanet, OceanResolution);
-    DOREPLIFETIME(ACosmicPlanet, OceanMaterial);
-    DOREPLIFETIME(ACosmicPlanet, FoliageCollection);
-}
-
-void ACosmicPlanet::OnRep_PlanetConfig()
-{
-    if (IsRunningDedicatedServer() || (GetWorld() && GetWorld()->GetNetMode() == NM_DedicatedServer))
-    {
-        return;
-    }
-
-    if (ClipmapComponent)
-    {
-        ClipmapComponent->BaseMaterial = BaseMaterial;
-        ClipmapComponent->DefaultTexture = DefaultTexture;
-        ClipmapComponent->BaseResolution = BaseResolution;
-        ClipmapComponent->NumLevels = NumLevels;
-        ClipmapComponent->MinTriangleSize = MinTriangleSize;
-        ClipmapComponent->HeightVisibility = HeightVisibility;
-        ClipmapComponent->UseClipmap = bUseClipmap;
-    }
-
-    if (OceanComponent)
-    {
-        OceanComponent->bHasOcean = bHasOcean;
-        OceanComponent->SeaLevelKm = SeaLevelKm;
-        OceanComponent->OceanResolution = OceanResolution;
-        OceanComponent->OceanMaterial = OceanMaterial;
-    }
-
-    if (FoliageSpawnerComponent && FoliageCollection)
-    {
-        FoliageSpawnerComponent->FoliageCollection = FoliageCollection;
-    }
-
-    UpdateMaterialOnly();
-    UpdateNoiseSettings();
-    InitClipmap();
-    UpdateOcean();
-    UpdateFoliage();
-}
-
 /**
  * Post-component initialization phase.
  * Synchronizes data across different planet systems before Tick begins.
@@ -115,12 +44,6 @@ void ACosmicPlanet::OnRep_PlanetConfig()
 void ACosmicPlanet::PostInitializeComponents()
 {
     Super::PostInitializeComponents();
-
-    // On remote clients, defer heavy procedural generation until replicated properties arrive
-    if (GetWorld() && GetWorld()->IsGameWorld() && GetNetMode() == NM_Client && !NoiseClass)
-    {
-        return;
-    }
 
     UpdateMaterialOnly();
     UpdateNoiseSettings();
@@ -170,8 +93,11 @@ void ACosmicPlanet::PostDuplicate(EDuplicateMode::Type Mode)
             OceanComponent->ResetPointersAfterDuplicate(Root);
         }
 
-        UpdateNoiseStrategy();
-        RebuildPlanet();
+        UpdateMaterialOnly();
+        UpdateNoiseSettings();
+        InitClipmap();
+        UpdateFoliage();
+        UpdateOcean();
     }
 }
 #endif
@@ -365,21 +291,6 @@ void ACosmicPlanet::InitPlanet(
 
     if (NewNoiseClass)
         NoiseClass = NewNoiseClass;
-
-    this->BaseMaterial = InBaseMaterial;
-    this->DefaultTexture = InDefaultTexture;
-    this->bUseClipmap = UseClipmap;
-    this->BaseResolution = InBaseResolution;
-    this->NumLevels = InNumLevels;
-    this->MinTriangleSize = InMinTriangleSize;
-    this->HeightVisibility = InHeightVisibility;
-
-    this->bHasOcean = bInHasOcean;
-    this->SeaLevelKm = InSeaLevelKm;
-    this->OceanResolution = InOceanResolution;
-    this->OceanMaterial = InOceanMaterial;
-
-    this->FoliageCollection = InFoliageCollection;
 
     // Clipmap component configuration.
     if (ClipmapComponent)

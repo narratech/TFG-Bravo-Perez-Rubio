@@ -20,17 +20,12 @@
  * based on mean anomaly and eccentric anomaly.
  */
 UCLASS(ClassGroup = (Cosmic), meta = (BlueprintSpawnableComponent),
-	HideCategories = (Navigation, Replication, Activation, AssetUserData, Cooking, Tags))
+	HideCategories = (Rendering, Navigation, Activation, AssetUserData, Cooking, Tags))
 	class COSMICARCHITECTRUNTIME_API UCosmicOrbitComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
 public:
-
-	// ============================================================
-	// CONSTRUCTION
-	// ============================================================
-
 	/**
 	 * Initializes orbital component with default values.
 	 *
@@ -59,20 +54,12 @@ public:
 
 protected:
 
-	// ============================================================
-	// ENGINE LIFECYCLE
-	// ============================================================
-
 	/**
 	 * Initializes orbital state at simulation start.
 	 */
 	virtual void BeginPlay() override;
 
 public:
-
-	// ============================================================
-	// RUNTIME UPDATE
-	// ============================================================
 
 	/**
 	 * Updates orbital simulation each frame.
@@ -90,10 +77,6 @@ public:
 	 */
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	// ============================================================
-	// ORBIT STATE
-	// ============================================================
-
 	/**
 	 * Central body around which this actor orbits.
 	 *
@@ -110,10 +93,6 @@ public:
 	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Orbit State")
 	float CurrentOrbitTime = 0.0f;
-
-	// ============================================================
-	// ORBIT PARAMETERS
-	// ============================================================
 
 	/**
 	 * Semi-major axis of the orbit.
@@ -181,10 +160,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Orbit Params", meta = (ClampMin = "0", ClampMax = "360"))
 	float InclinationZ = 0.0f;
 
-	// ============================================================
-	// ROTATION
-	// ============================================================
-
 	/**
 	 * Axial rotation speed of actor.
 	 *
@@ -194,10 +169,6 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rotation")
 	float SpinSpeed = 0.0f;
-
-	// ============================================================
-	// EDITOR STATE
-	// ============================================================
 
 	/**
 	 * Indicates whether orbital system is being simulated in editor.
@@ -214,10 +185,6 @@ public:
 	UPROPERTY()
 	float EditorSpeedMultiplier = 1.0f;
 
-	// ============================================================
-	// INITIALIZATION
-	// ============================================================
-
 	/**
 	 * Initializes basic visual parameters of orbit.
 	 *
@@ -226,10 +193,6 @@ public:
 	void InitOrbit(FColor color = FColor::Cyan);
 
 protected:
-
-	// ============================================================
-	// INTERNAL STATE
-	// ============================================================
 
 	/**
 	 * Indicates whether component is being previewed in editor.
@@ -247,10 +210,6 @@ protected:
 	void UpdateInitialOrbitPosition();
 
 private:
-
-	// ============================================================
-	// ORBIT VISUALIZATION
-	// ============================================================
 
 	/**
 	 * Generates debug visual representation of orbit.

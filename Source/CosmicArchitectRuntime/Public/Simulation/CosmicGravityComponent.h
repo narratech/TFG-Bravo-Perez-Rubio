@@ -56,7 +56,7 @@ enum class ECosmicGravityMode : uint8
  *   - SetIsPlanet() must be used at runtime to safely switch roles.
  */
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent),
-    HideCategories = (Activation, AssetUserData, Cooking, Tags, Navigation))
+    HideCategories = (Rendering, Tags, Activation, AssetUserData, Navigation, Cooking))
     class COSMICARCHITECTRUNTIME_API UCosmicGravityComponent : public UActorComponent
 {
     GENERATED_BODY()

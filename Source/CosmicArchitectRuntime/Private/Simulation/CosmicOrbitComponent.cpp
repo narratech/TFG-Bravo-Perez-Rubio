@@ -5,6 +5,7 @@
 #include "Components/PrimitiveComponent.h"
 #include "Components/SceneComponent.h"
 #include "GameFramework/Actor.h"
+#include "GameFramework/GameStateBase.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/World.h"
 #include "Math/UnrealMathUtility.h"
@@ -134,11 +135,11 @@ void UCosmicOrbitComponent::TickComponent(
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+	UWorld* World = GetWorld();
+
 #if WITH_EDITOR
 
 	UpdateOrbitVisualization();
-
-	UWorld* World = GetWorld();
 
 	// Avoid orbital simulation when editor
 	// is not executing active simulation.
@@ -150,9 +151,9 @@ void UCosmicOrbitComponent::TickComponent(
 #endif
 	AActor* Owner = GetOwner();
 
-	// In multiplayer game worlds, only the server integrates the orbit and updates the actor transform.
-	// Clients receive the replicated transform via Unreal's replicated movement.
-	if (!Owner || (GetWorld() && GetWorld()->IsGameWorld() && !Owner->HasAuthority()))
+	// In multiplayer game worlds, both server and clients simulate orbits locally
+	// to avoid saturating the network with movement replication.
+	if (!Owner)
 	{
 		return;
 	}
@@ -171,11 +172,28 @@ void UCosmicOrbitComponent::TickComponent(
 
 	Owner->AddActorLocalRotation(DeltaRotation);
 
-	// Advance accumulated orbital time.
-	CurrentOrbitTime += ScaledDelta;
+	if (World && World->IsGameWorld())
+	{
+		float GameTime = World->GetTimeSeconds();
+		if (AGameStateBase* GameState = World->GetGameState())
+		{
+			GameTime = GameState->GetServerWorldTimeSeconds();
+		}
 
-	// Keep time within a valid orbital cycle.
-	CurrentOrbitTime = FMath::Fmod(CurrentOrbitTime, OrbitalPeriod);
+		CurrentOrbitTime = FMath::Fmod((OrbitalPeriod * InitialPosition) + (GameTime * EditorSpeedMultiplier), OrbitalPeriod);
+		if (CurrentOrbitTime < 0.0f)
+		{
+			CurrentOrbitTime += OrbitalPeriod;
+		}
+	}
+	else
+	{
+		// Advance accumulated orbital time.
+		CurrentOrbitTime += ScaledDelta;
+
+		// Keep time within a valid orbital cycle.
+		CurrentOrbitTime = FMath::Fmod(CurrentOrbitTime, OrbitalPeriod);
+	}
 
 	// Mean angular motion of orbit.
 	float MeanMotion = (2.0f * PI) / OrbitalPeriod;
