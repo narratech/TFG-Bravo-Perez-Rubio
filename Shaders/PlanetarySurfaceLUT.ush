@@ -124,7 +124,7 @@ float3 Sample3DDomainWarp(
     float3 UVW = LocalPos * (Frequency * 0.0001f);
     
     // Sample 3D texture (RG channels provide 2D warping vector, B provides vertical noise)
-    float4 RawNoise = NoiseVolume.Sample(NoiseSampler, UVW);
+    float4 RawNoise = NoiseVolume.SampleLevel(NoiseSampler, UVW, 0.0f);
     
     // Unpack from [0, 1] to [-1, 1]
     return (RawNoise.xyz * 2.0f - 1.0f) * Intensity;
@@ -327,18 +327,18 @@ FCosmicPBRSample SampleTriplanarMaterial(
     float2 UVZ = LocalPos.xy * (UVScale * 0.001f);
     
     // Sample Albedo + Height (RGB = Albedo, A = Height)
-    float4 SampX_Alb = AlbedoHeightTex.Sample(AlbedoHeightSampler, UVX);
-    float4 SampY_Alb = AlbedoHeightTex.Sample(AlbedoHeightSampler, UVY);
-    float4 SampZ_Alb = AlbedoHeightTex.Sample(AlbedoHeightSampler, UVZ);
+    float4 SampX_Alb = AlbedoHeightTex.SampleLevel(AlbedoHeightSampler, UVX, 0.0f);
+    float4 SampY_Alb = AlbedoHeightTex.SampleLevel(AlbedoHeightSampler, UVY, 0.0f);
+    float4 SampZ_Alb = AlbedoHeightTex.SampleLevel(AlbedoHeightSampler, UVZ, 0.0f);
     
     float4 BlendedAlbHeight = SampX_Alb * NormalBlend.x + SampY_Alb * NormalBlend.y + SampZ_Alb * NormalBlend.z;
     OutSample.BaseColor = BlendedAlbHeight.rgb;
     OutSample.Height    = BlendedAlbHeight.a;
     
     // Sample Normal + Rough + AO (RG = Normal TS, B = Roughness, A = AO)
-    float4 SampX_N = NormalRoughAOTex.Sample(NormalRoughAOSampler, UVX);
-    float4 SampY_N = NormalRoughAOTex.Sample(NormalRoughAOSampler, UVY);
-    float4 SampZ_N = NormalRoughAOTex.Sample(NormalRoughAOSampler, UVZ);
+    float4 SampX_N = NormalRoughAOTex.SampleLevel(NormalRoughAOSampler, UVX, 0.0f);
+    float4 SampY_N = NormalRoughAOTex.SampleLevel(NormalRoughAOSampler, UVY, 0.0f);
+    float4 SampZ_N = NormalRoughAOTex.SampleLevel(NormalRoughAOSampler, UVZ, 0.0f);
     
     float4 BlendedN = SampX_N * NormalBlend.x + SampY_N * NormalBlend.y + SampZ_N * NormalBlend.z;
     
@@ -477,7 +477,7 @@ void EvaluatePlanetarySurfaceLUT(
     // --- 3. Whittaker Biome LUT Sampling ---
     // Sample 2D LUT with Warped UV coordinates (X = Warped Temperature, Y = 1.0 - Warped Humidity)
     float2 BiomeLUTCoords = float2(WarpedTemp, 1.0f - WarpedHum);
-    float4 MacroLUTSample = WhittakerLUT.Sample(WhittakerLUTSampler, BiomeLUTCoords);
+    float4 MacroLUTSample = WhittakerLUT.SampleLevel(WhittakerLUTSampler, BiomeLUTCoords, 0.0f);
     float3 MacroBiomeColor = MacroLUTSample.rgb;
 
     // --- 4. Slope Detection ---
@@ -507,12 +507,12 @@ void EvaluatePlanetarySurfaceLUT(
     
     // Dual-scale anti-tiling blend for flat ground
     float2 FlatUV_Macro = FlatUV * 0.231f;
-    float4 FlatAlbA = FlatAlbedoHeightTex.Sample(FlatAlbedoHeightSampler, FlatUV);
-    float4 FlatAlbB = FlatAlbedoHeightTex.Sample(FlatAlbedoHeightSampler, FlatUV_Macro);
+    float4 FlatAlbA = FlatAlbedoHeightTex.SampleLevel(FlatAlbedoHeightSampler, FlatUV, 0.0f);
+    float4 FlatAlbB = FlatAlbedoHeightTex.SampleLevel(FlatAlbedoHeightSampler, FlatUV_Macro, 0.0f);
     float4 FlatAlb = lerp(FlatAlbA, FlatAlbB, 0.35f);
 
-    float4 FlatNA = FlatNormalRoughAOTex.Sample(FlatNormalRoughAOSampler, FlatUV);
-    float4 FlatNB = FlatNormalRoughAOTex.Sample(FlatNormalRoughAOSampler, FlatUV_Macro);
+    float4 FlatNA = FlatNormalRoughAOTex.SampleLevel(FlatNormalRoughAOSampler, FlatUV, 0.0f);
+    float4 FlatNB = FlatNormalRoughAOTex.SampleLevel(FlatNormalRoughAOSampler, FlatUV_Macro, 0.0f);
     float4 FlatN = lerp(FlatNA, FlatNB, 0.35f);
 
     FCosmicPBRSample FlatSample;
