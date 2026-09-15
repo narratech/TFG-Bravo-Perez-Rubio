@@ -1,0 +1,702 @@
+// Copyright Javier Bravo, David Rubio, Sergio Perez 2026 All Rights Reserved.
+// PlanetarySurfaceLUT.ush - Adaptive Planetary Surface Shader with Whittaker Biome LUT,
+// 3D Noise Domain Warping, Height-Blended Triplanar PBR, and Sedimentary Cliff Stratification.
+#pragma once
+
+// ============================================================================
+// Shader Constants & Configuration Defaults
+// ============================================================================
+#define COSMIC_SURFACE_PI 3.14159265359f
+#define COSMIC_SURFACE_TWO_PI 6.28318530718f
+#define COSMIC_MAX_BIOMES 4
+
+// ============================================================================
+// Structures
+// ============================================================================
+
+/**
+ * Packed PBR material properties.
+ */
+struct FCosmicPBRSample
+{
+    float3 BaseColor;
+    float3 WorldNormal;
+    float  Roughness;
+    float  Metallic;
+    float  AO;
+    float  Height;
+};
+
+/**
+ * Interpolated climate and geography parameters on the planetary surface.
+ */
+struct FCosmicClimateContext
+{
+    float3 WorldPos;
+    float3 LocalPos;
+    float3 PlanetCenter;
+    float  PlanetRadius;
+    float3 RadialNormal;
+    float3 SurfaceNormal;
+    float  AltitudeNormalized;
+    float  RawTemperature;
+    float  RawHumidity;
+    float  WarpedTemperature;
+    float  WarpedHumidity;
+    float  SlopeAngle;
+    float  SlopeMask;
+    float  CameraDistance;
+    float  LODFactor;
+};
+
+/**
+ * Evaluated biome blend weights.
+ */
+struct FCosmicBiomeWeights
+{
+    float Arid;       // Desert, Dunes, Dry Scrubland
+    float Temperate;  // Grassland, Plains, Forest
+    float Boreal;     // Taiga, Cold Forest, Tundra
+    float Polar;      // Glacial Snow, Permafrost
+};
+
+// ============================================================================
+// Helper Functions: Geometry & Projections
+// ============================================================================
+
+/**
+ * Computes the planet-centric basis, radial normal, and distance to surface.
+ */
+void ComputePlanetaryGeometry(
+    in float3 WorldPos,
+    in float3 PlanetCenter,
+    in float  PlanetRadius,
+    in float3 SurfaceNormal,
+    in float3 CameraWorldPos,
+    out float3 OutLocalPos,
+    out float3 OutRadialNormal,
+    out float  OutAltitudeFromCenter,
+    out float  OutCameraDistance)
+{
+    // Subtract planet center for large world coordinate (LWC) precision stability
+    OutLocalPos = WorldPos - PlanetCenter;
+    float DistFromCenter = length(OutLocalPos);
+    OutRadialNormal = OutLocalPos / max(DistFromCenter, 1.0f);
+    OutAltitudeFromCenter = DistFromCenter - PlanetRadius;
+    OutCameraDistance = length(WorldPos - CameraWorldPos);
+}
+
+/**
+ * Calculates surface slope relative to the planetary radial gravity vector.
+ * Returns 0.0 for horizontal terrain (parallel to planetary sphere)
+ * and 1.0 for vertical cliff faces (perpendicular to planetary sphere).
+ */
+float CalculatePlanetarySlope(
+    in float3 SurfaceNormal,
+    in float3 RadialNormal,
+    in float  SlopeThreshold,
+    in float  SlopeFalloff)
+{
+    // cos(theta) is 1.0 on flat ground, 0.0 on vertical cliffs
+    float CosTheta = saturate(dot(SurfaceNormal, RadialNormal));
+    float RawSlope = 1.0f - CosTheta;
+    
+    // Smooth step transition around threshold
+    float HalfFalloff = max(SlopeFalloff * 0.5f, 0.001f);
+    return smoothstep(SlopeThreshold - HalfFalloff, SlopeThreshold + HalfFalloff, RawSlope);
+}
+
+// ============================================================================
+// Helper Functions: 3D Domain Warping & Climate Perturbation
+// ============================================================================
+
+/**
+ * Samples seamless 3D volume texture to generate smooth organic domain warping.
+ */
+float3 Sample3DDomainWarp(
+    in Texture3D NoiseVolume,
+    in SamplerState NoiseSampler,
+    in float3 LocalPos,
+    in float  Frequency,
+    in float  Intensity)
+{
+    // Position-based UVW coordinates with frequency scaling
+    float3 UVW = LocalPos * (Frequency * 0.0001f);
+    
+    // Sample 3D texture (RG channels provide 2D warping vector, B provides vertical noise)
+    float4 RawNoise = NoiseVolume.Sample(NoiseSampler, UVW);
+    
+    // Unpack from [0, 1] to [-1, 1]
+    return (RawNoise.xyz * 2.0f - 1.0f) * Intensity;
+}
+
+/**
+ * Evaluates Whittaker climate coordinates with 3D noise domain warping.
+ */
+void EvaluateWarpedClimate(
+    in float  InTemperature,
+    in float  InHumidity,
+    in float3 WarpOffset,
+    in float  WarpStrengthTemp,
+    in float  WarpStrengthHum,
+    out float OutWarpedTemp,
+    out float OutWarpedHum)
+{
+    // Apply smooth distortion vector to temperature and humidity
+    OutWarpedTemp = saturate(InTemperature + WarpOffset.x * WarpStrengthTemp);
+    OutWarpedHum  = saturate(InHumidity    + WarpOffset.y * WarpStrengthHum);
+}
+
+// ============================================================================
+// Helper Functions: Biome Classification & Weight Calculation
+// ============================================================================
+
+/**
+ * Computes soft continuous weights for 4 fundamental biomes based on
+ * warped temperature and humidity coordinates.
+ */
+FCosmicBiomeWeights CalculateBiomeWeights(in float Temp, in float Hum)
+{
+    FCosmicBiomeWeights Weights;
+
+    // Arid / Desert: High Temperature, Low Humidity
+    float AridT = smoothstep(0.40f, 0.75f, Temp);
+    float AridH = 1.0f - smoothstep(0.15f, 0.50f, Hum);
+    Weights.Arid = AridT * AridH;
+
+    // Polar / Ice: Low Temperature
+    Weights.Polar = 1.0f - smoothstep(0.15f, 0.45f, Temp);
+
+    // Boreal / Tundra: Medium-Low Temperature, Moderate-High Humidity
+    float BorealT = smoothstep(0.18f, 0.40f, Temp) * (1.0f - smoothstep(0.50f, 0.70f, Temp));
+    float BorealH = smoothstep(0.30f, 0.60f, Hum);
+    Weights.Boreal = BorealT * BorealH;
+
+    // Temperate / Grassland / Forest: Balanced Temperature, Moderate-High Humidity
+    float TempT = smoothstep(0.35f, 0.70f, Temp);
+    float TempH = smoothstep(0.35f, 0.75f, Hum);
+    Weights.Temperate = TempT * TempH;
+
+    // Normalize weights to sum to 1.0
+    float TotalWeight = Weights.Arid + Weights.Polar + Weights.Boreal + Weights.Temperate;
+    TotalWeight = max(TotalWeight, 0.0001f);
+    
+    Weights.Arid      /= TotalWeight;
+    Weights.Polar     /= TotalWeight;
+    Weights.Boreal    /= TotalWeight;
+    Weights.Temperate /= TotalWeight;
+
+    return Weights;
+}
+
+// ============================================================================
+// Helper Functions: Height-Based Multi-Layer Blending
+// ============================================================================
+
+/**
+ * Computes height-blend weights between 4 layers based on respective heightmaps.
+ * Prevents milky/muddy alpha blends by carving sharp, realistic transitions.
+ */
+float4 ComputeHeightBlend4(
+    in float4 InWeights,
+    in float4 InHeights,
+    in float  BlendContrast)
+{
+    float Contrast = max(BlendContrast, 0.001f);
+    
+    // Add raw heightmap offset to blend weights
+    float4 Elevated = InWeights + InHeights * 0.5f;
+    
+    // Find highest competing layer
+    float MaxHeight = max(max(Elevated.x, Elevated.y), max(Elevated.z, Elevated.w));
+    
+    // Falloff curve below the maximum
+    float4 Diff = max(Elevated - (MaxHeight - Contrast), 0.0f);
+    
+    // Normalize resulting weights
+    float Sum = dot(Diff, float4(1.0f, 1.0f, 1.0f, 1.0f));
+    return Diff / max(Sum, 0.0001f);
+}
+
+/**
+ * Fast two-layer height blend between flat terrain and cliff rock.
+ */
+float ComputeHeightBlend2(
+    in float WeightA,
+    in float HeightA,
+    in float WeightB,
+    in float HeightB,
+    in float BlendContrast)
+{
+    float Contrast = max(BlendContrast, 0.001f);
+    float ElevA = WeightA + HeightA * 0.5f;
+    float ElevB = WeightB + HeightB * 0.5f;
+    
+    float Diff = ElevB - ElevA;
+    return saturate((Diff + Contrast) / (2.0f * Contrast));
+}
+
+// ============================================================================
+// Helper Functions: Geological Cliff Stratification (Sedimentary Banding)
+// ============================================================================
+
+/**
+ * Generates procedural sedimentary geological rock strata along planetary altitude shells.
+ * Modulates cliff color, roughness, and normal map based on 3D noise perturbation.
+ */
+void EvaluateGeologicalStrata(
+    in float3 LocalPos,
+    in float  AltitudeFromCenter,
+    in float  NoiseSample,
+    in float  StrataFrequency,
+    in float  StrataDistortion,
+    in float3 StrataColor1,
+    in float3 StrataColor2,
+    in float3 StrataColor3,
+    out float3 OutStrataTint,
+    out float  OutStrataRoughnessDelta,
+    out float  OutStrataNormalOffset)
+{
+    // Radial height in meters/kilometers
+    float BaseCoord = (AltitudeFromCenter * 0.01f) * StrataFrequency;
+    
+    // Distort strata coordinate with 3D noise to create undulating, non-uniform sedimentary folds
+    float DistortedCoord = BaseCoord + (NoiseSample * 2.0f - 1.0f) * StrataDistortion;
+    
+    // Multi-octave sinusoidal strata bands
+    float PrimaryBand   = sin(DistortedCoord);
+    float SecondaryBand = sin(DistortedCoord * 2.718f + 1.4f) * 0.5f;
+    float FineBand      = cos(DistortedCoord * 7.389f - 0.8f) * 0.25f;
+    
+    float CombinedStrata = (PrimaryBand + SecondaryBand + FineBand) / 1.75f; // [-1, 1]
+    float Strata01 = CombinedStrata * 0.5f + 0.5f;                         // [0, 1]
+    
+    // Color interpolation between 3 geological sedimentary layers (e.g. Sandstone, Iron Clay, Shale)
+    if (Strata01 < 0.5f)
+    {
+        OutStrataTint = lerp(StrataColor1, StrataColor2, Strata01 * 2.0f);
+    }
+    else
+    {
+        OutStrataTint = lerp(StrataColor2, StrataColor3, (Strata01 - 0.5f) * 2.0f);
+    }
+    
+    // Roughness modulation across layers
+    OutStrataRoughnessDelta = (Strata01 - 0.5f) * 0.2f;
+    
+    // Derivative approximation for horizontal normal perturbation
+    OutStrataNormalOffset = cos(DistortedCoord) * 0.15f;
+}
+
+// ============================================================================
+// Helper Functions: Triplanar PBR Sampling
+// ============================================================================
+
+/**
+ * Reoriented Normal Mapping (RNM) blend in world/tangent space.
+ */
+float3 BlendReorientedNormals(in float3 BaseNormal, in float3 DetailNormal)
+{
+    float3 t = BaseNormal + float3(0.0f, 0.0f, 1.0f);
+    float3 u = DetailNormal * float3(-1.0f, -1.0f, 1.0f);
+    return normalize(t * dot(t, u) - u * t.z);
+}
+
+/**
+ * Samples a texture set using triplanar projection in planet local space.
+ */
+FCosmicPBRSample SampleTriplanarMaterial(
+    in Texture2D AlbedoHeightTex,
+    in SamplerState AlbedoHeightSampler,
+    in Texture2D NormalRoughAOTex,
+    in SamplerState NormalRoughAOSampler,
+    in float3 LocalPos,
+    in float3 SurfaceNormal,
+    in float  UVScale,
+    in float  Tightness)
+{
+    FCosmicPBRSample OutSample;
+    
+    // Calculate blend weights from absolute surface normal
+    float3 NormalBlend = pow(abs(SurfaceNormal), Tightness);
+    NormalBlend /= max(dot(NormalBlend, float3(1.0f, 1.0f, 1.0f)), 0.0001f);
+    
+    // Triplanar UV coordinates scaled to local position
+    float2 UVX = LocalPos.zy * (UVScale * 0.001f);
+    float2 UVY = LocalPos.xz * (UVScale * 0.001f);
+    float2 UVZ = LocalPos.xy * (UVScale * 0.001f);
+    
+    // Sample Albedo + Height (RGB = Albedo, A = Height)
+    float4 SampX_Alb = AlbedoHeightTex.Sample(AlbedoHeightSampler, UVX);
+    float4 SampY_Alb = AlbedoHeightTex.Sample(AlbedoHeightSampler, UVY);
+    float4 SampZ_Alb = AlbedoHeightTex.Sample(AlbedoHeightSampler, UVZ);
+    
+    float4 BlendedAlbHeight = SampX_Alb * NormalBlend.x + SampY_Alb * NormalBlend.y + SampZ_Alb * NormalBlend.z;
+    OutSample.BaseColor = BlendedAlbHeight.rgb;
+    OutSample.Height    = BlendedAlbHeight.a;
+    
+    // Sample Normal + Rough + AO (RG = Normal TS, B = Roughness, A = AO)
+    float4 SampX_N = NormalRoughAOTex.Sample(NormalRoughAOSampler, UVX);
+    float4 SampY_N = NormalRoughAOTex.Sample(NormalRoughAOSampler, UVY);
+    float4 SampZ_N = NormalRoughAOTex.Sample(NormalRoughAOSampler, UVZ);
+    
+    float4 BlendedN = SampX_N * NormalBlend.x + SampY_N * NormalBlend.y + SampZ_N * NormalBlend.z;
+    
+    // Unpack normal map from [0, 1] to [-1, 1]
+    float3 TangentNormal = float3(BlendedN.rg * 2.0f - 1.0f, 1.0f);
+    TangentNormal.z = sqrt(saturate(1.0f - dot(TangentNormal.xy, TangentNormal.xy)));
+    
+    OutSample.WorldNormal = TangentNormal;
+    OutSample.Roughness   = BlendedN.b;
+    OutSample.AO          = BlendedN.a;
+    OutSample.Metallic    = 0.0f;
+    
+    return OutSample;
+}
+
+// ============================================================================
+// Main Planetary Surface Evaluation Function
+// ============================================================================
+
+/**
+ * Evaluates the complete procedural planetary surface material:
+ * 1. Computes local spherical coordinates and stable LWC context.
+ * 2. Samples 3D volume noise for domain warping Whittaker (T, H) coordinates.
+ * 3. Samples 2D Whittaker Biome LUT for artistic macro planetary color.
+ * 4. Computes continuous biome blend weights with height-based micro blending.
+ * 5. Evaluates geological sedimentary stratification on steep slopes and cliffs.
+ * 6. Blends flat detail materials and triplanar cliff materials.
+ * 7. Applies camera distance LOD fade to prevent tiling repetition from orbit.
+ *
+ * @param InWorldPos               - Absolute World Position of vertex/pixel
+ * @param InPlanetCenter           - World Position of planet center
+ * @param InPlanetRadius           - Planetary reference radius in centimeters
+ * @param InSurfaceNormal          - Interpolated geometric surface normal
+ * @param InVertexColor            - Vertex color: R=AltitudeNorm, G=VisualTemp, B=Humidity, A=CraterMask
+ * @param InCameraWorldPos         - Camera world position
+ * @param NoiseVolume              - 3D volume texture (Perlin/Value ridged seamless)
+ * @param NoiseSampler             - 3D texture sampler state (Wrap)
+ * @param WhittakerLUT             - 2D LUT texture (X=Temp, Y=Humidity)
+ * @param WhittakerLUTSampler      - 2D LUT texture sampler state (Clamp)
+ * @param FlatAlbedoHeightTex      - Detail 2D texture for flat terrain (Albedo.rgb, Height.a)
+ * @param FlatAlbedoHeightSampler  - Sampler for flat albedo
+ * @param FlatNormalRoughAOTex     - Detail 2D texture for flat terrain (Normal.rg, Rough.b, AO.a)
+ * @param FlatNormalRoughAOSampler - Sampler for flat normal/rough/AO
+ * @param CliffAlbedoHeightTex     - Detail 2D texture for cliffs (Albedo.rgb, Height.a)
+ * @param CliffAlbedoHeightSampler - Sampler for cliff albedo
+ * @param CliffNormalRoughAOTex    - Detail 2D texture for cliffs (Normal.rg, Rough.b, AO.a)
+ * @param CliffNormalRoughAOSampler- Sampler for cliff normal/rough/AO
+ * @param WarpIntensity            - Strength of 3D domain warping vector
+ * @param WarpFrequency            - Frequency scale of 3D volume noise
+ * @param SlopeThreshold           - Slope angle threshold for cliff transition [0, 1]
+ * @param SlopeFalloff             - Width of slope transition zone
+ * @param StrataFrequency          - Vertical frequency of geological strata bands
+ * @param StrataDistortion         - Distortion intensity of sedimentary folds
+ * @param DetailUVScaleFlat        - Tiling scale of flat surface detail textures
+ * @param DetailUVScaleCliff       - Tiling scale of cliff triplanar textures
+ * @param DetailFadeStartDistance  - Distance in cm where detail textures begin fading
+ * @param DetailFadeEndDistance    - Distance in cm where detail textures fully fade to macro LUT
+ * @param StrataColorSandstone     - Sedimentary stratum color tier 1
+ * @param StrataColorIronClay      - Sedimentary stratum color tier 2
+ * @param StrataColorShale         - Sedimentary stratum color tier 3
+ * @param OutBaseColor             - Output: PBR Base Color (Albedo)
+ * @param OutWorldNormal           - Output: Perturbed World Space Normal
+ * @param OutRoughness             - Output: PBR Roughness
+ * @param OutMetallic              - Output: PBR Metallic
+ * @param OutAO                    - Output: PBR Ambient Occlusion
+ * @param OutDebugMask             - Output: Debug inspection mask (R=Slope, G=WarpedTemp, B=WarpedHum, A=Strata)
+ */
+void EvaluatePlanetarySurfaceLUT(
+    in float3 InWorldPos,
+    in float3 InPlanetCenter,
+    in float  InPlanetRadius,
+    in float3 InSurfaceNormal,
+    in float4 InVertexColor,
+    in float3 InCameraWorldPos,
+    // Textures & Samplers
+    in Texture3D NoiseVolume,
+    in SamplerState NoiseSampler,
+    in Texture2D WhittakerLUT,
+    in SamplerState WhittakerLUTSampler,
+    in Texture2D FlatAlbedoHeightTex,
+    in SamplerState FlatAlbedoHeightSampler,
+    in Texture2D FlatNormalRoughAOTex,
+    in SamplerState FlatNormalRoughAOSampler,
+    in Texture2D CliffAlbedoHeightTex,
+    in SamplerState CliffAlbedoHeightSampler,
+    in Texture2D CliffNormalRoughAOTex,
+    in SamplerState CliffNormalRoughAOSampler,
+    // Shader Parameters
+    in float  WarpIntensity,
+    in float  WarpFrequency,
+    in float  SlopeThreshold,
+    in float  SlopeFalloff,
+    in float  StrataFrequency,
+    in float  StrataDistortion,
+    in float  DetailUVScaleFlat,
+    in float  DetailUVScaleCliff,
+    in float  DetailFadeStartDistance,
+    in float  DetailFadeEndDistance,
+    in float3 StrataColorSandstone,
+    in float3 StrataColorIronClay,
+    in float3 StrataColorShale,
+    // Outputs
+    out float3 OutBaseColor,
+    out float3 OutWorldNormal,
+    out float  OutRoughness,
+    out float  OutMetallic,
+    out float  OutAO,
+    out float4 OutDebugMask)
+{
+    // --- 1. Planetary Geometry Context & LWC ---
+    float3 LocalPos;
+    float3 RadialNormal;
+    float  AltitudeFromCenter;
+    float  CameraDistance;
+    ComputePlanetaryGeometry(
+        InWorldPos, InPlanetCenter, InPlanetRadius, InSurfaceNormal, InCameraWorldPos,
+        LocalPos, RadialNormal, AltitudeFromCenter, CameraDistance);
+
+    // --- 2. 3D Volume Noise & Domain Warping ---
+    float3 WarpVector = Sample3DDomainWarp(
+        NoiseVolume, NoiseSampler, LocalPos, WarpFrequency, WarpIntensity);
+
+    // Vertex climate inputs
+    float AltitudeNorm = InVertexColor.r;
+    float RawTemp      = InVertexColor.g;
+    float RawHum       = InVertexColor.b;
+    float CraterMask   = InVertexColor.a;
+
+    // Distort Temperature and Humidity organically
+    float WarpedTemp;
+    float WarpedHum;
+    EvaluateWarpedClimate(
+        RawTemp, RawHum, WarpVector, 0.35f, 0.35f,
+        WarpedTemp, WarpedHum);
+
+    // --- 3. Whittaker Biome LUT Sampling ---
+    // Sample 2D LUT with Warped UV coordinates (X = Warped Temperature, Y = 1.0 - Warped Humidity)
+    float2 BiomeLUTCoords = float2(WarpedTemp, 1.0f - WarpedHum);
+    float4 MacroLUTSample = WhittakerLUT.Sample(WhittakerLUTSampler, BiomeLUTCoords);
+    float3 MacroBiomeColor = MacroLUTSample.rgb;
+
+    // --- 4. Slope Detection ---
+    float BaseSlopeMask = CalculatePlanetarySlope(InSurfaceNormal, RadialNormal, SlopeThreshold, SlopeFalloff);
+    
+    // Perturb slope mask slightly with 3D noise for organic, non-uniform cliff boundaries
+    float NoiseVal = WarpVector.z * 0.5f + 0.5f;
+    float PerturbedSlope = saturate(BaseSlopeMask + (NoiseVal - 0.5f) * 0.25f);
+
+    // --- 5. Geological Cliff Strata Banding ---
+    float3 StrataTint;
+    float  StrataRoughnessDelta;
+    float  StrataNormalOffset;
+    EvaluateGeologicalStrata(
+        LocalPos, AltitudeFromCenter, NoiseVal,
+        StrataFrequency, StrataDistortion,
+        StrataColorSandstone, StrataColorIronClay, StrataColorShale,
+        StrataTint, StrataRoughnessDelta, StrataNormalOffset);
+
+    // --- 6. Micro-Detail Material Sampling ---
+    // Camera distance LOD fade factor: 0.0 (near, full micro detail) -> 1.0 (far, macro color)
+    float FadeRange = max(DetailFadeEndDistance - DetailFadeStartDistance, 1000.0f);
+    float DistanceLOD = saturate((CameraDistance - DetailFadeStartDistance) / FadeRange);
+
+    // Flat terrain sampling: top-down / local planar UV
+    float2 FlatUV = LocalPos.xy * (DetailUVScaleFlat * 0.001f);
+    
+    // Dual-scale anti-tiling blend for flat ground
+    float2 FlatUV_Macro = FlatUV * 0.231f;
+    float4 FlatAlbA = FlatAlbedoHeightTex.Sample(FlatAlbedoHeightSampler, FlatUV);
+    float4 FlatAlbB = FlatAlbedoHeightTex.Sample(FlatAlbedoHeightSampler, FlatUV_Macro);
+    float4 FlatAlb = lerp(FlatAlbA, FlatAlbB, 0.35f);
+
+    float4 FlatNA = FlatNormalRoughAOTex.Sample(FlatNormalRoughAOSampler, FlatUV);
+    float4 FlatNB = FlatNormalRoughAOTex.Sample(FlatNormalRoughAOSampler, FlatUV_Macro);
+    float4 FlatN = lerp(FlatNA, FlatNB, 0.35f);
+
+    FCosmicPBRSample FlatSample;
+    FlatSample.BaseColor   = FlatAlb.rgb * MacroBiomeColor * 1.5f; // Modulate detail albedo with Whittaker LUT
+    FlatSample.Height      = FlatAlb.a;
+    FlatSample.Roughness   = FlatN.b;
+    FlatSample.AO          = FlatN.a;
+    FlatSample.Metallic    = 0.0f;
+    
+    // Unpack normal map
+    float3 FlatTSNormal = float3(FlatN.rg * 2.0f - 1.0f, 1.0f);
+    FlatTSNormal.z = sqrt(saturate(1.0f - dot(FlatTSNormal.xy, FlatTSNormal.xy)));
+    FlatSample.WorldNormal = FlatTSNormal;
+
+    // Cliff terrain sampling: Triplanar mapping with rock detail
+    FCosmicPBRSample CliffSample = SampleTriplanarMaterial(
+        CliffAlbedoHeightTex, CliffAlbedoHeightSampler,
+        CliffNormalRoughAOTex, CliffNormalRoughAOSampler,
+        LocalPos, InSurfaceNormal, DetailUVScaleCliff, 4.0f);
+
+    // Modulate cliff albedo with geological sedimentary strata tint
+    CliffSample.BaseColor *= StrataTint * 1.25f;
+    CliffSample.Roughness = saturate(CliffSample.Roughness + StrataRoughnessDelta);
+
+    // --- 7. Height-Blended Transition: Flat Terrain vs Cliff Rock ---
+    float FinalCliffBlend = ComputeHeightBlend2(
+        1.0f - PerturbedSlope, FlatSample.Height,
+        PerturbedSlope, CliffSample.Height,
+        0.12f);
+
+    // Blend PBR properties between flat and cliff
+    float3 MicroBaseColor = lerp(FlatSample.BaseColor, CliffSample.BaseColor, FinalCliffBlend);
+    float  MicroRoughness = lerp(FlatSample.Roughness, CliffSample.Roughness, FinalCliffBlend);
+    float  MicroAO        = lerp(FlatSample.AO, CliffSample.AO, FinalCliffBlend);
+    float  MicroMetallic  = 0.0f;
+
+    // Normal blending: perturb geometric normal with blended detail normals
+    float3 BlendedDetailNormal = lerp(FlatSample.WorldNormal, CliffSample.WorldNormal, FinalCliffBlend);
+    // Add vertical strata ribbing on cliffs
+    BlendedDetailNormal.z += StrataNormalOffset * FinalCliffBlend;
+    BlendedDetailNormal = normalize(BlendedDetailNormal);
+
+    // --- 8. Distance LOD Crossfade to Planetary Macro View ---
+    // Smoothly fade from micro PBR details to smooth planetary macro Whittaker color
+    OutBaseColor = lerp(MicroBaseColor, MacroBiomeColor, DistanceLOD);
+    
+    // Surface normal blends back to geometric normal at planetary orbital distances (specular AA)
+    float3 FinalPerturbedNormal = normalize(InSurfaceNormal + BlendedDetailNormal.xyx * (1.0f - DistanceLOD) * 0.4f);
+    OutWorldNormal = FinalPerturbedNormal;
+
+    // Specular roughness increases slightly at planetary scale to prevent subpixel specular shimmering
+    OutRoughness = lerp(MicroRoughness, 0.85f, DistanceLOD * 0.4f);
+    OutMetallic  = MicroMetallic;
+    OutAO        = lerp(MicroAO, 1.0f, DistanceLOD);
+
+    // --- 9. Debug & Mask Output ---
+    OutDebugMask = float4(
+        FinalCliffBlend,
+        WarpedTemp,
+        WarpedHum,
+        StrataTint.r
+    );
+}
+
+// ============================================================================
+// Unreal Engine 5 Material Custom Node Wrappers
+// ============================================================================
+
+/**
+ * Custom Node Wrapper returning Base Color (RGB) and Roughness in Alpha.
+ */
+float4 EvaluatePlanetaryBaseColorRoughness(
+    float3 WorldPos,
+    float3 PlanetCenter,
+    float  PlanetRadius,
+    float3 SurfaceNormal,
+    float4 VertexColor,
+    float3 CameraWorldPos,
+    Texture3D NoiseVolume,
+    SamplerState NoiseSampler,
+    Texture2D WhittakerLUT,
+    SamplerState WhittakerLUTSampler,
+    Texture2D FlatAlbedoHeightTex,
+    SamplerState FlatAlbedoHeightSampler,
+    Texture2D FlatNormalRoughAOTex,
+    SamplerState FlatNormalRoughAOSampler,
+    Texture2D CliffAlbedoHeightTex,
+    SamplerState CliffAlbedoHeightSampler,
+    Texture2D CliffNormalRoughAOTex,
+    SamplerState CliffNormalRoughAOSampler,
+    float  WarpIntensity,
+    float  WarpFrequency,
+    float  SlopeThreshold,
+    float  SlopeFalloff,
+    float  StrataFrequency,
+    float  StrataDistortion,
+    float  DetailUVScaleFlat,
+    float  DetailUVScaleCliff,
+    float  DetailFadeStartDistance,
+    float  DetailFadeEndDistance,
+    float3 StrataColorSandstone,
+    float3 StrataColorIronClay,
+    float3 StrataColorShale,
+    out float3 OutNormal,
+    out float  OutMetallic,
+    out float  OutAO,
+    out float4 OutDebug)
+{
+    float3 OutColor;
+    float3 OutNorm;
+    float  OutRough;
+    float  OutMet;
+    float  OutAmbient;
+    float4 OutDbg;
+
+    EvaluatePlanetarySurfaceLUT(
+        WorldPos, PlanetCenter, PlanetRadius, SurfaceNormal, VertexColor, CameraWorldPos,
+        NoiseVolume, NoiseSampler,
+        WhittakerLUT, WhittakerLUTSampler,
+        FlatAlbedoHeightTex, FlatAlbedoHeightSampler,
+        FlatNormalRoughAOTex, FlatNormalRoughAOSampler,
+        CliffAlbedoHeightTex, CliffAlbedoHeightSampler,
+        CliffNormalRoughAOTex, CliffNormalRoughAOSampler,
+        WarpIntensity, WarpFrequency,
+        SlopeThreshold, SlopeFalloff,
+        StrataFrequency, StrataDistortion,
+        DetailUVScaleFlat, DetailUVScaleCliff,
+        DetailFadeStartDistance, DetailFadeEndDistance,
+        StrataColorSandstone, StrataColorIronClay, StrataColorShale,
+        OutColor, OutNorm, OutRough, OutMet, OutAmbient, OutDbg);
+
+    OutNormal   = OutNorm;
+    OutMetallic = OutMet;
+    OutAO       = OutAmbient;
+    OutDebug    = OutDbg;
+
+    return float4(OutColor, OutRough);
+}
+
+/**
+ * Lightweight Custom Node wrapper for modular evaluation:
+ * Evaluates Whittaker Warped Coordinates and returns float4(WarpedTemp, WarpedHum, SlopeMask, Strata).
+ */
+float4 EvaluateWhittakerCoordinates(
+    float3 WorldPos,
+    float3 PlanetCenter,
+    float  PlanetRadius,
+    float3 SurfaceNormal,
+    float4 VertexColor,
+    Texture3D NoiseVolume,
+    SamplerState NoiseSampler,
+    float  WarpIntensity,
+    float  WarpFrequency,
+    float  SlopeThreshold,
+    float  SlopeFalloff,
+    float  StrataFrequency,
+    float  StrataDistortion)
+{
+    float3 LocalPos = WorldPos - PlanetCenter;
+    float DistFromCenter = length(LocalPos);
+    float3 RadialNormal = LocalPos / max(DistFromCenter, 1.0f);
+    float AltitudeFromCenter = DistFromCenter - PlanetRadius;
+
+    float3 WarpVector = Sample3DDomainWarp(
+        NoiseVolume, NoiseSampler, LocalPos, WarpFrequency, WarpIntensity);
+
+    float WarpedTemp;
+    float WarpedHum;
+    EvaluateWarpedClimate(
+        VertexColor.g, VertexColor.b, WarpVector, 0.35f, 0.35f,
+        WarpedTemp, WarpedHum);
+
+    float BaseSlopeMask = CalculatePlanetarySlope(SurfaceNormal, RadialNormal, SlopeThreshold, SlopeFalloff);
+    float NoiseVal = WarpVector.z * 0.5f + 0.5f;
+    float PerturbedSlope = saturate(BaseSlopeMask + (NoiseVal - 0.5f) * 0.25f);
+
+    float3 DummyTint;
+    float  DummyRough;
+    float  StrataNormalOffset;
+    EvaluateGeologicalStrata(
+        LocalPos, AltitudeFromCenter, NoiseVal,
+        StrataFrequency, StrataDistortion,
+        float3(1,1,1), float3(1,1,1), float3(1,1,1),
+        DummyTint, DummyRough, StrataNormalOffset);
+
+    return float4(WarpedTemp, 1.0f - WarpedHum, PerturbedSlope, StrataNormalOffset);
+}
