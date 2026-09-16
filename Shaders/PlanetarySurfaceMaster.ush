@@ -7,7 +7,6 @@
 //
 // Key Features:
 //   - Analytical Whittaker Biome Engine (Gaussian RBF): 0 VRAM footprint, infinitely continuous.
-//   - Optional 2D Whittaker LUT Override: Artistic texture fallback toggleable per material.
 //   - Geological Sedimentary Cliff Stratification: Procedural multi-octave sinusoidal rock
 //     bands distorted by 3D noise along altitude shells with normal shelf perturbation.
 //   - Height-Blended Layer Carving: Eliminates muddy transitions between soil, rock, and snow.
@@ -433,8 +432,6 @@ void EvaluateMasterGeologicalStrata(
 /**
  * Evaluates continuous analytical Whittaker biomes via Gaussian Radial
  * Basis Functions (RBF) in 2D climatological space (Temperature, Humidity).
- * 
- * Eliminates 2D LUT texture fetches, bilinear compression artifacts, and color banding.
  */
 void EvaluateMasterWhittakerBiomes(
     in float ClimatologicalTemp,
@@ -823,6 +820,64 @@ void InitVolcanicMasterArchetype(
     StrataParams.NormalStrength = 0.40f;
 }
 
+/**
+ * Initializes Custom Parameterized planetary archetype using 4 user-defined colors:
+ *   - InTerrainColorLow: Basins, craters, ocean beds, cold/humid lowlands
+ *   - InTerrainColorMid: Continental plains, dominant planetary ground/regolith
+ *   - InTerrainColorHigh: Mountain ridges, peaks, arid/cold highlands
+ *   - InRockColor: Base rock tint for cliffs (automatically derives 3 geological strata tiers)
+ */
+void InitCustomMasterArchetype(
+    in float3 InTerrainColorLow,
+    in float3 InTerrainColorMid,
+    in float3 InTerrainColorHigh,
+    in float3 InRockColor,
+    out FPlanetaryBiomeDefinition Biomes[PLANETARY_MAX_BIOMES],
+    out int BiomeCount,
+    out FPlanetaryStrataParameters StrataParams)
+{
+    BiomeCount = 3;
+
+    // 0: Lowlands / Depressions / Basins (Cold or Humid phase)
+    Biomes[0].ClimatologicalCenter = float2(0.20f, 0.65f);
+    Biomes[0].ClimatologicalRadius = float2(0.35f, 0.40f);
+    Biomes[0].BaseColor            = InTerrainColorLow;
+    Biomes[0].Roughness            = 0.70f;
+    Biomes[0].Metallic             = 0.00f;
+    Biomes[0].Specular             = 0.45f;
+    Biomes[0].MicroTiling          = 1.0f;
+    Biomes[0].NormalStrength       = 0.9f;
+
+    // 1: Midlands / Plains / Dominant Terrain (Temperate central phase)
+    Biomes[1].ClimatologicalCenter = float2(0.50f, 0.50f);
+    Biomes[1].ClimatologicalRadius = float2(0.35f, 0.35f);
+    Biomes[1].BaseColor            = InTerrainColorMid;
+    Biomes[1].Roughness            = 0.80f;
+    Biomes[1].Metallic             = 0.00f;
+    Biomes[1].Specular             = 0.40f;
+    Biomes[1].MicroTiling          = 1.2f;
+    Biomes[1].NormalStrength       = 1.0f;
+
+    // 2: Highlands / Ridges / Arid or Peaks (Warm or Arid phase)
+    Biomes[2].ClimatologicalCenter = float2(0.80f, 0.35f);
+    Biomes[2].ClimatologicalRadius = float2(0.35f, 0.40f);
+    Biomes[2].BaseColor            = InTerrainColorHigh;
+    Biomes[2].Roughness            = 0.88f;
+    Biomes[2].Metallic             = 0.00f;
+    Biomes[2].Specular             = 0.35f;
+    Biomes[2].MicroTiling          = 1.6f;
+    Biomes[2].NormalStrength       = 1.2f;
+
+    // Geological Strata derived procedurally from InRockColor:
+    StrataParams.Frequency      = 0.08f;
+    StrataParams.Distortion     = 0.45f;
+    StrataParams.ColorTier1     = InRockColor * 1.25f; // Upper/weathered shelf (lighter)
+    StrataParams.ColorTier2     = InRockColor * 1.00f; // Primary cliff rock stratum
+    StrataParams.ColorTier3     = InRockColor * 0.70f; // Deep dense sedimentary stratum (darker)
+    StrataParams.RoughnessDelta = 0.15f;
+    StrataParams.NormalStrength = 0.35f;
+}
+
 // ============================================================================
 // MAIN UNIFIED PLANETARY SURFACE EVALUATION CORE
 // ============================================================================
@@ -850,6 +905,12 @@ void EvaluatePlanetaryMasterSurfaceCore(
     in float  InSlopeCliffFalloff,
     in float  InSnowTemperatureThreshold,
     in float  InWetnessIntensity,
+    in float  bUseCustomArchetype,     // 1.0 to use custom 4-color archetype, 0.0 for InArchetypeIndex
+    in float3 InTerrainColorLow,       // Lowlands / basins / cold-humid valleys
+    in float3 InTerrainColorMid,       // Midlands / plains / dominant planetary ground
+    in float3 InTerrainColorHigh,      // Highlands / peaks / arid or cold ridges
+    in float3 InRockColor,             // Base cliff rock tint (generates 3 strata tiers)
+    in float  bEnableSnow,             // 1.0 to enable snow, 0.0 to disable completely
     in float  bHasNearDetail,          // 1.0 if 2D near detail textures are active
     in FPlanetaryNearDetailParameters NearDetailParams,
     in float3 InNearSurfaceTexColor,   // Pre-sampled or triplanar surface albedo (Near)
@@ -942,7 +1003,13 @@ void EvaluatePlanetaryMasterSurfaceCore(
     int BiomeCount = 8;
     int ArchetypeIndex = (int)round(InArchetypeIndex);
 
-    if (ArchetypeIndex == 1)
+    if (bUseCustomArchetype > 0.5f)
+    {
+        InitCustomMasterArchetype(
+            InTerrainColorLow, InTerrainColorMid, InTerrainColorHigh, InRockColor,
+            Biomes, BiomeCount, StrataParams);
+    }
+    else if (ArchetypeIndex == 1)
     {
         InitMarsLikeMasterArchetype(Biomes, BiomeCount, StrataParams);
     }
@@ -1043,26 +1110,30 @@ void EvaluatePlanetaryMasterSurfaceCore(
     }
 
     // --- 8. Dynamic Snowline & Glaciation (Gravity Slide-Off Physics) ---
-    float SnowThreshold = max(InSnowTemperatureThreshold, 0.01f);
-    float SnowRaw = saturate((SnowThreshold - TempWarped) / max(SnowThreshold * 0.6f, 0.02f));
-
-    // Slope slide-off damping: gravity prevents snow from sticking to steep cliffs
-    float SnowSlopeDamp = smoothstep(0.50f, 0.20f, RawSlope);
-    float SnowWeight = SnowRaw * SnowSlopeDamp;
-
-    // Height-blend snow accumulation: snow settles on ridges and plateaus first
-    float SnowMask = ComputeMasterHeightBlend2(
-        1.0f - SnowWeight, 1.0f - HeightFlat,
-        SnowWeight, 0.85f,
-        0.18f) * saturate(SnowWeight * 2.0f);
-
-    if (SnowMask > 0.001f)
+    float SnowMask = 0.0f;
+    if (bEnableSnow > 0.5f && InSnowTemperatureThreshold > 0.001f)
     {
-        float3 SnowAlbedo = float3(0.92f, 0.94f, 0.98f);
-        BaseAlbedo    = lerp(BaseAlbedo, SnowAlbedo, SnowMask);
-        EffRoughness  = lerp(EffRoughness, 0.65f, SnowMask);
-        BiomeMetallic = lerp(BiomeMetallic, 0.0f, SnowMask);
-        BiomeSpecular = lerp(BiomeSpecular, 0.50f, SnowMask);
+        float SnowThreshold = max(InSnowTemperatureThreshold, 0.001f);
+        float SnowRaw = saturate((SnowThreshold - TempWarped) / max(SnowThreshold * 0.6f, 0.02f));
+
+        // Slope slide-off damping: gravity prevents snow from sticking to steep cliffs
+        float SnowSlopeDamp = smoothstep(0.50f, 0.20f, RawSlope);
+        float SnowWeight = SnowRaw * SnowSlopeDamp;
+
+        // Height-blend snow accumulation: snow settles on ridges and plateaus first
+        SnowMask = ComputeMasterHeightBlend2(
+            1.0f - SnowWeight, 1.0f - HeightFlat,
+            SnowWeight, 0.85f,
+            0.18f) * saturate(SnowWeight * 2.0f);
+
+        if (SnowMask > 0.001f)
+        {
+            float3 SnowAlbedo = float3(0.92f, 0.94f, 0.98f);
+            BaseAlbedo    = lerp(BaseAlbedo, SnowAlbedo, SnowMask);
+            EffRoughness  = lerp(EffRoughness, 0.65f, SnowMask);
+            BiomeMetallic = lerp(BiomeMetallic, 0.0f, SnowMask);
+            BiomeSpecular = lerp(BiomeSpecular, 0.50f, SnowMask);
+        }
     }
 
     // --- 9. Multi-Tier 2D Photographic Triplanar Detail Layers (Near & Far) ---
@@ -1155,7 +1226,7 @@ void EvaluatePlanetaryMasterSurfaceCore(
     OutSurface.FarDetailWeight  = FarDetailWeight;
 }
 
-// Backward-compatible core overload (NearDetail only)
+// Backward-compatible core overload (Full Near & Far details with default archetypes)
 void EvaluatePlanetaryMasterSurfaceCore(
     in float3 InWorldPos,
     in float3 InPlanetCenter,
@@ -1181,137 +1252,44 @@ void EvaluatePlanetaryMasterSurfaceCore(
     in float3 InNearRockTexNormal,
     in float3 InNearSnowTexColor,
     in float3 InNearSnowTexNormal,
+    in float  bHasFarDetail,
+    in FPlanetaryFarDetailParameters FarDetailParams,
+    in float3 InFarSurfaceTexColor,
+    in float3 InFarSurfaceTexNormal,
+    in float3 InFarRockTexColor,
+    in float3 InFarRockTexNormal,
+    in float3 InFarSnowTexColor,
+    in float3 InFarSnowTexNormal,
     out FPlanetaryMasterOutput OutSurface,
     out float OutTempWarped,
     out float OutHumidityWarped)
 {
-    FPlanetaryFarDetailParameters DummyFarParams;
-    DummyFarParams.Distance = 0.0f;
-    DummyFarParams.FadeRange = 1.0f;
-    DummyFarParams.SurfaceTiling = 1.0f;
-    DummyFarParams.RockTiling = 1.0f;
-    DummyFarParams.SnowTiling = 1.0f;
-    DummyFarParams.ColorBlend = 0.0f;
-    DummyFarParams.NormalStrength = 0.0f;
-    DummyFarParams.TriplanarSharpness = 4.0f;
-
     EvaluatePlanetaryMasterSurfaceCore(
         InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
         InVertexColor, InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
         InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
         InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
+        0.0f, float3(0,0,0), float3(0,0,0), float3(0,0,0), float3(0,0,0), 1.0f,
         bHasNearDetail, NearDetailParams,
         InNearSurfaceTexColor, InNearSurfaceTexNormal,
         InNearRockTexColor, InNearRockTexNormal,
         InNearSnowTexColor, InNearSnowTexNormal,
-        0.0f, DummyFarParams,
-        float3(1, 1, 1), float3(0, 0, 1),
-        float3(1, 1, 1), float3(0, 0, 1),
-        float3(1, 1, 1), float3(0, 0, 1),
+        bHasFarDetail, FarDetailParams,
+        InFarSurfaceTexColor, InFarSurfaceTexNormal,
+        InFarRockTexColor, InFarRockTexNormal,
+        InFarSnowTexColor, InFarSnowTexNormal,
         OutSurface, OutTempWarped, OutHumidityWarped);
 }
 
 // ============================================================================
-// CONVENIENCE EVALUATION INTERFACES
+// CONVENIENCE EVALUATION INTERFACES (2D TRIPLANAR DETAIL FLOW: NEAR & FAR)
 // ============================================================================
 
-// 1. Procedural-Only Evaluation (No 2D Near Textures)
-void EvaluatePlanetaryMasterSurface(
-    in float3 InWorldPos,
-    in float3 InPlanetCenter,
-    in float  InPlanetRadius,
-    in float3 InCameraWorldPos,
-    in float4 InVertexColor,
-    in float3 InMeshWorldNormal,
-    in Texture3D InVolumeTexture,
-    in SamplerState InVolumeSampler,
-    in float  InArchetypeIndex,
-    in float  InMacroFrequency,
-    in float  InMicroFrequency,
-    in float  InNormalStrength,
-    in float  InSlopeCliffThreshold,
-    in float  InSlopeCliffFalloff,
-    in float  InSnowTemperatureThreshold,
-    in float  InWetnessIntensity,
-    out FPlanetaryMasterOutput OutSurface)
-{
-    float DummyT, DummyH;
-    FPlanetaryNearDetailParameters DummyParams;
-    DummyParams.Distance = 0.0f;
-    DummyParams.FadeRange = 1.0f;
-    DummyParams.SurfaceTiling = 1.0f;
-    DummyParams.RockTiling = 1.0f;
-    DummyParams.SnowTiling = 1.0f;
-    DummyParams.ColorBlend = 0.0f;
-    DummyParams.NormalStrength = 0.0f;
-    DummyParams.TriplanarSharpness = 4.0f;
-
-    EvaluatePlanetaryMasterSurfaceCore(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
-        InVertexColor, InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
-        InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        0.0f, DummyParams,
-        float3(1, 1, 1), float3(0, 0, 1),
-        float3(1, 1, 1), float3(0, 0, 1),
-        float3(1, 1, 1), float3(0, 0, 1),
-        OutSurface, DummyT, DummyH);
-}
-
-// 2. Procedural + Optional 2D LUT Override
-void EvaluatePlanetaryMasterSurface(
-    in float3 InWorldPos,
-    in float3 InPlanetCenter,
-    in float  InPlanetRadius,
-    in float3 InCameraWorldPos,
-    in float4 InVertexColor,
-    in float3 InMeshWorldNormal,
-    in Texture3D InVolumeTexture,
-    in SamplerState InVolumeSampler,
-    in float  InArchetypeIndex,
-    in float  InMacroFrequency,
-    in float  InMicroFrequency,
-    in float  InNormalStrength,
-    in float  InSlopeCliffThreshold,
-    in float  InSlopeCliffFalloff,
-    in float  InSnowTemperatureThreshold,
-    in float  InWetnessIntensity,
-    in float  bUseLUTOverride,
-    in Texture2D InOptionalWhittakerLUT,
-    in SamplerState InOptionalWhittakerLUTSampler,
-    out FPlanetaryMasterOutput OutSurface)
-{
-    float TempWarped, HumWarped;
-    FPlanetaryNearDetailParameters DummyParams;
-    DummyParams.Distance = 0.0f;
-    DummyParams.FadeRange = 1.0f;
-    DummyParams.SurfaceTiling = 1.0f;
-    DummyParams.RockTiling = 1.0f;
-    DummyParams.SnowTiling = 1.0f;
-    DummyParams.ColorBlend = 0.0f;
-    DummyParams.NormalStrength = 0.0f;
-    DummyParams.TriplanarSharpness = 4.0f;
-
-    EvaluatePlanetaryMasterSurfaceCore(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
-        InVertexColor, InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
-        InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        0.0f, DummyParams,
-        float3(1, 1, 1), float3(0, 0, 1),
-        float3(1, 1, 1), float3(0, 0, 1),
-        float3(1, 1, 1), float3(0, 0, 1),
-        OutSurface, TempWarped, HumWarped);
-
-    if (bUseLUTOverride > 0.5f)
-    {
-        float2 LUTCoords = float2(TempWarped, 1.0f - HumWarped);
-        float3 LUTColor = InOptionalWhittakerLUT.SampleLevel(InOptionalWhittakerLUTSampler, LUTCoords, 0.0f).rgb;
-        OutSurface.BaseColor = lerp(OutSurface.BaseColor, LUTColor, 0.85f);
-    }
-}
-
-// 3. Full Master Evaluation with In-Shader 2D Spherical Triplanar Textures & Normal Maps (Near & Far detail tiers, 6 Individual Samplers)
+/**
+ * Master Evaluation with In-Shader 2D Spherical Triplanar Textures & Normal Maps
+ * Evaluates Near & Far detail tiers using 6 individual texture samplers.
+ * Fully integrates custom 4-color archetypes and dynamic snow toggle.
+ */
 void EvaluatePlanetaryMasterSurfaceWithTriplanar(
     in float3 InWorldPos,
     in float3 InPlanetCenter,
@@ -1329,9 +1307,12 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanar(
     in float  InSlopeCliffFalloff,
     in float  InSnowTemperatureThreshold,
     in float  InWetnessIntensity,
-    in float  bUseLUTOverride,
-    in Texture2D InOptionalWhittakerLUT,
-    in SamplerState InOptionalWhittakerLUTSampler,
+    in float  bUseCustomArchetype,
+    in float3 InTerrainColorLow,
+    in float3 InTerrainColorMid,
+    in float3 InTerrainColorHigh,
+    in float3 InRockColor,
+    in float  bEnableSnow,
     in Texture2D InNearSurfaceAlbedo,
     in SamplerState InNearSurfaceAlbedoSampler,
     in Texture2D InNearSurfaceNormal,
@@ -1395,7 +1376,7 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanar(
     float FarExit = 1.0f - smoothstep(FarParams.Distance - FarParams.FadeRange, FarParams.Distance, CameraDistance);
     float FarWeight = FarEntrance * FarExit;
 
-    // 1. Near Triplanar Sampling (Only when NearWeight > 0.001)
+    // 1. Near Triplanar Sampling (Evaluated when NearWeight > 0.001)
     float3 NearSurfaceTexCol  = float3(1.0f, 1.0f, 1.0f);
     float3 NearSurfaceTexNorm = GeometryNormal;
     float3 NearRockTexCol     = float3(1.0f, 1.0f, 1.0f);
@@ -1411,11 +1392,14 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanar(
         NearRockTexCol     = SampleMasterTriplanarAlbedo(InNearRockAlbedo, InNearRockAlbedoSampler, LocalPos, GeometryNormal, NearParams.RockTiling, 4.0f);
         NearRockTexNorm    = SampleMasterTriplanarNormal(InNearRockNormal, InNearRockNormalSampler, LocalPos, GeometryNormal, NearParams.RockTiling, 4.0f, NearParams.NormalStrength);
 
-        NearSnowTexCol     = SampleMasterTriplanarAlbedo(InNearSnowAlbedo, InNearSnowAlbedoSampler, LocalPos, GeometryNormal, NearParams.SnowTiling, 4.0f);
-        NearSnowTexNorm    = SampleMasterTriplanarNormal(InNearSnowNormal, InNearSnowNormalSampler, LocalPos, GeometryNormal, NearParams.SnowTiling, 4.0f, NearParams.NormalStrength);
+        if (bEnableSnow > 0.5f)
+        {
+            NearSnowTexCol     = SampleMasterTriplanarAlbedo(InNearSnowAlbedo, InNearSnowAlbedoSampler, LocalPos, GeometryNormal, NearParams.SnowTiling, 4.0f);
+            NearSnowTexNorm    = SampleMasterTriplanarNormal(InNearSnowNormal, InNearSnowNormalSampler, LocalPos, GeometryNormal, NearParams.SnowTiling, 4.0f, NearParams.NormalStrength);
+        }
     }
 
-    // 2. Far Triplanar Sampling (Only when FarWeight > 0.001 - Reusing the SAME Texture Objects!)
+    // 2. Far Triplanar Sampling (Evaluated when FarWeight > 0.001 - Reusing Texture Objects with Far Tiling)
     float3 FarSurfaceTexCol  = float3(1.0f, 1.0f, 1.0f);
     float3 FarSurfaceTexNorm = GeometryNormal;
     float3 FarRockTexCol     = float3(1.0f, 1.0f, 1.0f);
@@ -1431,8 +1415,11 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanar(
         FarRockTexCol     = SampleMasterTriplanarAlbedo(InNearRockAlbedo, InNearRockAlbedoSampler, LocalPos, GeometryNormal, FarParams.RockTiling, 4.0f);
         FarRockTexNorm    = SampleMasterTriplanarNormal(InNearRockNormal, InNearRockNormalSampler, LocalPos, GeometryNormal, FarParams.RockTiling, 4.0f, FarParams.NormalStrength);
 
-        FarSnowTexCol     = SampleMasterTriplanarAlbedo(InNearSnowAlbedo, InNearSnowAlbedoSampler, LocalPos, GeometryNormal, FarParams.SnowTiling, 4.0f);
-        FarSnowTexNorm    = SampleMasterTriplanarNormal(InNearSnowNormal, InNearSnowNormalSampler, LocalPos, GeometryNormal, FarParams.SnowTiling, 4.0f, FarParams.NormalStrength);
+        if (bEnableSnow > 0.5f)
+        {
+            FarSnowTexCol     = SampleMasterTriplanarAlbedo(InNearSnowAlbedo, InNearSnowAlbedoSampler, LocalPos, GeometryNormal, FarParams.SnowTiling, 4.0f);
+            FarSnowTexNorm    = SampleMasterTriplanarNormal(InNearSnowNormal, InNearSnowNormalSampler, LocalPos, GeometryNormal, FarParams.SnowTiling, 4.0f, FarParams.NormalStrength);
+        }
     }
 
     float TempWarped, HumWarped;
@@ -1441,6 +1428,7 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanar(
         InVertexColor, InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
         InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
         InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
+        bUseCustomArchetype, InTerrainColorLow, InTerrainColorMid, InTerrainColorHigh, InRockColor, bEnableSnow,
         1.0f, NearParams,
         NearSurfaceTexCol, NearSurfaceTexNorm,
         NearRockTexCol, NearRockTexNorm,
@@ -1450,16 +1438,12 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanar(
         FarRockTexCol, FarRockTexNorm,
         FarSnowTexCol, FarSnowTexNorm,
         OutSurface, TempWarped, HumWarped);
-
-    if (bUseLUTOverride > 0.5f)
-    {
-        float2 LUTCoords = float2(TempWarped, 1.0f - HumWarped);
-        float3 LUTColor = InOptionalWhittakerLUT.SampleLevel(InOptionalWhittakerLUTSampler, LUTCoords, 0.0f).rgb;
-        OutSurface.BaseColor = lerp(OutSurface.BaseColor, LUTColor, 0.85f);
-    }
 }
 
-// 4. Full Master Evaluation with In-Shader 2D Spherical Triplanar Textures (Near & Far tiers, 3 Shared Albedo Samplers)
+/**
+ * Master Evaluation with In-Shader 2D Spherical Triplanar Textures
+ * (Near & Far tiers, 3 Shared Albedo Samplers for Unreal Engine 16-Sampler Limit)
+ */
 void EvaluatePlanetaryMasterSurfaceWithTriplanar(
     in float3 InWorldPos,
     in float3 InPlanetCenter,
@@ -1477,9 +1461,12 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanar(
     in float  InSlopeCliffFalloff,
     in float  InSnowTemperatureThreshold,
     in float  InWetnessIntensity,
-    in float  bUseLUTOverride,
-    in Texture2D InOptionalWhittakerLUT,
-    in SamplerState InOptionalWhittakerLUTSampler,
+    in float  bUseCustomArchetype,
+    in float3 InTerrainColorLow,
+    in float3 InTerrainColorMid,
+    in float3 InTerrainColorHigh,
+    in float3 InRockColor,
+    in float  bEnableSnow,
     in Texture2D InNearSurfaceAlbedo,
     in Texture2D InNearSurfaceNormal,
     in SamplerState InNearSurfaceAlbedoSampler,
@@ -1509,127 +1496,18 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanar(
         InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
         InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
         InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseLUTOverride, InOptionalWhittakerLUT, InOptionalWhittakerLUTSampler,
-        InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler, InNearSurfaceNormal, InNearSurfaceAlbedoSampler,
-        InNearRockAlbedo, InNearRockAlbedoSampler, InNearRockNormal, InNearRockAlbedoSampler,
-        InNearSnowAlbedo, InNearSnowAlbedoSampler, InNearSnowNormal, InNearSnowAlbedoSampler,
+        bUseCustomArchetype, InTerrainColorLow, InTerrainColorMid, InTerrainColorHigh, InRockColor, bEnableSnow,
+        InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler,
+        InNearSurfaceNormal, InNearSurfaceAlbedoSampler,
+        InNearRockAlbedo, InNearRockAlbedoSampler,
+        InNearRockNormal, InNearRockAlbedoSampler,
+        InNearSnowAlbedo, InNearSnowAlbedoSampler,
+        InNearSnowNormal, InNearSnowAlbedoSampler,
         InNearDetailDistance, InNearDetailFadeRange, InNearDetailTiling, InNearDetailRockTiling, InNearDetailSnowTiling,
         InNearDetailColorBlend, InNearDetailNormalStrength,
         InFarDetailDistance, InFarDetailFadeRange, InFarDetailTiling, InFarDetailRockTiling, InFarDetailSnowTiling,
         InFarDetailColorBlend, InFarDetailNormalStrength,
         OutSurface);
-}
-
-// Backward-compatible overload (NearDetail only, 6 individual samplers)
-void EvaluatePlanetaryMasterSurfaceWithTriplanar(
-    in float3 InWorldPos,
-    in float3 InPlanetCenter,
-    in float  InPlanetRadius,
-    in float3 InCameraWorldPos,
-    in float4 InVertexColor,
-    in float3 InMeshWorldNormal,
-    in Texture3D InVolumeTexture,
-    in SamplerState InVolumeSampler,
-    in float  InArchetypeIndex,
-    in float  InMacroFrequency,
-    in float  InMicroFrequency,
-    in float  InNormalStrength,
-    in float  InSlopeCliffThreshold,
-    in float  InSlopeCliffFalloff,
-    in float  InSnowTemperatureThreshold,
-    in float  InWetnessIntensity,
-    in float  bUseLUTOverride,
-    in Texture2D InOptionalWhittakerLUT,
-    in SamplerState InOptionalWhittakerLUTSampler,
-    in Texture2D InNearSurfaceAlbedo,
-    in SamplerState InNearSurfaceAlbedoSampler,
-    in Texture2D InNearSurfaceNormal,
-    in SamplerState InNearSurfaceNormalSampler,
-    in Texture2D InNearRockAlbedo,
-    in SamplerState InNearRockAlbedoSampler,
-    in Texture2D InNearRockNormal,
-    in SamplerState InNearRockNormalSampler,
-    in Texture2D InNearSnowAlbedo,
-    in SamplerState InNearSnowAlbedoSampler,
-    in Texture2D InNearSnowNormal,
-    in SamplerState InNearSnowNormalSampler,
-    in float  InNearDetailDistance,
-    in float  InNearDetailFadeRange,
-    in float  InNearDetailTiling,
-    in float  InNearDetailRockTiling,
-    in float  InNearDetailSnowTiling,
-    in float  InNearDetailColorBlend,
-    in float  InNearDetailNormalStrength,
-    out FPlanetaryMasterOutput OutSurface)
-{
-    float NearDist = InNearDetailDistance > 10.0f ? InNearDetailDistance : PLANETARY_NEAR_DETAIL_DEFAULT_DIST_CM;
-    float NearFade = InNearDetailFadeRange > 5.0f ? InNearDetailFadeRange : PLANETARY_NEAR_DETAIL_DEFAULT_FADE_CM;
-
-    EvaluatePlanetaryMasterSurfaceWithTriplanar(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseLUTOverride, InOptionalWhittakerLUT, InOptionalWhittakerLUTSampler,
-        InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler, InNearSurfaceNormal, InNearSurfaceNormalSampler,
-        InNearRockAlbedo, InNearRockAlbedoSampler, InNearRockNormal, InNearRockNormalSampler,
-        InNearSnowAlbedo, InNearSnowAlbedoSampler, InNearSnowNormal, InNearSnowNormalSampler,
-        NearDist, NearFade, InNearDetailTiling, InNearDetailRockTiling, InNearDetailSnowTiling,
-        InNearDetailColorBlend, InNearDetailNormalStrength,
-        PLANETARY_FAR_DETAIL_DEFAULT_DIST_CM, PLANETARY_FAR_DETAIL_DEFAULT_FADE_CM,
-        InNearDetailTiling * 0.1f, InNearDetailRockTiling * 0.1f, InNearDetailSnowTiling * 0.1f,
-        InNearDetailColorBlend * 0.7f, InNearDetailNormalStrength * 0.6f,
-        OutSurface);
-}
-
-// Backward-compatible overload (NearDetail only, 3 shared samplers)
-void EvaluatePlanetaryMasterSurfaceWithTriplanar(
-    in float3 InWorldPos,
-    in float3 InPlanetCenter,
-    in float  InPlanetRadius,
-    in float3 InCameraWorldPos,
-    in float4 InVertexColor,
-    in float3 InMeshWorldNormal,
-    in Texture3D InVolumeTexture,
-    in SamplerState InVolumeSampler,
-    in float  InArchetypeIndex,
-    in float  InMacroFrequency,
-    in float  InMicroFrequency,
-    in float  InNormalStrength,
-    in float  InSlopeCliffThreshold,
-    in float  InSlopeCliffFalloff,
-    in float  InSnowTemperatureThreshold,
-    in float  InWetnessIntensity,
-    in float  bUseLUTOverride,
-    in Texture2D InOptionalWhittakerLUT,
-    in SamplerState InOptionalWhittakerLUTSampler,
-    in Texture2D InNearSurfaceAlbedo,
-    in Texture2D InNearSurfaceNormal,
-    in SamplerState InNearSurfaceAlbedoSampler,
-    in Texture2D InNearRockAlbedo,
-    in Texture2D InNearRockNormal,
-    in SamplerState InNearRockAlbedoSampler,
-    in Texture2D InNearSnowAlbedo,
-    in Texture2D InNearSnowNormal,
-    in SamplerState InNearSnowAlbedoSampler,
-    in float  InNearDetailDistance,
-    in float  InNearDetailFadeRange,
-    in float  InNearDetailTiling,
-    in float  InNearDetailRockTiling,
-    in float  InNearDetailSnowTiling,
-    in float  InNearDetailColorBlend,
-    in float  InNearDetailNormalStrength,
-    out FPlanetaryMasterOutput OutSurface)
-{
-    EvaluatePlanetaryMasterSurfaceWithTriplanar(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseLUTOverride, InOptionalWhittakerLUT, InOptionalWhittakerLUTSampler,
-        InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler, InNearSurfaceNormal, InNearSurfaceAlbedoSampler,
-        InNearRockAlbedo, InNearRockAlbedoSampler, InNearRockNormal, InNearRockAlbedoSampler,
-        InNearSnowAlbedo, InNearSnowAlbedoSampler, InNearSnowNormal, InNearSnowAlbedoSampler,
-        InNearDetailDistance, InNearDetailFadeRange, InNearDetailTiling, InNearDetailRockTiling, InNearDetailSnowTiling,
-        InNearDetailColorBlend, InNearDetailNormalStrength, OutSurface);
 }
 
 // ============================================================================
@@ -1704,95 +1582,12 @@ float4 EvaluatePlanetaryMasterCoordinates(
         InStrataFrequency, InStrataDistortion);
 }
 
-// --- Packed Diffuse & Roughness ---
-float4 EvaluatePlanetaryMasterPackedDiffuseRoughness(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float4 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity)
-{
-    FPlanetaryMasterOutput OutSurface;
-    EvaluatePlanetaryMasterSurface(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
-        InVertexColor, InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
-        InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        OutSurface);
-    return float4(OutSurface.BaseColor, OutSurface.Roughness);
-}
-
-float4 EvaluatePlanetaryMasterPackedDiffuseRoughness(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float3 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity)
-{
-    return EvaluatePlanetaryMasterPackedDiffuseRoughness(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, float4(InVertexColor, 1.0f), InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity);
-}
-
-// --- Packed Normal & AO ---
-float4 EvaluatePlanetaryMasterPackedNormalAO(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float4 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity)
-{
-    FPlanetaryMasterOutput OutSurface;
-    EvaluatePlanetaryMasterSurface(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
-        InVertexColor, InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
-        InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        OutSurface);
-    return float4(OutSurface.WorldNormal, OutSurface.AmbientOcclusion);
-}
-
 // ============================================================================
 // ALL-IN-ONE CUSTOM NODE EVALUATORS (UE5 MATERIAL GRAPH COMPATIBILITY)
+// Consolidates 2D Triplanar Near & Far Detail workflow with Custom Archetypes & Snow Toggle
 // ============================================================================
 
-// --- A. NEW MASTER OVERLOADS WITH 2D TRIPLANAR TEXTURES (NEAR & FAR TIERS) ---
-
-// 1. With Triplanar 2D Textures (All 6 Texture2D + Sampler Pairs as passed by Unreal), float3 InVertexColor, out float OutEmissive
+// 1. Principal UE5 Custom Node Signature: 6 Texture2D + Sampler Pairs, float3 InVertexColor, out float OutEmissive
 float4 EvaluatePlanetaryMasterFull(
     float3 InWorldPos,
     float3 InPlanetCenter,
@@ -1810,9 +1605,12 @@ float4 EvaluatePlanetaryMasterFull(
     float  InSlopeCliffFalloff,
     float  InSnowTemperatureThreshold,
     float  InWetnessIntensity,
-    float  bUseLUTOverride,
-    Texture2D InOptionalWhittakerLUT,
-    SamplerState InOptionalWhittakerLUTSampler,
+    float  bUseCustomArchetype,
+    float3 InTerrainColorLow,
+    float3 InTerrainColorMid,
+    float3 InTerrainColorHigh,
+    float3 InRockColor,
+    float  bEnableSnow,
     Texture2D InNearSurfaceAlbedo,
     SamplerState InNearSurfaceAlbedoSampler,
     Texture2D InNearSurfaceNormal,
@@ -1852,7 +1650,7 @@ float4 EvaluatePlanetaryMasterFull(
         float4(InVertexColor, 1.0f), InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
         InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
         InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseLUTOverride, InOptionalWhittakerLUT, InOptionalWhittakerLUTSampler,
+        bUseCustomArchetype, InTerrainColorLow, InTerrainColorMid, InTerrainColorHigh, InRockColor, bEnableSnow,
         InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler,
         InNearSurfaceNormal, InNearSurfaceNormalSampler,
         InNearRockAlbedo, InNearRockAlbedoSampler,
@@ -1877,7 +1675,7 @@ float4 EvaluatePlanetaryMasterFull(
     return float4(OutSurface.BaseColor, OutSurface.Roughness);
 }
 
-// 2. With Triplanar 2D Textures (All 6 Texture2D + Sampler Pairs), float4 InVertexColor, out float3 OutEmissive
+// 2. 6 Texture2D + Sampler Pairs, float4 InVertexColor, out float3 OutEmissive
 float4 EvaluatePlanetaryMasterFull(
     float3 InWorldPos,
     float3 InPlanetCenter,
@@ -1895,9 +1693,12 @@ float4 EvaluatePlanetaryMasterFull(
     float  InSlopeCliffFalloff,
     float  InSnowTemperatureThreshold,
     float  InWetnessIntensity,
-    float  bUseLUTOverride,
-    Texture2D InOptionalWhittakerLUT,
-    SamplerState InOptionalWhittakerLUTSampler,
+    float  bUseCustomArchetype,
+    float3 InTerrainColorLow,
+    float3 InTerrainColorMid,
+    float3 InTerrainColorHigh,
+    float3 InRockColor,
+    float  bEnableSnow,
     Texture2D InNearSurfaceAlbedo,
     SamplerState InNearSurfaceAlbedoSampler,
     Texture2D InNearSurfaceNormal,
@@ -1937,7 +1738,7 @@ float4 EvaluatePlanetaryMasterFull(
         InVertexColor, InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
         InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
         InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseLUTOverride, InOptionalWhittakerLUT, InOptionalWhittakerLUTSampler,
+        bUseCustomArchetype, InTerrainColorLow, InTerrainColorMid, InTerrainColorHigh, InRockColor, bEnableSnow,
         InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler,
         InNearSurfaceNormal, InNearSurfaceNormalSampler,
         InNearRockAlbedo, InNearRockAlbedoSampler,
@@ -1962,7 +1763,7 @@ float4 EvaluatePlanetaryMasterFull(
     return float4(OutSurface.BaseColor, OutSurface.Roughness);
 }
 
-// 3. With Triplanar 2D Textures (3 Shared Albedo Samplers), float3 InVertexColor, out float OutEmissive
+// 3. 6 Texture2D + Sampler Pairs, float3 InVertexColor, out float3 OutEmissive
 float4 EvaluatePlanetaryMasterFull(
     float3 InWorldPos,
     float3 InPlanetCenter,
@@ -1980,9 +1781,171 @@ float4 EvaluatePlanetaryMasterFull(
     float  InSlopeCliffFalloff,
     float  InSnowTemperatureThreshold,
     float  InWetnessIntensity,
-    float  bUseLUTOverride,
-    Texture2D InOptionalWhittakerLUT,
-    SamplerState InOptionalWhittakerLUTSampler,
+    float  bUseCustomArchetype,
+    float3 InTerrainColorLow,
+    float3 InTerrainColorMid,
+    float3 InTerrainColorHigh,
+    float3 InRockColor,
+    float  bEnableSnow,
+    Texture2D InNearSurfaceAlbedo,
+    SamplerState InNearSurfaceAlbedoSampler,
+    Texture2D InNearSurfaceNormal,
+    SamplerState InNearSurfaceNormalSampler,
+    Texture2D InNearRockAlbedo,
+    SamplerState InNearRockAlbedoSampler,
+    Texture2D InNearRockNormal,
+    SamplerState InNearRockNormalSampler,
+    Texture2D InNearSnowAlbedo,
+    SamplerState InNearSnowAlbedoSampler,
+    Texture2D InNearSnowNormal,
+    SamplerState InNearSnowNormalSampler,
+    float  InNearDetailDistance,
+    float  InNearDetailFadeRange,
+    float  InNearDetailTiling,
+    float  InNearDetailRockTiling,
+    float  InNearDetailSnowTiling,
+    float  InNearDetailColorBlend,
+    float  InNearDetailNormalStrength,
+    float  InFarDetailDistance,
+    float  InFarDetailFadeRange,
+    float  InFarDetailTiling,
+    float  InFarDetailRockTiling,
+    float  InFarDetailSnowTiling,
+    float  InFarDetailColorBlend,
+    float  InFarDetailNormalStrength,
+    out float3 OutWorldNormal,
+    out float3 OutEmissive,
+    out float  OutMetallic,
+    out float  OutSpecular,
+    out float  OutAO,
+    out float4 OutMasks)
+{
+    return EvaluatePlanetaryMasterFull(
+        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
+        float4(InVertexColor, 1.0f), InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
+        InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
+        bUseCustomArchetype, InTerrainColorLow, InTerrainColorMid, InTerrainColorHigh, InRockColor, bEnableSnow,
+        InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler,
+        InNearSurfaceNormal, InNearSurfaceNormalSampler,
+        InNearRockAlbedo, InNearRockAlbedoSampler,
+        InNearRockNormal, InNearRockNormalSampler,
+        InNearSnowAlbedo, InNearSnowAlbedoSampler,
+        InNearSnowNormal, InNearSnowNormalSampler,
+        InNearDetailDistance, InNearDetailFadeRange, InNearDetailTiling,
+        InNearDetailRockTiling, InNearDetailSnowTiling, InNearDetailColorBlend,
+        InNearDetailNormalStrength,
+        InFarDetailDistance, InFarDetailFadeRange, InFarDetailTiling,
+        InFarDetailRockTiling, InFarDetailSnowTiling, InFarDetailColorBlend,
+        InFarDetailNormalStrength,
+        OutWorldNormal, OutEmissive, OutMetallic, OutSpecular, OutAO, OutMasks);
+}
+
+// 4. 6 Texture2D + Sampler Pairs, float4 InVertexColor, out float OutEmissive
+float4 EvaluatePlanetaryMasterFull(
+    float3 InWorldPos,
+    float3 InPlanetCenter,
+    float  InPlanetRadius,
+    float3 InCameraWorldPos,
+    float4 InVertexColor,
+    float3 InMeshWorldNormal,
+    Texture3D InVolumeTexture,
+    SamplerState InVolumeSampler,
+    float  InArchetypeIndex,
+    float  InMacroFrequency,
+    float  InMicroFrequency,
+    float  InNormalStrength,
+    float  InSlopeCliffThreshold,
+    float  InSlopeCliffFalloff,
+    float  InSnowTemperatureThreshold,
+    float  InWetnessIntensity,
+    float  bUseCustomArchetype,
+    float3 InTerrainColorLow,
+    float3 InTerrainColorMid,
+    float3 InTerrainColorHigh,
+    float3 InRockColor,
+    float  bEnableSnow,
+    Texture2D InNearSurfaceAlbedo,
+    SamplerState InNearSurfaceAlbedoSampler,
+    Texture2D InNearSurfaceNormal,
+    SamplerState InNearSurfaceNormalSampler,
+    Texture2D InNearRockAlbedo,
+    SamplerState InNearRockAlbedoSampler,
+    Texture2D InNearRockNormal,
+    SamplerState InNearRockNormalSampler,
+    Texture2D InNearSnowAlbedo,
+    SamplerState InNearSnowAlbedoSampler,
+    Texture2D InNearSnowNormal,
+    SamplerState InNearSnowNormalSampler,
+    float  InNearDetailDistance,
+    float  InNearDetailFadeRange,
+    float  InNearDetailTiling,
+    float  InNearDetailRockTiling,
+    float  InNearDetailSnowTiling,
+    float  InNearDetailColorBlend,
+    float  InNearDetailNormalStrength,
+    float  InFarDetailDistance,
+    float  InFarDetailFadeRange,
+    float  InFarDetailTiling,
+    float  InFarDetailRockTiling,
+    float  InFarDetailSnowTiling,
+    float  InFarDetailColorBlend,
+    float  InFarDetailNormalStrength,
+    out float3 OutWorldNormal,
+    out float  OutEmissive,
+    out float  OutMetallic,
+    out float  OutSpecular,
+    out float  OutAO,
+    out float4 OutMasks)
+{
+    float3 Emiss3;
+    float4 Res = EvaluatePlanetaryMasterFull(
+        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
+        InVertexColor, InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
+        InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
+        bUseCustomArchetype, InTerrainColorLow, InTerrainColorMid, InTerrainColorHigh, InRockColor, bEnableSnow,
+        InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler,
+        InNearSurfaceNormal, InNearSurfaceNormalSampler,
+        InNearRockAlbedo, InNearRockAlbedoSampler,
+        InNearRockNormal, InNearRockNormalSampler,
+        InNearSnowAlbedo, InNearSnowAlbedoSampler,
+        InNearSnowNormal, InNearSnowNormalSampler,
+        InNearDetailDistance, InNearDetailFadeRange, InNearDetailTiling,
+        InNearDetailRockTiling, InNearDetailSnowTiling, InNearDetailColorBlend,
+        InNearDetailNormalStrength,
+        InFarDetailDistance, InFarDetailFadeRange, InFarDetailTiling,
+        InFarDetailRockTiling, InFarDetailSnowTiling, InFarDetailColorBlend,
+        InFarDetailNormalStrength,
+        OutWorldNormal, Emiss3, OutMetallic, OutSpecular, OutAO, OutMasks);
+    OutEmissive = max(Emiss3.r, max(Emiss3.g, Emiss3.b));
+    return Res;
+}
+
+// 5. 3 Shared Samplers: float3 InVertexColor, out float OutEmissive
+float4 EvaluatePlanetaryMasterFull(
+    float3 InWorldPos,
+    float3 InPlanetCenter,
+    float  InPlanetRadius,
+    float3 InCameraWorldPos,
+    float3 InVertexColor,
+    float3 InMeshWorldNormal,
+    Texture3D InVolumeTexture,
+    SamplerState InVolumeSampler,
+    float  InArchetypeIndex,
+    float  InMacroFrequency,
+    float  InMicroFrequency,
+    float  InNormalStrength,
+    float  InSlopeCliffThreshold,
+    float  InSlopeCliffFalloff,
+    float  InSnowTemperatureThreshold,
+    float  InWetnessIntensity,
+    float  bUseCustomArchetype,
+    float3 InTerrainColorLow,
+    float3 InTerrainColorMid,
+    float3 InTerrainColorHigh,
+    float3 InRockColor,
+    float  bEnableSnow,
     Texture2D InNearSurfaceAlbedo,
     Texture2D InNearSurfaceNormal,
     SamplerState InNearSurfaceAlbedoSampler,
@@ -2017,7 +1980,7 @@ float4 EvaluatePlanetaryMasterFull(
         InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
         InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
         InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseLUTOverride, InOptionalWhittakerLUT, InOptionalWhittakerLUTSampler,
+        bUseCustomArchetype, InTerrainColorLow, InTerrainColorMid, InTerrainColorHigh, InRockColor, bEnableSnow,
         InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler,
         InNearSurfaceNormal, InNearSurfaceAlbedoSampler,
         InNearRockAlbedo, InNearRockAlbedoSampler,
@@ -2033,7 +1996,81 @@ float4 EvaluatePlanetaryMasterFull(
         OutWorldNormal, OutEmissive, OutMetallic, OutSpecular, OutAO, OutMasks);
 }
 
-// 4. With Triplanar 2D Textures (Simplified Single Surface Tiling & 3 Shared Samplers), float3 InVertexColor, out float OutEmissive
+// 6. 3 Shared Samplers: float4 InVertexColor, out float3 OutEmissive
+float4 EvaluatePlanetaryMasterFull(
+    float3 InWorldPos,
+    float3 InPlanetCenter,
+    float  InPlanetRadius,
+    float3 InCameraWorldPos,
+    float4 InVertexColor,
+    float3 InMeshWorldNormal,
+    Texture3D InVolumeTexture,
+    SamplerState InVolumeSampler,
+    float  InArchetypeIndex,
+    float  InMacroFrequency,
+    float  InMicroFrequency,
+    float  InNormalStrength,
+    float  InSlopeCliffThreshold,
+    float  InSlopeCliffFalloff,
+    float  InSnowTemperatureThreshold,
+    float  InWetnessIntensity,
+    float  bUseCustomArchetype,
+    float3 InTerrainColorLow,
+    float3 InTerrainColorMid,
+    float3 InTerrainColorHigh,
+    float3 InRockColor,
+    float  bEnableSnow,
+    Texture2D InNearSurfaceAlbedo,
+    Texture2D InNearSurfaceNormal,
+    SamplerState InNearSurfaceAlbedoSampler,
+    Texture2D InNearRockAlbedo,
+    Texture2D InNearRockNormal,
+    SamplerState InNearRockAlbedoSampler,
+    Texture2D InNearSnowAlbedo,
+    Texture2D InNearSnowNormal,
+    SamplerState InNearSnowAlbedoSampler,
+    float  InNearDetailDistance,
+    float  InNearDetailFadeRange,
+    float  InNearDetailTiling,
+    float  InNearDetailRockTiling,
+    float  InNearDetailSnowTiling,
+    float  InNearDetailColorBlend,
+    float  InNearDetailNormalStrength,
+    float  InFarDetailDistance,
+    float  InFarDetailFadeRange,
+    float  InFarDetailTiling,
+    float  InFarDetailRockTiling,
+    float  InFarDetailSnowTiling,
+    float  InFarDetailColorBlend,
+    float  InFarDetailNormalStrength,
+    out float3 OutWorldNormal,
+    out float3 OutEmissive,
+    out float  OutMetallic,
+    out float  OutSpecular,
+    out float  OutAO,
+    out float4 OutMasks)
+{
+    return EvaluatePlanetaryMasterFull(
+        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
+        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
+        bUseCustomArchetype, InTerrainColorLow, InTerrainColorMid, InTerrainColorHigh, InRockColor, bEnableSnow,
+        InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler,
+        InNearSurfaceNormal, InNearSurfaceAlbedoSampler,
+        InNearRockAlbedo, InNearRockAlbedoSampler,
+        InNearRockNormal, InNearRockAlbedoSampler,
+        InNearSnowAlbedo, InNearSnowAlbedoSampler,
+        InNearSnowNormal, InNearSnowAlbedoSampler,
+        InNearDetailDistance, InNearDetailFadeRange, InNearDetailTiling,
+        InNearDetailRockTiling, InNearDetailSnowTiling, InNearDetailColorBlend,
+        InNearDetailNormalStrength,
+        InFarDetailDistance, InFarDetailFadeRange, InFarDetailTiling,
+        InFarDetailRockTiling, InFarDetailSnowTiling, InFarDetailColorBlend,
+        InFarDetailNormalStrength,
+        OutWorldNormal, OutEmissive, OutMetallic, OutSpecular, OutAO, OutMasks);
+}
+
+// 7. 3 Shared Samplers: float3 InVertexColor, out float3 OutEmissive
 float4 EvaluatePlanetaryMasterFull(
     float3 InWorldPos,
     float3 InPlanetCenter,
@@ -2051,9 +2088,157 @@ float4 EvaluatePlanetaryMasterFull(
     float  InSlopeCliffFalloff,
     float  InSnowTemperatureThreshold,
     float  InWetnessIntensity,
-    float  bUseLUTOverride,
-    Texture2D InOptionalWhittakerLUT,
-    SamplerState InOptionalWhittakerLUTSampler,
+    float  bUseCustomArchetype,
+    float3 InTerrainColorLow,
+    float3 InTerrainColorMid,
+    float3 InTerrainColorHigh,
+    float3 InRockColor,
+    float  bEnableSnow,
+    Texture2D InNearSurfaceAlbedo,
+    Texture2D InNearSurfaceNormal,
+    SamplerState InNearSurfaceAlbedoSampler,
+    Texture2D InNearRockAlbedo,
+    Texture2D InNearRockNormal,
+    SamplerState InNearRockAlbedoSampler,
+    Texture2D InNearSnowAlbedo,
+    Texture2D InNearSnowNormal,
+    SamplerState InNearSnowAlbedoSampler,
+    float  InNearDetailDistance,
+    float  InNearDetailFadeRange,
+    float  InNearDetailTiling,
+    float  InNearDetailRockTiling,
+    float  InNearDetailSnowTiling,
+    float  InNearDetailColorBlend,
+    float  InNearDetailNormalStrength,
+    float  InFarDetailDistance,
+    float  InFarDetailFadeRange,
+    float  InFarDetailTiling,
+    float  InFarDetailRockTiling,
+    float  InFarDetailSnowTiling,
+    float  InFarDetailColorBlend,
+    float  InFarDetailNormalStrength,
+    out float3 OutWorldNormal,
+    out float3 OutEmissive,
+    out float  OutMetallic,
+    out float  OutSpecular,
+    out float  OutAO,
+    out float4 OutMasks)
+{
+    return EvaluatePlanetaryMasterFull(
+        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, float4(InVertexColor, 1.0f), InMeshWorldNormal,
+        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
+        bUseCustomArchetype, InTerrainColorLow, InTerrainColorMid, InTerrainColorHigh, InRockColor, bEnableSnow,
+        InNearSurfaceAlbedo, InNearSurfaceNormal, InNearSurfaceAlbedoSampler,
+        InNearRockAlbedo, InNearRockNormal, InNearRockAlbedoSampler,
+        InNearSnowAlbedo, InNearSnowNormal, InNearSnowAlbedoSampler,
+        InNearDetailDistance, InNearDetailFadeRange, InNearDetailTiling,
+        InNearDetailRockTiling, InNearDetailSnowTiling, InNearDetailColorBlend,
+        InNearDetailNormalStrength,
+        InFarDetailDistance, InFarDetailFadeRange, InFarDetailTiling,
+        InFarDetailRockTiling, InFarDetailSnowTiling, InFarDetailColorBlend,
+        InFarDetailNormalStrength,
+        OutWorldNormal, OutEmissive, OutMetallic, OutSpecular, OutAO, OutMasks);
+}
+
+// 8. 3 Shared Samplers: float4 InVertexColor, out float OutEmissive
+float4 EvaluatePlanetaryMasterFull(
+    float3 InWorldPos,
+    float3 InPlanetCenter,
+    float  InPlanetRadius,
+    float3 InCameraWorldPos,
+    float4 InVertexColor,
+    float3 InMeshWorldNormal,
+    Texture3D InVolumeTexture,
+    SamplerState InVolumeSampler,
+    float  InArchetypeIndex,
+    float  InMacroFrequency,
+    float  InMicroFrequency,
+    float  InNormalStrength,
+    float  InSlopeCliffThreshold,
+    float  InSlopeCliffFalloff,
+    float  InSnowTemperatureThreshold,
+    float  InWetnessIntensity,
+    float  bUseCustomArchetype,
+    float3 InTerrainColorLow,
+    float3 InTerrainColorMid,
+    float3 InTerrainColorHigh,
+    float3 InRockColor,
+    float  bEnableSnow,
+    Texture2D InNearSurfaceAlbedo,
+    Texture2D InNearSurfaceNormal,
+    SamplerState InNearSurfaceAlbedoSampler,
+    Texture2D InNearRockAlbedo,
+    Texture2D InNearRockNormal,
+    SamplerState InNearRockAlbedoSampler,
+    Texture2D InNearSnowAlbedo,
+    Texture2D InNearSnowNormal,
+    SamplerState InNearSnowAlbedoSampler,
+    float  InNearDetailDistance,
+    float  InNearDetailFadeRange,
+    float  InNearDetailTiling,
+    float  InNearDetailRockTiling,
+    float  InNearDetailSnowTiling,
+    float  InNearDetailColorBlend,
+    float  InNearDetailNormalStrength,
+    float  InFarDetailDistance,
+    float  InFarDetailFadeRange,
+    float  InFarDetailTiling,
+    float  InFarDetailRockTiling,
+    float  InFarDetailSnowTiling,
+    float  InFarDetailColorBlend,
+    float  InFarDetailNormalStrength,
+    out float3 OutWorldNormal,
+    out float  OutEmissive,
+    out float  OutMetallic,
+    out float  OutSpecular,
+    out float  OutAO,
+    out float4 OutMasks)
+{
+    float3 Emiss3;
+    float4 Res = EvaluatePlanetaryMasterFull(
+        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
+        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
+        bUseCustomArchetype, InTerrainColorLow, InTerrainColorMid, InTerrainColorHigh, InRockColor, bEnableSnow,
+        InNearSurfaceAlbedo, InNearSurfaceNormal, InNearSurfaceAlbedoSampler,
+        InNearRockAlbedo, InNearRockNormal, InNearRockAlbedoSampler,
+        InNearSnowAlbedo, InNearSnowNormal, InNearSnowAlbedoSampler,
+        InNearDetailDistance, InNearDetailFadeRange, InNearDetailTiling,
+        InNearDetailRockTiling, InNearDetailSnowTiling, InNearDetailColorBlend,
+        InNearDetailNormalStrength,
+        InFarDetailDistance, InFarDetailFadeRange, InFarDetailTiling,
+        InFarDetailRockTiling, InFarDetailSnowTiling, InFarDetailColorBlend,
+        InFarDetailNormalStrength,
+        OutWorldNormal, Emiss3, OutMetallic, OutSpecular, OutAO, OutMasks);
+    OutEmissive = max(Emiss3.r, max(Emiss3.g, Emiss3.b));
+    return Res;
+}
+
+// 9. Simplified Single Surface Tiling & 3 Shared Samplers: float3 InVertexColor, out float OutEmissive
+float4 EvaluatePlanetaryMasterFull(
+    float3 InWorldPos,
+    float3 InPlanetCenter,
+    float  InPlanetRadius,
+    float3 InCameraWorldPos,
+    float3 InVertexColor,
+    float3 InMeshWorldNormal,
+    Texture3D InVolumeTexture,
+    SamplerState InVolumeSampler,
+    float  InArchetypeIndex,
+    float  InMacroFrequency,
+    float  InMicroFrequency,
+    float  InNormalStrength,
+    float  InSlopeCliffThreshold,
+    float  InSlopeCliffFalloff,
+    float  InSnowTemperatureThreshold,
+    float  InWetnessIntensity,
+    float  bUseCustomArchetype,
+    float3 InTerrainColorLow,
+    float3 InTerrainColorMid,
+    float3 InTerrainColorHigh,
+    float3 InRockColor,
+    float  bEnableSnow,
     Texture2D InNearSurfaceAlbedo,
     Texture2D InNearSurfaceNormal,
     SamplerState InNearSurfaceAlbedoSampler,
@@ -2084,7 +2269,7 @@ float4 EvaluatePlanetaryMasterFull(
         InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
         InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
         InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseLUTOverride, InOptionalWhittakerLUT, InOptionalWhittakerLUTSampler,
+        bUseCustomArchetype, InTerrainColorLow, InTerrainColorMid, InTerrainColorHigh, InRockColor, bEnableSnow,
         InNearSurfaceAlbedo, InNearSurfaceNormal, InNearSurfaceAlbedoSampler,
         InNearRockAlbedo, InNearRockNormal, InNearRockAlbedoSampler,
         InNearSnowAlbedo, InNearSnowNormal, InNearSnowAlbedoSampler,
@@ -2095,740 +2280,4 @@ float4 EvaluatePlanetaryMasterFull(
         InFarDetailTiling * 1.5f, InFarDetailTiling * 2.0f, InFarDetailColorBlend,
         InFarDetailNormalStrength,
         OutWorldNormal, OutEmissive, OutMetallic, OutSpecular, OutAO, OutMasks);
-}
-
-// --- B. BACKWARD-COMPATIBLE OVERLOADS WITH ONLY NEAR DETAIL PARAMETERS ---
-
-// 1. With Triplanar 2D Textures (All 6 Texture2D + Sampler Pairs), float3 InVertexColor, out float OutEmissive
-float4 EvaluatePlanetaryMasterFull(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float3 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity,
-    float  bUseLUTOverride,
-    Texture2D InOptionalWhittakerLUT,
-    SamplerState InOptionalWhittakerLUTSampler,
-    Texture2D InNearSurfaceAlbedo,
-    SamplerState InNearSurfaceAlbedoSampler,
-    Texture2D InNearSurfaceNormal,
-    SamplerState InNearSurfaceNormalSampler,
-    Texture2D InNearRockAlbedo,
-    SamplerState InNearRockAlbedoSampler,
-    Texture2D InNearRockNormal,
-    SamplerState InNearRockNormalSampler,
-    Texture2D InNearSnowAlbedo,
-    SamplerState InNearSnowAlbedoSampler,
-    Texture2D InNearSnowNormal,
-    SamplerState InNearSnowNormalSampler,
-    float  InNearDetailDistance,
-    float  InNearDetailFadeRange,
-    float  InNearDetailTiling,
-    float  InNearDetailRockTiling,
-    float  InNearDetailSnowTiling,
-    float  InNearDetailColorBlend,
-    float  InNearDetailNormalStrength,
-    out float3 OutWorldNormal,
-    out float  OutEmissive,
-    out float  OutMetallic,
-    out float  OutSpecular,
-    out float  OutAO,
-    out float4 OutMasks)
-{
-    return EvaluatePlanetaryMasterFull(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseLUTOverride, InOptionalWhittakerLUT, InOptionalWhittakerLUTSampler,
-        InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler,
-        InNearSurfaceNormal, InNearSurfaceNormalSampler,
-        InNearRockAlbedo, InNearRockAlbedoSampler,
-        InNearRockNormal, InNearRockNormalSampler,
-        InNearSnowAlbedo, InNearSnowAlbedoSampler,
-        InNearSnowNormal, InNearSnowNormalSampler,
-        InNearDetailDistance, InNearDetailFadeRange, InNearDetailTiling,
-        InNearDetailRockTiling, InNearDetailSnowTiling, InNearDetailColorBlend,
-        InNearDetailNormalStrength,
-        PLANETARY_FAR_DETAIL_DEFAULT_DIST_CM, PLANETARY_FAR_DETAIL_DEFAULT_FADE_CM,
-        InNearDetailTiling * 0.1f, InNearDetailRockTiling * 0.1f, InNearDetailSnowTiling * 0.1f,
-        InNearDetailColorBlend * 0.7f, InNearDetailNormalStrength * 0.6f,
-        OutWorldNormal, OutEmissive, OutMetallic, OutSpecular, OutAO, OutMasks);
-}
-
-// 2. With Triplanar 2D Textures (All 6 Texture2D + Sampler Pairs), float4 InVertexColor, out float3 OutEmissive
-float4 EvaluatePlanetaryMasterFull(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float4 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity,
-    float  bUseLUTOverride,
-    Texture2D InOptionalWhittakerLUT,
-    SamplerState InOptionalWhittakerLUTSampler,
-    Texture2D InNearSurfaceAlbedo,
-    SamplerState InNearSurfaceAlbedoSampler,
-    Texture2D InNearSurfaceNormal,
-    SamplerState InNearSurfaceNormalSampler,
-    Texture2D InNearRockAlbedo,
-    SamplerState InNearRockAlbedoSampler,
-    Texture2D InNearRockNormal,
-    SamplerState InNearRockNormalSampler,
-    Texture2D InNearSnowAlbedo,
-    SamplerState InNearSnowAlbedoSampler,
-    Texture2D InNearSnowNormal,
-    SamplerState InNearSnowNormalSampler,
-    float  InNearDetailDistance,
-    float  InNearDetailFadeRange,
-    float  InNearDetailTiling,
-    float  InNearDetailRockTiling,
-    float  InNearDetailSnowTiling,
-    float  InNearDetailColorBlend,
-    float  InNearDetailNormalStrength,
-    out float3 OutWorldNormal,
-    out float3 OutEmissive,
-    out float  OutMetallic,
-    out float  OutSpecular,
-    out float  OutAO,
-    out float4 OutMasks)
-{
-    return EvaluatePlanetaryMasterFull(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseLUTOverride, InOptionalWhittakerLUT, InOptionalWhittakerLUTSampler,
-        InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler,
-        InNearSurfaceNormal, InNearSurfaceNormalSampler,
-        InNearRockAlbedo, InNearRockAlbedoSampler,
-        InNearRockNormal, InNearRockNormalSampler,
-        InNearSnowAlbedo, InNearSnowAlbedoSampler,
-        InNearSnowNormal, InNearSnowNormalSampler,
-        InNearDetailDistance, InNearDetailFadeRange, InNearDetailTiling,
-        InNearDetailRockTiling, InNearDetailSnowTiling, InNearDetailColorBlend,
-        InNearDetailNormalStrength,
-        PLANETARY_FAR_DETAIL_DEFAULT_DIST_CM, PLANETARY_FAR_DETAIL_DEFAULT_FADE_CM,
-        InNearDetailTiling * 0.1f, InNearDetailRockTiling * 0.1f, InNearDetailSnowTiling * 0.1f,
-        InNearDetailColorBlend * 0.7f, InNearDetailNormalStrength * 0.6f,
-        OutWorldNormal, OutEmissive, OutMetallic, OutSpecular, OutAO, OutMasks);
-}
-
-// 3. With Triplanar 2D Textures (3 Shared Albedo Samplers), float3 InVertexColor, out float OutEmissive
-float4 EvaluatePlanetaryMasterFull(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float3 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity,
-    float  bUseLUTOverride,
-    Texture2D InOptionalWhittakerLUT,
-    SamplerState InOptionalWhittakerLUTSampler,
-    Texture2D InNearSurfaceAlbedo,
-    Texture2D InNearSurfaceNormal,
-    SamplerState InNearSurfaceAlbedoSampler,
-    Texture2D InNearRockAlbedo,
-    Texture2D InNearRockNormal,
-    SamplerState InNearRockAlbedoSampler,
-    Texture2D InNearSnowAlbedo,
-    Texture2D InNearSnowNormal,
-    SamplerState InNearSnowAlbedoSampler,
-    float  InNearDetailDistance,
-    float  InNearDetailFadeRange,
-    float  InNearDetailTiling,
-    float  InNearDetailRockTiling,
-    float  InNearDetailSnowTiling,
-    float  InNearDetailColorBlend,
-    float  InNearDetailNormalStrength,
-    out float3 OutWorldNormal,
-    out float  OutEmissive,
-    out float  OutMetallic,
-    out float  OutSpecular,
-    out float  OutAO,
-    out float4 OutMasks)
-{
-    return EvaluatePlanetaryMasterFull(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseLUTOverride, InOptionalWhittakerLUT, InOptionalWhittakerLUTSampler,
-        InNearSurfaceAlbedo, InNearSurfaceNormal, InNearSurfaceAlbedoSampler,
-        InNearRockAlbedo, InNearRockNormal, InNearRockAlbedoSampler,
-        InNearSnowAlbedo, InNearSnowNormal, InNearSnowAlbedoSampler,
-        InNearDetailDistance, InNearDetailFadeRange, InNearDetailTiling,
-        InNearDetailRockTiling, InNearDetailSnowTiling, InNearDetailColorBlend,
-        InNearDetailNormalStrength,
-        PLANETARY_FAR_DETAIL_DEFAULT_DIST_CM, PLANETARY_FAR_DETAIL_DEFAULT_FADE_CM,
-        InNearDetailTiling * 0.1f, InNearDetailRockTiling * 0.1f, InNearDetailSnowTiling * 0.1f,
-        InNearDetailColorBlend * 0.7f, InNearDetailNormalStrength * 0.6f,
-        OutWorldNormal, OutEmissive, OutMetallic, OutSpecular, OutAO, OutMasks);
-}
-
-// 4. With Triplanar 2D Textures (Simplified Single Surface Tiling & 3 Shared Samplers), float3 InVertexColor, out float OutEmissive
-float4 EvaluatePlanetaryMasterFull(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float3 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity,
-    float  bUseLUTOverride,
-    Texture2D InOptionalWhittakerLUT,
-    SamplerState InOptionalWhittakerLUTSampler,
-    Texture2D InNearSurfaceAlbedo,
-    Texture2D InNearSurfaceNormal,
-    SamplerState InNearSurfaceAlbedoSampler,
-    Texture2D InNearRockAlbedo,
-    Texture2D InNearRockNormal,
-    SamplerState InNearRockAlbedoSampler,
-    Texture2D InNearSnowAlbedo,
-    Texture2D InNearSnowNormal,
-    SamplerState InNearSnowAlbedoSampler,
-    float  InNearDetailDistance,
-    float  InNearDetailFadeRange,
-    float  InNearDetailTiling,
-    float  InNearDetailColorBlend,
-    float  InNearDetailNormalStrength,
-    out float3 OutWorldNormal,
-    out float  OutEmissive,
-    out float  OutMetallic,
-    out float  OutSpecular,
-    out float  OutAO,
-    out float4 OutMasks)
-{
-    return EvaluatePlanetaryMasterFull(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseLUTOverride, InOptionalWhittakerLUT, InOptionalWhittakerLUTSampler,
-        InNearSurfaceAlbedo, InNearSurfaceNormal, InNearSurfaceAlbedoSampler,
-        InNearRockAlbedo, InNearRockNormal, InNearRockAlbedoSampler,
-        InNearSnowAlbedo, InNearSnowNormal, InNearSnowAlbedoSampler,
-        InNearDetailDistance, InNearDetailFadeRange, InNearDetailTiling,
-        InNearDetailTiling * 1.5f, InNearDetailTiling * 2.0f, InNearDetailColorBlend,
-        InNearDetailNormalStrength,
-        PLANETARY_FAR_DETAIL_DEFAULT_DIST_CM, PLANETARY_FAR_DETAIL_DEFAULT_FADE_CM,
-        InNearDetailTiling * 0.1f, InNearDetailTiling * 0.15f, InNearDetailTiling * 0.2f,
-        InNearDetailColorBlend * 0.7f, InNearDetailNormalStrength * 0.6f,
-        OutWorldNormal, OutEmissive, OutMetallic, OutSpecular, OutAO, OutMasks);
-}
-
-// --- C. PREALIGNED WORLD-ALIGNED EXTERNAL INPUT OVERLOADS ---
-float4 EvaluatePlanetaryMasterFullWithPrealignedTextures(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float3 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity,
-    float  bUseLUTOverride,
-    Texture2D InOptionalWhittakerLUT,
-    SamplerState InOptionalWhittakerLUTSampler,
-    float3 InPrealignedSurfaceColor,
-    float3 InPrealignedSurfaceNormal,
-    float3 InPrealignedRockColor,
-    float3 InPrealignedRockNormal,
-    float3 InPrealignedSnowColor,
-    float3 InPrealignedSnowNormal,
-    float  InNearDetailDistance,
-    float  InNearDetailFadeRange,
-    float  InNearDetailColorBlend,
-    float  InNearDetailNormalStrength,
-    out float3 OutWorldNormal,
-    out float  OutEmissive,
-    out float  OutMetallic,
-    out float  OutSpecular,
-    out float  OutAO,
-    out float4 OutMasks)
-{
-    FPlanetaryNearDetailParameters NearParams;
-    NearParams.Distance = InNearDetailDistance > 10.0f ? InNearDetailDistance : PLANETARY_NEAR_DETAIL_DEFAULT_DIST_CM;
-    NearParams.FadeRange = InNearDetailFadeRange > 5.0f ? InNearDetailFadeRange : PLANETARY_NEAR_DETAIL_DEFAULT_FADE_CM;
-    NearParams.SurfaceTiling = 1.0f;
-    NearParams.RockTiling = 1.0f;
-    NearParams.SnowTiling = 1.0f;
-    NearParams.ColorBlend = saturate(InNearDetailColorBlend);
-    NearParams.NormalStrength = max(InNearDetailNormalStrength, 0.0f);
-    NearParams.TriplanarSharpness = 4.0f;
-
-    FPlanetaryFarDetailParameters FarParams;
-    FarParams.Distance = PLANETARY_FAR_DETAIL_DEFAULT_DIST_CM;
-    FarParams.FadeRange = PLANETARY_FAR_DETAIL_DEFAULT_FADE_CM;
-    FarParams.SurfaceTiling = 1.0f;
-    FarParams.RockTiling = 1.0f;
-    FarParams.SnowTiling = 1.0f;
-    FarParams.ColorBlend = saturate(InNearDetailColorBlend * 0.7f);
-    FarParams.NormalStrength = max(InNearDetailNormalStrength * 0.6f, 0.0f);
-    FarParams.TriplanarSharpness = 4.0f;
-
-    FPlanetaryMasterOutput OutSurface;
-    float TempWarped, HumWarped;
-
-    EvaluatePlanetaryMasterSurfaceCore(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
-        float4(InVertexColor, 1.0f), InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
-        InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        1.0f, NearParams,
-        InPrealignedSurfaceColor, InPrealignedSurfaceNormal,
-        InPrealignedRockColor, InPrealignedRockNormal,
-        InPrealignedSnowColor, InPrealignedSnowNormal,
-        0.0f, FarParams,
-        float3(1, 1, 1), float3(0, 0, 1),
-        float3(1, 1, 1), float3(0, 0, 1),
-        float3(1, 1, 1), float3(0, 0, 1),
-        OutSurface, TempWarped, HumWarped);
-
-    if (bUseLUTOverride > 0.5f)
-    {
-        float2 LUTCoords = float2(TempWarped, 1.0f - HumWarped);
-        float3 LUTColor = InOptionalWhittakerLUT.SampleLevel(InOptionalWhittakerLUTSampler, LUTCoords, 0.0f).rgb;
-        OutSurface.BaseColor = lerp(OutSurface.BaseColor, LUTColor, 0.85f);
-    }
-
-    OutWorldNormal = OutSurface.WorldNormal;
-    OutEmissive    = max(OutSurface.Emissive.r, max(OutSurface.Emissive.g, OutSurface.Emissive.b));
-    OutMetallic    = OutSurface.Metallic;
-    OutSpecular    = OutSurface.Specular;
-    OutAO          = OutSurface.AmbientOcclusion;
-    OutMasks       = float4(OutSurface.SnowMask, OutSurface.SlopeMask, OutSurface.WetnessMask, OutSurface.StrataMask);
-
-    return float4(OutSurface.BaseColor, OutSurface.Roughness);
-}
-
-// 4. Overload accepting pre-projected / WorldAligned External Inputs (for users preferring node-based projection)
-float4 EvaluatePlanetaryMasterFullWithPrealignedTextures(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float3 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity,
-    float  bUseLUTOverride,
-    Texture2D InOptionalWhittakerLUT,
-    SamplerState InOptionalWhittakerLUTSampler,
-    float3 InPrealignedSurfaceColor,
-    float3 InPrealignedSurfaceNormal,
-    float3 InPrealignedRockColor,
-    float3 InPrealignedRockNormal,
-    float3 InPrealignedSnowColor,
-    float3 InPrealignedSnowNormal,
-    float  InNearDetailDistance,
-    float  InNearDetailFadeRange,
-    float  InNearDetailColorBlend,
-    float  InNearDetailNormalStrength,
-    out float3 OutWorldNormal,
-    out float  OutEmissive,
-    out float  OutMetallic,
-    out float  OutSpecular,
-    out float  OutAO,
-    out float4 OutMasks)
-{
-    FPlanetaryNearDetailParameters NearParams;
-    NearParams.Distance = InNearDetailDistance > 10.0f ? InNearDetailDistance : PLANETARY_NEAR_DETAIL_DEFAULT_DIST_CM;
-    NearParams.FadeRange = InNearDetailFadeRange > 5.0f ? InNearDetailFadeRange : PLANETARY_NEAR_DETAIL_DEFAULT_FADE_CM;
-    NearParams.SurfaceTiling = 1.0f;
-    NearParams.RockTiling = 1.0f;
-    NearParams.SnowTiling = 1.0f;
-    NearParams.ColorBlend = saturate(InNearDetailColorBlend);
-    NearParams.NormalStrength = max(InNearDetailNormalStrength, 0.0f);
-    NearParams.TriplanarSharpness = 4.0f;
-
-    FPlanetaryMasterOutput OutSurface;
-    float TempWarped, HumWarped;
-
-    EvaluatePlanetaryMasterSurfaceCore(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
-        float4(InVertexColor, 1.0f), InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
-        InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        1.0f, NearParams,
-        InPrealignedSurfaceColor, InPrealignedSurfaceNormal,
-        InPrealignedRockColor, InPrealignedRockNormal,
-        InPrealignedSnowColor, InPrealignedSnowNormal,
-        OutSurface, TempWarped, HumWarped);
-
-    if (bUseLUTOverride > 0.5f)
-    {
-        float2 LUTCoords = float2(TempWarped, 1.0f - HumWarped);
-        float3 LUTColor = InOptionalWhittakerLUT.SampleLevel(InOptionalWhittakerLUTSampler, LUTCoords, 0.0f).rgb;
-        OutSurface.BaseColor = lerp(OutSurface.BaseColor, LUTColor, 0.85f);
-    }
-
-    OutWorldNormal = OutSurface.WorldNormal;
-    OutEmissive    = max(OutSurface.Emissive.r, max(OutSurface.Emissive.g, OutSurface.Emissive.b));
-    OutMetallic    = OutSurface.Metallic;
-    OutSpecular    = OutSurface.Specular;
-    OutAO          = OutSurface.AmbientOcclusion;
-    OutMasks       = float4(OutSurface.SnowMask, OutSurface.SlopeMask, OutSurface.WetnessMask, OutSurface.StrataMask);
-
-    return float4(OutSurface.BaseColor, OutSurface.Roughness);
-}
-
-// --- B. RETRO-COMPATIBLE OVERLOADS (LEGACY SIGNATURES WITHOUT 2D TEXTURE PINS) ---
-
-// 1. Without LUT, float4 InVertexColor, out float3 OutEmissive
-float4 EvaluatePlanetaryMasterFull(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float4 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity,
-    out float3 OutWorldNormal,
-    out float3 OutEmissive,
-    out float  OutMetallic,
-    out float  OutSpecular,
-    out float  OutAO,
-    out float4 OutMasks)
-{
-    FPlanetaryMasterOutput OutSurface;
-    EvaluatePlanetaryMasterSurface(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
-        InVertexColor, InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
-        InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        OutSurface);
-
-    OutWorldNormal = OutSurface.WorldNormal;
-    OutEmissive    = OutSurface.Emissive;
-    OutMetallic    = OutSurface.Metallic;
-    OutSpecular    = OutSurface.Specular;
-    OutAO          = OutSurface.AmbientOcclusion;
-    OutMasks       = float4(OutSurface.SnowMask, OutSurface.SlopeMask, OutSurface.WetnessMask, OutSurface.StrataMask);
-
-    return float4(OutSurface.BaseColor, OutSurface.Roughness);
-}
-
-// 2. Without LUT, float4 InVertexColor, out float OutEmissive
-float4 EvaluatePlanetaryMasterFull(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float4 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity,
-    out float3 OutWorldNormal,
-    out float  OutEmissive,
-    out float  OutMetallic,
-    out float  OutSpecular,
-    out float  OutAO,
-    out float4 OutMasks)
-{
-    float3 Emiss3;
-    float4 Res = EvaluatePlanetaryMasterFull(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        OutWorldNormal, Emiss3, OutMetallic, OutSpecular, OutAO, OutMasks);
-    OutEmissive = max(Emiss3.r, max(Emiss3.g, Emiss3.b));
-    return Res;
-}
-
-// 3. Without LUT, float3 InVertexColor, out float3 OutEmissive
-float4 EvaluatePlanetaryMasterFull(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float3 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity,
-    out float3 OutWorldNormal,
-    out float3 OutEmissive,
-    out float  OutMetallic,
-    out float  OutSpecular,
-    out float  OutAO,
-    out float4 OutMasks)
-{
-    return EvaluatePlanetaryMasterFull(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, float4(InVertexColor, 1.0f), InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        OutWorldNormal, OutEmissive, OutMetallic, OutSpecular, OutAO, OutMasks);
-}
-
-// 4. Without LUT, float3 InVertexColor, out float OutEmissive
-float4 EvaluatePlanetaryMasterFull(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float3 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity,
-    out float3 OutWorldNormal,
-    out float  OutEmissive,
-    out float  OutMetallic,
-    out float  OutSpecular,
-    out float  OutAO,
-    out float4 OutMasks)
-{
-    float3 Emiss3;
-    float4 Res = EvaluatePlanetaryMasterFull(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, float4(InVertexColor, 1.0f), InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        OutWorldNormal, Emiss3, OutMetallic, OutSpecular, OutAO, OutMasks);
-    OutEmissive = max(Emiss3.r, max(Emiss3.g, Emiss3.b));
-    return Res;
-}
-
-// 5. With LUT, float4 InVertexColor, out float3 OutEmissive
-float4 EvaluatePlanetaryMasterFull(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float4 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity,
-    float  bUseLUTOverride,
-    Texture2D InOptionalWhittakerLUT,
-    SamplerState InOptionalWhittakerLUTSampler,
-    out float3 OutWorldNormal,
-    out float3 OutEmissive,
-    out float  OutMetallic,
-    out float  OutSpecular,
-    out float  OutAO,
-    out float4 OutMasks)
-{
-    FPlanetaryMasterOutput OutSurface;
-    EvaluatePlanetaryMasterSurface(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
-        InVertexColor, InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
-        InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseLUTOverride, InOptionalWhittakerLUT, InOptionalWhittakerLUTSampler,
-        OutSurface);
-
-    OutWorldNormal = OutSurface.WorldNormal;
-    OutEmissive    = OutSurface.Emissive;
-    OutMetallic    = OutSurface.Metallic;
-    OutSpecular    = OutSurface.Specular;
-    OutAO          = OutSurface.AmbientOcclusion;
-    OutMasks       = float4(OutSurface.SnowMask, OutSurface.SlopeMask, OutSurface.WetnessMask, OutSurface.StrataMask);
-
-    return float4(OutSurface.BaseColor, OutSurface.Roughness);
-}
-
-// 6. With LUT, float4 InVertexColor, out float OutEmissive
-float4 EvaluatePlanetaryMasterFull(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float4 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity,
-    float  bUseLUTOverride,
-    Texture2D InOptionalWhittakerLUT,
-    SamplerState InOptionalWhittakerLUTSampler,
-    out float3 OutWorldNormal,
-    out float  OutEmissive,
-    out float  OutMetallic,
-    out float  OutSpecular,
-    out float  OutAO,
-    out float4 OutMasks)
-{
-    float3 Emiss3;
-    float4 Res = EvaluatePlanetaryMasterFull(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseLUTOverride, InOptionalWhittakerLUT, InOptionalWhittakerLUTSampler,
-        OutWorldNormal, Emiss3, OutMetallic, OutSpecular, OutAO, OutMasks);
-    OutEmissive = max(Emiss3.r, max(Emiss3.g, Emiss3.b));
-    return Res;
-}
-
-// 7. With LUT, float3 InVertexColor, out float3 OutEmissive
-float4 EvaluatePlanetaryMasterFull(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float3 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity,
-    float  bUseLUTOverride,
-    Texture2D InOptionalWhittakerLUT,
-    SamplerState InOptionalWhittakerLUTSampler,
-    out float3 OutWorldNormal,
-    out float3 OutEmissive,
-    out float  OutMetallic,
-    out float  OutSpecular,
-    out float  OutAO,
-    out float4 OutMasks)
-{
-    return EvaluatePlanetaryMasterFull(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, float4(InVertexColor, 1.0f), InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseLUTOverride, InOptionalWhittakerLUT, InOptionalWhittakerLUTSampler,
-        OutWorldNormal, OutEmissive, OutMetallic, OutSpecular, OutAO, OutMasks);
-}
-
-// 8. With LUT, float3 InVertexColor, out float OutEmissive (Direct match for existing Unreal Engine Material custom node setup)
-float4 EvaluatePlanetaryMasterFull(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float3 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity,
-    float  bUseLUTOverride,
-    Texture2D InOptionalWhittakerLUT,
-    SamplerState InOptionalWhittakerLUTSampler,
-    out float3 OutWorldNormal,
-    out float  OutEmissive,
-    out float  OutMetallic,
-    out float  OutSpecular,
-    out float  OutAO,
-    out float4 OutMasks)
-{
-    float3 Emiss3;
-    float4 Res = EvaluatePlanetaryMasterFull(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, float4(InVertexColor, 1.0f), InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseLUTOverride, InOptionalWhittakerLUT, InOptionalWhittakerLUTSampler,
-        OutWorldNormal, Emiss3, OutMetallic, OutSpecular, OutAO, OutMasks);
-    OutEmissive = max(Emiss3.r, max(Emiss3.g, Emiss3.b));
-    return Res;
 }
