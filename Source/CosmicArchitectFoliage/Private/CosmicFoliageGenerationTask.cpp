@@ -126,11 +126,13 @@ int32 FFoliageGenerationTask::PrepareAllocations(FRandomStream& Random)
                 const float MaximumSlope = FMath::Max(Entry.SlopeMin, Entry.SlopeMax);
                 const bool bSlopeIsUnrestricted =
                     MinimumSlope <= 0.0f && MaximumSlope >= 90.0f;
+                const bool bNeedsGroundNormal =
+                    (Mesh.Alignment.Type == ECosmicFoliageAlignmentType::AlignToGround) || !bSlopeIsUnrestricted;
                 Allocations.Add({
                     EntryIndex,
                     MeshIndex,
                     TargetCount,
-                    Mesh.bAlignToGround || !bSlopeIsUnrestricted
+                    bNeedsGroundNormal
                 });
                 TotalTargets += TargetCount;
             }
@@ -302,10 +304,7 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
         const FCosmicFoliageMesh& SelectedMesh =
             Entry.Foliage[Alloc.MeshIndex];
 
-        // Calculate transform 
-        const float Yaw = Random.FRandRange(
-            FMath::Min(SelectedMesh.RandomRotationMin, SelectedMesh.RandomRotationMax),
-            FMath::Max(SelectedMesh.RandomRotationMin, SelectedMesh.RandomRotationMax));
+        // Calculate transform
         const float MinimumScale = FMath::Max(
             UE_KINDA_SMALL_NUMBER,
             FMath::Min(SelectedMesh.ScaleMin, SelectedMesh.ScaleMax));
@@ -314,23 +313,53 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
             FMath::Max(SelectedMesh.ScaleMin, SelectedMesh.ScaleMax));
         const float Scale = Random.FRandRange(MinimumScale, MaximumScale);
 
-        FQuat   Rotation;
+        // 1. Random Yaw [0, 360) around the instance's Up axis by default
+        const float Yaw = Random.FRandRange(0.0f, 360.0f);
+        const FQuat LocalYaw = FQuat(FVector::UpVector, FMath::DegreesToRadians(Yaw));
 
-        if (SelectedMesh.bAlignToGround)
+        // 2. Base alignment normal
+        FQuat AlignRotation = FQuat::Identity;
+        switch (SelectedMesh.Alignment.Type)
         {
-            FQuat AlignRotation = FQuat::FindBetweenNormals(FVector::UpVector, Point.CachedNormal);
-            FQuat RandomYawRotation = FQuat(Point.CachedNormal, FMath::DegreesToRadians(Yaw));
-            Rotation = RandomYawRotation * AlignRotation;
+        case ECosmicFoliageAlignmentType::AlignToGround:
+            AlignRotation = FQuat::FindBetweenNormals(FVector::UpVector, Point.CachedNormal);
+            break;
+        case ECosmicFoliageAlignmentType::AlignToPlanetNormal:
+            AlignRotation = FQuat::FindBetweenNormals(FVector::UpVector, Point.Direction);
+            break;
+        case ECosmicFoliageAlignmentType::None:
+        default:
+            AlignRotation = FQuat::Identity;
+            break;
         }
-        else if (SelectedMesh.bAlignToPlanetNormal)
+
+        // 3. Tilt calculation (optimized: skip completely if Max <= 0)
+        FQuat Rotation;
+        const float TiltMax = FMath::Max(SelectedMesh.RandomRotationMin, SelectedMesh.RandomRotationMax);
+
+        if (TiltMax > 0.0f)
         {
-            FQuat AlignRotation = FQuat::FindBetweenNormals(FVector::UpVector, Point.Direction);
-            FQuat RandomYawRotation = FQuat(Point.Direction, FMath::DegreesToRadians(Yaw));
-            Rotation = RandomYawRotation * AlignRotation;
+            const float TiltMin = FMath::Min(SelectedMesh.RandomRotationMin, SelectedMesh.RandomRotationMax);
+            const float TiltAngle = (TiltMax > TiltMin)
+                ? Random.FRandRange(TiltMin, TiltMax)
+                : TiltMin;
+
+            if (TiltAngle > KINDA_SMALL_NUMBER)
+            {
+                const float TiltAzimuthDeg = Random.FRandRange(0.0f, 360.0f);
+                const float TiltAzimuthRad = FMath::DegreesToRadians(TiltAzimuthDeg);
+                const FVector TiltAxis(FMath::Cos(TiltAzimuthRad), FMath::Sin(TiltAzimuthRad), 0.0f);
+                const FQuat LocalTilt = FQuat(TiltAxis, FMath::DegreesToRadians(TiltAngle));
+                Rotation = AlignRotation * (LocalTilt * LocalYaw);
+            }
+            else
+            {
+                Rotation = AlignRotation * LocalYaw;
+            }
         }
         else
         {
-            Rotation = FRotator(0, Yaw, 0).Quaternion();
+            Rotation = AlignRotation * LocalYaw;
         }
 
         FTransform Transform;

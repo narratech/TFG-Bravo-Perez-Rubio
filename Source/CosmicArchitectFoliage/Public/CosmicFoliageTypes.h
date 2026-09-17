@@ -25,6 +25,23 @@ enum class ECosmicFoliageLayer : uint8
     Far       UMETA(DisplayName = "Far")
 };
 
+UENUM(BlueprintType)
+enum class ECosmicFoliageAlignmentType : uint8
+{
+    None                UMETA(DisplayName = "None"),
+    AlignToGround       UMETA(DisplayName = "Align to Ground"),
+    AlignToPlanetNormal UMETA(DisplayName = "Align to Planet Normal")
+};
+
+USTRUCT(BlueprintType)
+struct COSMICARCHITECTFOLIAGE_API FCosmicFoliageAlignment
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Alignment")
+    ECosmicFoliageAlignmentType Type = ECosmicFoliageAlignmentType::AlignToGround;
+};
+
 USTRUCT(BlueprintType)
 struct COSMICARCHITECTFOLIAGE_API FCosmicFoliageMesh
 {
@@ -49,16 +66,13 @@ struct COSMICARCHITECTFOLIAGE_API FCosmicFoliageMesh
     FVector HeightOffset = FVector::ZeroVector;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings")
-    bool bAlignToGround = true;
+    FCosmicFoliageAlignment Alignment;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings")
-    bool bAlignToPlanetNormal = false;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings", meta = (ClampMin = "-180", ClampMax = "180"))
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings", meta = (ClampMin = "0", ClampMax = "180"))
     float RandomRotationMin = 0.0f;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings", meta = (ClampMin = "-180", ClampMax = "180"))
-    float RandomRotationMax = 360.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings", meta = (ClampMin = "0", ClampMax = "180"))
+    float RandomRotationMax = 0.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings")
     bool bHasCollision = true;
