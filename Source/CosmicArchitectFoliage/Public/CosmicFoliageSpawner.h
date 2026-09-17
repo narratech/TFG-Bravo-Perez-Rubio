@@ -192,7 +192,7 @@ private:
     bool bLayerWasEnabled[3] = { false, false, false };
     uint8 ConfiguredLayerMask = 0;
     bool bLayerMaskDirty = true;
-    TSharedPtr<const TArray<FCosmicFoliageCollectionEntry>, ESPMode::ThreadSafe> FoliageEntriesSnapshot;
+    TSharedPtr<const TArray<FCosmicFoliageEntrySnapshot>, ESPMode::ThreadSafe> FoliageEntriesSnapshot;
 
     float GetLayerRadius(ECosmicFoliageLayer Layer) const;
     int32 GetActiveTaskCount() const;

@@ -64,13 +64,15 @@ struct COSMICARCHITECTFOLIAGE_API FCosmicFoliageMesh
     bool bHasCollision = true;
 };
 
+class UCosmicFoliageBiome;
+
 USTRUCT(BlueprintType)
 struct COSMICARCHITECTFOLIAGE_API FCosmicFoliageCollectionEntry
 {
     GENERATED_BODY()
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlacementRules")
-    TArray<FCosmicFoliageMesh> Foliage;
+    TObjectPtr<UCosmicFoliageBiome> FoliageBiome = nullptr;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlacementRules", meta = (ClampMin = "-90", ClampMax = "90"))
     float SlopeMin = 0.0f;
@@ -95,6 +97,39 @@ struct COSMICARCHITECTFOLIAGE_API FCosmicFoliageCollectionEntry
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlacementRules", meta = (ClampMin = "0", ClampMax = "1"))
     float HumidityMax = 1.0f;
+};
+
+USTRUCT(BlueprintType)
+struct COSMICARCHITECTFOLIAGE_API FCosmicFoliageEntrySnapshot
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlacementRules")
+    float SlopeMin = 0.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlacementRules")
+    float SlopeMax = 30.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlacementRules")
+    float ElevationMinKm = -0.1f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlacementRules")
+    float ElevationMaxKm = 1.f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlacementRules")
+    float TemperatureMin = 0.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlacementRules")
+    float TemperatureMax = 1.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlacementRules")
+    float HumidityMin = 0.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlacementRules")
+    float HumidityMax = 1.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PlacementRules")
+    TArray<FCosmicFoliageMesh> Foliage;
 };
 
 USTRUCT()

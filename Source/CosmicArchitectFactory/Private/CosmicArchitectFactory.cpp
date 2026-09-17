@@ -7,6 +7,7 @@
 #include "CosmicNoiseMultiSettingsActions.h"
 #include "CosmicNoiseErosionSettingsActions.h"
 #include "CosmicFoliageCollectionActions.h"
+#include "CosmicFoliageBiomeActions.h"
 
 #define LOCTEXT_NAMESPACE "FCosmicArchitectFactoryModule"
 
@@ -48,6 +49,9 @@ void FCosmicArchitectFactoryModule::StartupModule()
     TSharedPtr<FCosmicFoliageCollectionActions> FoliageActions = MakeShareable(new FCosmicFoliageCollectionActions());
     FoliageActions->MyAssetCategory = CosmicCategory;
 
+    TSharedPtr<FCosmicFoliageBiomeActions> BiomeActions = MakeShareable(new FCosmicFoliageBiomeActions());
+    BiomeActions->MyAssetCategory = CosmicCategory;
+
     AssetTools.RegisterAssetTypeActions(NoiseActions.ToSharedRef());
     AssetTools.RegisterAssetTypeActions(EarthNoiseActions.ToSharedRef());
     AssetTools.RegisterAssetTypeActions(CraterNoiseActions.ToSharedRef());
@@ -55,6 +59,7 @@ void FCosmicArchitectFactoryModule::StartupModule()
     AssetTools.RegisterAssetTypeActions(MultiNoiseActions.ToSharedRef());
     AssetTools.RegisterAssetTypeActions(ErosionNoiseActions.ToSharedRef());
     AssetTools.RegisterAssetTypeActions(FoliageActions.ToSharedRef());
+    AssetTools.RegisterAssetTypeActions(BiomeActions.ToSharedRef());
 }
 
 void FCosmicArchitectFactoryModule::ShutdownModule()

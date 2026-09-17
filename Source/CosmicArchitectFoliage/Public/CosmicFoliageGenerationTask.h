@@ -61,7 +61,7 @@ public:
     FFoliageGenerationTask(
         const FCubeMapCell& InCell,
         ECosmicFoliageLayer InLayer,
-        TSharedPtr<const TArray<FCosmicFoliageCollectionEntry>, ESPMode::ThreadSafe> InFoliageEntries,
+        TSharedPtr<const TArray<FCosmicFoliageEntrySnapshot>, ESPMode::ThreadSafe> InFoliageEntries,
         double InPlanetRadius,
         TSharedPtr<ICosmicNoiseStrategy> InNoiseGenerationStrategy,
         int32 InMaxInstancesPerCell,
@@ -87,7 +87,7 @@ public:
 private:
 
     /** Immutable snapshot created once on the game thread and shared across tasks. */
-    TSharedPtr<const TArray<FCosmicFoliageCollectionEntry>, ESPMode::ThreadSafe> FoliageEntries;
+    TSharedPtr<const TArray<FCosmicFoliageEntrySnapshot>, ESPMode::ThreadSafe> FoliageEntries;
 
     /** Planet radius */
     double PlanetRadius;

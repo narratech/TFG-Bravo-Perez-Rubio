@@ -4,6 +4,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "CosmicFoliageTypes.h"
+#include "CosmicFoliageBiome.h"
 #include "CosmicFoliageCollection.generated.h"
 
 /**
@@ -34,6 +35,9 @@ public:
 	 */
 	FOnFoliageCollectionChanged OnFoliageCollectionChanged;
 
+	virtual void PostLoad() override;
+	virtual void BeginDestroy() override;
+
 protected:
 
 #if WITH_EDITOR
@@ -44,6 +48,12 @@ protected:
 	 * Used to detect changes in the collection and notify dependent systems.
 	 */
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+
+	void BindBiomeDelegates();
+	void UnbindBiomeDelegates();
+	void HandleBiomeChanged();
+
+	TArray<TWeakObjectPtr<UCosmicFoliageBiome>> BoundBiomes;
 
 #endif
 };

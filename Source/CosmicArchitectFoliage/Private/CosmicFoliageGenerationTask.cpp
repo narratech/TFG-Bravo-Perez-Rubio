@@ -99,11 +99,11 @@ int32 FFoliageGenerationTask::PrepareAllocations(FRandomStream& Random)
 {
     Allocations.Reset();
     int64 TotalTargets = 0;
-    const TArray<FCosmicFoliageCollectionEntry>& Entries = *FoliageEntries;
+    const TArray<FCosmicFoliageEntrySnapshot>& Entries = *FoliageEntries;
 
     for (int32 EntryIndex = 0; EntryIndex < Entries.Num(); ++EntryIndex)
     {
-        const FCosmicFoliageCollectionEntry& Entry = Entries[EntryIndex];
+        const FCosmicFoliageEntrySnapshot& Entry = Entries[EntryIndex];
         for (int32 MeshIndex = 0; MeshIndex < Entry.Foliage.Num(); ++MeshIndex)
         {
             const FCosmicFoliageMesh& Mesh = Entry.Foliage[MeshIndex];
@@ -265,7 +265,7 @@ void FFoliageGenerationTask::EvaluateEnvironmentalConditions()
 void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
 {
     ResultInstances.Empty();
-    const TArray<FCosmicFoliageCollectionEntry>& Entries = *FoliageEntries;
+    const TArray<FCosmicFoliageEntrySnapshot>& Entries = *FoliageEntries;
 
     int32 TotalTarget = 0;
     for (const FMeshAllocation& Allocation : Allocations)
@@ -288,7 +288,7 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
         }
 
         const FMeshAllocation& Alloc = Allocations[Point.AllocationIndex];
-        const FCosmicFoliageCollectionEntry& Entry = Entries[Alloc.EntryIndex];
+        const FCosmicFoliageEntrySnapshot& Entry = Entries[Alloc.EntryIndex];
         const bool bValid =
             IsInsideRange(Point.Slope, Entry.SlopeMin, Entry.SlopeMax) &&
             IsInsideRange(Point.Temperature, Entry.TemperatureMin, Entry.TemperatureMax) &&

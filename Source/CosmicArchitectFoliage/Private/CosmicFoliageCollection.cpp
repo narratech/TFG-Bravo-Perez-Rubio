@@ -2,17 +2,61 @@
 
 #include "CosmicFoliageCollection.h"
 
+void UCosmicFoliageCollection::PostLoad()
+{
+    Super::PostLoad();
+
+#if WITH_EDITOR
+    BindBiomeDelegates();
+#endif
+}
+
+void UCosmicFoliageCollection::BeginDestroy()
+{
+#if WITH_EDITOR
+    UnbindBiomeDelegates();
+#endif
+
+    Super::BeginDestroy();
+}
+
 #if WITH_EDITOR
 void UCosmicFoliageCollection::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
     Super::PostEditChangeProperty(PropertyChangedEvent); 
 
-    // We get the property that changed and, if it is part of a struct, its "parent" property
-    FProperty* Property = PropertyChangedEvent.Property;
-    FProperty* MemberProperty = PropertyChangedEvent.MemberProperty;
-
-    if (!Property || !MemberProperty) return;
-
+    BindBiomeDelegates();
     OnFoliageCollectionChanged.Broadcast();
 }
-#endif 
+
+void UCosmicFoliageCollection::BindBiomeDelegates()
+{
+    UnbindBiomeDelegates();
+
+    for (const FCosmicFoliageCollectionEntry& Entry : FoliageEntries)
+    {
+        if (Entry.FoliageBiome && !BoundBiomes.Contains(Entry.FoliageBiome))
+        {
+            Entry.FoliageBiome->OnFoliageBiomeChanged.AddUObject(this, &UCosmicFoliageCollection::HandleBiomeChanged);
+            BoundBiomes.Add(Entry.FoliageBiome);
+        }
+    }
+}
+
+void UCosmicFoliageCollection::UnbindBiomeDelegates()
+{
+    for (const TWeakObjectPtr<UCosmicFoliageBiome>& BiomePtr : BoundBiomes)
+    {
+        if (BiomePtr.IsValid())
+        {
+            BiomePtr->OnFoliageBiomeChanged.RemoveAll(this);
+        }
+    }
+    BoundBiomes.Empty();
+}
+
+void UCosmicFoliageCollection::HandleBiomeChanged()
+{
+    OnFoliageCollectionChanged.Broadcast();
+}
+#endif

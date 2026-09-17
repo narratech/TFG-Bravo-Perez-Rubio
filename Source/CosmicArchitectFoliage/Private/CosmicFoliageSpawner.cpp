@@ -3,8 +3,12 @@
 #include "Engine/World.h"
 #include "ICosmicNoiseStrategy.h"
 #include "CosmicFoliageCollection.h"
+#include "CosmicFoliageBiome.h"
 #include "Kismet/GameplayStatics.h"
 #include "Async/Async.h"
+#if WITH_EDITOR
+#include "Editor.h"
+#endif
 
 
 FORCEINLINE int32 GetIndexFromLayer(ECosmicFoliageLayer Layer)
@@ -181,6 +185,13 @@ void UCosmicFoliageSpawner::ClearFoliage()
     FoliageEntriesSnapshot.Reset();
     ConfiguredLayerMask = 0;
     bLayerMaskDirty = true;
+
+#if WITH_EDITOR
+    if (GEditor)
+    {
+        GEditor->RedrawLevelEditingViewports();
+    }
+#endif
 }
 
 void UCosmicFoliageSpawner::BeginDestroy()
@@ -275,20 +286,41 @@ void UCosmicFoliageSpawner::RefreshConfiguredLayerMask()
     FoliageEntriesSnapshot.Reset();
     if (FoliageCollection)
     {
-        FoliageEntriesSnapshot =
-            MakeShared<TArray<FCosmicFoliageCollectionEntry>, ESPMode::ThreadSafe>(
-                FoliageCollection->FoliageEntries);
+        TArray<FCosmicFoliageEntrySnapshot> Snapshots;
+        Snapshots.Reserve(FoliageCollection->FoliageEntries.Num());
 
-        for (const FCosmicFoliageCollectionEntry& Entry : *FoliageEntriesSnapshot)
+        for (const FCosmicFoliageCollectionEntry& Entry : FoliageCollection->FoliageEntries)
         {
-            for (const FCosmicFoliageMesh& Mesh : Entry.Foliage)
+            if (!Entry.FoliageBiome)
+            {
+                continue;
+            }
+
+            FCosmicFoliageEntrySnapshot SnapshotEntry;
+            SnapshotEntry.SlopeMin = Entry.SlopeMin;
+            SnapshotEntry.SlopeMax = Entry.SlopeMax;
+            SnapshotEntry.ElevationMinKm = Entry.ElevationMinKm;
+            SnapshotEntry.ElevationMaxKm = Entry.ElevationMaxKm;
+            SnapshotEntry.TemperatureMin = Entry.TemperatureMin;
+            SnapshotEntry.TemperatureMax = Entry.TemperatureMax;
+            SnapshotEntry.HumidityMin = Entry.HumidityMin;
+            SnapshotEntry.HumidityMax = Entry.HumidityMax;
+            SnapshotEntry.Foliage = Entry.FoliageBiome->Foliage;
+
+            for (const FCosmicFoliageMesh& Mesh : SnapshotEntry.Foliage)
             {
                 if (Mesh.Mesh)
                 {
                     ConfiguredLayerMask |= 1 << GetIndexFromLayer(Mesh.FoliageLayer);
                 }
             }
+
+            Snapshots.Add(MoveTemp(SnapshotEntry));
         }
+
+        FoliageEntriesSnapshot =
+            MakeShared<TArray<FCosmicFoliageEntrySnapshot>, ESPMode::ThreadSafe>(
+                MoveTemp(Snapshots));
     }
     bLayerMaskDirty = false;
 }
