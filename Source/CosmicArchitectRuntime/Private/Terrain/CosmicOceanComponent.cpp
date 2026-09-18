@@ -291,14 +291,11 @@ void UCosmicOceanComponent::BuildDynamicMaterial()
 
     if (bUseGeneratedMaterial)
     {
-        // Try to load M_CosmicOceanV3 instance or master material (both plugin mount variants)
+        // Try to load MI_CosmicOceanV3 instance or MI_CosmicOceanV2
         const TCHAR* CandidatePaths[] = {
-            TEXT("/CosmicArchitect/CosmicArchitect/Resources/Materials/MI_CosmicOceanV3.MI_CosmicOceanV3"),
-            TEXT("/CosmicArchitect/Resources/Materials/MI_CosmicOceanV3.MI_CosmicOceanV3"),
-            TEXT("/CosmicArchitect/CosmicArchitect/Resources/Materials/M_CosmicOceanV3.M_CosmicOceanV3"),
-            TEXT("/CosmicArchitect/Resources/Materials/M_CosmicOceanV3.M_CosmicOceanV3"),
-            TEXT("/CosmicArchitect/CosmicArchitect/Resources/Materials/MI_CosmicOceanV2.MI_CosmicOceanV2"),
-            TEXT("/CosmicArchitect/Resources/Materials/MI_CosmicOceanGerstner.MI_CosmicOceanGerstner")
+            TEXT("/CosmicArchitect/CosmicArchitect/Resources/Materials/Ocean/MI_CosmicOceanV3.MI_CosmicOceanV3"),
+            TEXT("/CosmicArchitect/Resources/Materials/Ocean/MI_CosmicOceanV3.MI_CosmicOceanV3"),
+            TEXT("/CosmicArchitect/CosmicArchitect/Resources/Materials/Ocean/MI_CosmicOceanV2.MI_CosmicOceanV2")
         };
 
         for (const TCHAR* Path : CandidatePaths)
@@ -358,7 +355,7 @@ void UCosmicOceanComponent::UpdateWaveParameters()
     const double EffectiveRadius = PlanetRadiusCm + SeaLevelKm * 100000.0;
     const FVector OwnerLocation = GetOwner() ? GetOwner()->GetActorLocation() : FVector::ZeroVector;
 
-    // --- Near Clipmap Ocean Material ---
+    //Near Clipmap Ocean Material
     if (DynamicOceanMat)
     {
         DynamicOceanMat->SetScalarParameterValue(FName("PlanetRadius"), static_cast<float>(EffectiveRadius));
@@ -388,7 +385,7 @@ void UCosmicOceanComponent::UpdateWaveParameters()
         DynamicOceanMat->SetScalarParameterValue(FName("WaterRoughness"), WaterRoughness);
     }
 
-    // --- Distant Sphere Ocean Material (Solution 3: Zero Displacement for Orbital Efficiency) ---
+    //Distant Sphere Ocean Material
     if (DynamicFarOceanMat)
     {
         DynamicFarOceanMat->SetScalarParameterValue(FName("PlanetRadius"), static_cast<float>(EffectiveRadius));
