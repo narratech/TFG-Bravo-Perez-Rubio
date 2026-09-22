@@ -17,8 +17,7 @@ DEFINE_LOG_CATEGORY(LogCosmicCollision);
 
 UCosmicPlanetCollisionManager::UCosmicPlanetCollisionManager()
 {
-	PrimaryComponentTick.bCanEverTick = true;
-	PrimaryComponentTick.TickGroup = TG_PrePhysics;
+	PrimaryComponentTick.bCanEverTick = false;
 }
 
 void UCosmicPlanetCollisionManager::BeginPlay()
@@ -275,22 +274,22 @@ void UCosmicPlanetCollisionManager::RecyclePatch(UCosmicCollisionComponent* Patc
 	PatchPool.Add(Patch);
 }
 
-void UCosmicPlanetCollisionManager::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+bool UCosmicPlanetCollisionManager::UpdateCollisions()
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	bool bAnyCollisionUpdated = false;
 
 	ACosmicPlanet* Planet = Cast<ACosmicPlanet>(GetOwner());
-	if (!Planet) return;
+	if (!Planet) return false;
 
 	const double PlanetRadius = Planet->RadiusKm * 100000.0;
-	if (PlanetRadius <= 0.0) return;
+	if (PlanetRadius <= 0.0) return false;
 
 	const FVector PlanetCenter = Planet->GetActorLocation();
 	TSharedPtr<ICosmicNoiseStrategy> NoiseStrategy = Planet->GetNoiseStrategy();
-	if (!NoiseStrategy.IsValid()) return;
+	if (!NoiseStrategy.IsValid()) return false;
 
 	UWorld* World = GetWorld();
-	if (!World) return;
+	if (!World) return false;
 
 	// Iterate through all explicitly subscribed targets
 	for (int32 i = SubscribedTargets.Num() - 1; i >= 0; --i)
@@ -358,6 +357,7 @@ void UCosmicPlanetCollisionManager::TickComponent(float DeltaTime, ELevelTick Ti
 							PlanetCenter
 						);
 						ExistingEntry->LastActorLocation = ActorLoc;
+						bAnyCollisionUpdated = true;
 					}
 				}
 			}
@@ -379,6 +379,7 @@ void UCosmicPlanetCollisionManager::TickComponent(float DeltaTime, ELevelTick Ti
 					NewEntry.CollisionPatch = NewPatch;
 					NewEntry.LastActorLocation = ActorLoc;
 					ActiveTrackedPatches.Add(NewEntry);
+					bAnyCollisionUpdated = true;
 				}
 			}
 		}
@@ -405,4 +406,6 @@ void UCosmicPlanetCollisionManager::TickComponent(float DeltaTime, ELevelTick Ti
 			ActiveTrackedPatches.RemoveAt(PatchIdx);
 		}
 	}
+
+	return bAnyCollisionUpdated;
 }

@@ -120,11 +120,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Planet Collision")
 	void ClearAllPatches();
 
+	/** Updates procedural collision patches for all registered actors. Returns true if any patch was requested to update or allocated this frame. */
+	bool UpdateCollisions();
+
 protected:
 
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 private:
 

@@ -21,7 +21,8 @@
  */
 ACosmicPlanet::ACosmicPlanet()
 {
-    PrimaryActorTick.bCanEverTick = true; 
+    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bStartWithTickEnabled = true;
 
     // Static planetary bodies do not require network replication
     bReplicates = false;
@@ -60,6 +61,116 @@ void ACosmicPlanet::BeginPlay()
 {
     Super::BeginPlay();
     UpdateNoiseStrategy();
+    ElapsedTime = FMath::FRandRange(0.f, TimeToRefresh);
+}
+
+void ACosmicPlanet::Tick(float DeltaSeconds)
+{
+    Super::Tick(DeltaSeconds);
+
+    // On dedicated server, only run physical collision management
+    if (IsRunningDedicatedServer())
+    {
+        if (CollisionManager)
+        {
+            CollisionManager->UpdateCollisions();
+        }
+        return;
+    }
+
+    if (!ClipmapComponent)
+    {
+        return;
+    }
+
+    ElapsedTime += DeltaSeconds;
+    if (ElapsedTime < TimeToRefresh)
+    {
+        return;
+    }
+    ElapsedTime -= TimeToRefresh;
+
+    FVector ViewerPos;
+    FVector SurfacePos;
+    FVector N;
+    const double PlanetRadius = RadiusKm * 100000.0;
+
+    // Use fast distance first to determine if we are in performance mode
+    const double FastDistance = ClipmapComponent->GetFastDistanceToSurface(ViewerPos, SurfacePos, N);
+    const bool bPerformanceMode = FastDistance > PlanetRadius * ClipmapComponent->HeightVisibility;
+
+    if (bPerformanceMode)
+    {
+        ClipmapComponent->UpdateMeshPhase(ViewerPos, SurfacePos, N, static_cast<float>(FastDistance));
+    }
+    else
+    {
+        const double DistanceToSurface = ClipmapComponent->GetDistanceToSurface(ViewerPos, SurfacePos, N);
+        const FVector FoliageViewerPos = SurfacePos + N * DistanceToSurface;
+
+        switch (CurrentPhase)
+        {
+        case ECosmicPlanetUpdatePhase::Foliage:
+            if (FoliageSpawnerComponent)
+            {
+                FoliageSpawnerComponent->UpdateFoliageSpawner(
+                    TimeToRefresh,
+                    FoliageViewerPos,
+                    GetActorLocation(),
+                    PlanetRadius,
+                    DistanceToSurface,
+                    GetNoiseStrategy()
+                );
+            }
+            break;
+
+        case ECosmicPlanetUpdatePhase::Collision:
+        {
+            const bool bCollisionUpdated = CollisionManager ? CollisionManager->UpdateCollisions() : false;
+            bool bOceanApplied = false;
+
+            if (OceanComponent && OceanComponent->HasCompletedTask())
+            {
+                // Prioritize applying ocean mesh update when collision is free to avoid accumulating frame work.
+                // If collision was updated, defer at most 2 collision cycles before applying anyway.
+                if (!bCollisionUpdated || DeferredOceanPhaseCount >= 2)
+                {
+                    OceanComponent->CheckAndApplyOceanMeshUpdate();
+                    bOceanApplied = true;
+                    DeferredOceanPhaseCount = 0;
+                }
+                else
+                {
+                    DeferredOceanPhaseCount++;
+                }
+            }
+            else
+            {
+                DeferredOceanPhaseCount = 0;
+            }
+
+            // Only run extra foliage if neither collision nor ocean consumed this frame's budget
+            if (!bCollisionUpdated && !bOceanApplied && FoliageSpawnerComponent)
+            {
+                FoliageSpawnerComponent->UpdateFoliageSpawner(
+                    TimeToRefresh,
+                    FoliageViewerPos,
+                    GetActorLocation(),
+                    PlanetRadius,
+                    DistanceToSurface,
+                    GetNoiseStrategy()
+                );
+            }
+            break;
+        }
+
+        case ECosmicPlanetUpdatePhase::Mesh:
+            ClipmapComponent->UpdateMeshPhase(ViewerPos, SurfacePos, N, static_cast<float>(DistanceToSurface));
+            break;
+        }
+
+        CurrentPhase = static_cast<ECosmicPlanetUpdatePhase>(((uint8)CurrentPhase + 1) % 3);
+    }
 }
 
 #if WITH_EDITOR
@@ -190,6 +301,8 @@ void ACosmicPlanet::ClearData()
         NoiseClass->OnNoiseSettingsChanged.RemoveAll(this);
     }
 #endif
+
+    DeferredOceanPhaseCount = 0;
 }
 
 /**

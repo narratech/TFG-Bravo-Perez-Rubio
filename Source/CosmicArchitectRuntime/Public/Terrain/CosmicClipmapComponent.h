@@ -86,6 +86,27 @@ public:
      */
     void UpdateNoiseEvaluator();
 
+    /**
+     * Updates clipmap levels.
+     */
+    void UpdateMeshPhase(const FVector& ViewerPos, const FVector& SurfacePos,
+        const FVector& N, float DistanceToSurface);
+
+    /**
+     * Calculates true distance to surface using noise.
+     */
+    double GetDistanceToSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N);
+
+    /**
+     * Calculates approximate distance to surface without noise.
+     */
+    double GetFastDistanceToSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N);
+
+    /**
+     * Gets current player or camera position.
+     */
+    FVector GetPlayerLocation();
+
     /** Root to which generated levels are attached */
     USceneComponent* ParentRoot;
 
@@ -156,23 +177,6 @@ protected:
     /** Active procedural generation strategy */
     TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy;
 
-    /**
-     * Update phases distributed across frames
-     * to reduce per-tick cost.
-     */
-    enum class EUpdatePhase : uint8
-    {
-        Foliage,
-        Collision,
-        Mesh
-    };
-
-    /** Time accumulated since last update */
-    float ElapsedTime = 0;
-
-    /** Currently used refresh time */
-    float TimeToRefreshActive;
-
     /** Indicates whether system is in performance mode */
     bool bPerformaceMode = false;
 
@@ -224,21 +228,11 @@ protected:
     /** Large noise scale */
     float NoiseScaleLarge = 1.f;
 
-    /** System update interval */
-    float TimeToRefresh = 0.01f;
-
-    /** Last position used to update collision */
-    FVector LastMeshPlayerPos;
-
     /** Current position of owning actor */
     FVector CurrentActorPosition;
 
-    /** Current update phase */
-    EUpdatePhase CurrentPhase = EUpdatePhase::Mesh;
-
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
-    virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 #if WITH_EDITOR
 
@@ -249,21 +243,6 @@ protected:
     virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 
 #endif
-
-    /**
-     * Updates procedural foliage system.
-     *
-     * @param DeltaTime Elapsed time since last frame.
-     * @param ViewerPos Current player position.
-     * @param DistanceToSurface Distance to surface.
-     */
-    void UpdateFoliagePhase(float DeltaTime, const FVector& ViewerPos, float DistanceToSurface);
-
-    /**
-     * Updates clipmap levels.
-     */
-    void UpdateMeshPhase(const FVector& ViewerPos, const FVector& SurfacePos,
-        const FVector& N, float DistanceToSurface);
 
     /** Updates quantized tangent frame if observer changes angular cell. */
     bool UpdateSnappedProjectionFrame(const FVector& ViewerNormal);
@@ -284,21 +263,6 @@ protected:
      * relative to surface normal.
      */
     FRotator GetPatchRotation(const FVector& SurfacePos) const;
-
-    /**
-     * Calculates true distance to surface using noise.
-     */
-    double GetDistanceToSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N);
-
-    /**
-     * Calculates approximate distance to surface without noise.
-     */
-    double GetFastDistanceToSurface(FVector& ViewerPos, FVector& SurfacePos, FVector& N);
-
-    /**
-     * Gets current player or camera position.
-     */
-    FVector GetPlayerLocation();
 
     /**
      * Calculates how many levels should be decreased.
@@ -350,7 +314,4 @@ private:
 
 	/** Last computed viewer coordinates in tangent projection plane. */
 	FVector2D LastViewerCoordinates = FVector2D::ZeroVector;
-
-	/** Number of collision phases the ocean update was deferred because collision was busy. */
-	int32 DeferredOceanPhaseCount = 0;
 };

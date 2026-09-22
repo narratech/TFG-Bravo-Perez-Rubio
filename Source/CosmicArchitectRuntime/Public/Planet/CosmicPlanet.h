@@ -15,6 +15,14 @@ class UCosmicOceanComponent;
 class UCosmicFoliageCollection;
 class UMaterialInstance;
 
+UENUM(BlueprintType)
+enum class ECosmicPlanetUpdatePhase : uint8
+{
+	Foliage,
+	Collision,
+	Mesh
+};
+
 /**
  * ACosmicPlanet
  * Main actor representing a procedural planetary body. 
@@ -29,6 +37,9 @@ UCLASS(HideCategories = (
 	GENERATED_BODY()
 
 public:
+
+	virtual void Tick(float DeltaSeconds) override;
+	virtual bool ShouldTickIfViewportsOnly() const override { return true; }
 
 	/** Base planet radius in Kilometers (supports Large World Coordinates). */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Planet")
@@ -190,6 +201,19 @@ protected:
 
 	/** Shared procedural noise strategy for visual terrain clipmaps and physics collision */
 	TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy;
+
+	/** Accumulated time since last planet tick update */
+	float ElapsedTime = 0.0f;
+
+	/** System update interval (cadence) */
+	UPROPERTY(EditAnywhere, Category = "Planet|Update")
+	float TimeToRefresh = 0.01f;
+
+	/** Current update phase in round-robin */
+	ECosmicPlanetUpdatePhase CurrentPhase = ECosmicPlanetUpdatePhase::Mesh;
+
+	/** Number of collision cycles deferred for ocean application */
+	int32 DeferredOceanPhaseCount = 0;
 
 #if WITH_EDITOR
 	/** Called before a property is modified in the Details panel. */

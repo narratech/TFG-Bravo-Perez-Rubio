@@ -66,11 +66,6 @@ void UCosmicFoliageSpawner::InitFoliageSpawner(float RadiusKm)
 
 void UCosmicFoliageSpawner::UpdateFoliageSpawner(float DeltaTime, const FVector& ViewerLocation, const FVector& PlanetCenter, double PlanetRadius, double DistanceToSurface, TSharedPtr<ICosmicNoiseStrategy> NoiseGenerationStrategy)
 {
-    if (IsRunningDedicatedServer() || (GetWorld() && GetWorld()->GetNetMode() == NM_DedicatedServer))
-    {
-        return;
-    }
-
     if (!FoliageCollection || FoliageCollection->FoliageEntries.IsEmpty())
     {
         return;

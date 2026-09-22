@@ -24,11 +24,8 @@
 
 
 UCosmicClipmapComponent::UCosmicClipmapComponent()
-{ 
-
-    bTickInEditor = true;
-
-	PrimaryComponentTick.bCanEverTick = true;
+{
+	PrimaryComponentTick.bCanEverTick = false;
 }
 
 void UCosmicClipmapComponent::BeginPlay()
@@ -38,27 +35,19 @@ void UCosmicClipmapComponent::BeginPlay()
     // On dedicated server, procedural terrain meshes and clipmaps are disabled
     if (IsRunningDedicatedServer() || (GetWorld() && GetWorld()->GetNetMode() == NM_DedicatedServer))
     {
-        SetComponentTickEnabled(false);
         ClearLevels();
         return;
     }
 
-    TimeToRefreshActive = TimeToRefresh;
-
     FVector SurfacePos;
     FVector N;
     FVector ViewerPos;
-    float DistanceToSurface;
 
     bPerformaceMode = true;
 
-    ElapsedTime = FMath::FRandRange(0.f, TimeToRefresh);
+    const double DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
 
-    DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
-
-    UpdateMeshPhase(ViewerPos, SurfacePos, N, DistanceToSurface);
-
-    LastMeshPlayerPos = ViewerPos;
+    UpdateMeshPhase(ViewerPos, SurfacePos, N, static_cast<float>(DistanceToSurface));
 }
 
 void UCosmicClipmapComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) {
@@ -67,155 +56,14 @@ void UCosmicClipmapComponent::EndPlay(const EEndPlayReason::Type EndPlayReason) 
     Super::EndPlay(EndPlayReason);
 }
 
-void UCosmicClipmapComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
-{
-    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-    // On dedicated server, procedural terrain meshes and clipmaps are disabled
-    if (IsRunningDedicatedServer() || (GetWorld() && GetWorld()->GetNetMode() == NM_DedicatedServer))
-    {
-        return;
-    }
-
-    ElapsedTime += DeltaTime;
-
-    if (DynamicPlanetMat) {
-        DynamicPlanetMat->SetVectorParameterValue("PlanetCenter", GetOwner()->GetActorLocation());
-    }
-
-    if (ElapsedTime <= TimeToRefresh)
-        return;
-
-    if (!UseClipmap && bPerformanceBuild)
-        return;
-
-    // In game world, ensure player pawn has a valid location before triggering terrain/collision/foliage updates
-    if (GetWorld() && GetWorld()->IsGameWorld())
-    {
-        const FVector CurrentPlayerLoc = GetPlayerLocation();
-        if (CurrentPlayerLoc.IsZero())
-        {
-            return;
-        }
-    }
-
-    ElapsedTime = ElapsedTime - TimeToRefresh;
-
-    FVector SurfacePos;
-    FVector N;
-    FVector ViewerPos;
-    float DistanceToSurface;  
- 
-    const EUpdatePhase ExecutedPhase = CurrentPhase;
-    bool bOceanAppliedThisTick = false;
-
-    if (!bPerformaceMode) {
-
-        bool UpdateFoliageExtra = false;
-        DistanceToSurface = GetDistanceToSurface(ViewerPos, SurfacePos, N);
-
-        // PER-PHASE EXECUTION
-        switch (CurrentPhase)
-        {
-        case EUpdatePhase::Foliage:
-            UpdateFoliagePhase(DeltaTime, SurfacePos + N * DistanceToSurface, DistanceToSurface);
-            break;
-
-        case EUpdatePhase::Collision:
-        {
-            const bool bCollisionUpdated = false;
-            bool bOceanApplied = false;
-
-            if (OceanComponent && OceanComponent->HasCompletedTask())
-            {
-                // Prioritize applying ocean mesh update when collision is free to avoid accumulating frame work.
-                // If collision was updated, defer at most 2 collision cycles before applying anyway.
-                if (!bCollisionUpdated || DeferredOceanPhaseCount >= 2)
-                {
-                    OceanComponent->CheckAndApplyOceanMeshUpdate();
-                    bOceanApplied = true;
-                    DeferredOceanPhaseCount = 0;
-                }
-                else
-                {
-                    DeferredOceanPhaseCount++;
-                }
-            }
-            else
-            {
-                DeferredOceanPhaseCount = 0;
-            }
-
-            bOceanAppliedThisTick = bOceanApplied;
-
-            // Only run extra foliage if neither collision nor ocean consumed this frame's budget
-            UpdateFoliageExtra = !bCollisionUpdated && !bOceanApplied;
-            break;
-        }
-
-        case EUpdatePhase::Mesh:
-            UpdateMeshPhase(ViewerPos, SurfacePos, N, DistanceToSurface);
-            break;
-        }
-
-        // If collision doesn't need update, request foliage update
-        if (UpdateFoliageExtra)
-        {
-            //CurrentPhase = EUpdatePhase::Foliage;
-            UpdateFoliagePhase(DeltaTime, SurfacePos + N * DistanceToSurface, DistanceToSurface);
-        }
-        
-        CurrentPhase = (EUpdatePhase)(((uint8)CurrentPhase + 1) % 3);
-    }
-    else
-    {
-        DistanceToSurface = GetFastDistanceToSurface(ViewerPos, SurfacePos, N);
-        UpdateMeshPhase(ViewerPos, SurfacePos, N, DistanceToSurface);
-    }
-
-    /*FString PhaseName = TEXT("Performance");
-    if (!bPerformaceMode)
-    {
-        switch (ExecutedPhase)
-        {
-        case EUpdatePhase::Foliage:
-            PhaseName = TEXT("Foliage");
-            break;
-        case EUpdatePhase::Collision:
-            PhaseName = bOceanAppliedThisTick ? TEXT("Collision (Ocean)") : TEXT("Collision");
-            break;
-        case EUpdatePhase::Mesh:
-            PhaseName = TEXT("Mesh");
-            break;
-        }
-    }
-
-    const double ElapsedMs = (FPlatformTime::Seconds() - StartTime) * 1000.0;
-    if (ElapsedMs > 0.5)
-    {
-        const FString Message = FString::Printf(TEXT("CosmicClipmapComponent Tick [%s]: %.4f ms"), *PhaseName, ElapsedMs);
-        if (GEngine)
-        {
-            GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Yellow, Message);
-        }
-        UE_LOG(LogTemp, Log, TEXT("%s"), *Message);
-    }*/
-}
-
-void UCosmicClipmapComponent::UpdateFoliagePhase(float DeltaTime, const FVector& ViewerPos, float DistanceToSurface)
-{
-    if (FoliageSpawnerComponent)
-    {
-        FoliageSpawnerComponent->UpdateFoliageSpawner(
-            TimeToRefresh, ViewerPos, CurrentActorPosition,
-            PlanetRadius, DistanceToSurface, NoiseGenerationStrategy
-        );
-    }
-}
-
 void UCosmicClipmapComponent::UpdateMeshPhase(const FVector& ViewerPos, const FVector& SurfacePos,
     const FVector& N, float DistanceToSurface)
 {
+    if (DynamicPlanetMat && GetOwner())
+    {
+        DynamicPlanetMat->SetVectorParameterValue("PlanetCenter", GetOwner()->GetActorLocation());
+    }
+
     if (!FarLevel) return;
 
     // Permanent update of FarLevel (performance)
@@ -694,7 +542,6 @@ void UCosmicClipmapComponent::ClearLevels()
     Levels.Empty();
     DynamicPlanetMat = nullptr;
     bPerformanceBuild = false;
-    DeferredOceanPhaseCount = 0;
 }
 
 void UCosmicClipmapComponent::ResetPointersAfterDuplicate(USceneComponent* NewRoot)
@@ -707,7 +554,6 @@ void UCosmicClipmapComponent::ResetPointersAfterDuplicate(USceneComponent* NewRo
     bPerformanceBuild = false;
     bPerformaceMode = false;
     OceanComponent = nullptr;
-    DeferredOceanPhaseCount = 0;
     bSnappedProjectionValid = false;
     bCoarsestGridCenterValid = false;
     ++SnappedProjectionRevision;
