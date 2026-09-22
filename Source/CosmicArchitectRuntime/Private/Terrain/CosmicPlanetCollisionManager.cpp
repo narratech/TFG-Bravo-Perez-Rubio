@@ -4,7 +4,6 @@
 #include "Terrain/CosmicCollisionComponent.h"
 #include "Terrain/ICosmicCollisionTarget.h"
 #include "ICosmicNoiseStrategy.h"
-#include "Planet/CosmicPlanet.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -214,7 +213,7 @@ float UCosmicPlanetCollisionManager::CalculateActorRelevance(
 	return Score;
 }
 
-UCosmicCollisionComponent* UCosmicPlanetCollisionManager::AcquirePatchFromPool(ACosmicPlanet* Planet, double PlanetRadius)
+UCosmicCollisionComponent* UCosmicPlanetCollisionManager::AcquirePatchFromPool(double PlanetRadius)
 {
 	while (PatchPool.Num() > 0)
 	{
@@ -237,8 +236,11 @@ UCosmicCollisionComponent* UCosmicPlanetCollisionManager::AcquirePatchFromPool(A
 		}
 	}
 
+	AActor* OwnerActor = GetOwner();
+	if (!OwnerActor) return nullptr;
+
 	// Instantiate new collision patch component
-	UCosmicCollisionComponent* NewPatch = NewObject<UCosmicCollisionComponent>(Planet, NAME_None, RF_Transient);
+	UCosmicCollisionComponent* NewPatch = NewObject<UCosmicCollisionComponent>(OwnerActor, NAME_None, RF_Transient);
 	if (NewPatch)
 	{
 		NewPatch->Mobility = EComponentMobility::Stationary;
@@ -254,7 +256,7 @@ UCosmicCollisionComponent* UCosmicPlanetCollisionManager::AcquirePatchFromPool(A
 		NewPatch->DebugLineWidth = DebugLineWidth;
 		NewPatch->RegisterComponent();
 
-		USceneComponent* AttachParent = Planet->GetRootComponent();
+		USceneComponent* AttachParent = OwnerActor->GetRootComponent();
 		if (AttachParent)
 		{
 			NewPatch->AttachToComponent(AttachParent, FAttachmentTransformRules::KeepRelativeTransform);
@@ -274,22 +276,20 @@ void UCosmicPlanetCollisionManager::RecyclePatch(UCosmicCollisionComponent* Patc
 	PatchPool.Add(Patch);
 }
 
-bool UCosmicPlanetCollisionManager::UpdateCollisions()
+bool UCosmicPlanetCollisionManager::UpdateCollisions(
+	const FVector& PlanetCenter,
+	double PlanetRadius,
+	TSharedPtr<ICosmicNoiseStrategy> NoiseStrategy)
 {
-	bool bAnyCollisionUpdated = false;
-
-	ACosmicPlanet* Planet = Cast<ACosmicPlanet>(GetOwner());
-	if (!Planet) return false;
-
-	const double PlanetRadius = Planet->RadiusKm * 100000.0;
-	if (PlanetRadius <= 0.0) return false;
-
-	const FVector PlanetCenter = Planet->GetActorLocation();
-	TSharedPtr<ICosmicNoiseStrategy> NoiseStrategy = Planet->GetNoiseStrategy();
-	if (!NoiseStrategy.IsValid()) return false;
+	if (PlanetRadius <= 0.0 || !NoiseStrategy.IsValid())
+	{
+		return false;
+	}
 
 	UWorld* World = GetWorld();
 	if (!World) return false;
+
+	bool bAnyCollisionUpdated = false;
 
 	// Iterate through all explicitly subscribed targets
 	for (int32 i = SubscribedTargets.Num() - 1; i >= 0; --i)
@@ -363,7 +363,7 @@ bool UCosmicPlanetCollisionManager::UpdateCollisions()
 			}
 			else
 			{
-				UCosmicCollisionComponent* NewPatch = AcquirePatchFromPool(Planet, PlanetRadius);
+				UCosmicCollisionComponent* NewPatch = AcquirePatchFromPool(PlanetRadius);
 				if (NewPatch)
 				{
 					NewPatch->RequestCollisionUpdate(

@@ -121,7 +121,11 @@ public:
 	void ClearAllPatches();
 
 	/** Updates procedural collision patches for all registered actors. Returns true if any patch was requested to update or allocated this frame. */
-	bool UpdateCollisions();
+	bool UpdateCollisions(
+		const FVector& PlanetCenter,
+		double PlanetRadius,
+		TSharedPtr<ICosmicNoiseStrategy> NoiseStrategy
+	);
 
 protected:
 
@@ -151,8 +155,8 @@ private:
 		double DistToSurface
 	) const;
 
-	/** Acquires a collision patch component from pool or spawns a new one attached to planet */
-	UCosmicCollisionComponent* AcquirePatchFromPool(ACosmicPlanet* Planet, double PlanetRadius);
+	/** Acquires a collision patch component from pool or spawns a new one attached to owner actor */
+	UCosmicCollisionComponent* AcquirePatchFromPool(double PlanetRadius);
 
 	/** Recycles a patch back into the pool */
 	void RecyclePatch(UCosmicCollisionComponent* Patch);

@@ -68,12 +68,15 @@ void ACosmicPlanet::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);
 
+    const double PlanetRadius = RadiusKm * 100000.0;
+    const FVector PlanetCenter = GetActorLocation();
+
     // On dedicated server, only run physical collision management
     if (IsRunningDedicatedServer())
     {
         if (CollisionManager)
         {
-            CollisionManager->UpdateCollisions();
+            CollisionManager->UpdateCollisions(PlanetCenter, PlanetRadius, GetNoiseStrategy());
         }
         return;
     }
@@ -93,7 +96,6 @@ void ACosmicPlanet::Tick(float DeltaSeconds)
     FVector ViewerPos;
     FVector SurfacePos;
     FVector N;
-    const double PlanetRadius = RadiusKm * 100000.0;
 
     // Use fast distance first to determine if we are in performance mode
     const double FastDistance = ClipmapComponent->GetFastDistanceToSurface(ViewerPos, SurfacePos, N);
@@ -116,7 +118,7 @@ void ACosmicPlanet::Tick(float DeltaSeconds)
                 FoliageSpawnerComponent->UpdateFoliageSpawner(
                     TimeToRefresh,
                     FoliageViewerPos,
-                    GetActorLocation(),
+                    PlanetCenter,
                     PlanetRadius,
                     DistanceToSurface,
                     GetNoiseStrategy()
@@ -126,7 +128,11 @@ void ACosmicPlanet::Tick(float DeltaSeconds)
 
         case ECosmicPlanetUpdatePhase::Collision:
         {
-            const bool bCollisionUpdated = CollisionManager ? CollisionManager->UpdateCollisions() : false;
+            const bool bCollisionUpdated = CollisionManager ? CollisionManager->UpdateCollisions(
+                PlanetCenter,
+                PlanetRadius,
+                GetNoiseStrategy()
+            ) : false;
             bool bOceanApplied = false;
 
             if (OceanComponent && OceanComponent->HasCompletedTask())
@@ -155,7 +161,7 @@ void ACosmicPlanet::Tick(float DeltaSeconds)
                 FoliageSpawnerComponent->UpdateFoliageSpawner(
                     TimeToRefresh,
                     FoliageViewerPos,
-                    GetActorLocation(),
+                    PlanetCenter,
                     PlanetRadius,
                     DistanceToSurface,
                     GetNoiseStrategy()
