@@ -69,38 +69,6 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Planet", BlueprintReadOnly)
 	UCosmicFoliageSpawner* FoliageSpawnerComponent;
 
-	/** Predominant color for mid-altitude zones. */
-	UPROPERTY(EditAnywhere, Category = "Materials|Color")
-	FColor PlanetMainColor1 = FColor::Red;
-
-	/** Secondary color for terrain chromatic variation. */
-	UPROPERTY(EditAnywhere, Category = "Materials|Color")
-	FColor PlanetMainColor2 = FColor::Orange;
-
-	/** Tint applied to low temperature areas or deep valleys. */
-	UPROPERTY(EditAnywhere, Category = "Materials|Color")
-	FColor PlanetColdColor = FColor::White;
-
-	/** Tint applied to peaks or high activity/temperature areas. */
-	UPROPERTY(EditAnywhere, Category = "Materials|Color")
-	FColor PlanetHotColor = FColor::Red;
-
-	/** Color used to highlight steep slopes and cliffs. */
-	UPROPERTY(EditAnywhere, Category = "Materials|Color")
-	FColor PlanetSlopeColor = FColor::Black;
-
-	/** Fine terrain detail (Micro-relief). */
-	UPROPERTY(EditAnywhere, Category = "Materials|Noise", meta = (ClampMin = "0.01"))
-	float NoiseScaleSmall = 1.f;
-
-	/** Medium terrain detail (Hills and formations). */
-	UPROPERTY(EditAnywhere, Category = "Materials|Noise", meta = (ClampMin = "0.01"))
-	float NoiseScaleMedium = 3.f;
-
-	/** Macro terrain detail (Mountains and continents). */
-	UPROPERTY(EditAnywhere, Category = "Materials|Noise", meta = (ClampMin = "0.01"))
-	float NoiseScaleLarge = 100.f;
-
 	/** Initializes default components and basic structure. */
 	ACosmicPlanet();
 
@@ -116,10 +84,36 @@ public:
 	void InitPlanet(
 		float InRadiusKm,
 		UCosmicNoiseClass* NewNoiseClass,
-		FColor Color1, FColor Color2, FColor ColorCold, FColor ColorHot,
-		FColor ColorSlope, float ScaleL, float ScaleM, float ScaleS,
+		int32 InArchetypeIndex,
+		bool bInUseCustomArchetype,
+		const FLinearColor& InTerrainColorLow,
+		const FLinearColor& InTerrainColorMid,
+		const FLinearColor& InTerrainColorHigh,
+		const FLinearColor& InRockColor,
+		bool bInEnableSnow,
 		UMaterialInstance* InBaseMaterial,
-		UTexture2D* InDefaultTexture,
+		// Clipmap
+		bool UseClipmap = true,
+		int32 InBaseResolution = 128,
+		int32 InNumLevels = 4,
+		int32 InMinTriangleSize = 100,
+		float InHeightVisibility = 5.0f,
+		// Ocean
+		bool  bInHasOcean = true,
+		double InSeaLevelKm = 0.0,
+		int32 InOceanResolution = 128,
+		UMaterialInstance* InOceanMaterial = nullptr,
+		// Foliage
+		UCosmicFoliageCollection* InFoliageCollection = nullptr
+	);
+
+	/**
+	 * Simplified planet configuration delegating material appearance to ClipmapComponent properties.
+	 */
+	void InitPlanet(
+		float InRadiusKm,
+		UCosmicNoiseClass* NewNoiseClass,
+		UMaterialInstance* InBaseMaterial,
 		// Clipmap
 		bool UseClipmap = true,
 		int32 InBaseResolution = 128,
@@ -187,8 +181,6 @@ protected:
 	/** Synchronizes the ocean component with the current planet radius. */
 	void UpdateOcean();
 
-	/** Updates only visual parameters of the material on the terrain. */
-	void UpdateMaterialOnly();
 
 	/** Cleans collisions and unbinds active delegates. */
 	void ClearData();

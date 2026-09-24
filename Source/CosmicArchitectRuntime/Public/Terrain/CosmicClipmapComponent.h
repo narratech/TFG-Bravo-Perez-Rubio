@@ -64,17 +64,28 @@ public:
     /**
      * Configures visual parameters of planetary material.
      *
-     * @param Color1 Main base color.
-     * @param Color2 Secondary base color.
-     * @param ColorCold Color for cold zones.
-     * @param ColorHot Color for hot zones.
-     * @param ColorSlope Color applied to slopes.
-     * @param ScaleL Large noise scale.
-     * @param ScaleM Medium noise scale.
-     * @param ScaleS Small noise scale.
+     * @param InArchetypeIndex Preset archetype index (0: Earth, 1: Mars, 2: Ice Moon, 3: Volcanic).
+     * @param bInUseCustomArchetype If true, enables custom terrain and rock colors.
+     * @param InTerrainColorLow Color for lowland depressions/basins.
+     * @param InTerrainColorMid Color for midland plains.
+     * @param InTerrainColorHigh Color for highlands and peaks.
+     * @param InRockColor Color for steep cliffs, slopes and bedrock.
+     * @param bInEnableSnow If true, enables dynamic snow accumulation.
      */
-    void SetMaterialData(FColor Color1, FColor Color2, FColor ColorCold, FColor ColorHot,
-        FColor ColorSlope, float ScaleL, float ScaleM, float ScaleS);
+    void SetMaterialData(
+        int32 InArchetypeIndex,
+        bool bInUseCustomArchetype,
+        const FLinearColor& InTerrainColorLow,
+        const FLinearColor& InTerrainColorMid,
+        const FLinearColor& InTerrainColorHigh,
+        const FLinearColor& InRockColor,
+        bool bInEnableSnow
+    );
+
+    /**
+     * Updates active DynamicPlanetMat with the component's current material properties.
+     */
+    void UpdateMaterialParameters();
 
     /**
      * Requests complete regeneration of meshes.
@@ -120,9 +131,34 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UMaterialInstance* BaseMaterial;
 
-    /** Default texture used by material */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
-    UTexture2D* DefaultTexture;
+
+    /** Archetype preset index (0: Earth-Like, 1: Mars-Like, 2: Ice Moon, 3: Volcanic). Used when bUseCustomArchetype is false. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Archetype", meta = (ClampMin = "0"))
+    int32 ArchetypeIndex = 0;
+
+    /** Enables dynamic snow accumulation on cold zones and mountain peaks. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Archetype")
+    bool bEnableSnow = true;
+
+    /** Steep cliffs, slopes, and bedrock strata color. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Colors")
+    FLinearColor RockColor = FLinearColor(0.799f, 0.397f, 0.171f, 1.0f);
+
+    /** Highlands / Ridges / Peaks terrain tint color. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Colors")
+    FLinearColor TerrainColorHigh = FLinearColor(0.723f, 0.168f, 0.012f, 1.0f);
+
+    /** Lowlands / Depressions / Basin terrain tint color. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Colors")
+    FLinearColor TerrainColorLow = FLinearColor(0.212f, 0.028f, 0.026f, 1.0f);
+
+    /** Midlands / Plains / Dominant terrain tint color. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Colors")
+    FLinearColor TerrainColorMid = FLinearColor(0.509f, 0.014f, 0.008f, 1.0f);
+
+    /** Controls whether custom palette colors (TerrainColorLow/Mid/High, RockColor) are used instead of preset archetypes. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Archetype")
+    bool bUseCustomArchetype = false;
 
     /** Base resolution of each clipmap level */
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "8", ClampMax = "256"))
@@ -204,29 +240,6 @@ protected:
     /** Original base spacing */
     int64 BaseSpacing = 200;
 
-    /** Main planet color */
-    FColor PlanetMainColor1 = FColor::Green;
-
-    /** Secondary planet color */
-    FColor PlanetMainColor2 = FColor::Red;
-
-    /** Color for cold zones */
-    FColor PlanetColdColor = FColor::Yellow;
-
-    /** Color for hot zones */
-    FColor PlanetHotColor = FColor::Yellow;
-
-    /** Color used on slopes */
-    FColor PlanetSlopeColor = FColor::Yellow;
-
-    /** Small noise scale */
-    float NoiseScaleSmall = 1.f;
-
-    /** Medium noise scale */
-    float NoiseScaleMedium = 1.f;
-
-    /** Large noise scale */
-    float NoiseScaleLarge = 1.f;
 
     /** Current position of owning actor */
     FVector CurrentActorPosition;

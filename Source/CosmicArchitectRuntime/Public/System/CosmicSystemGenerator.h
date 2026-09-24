@@ -4,61 +4,56 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Components/BoxComponent.h"
-#include "Engine/StaticMeshActor.h" 
+#include "System/CosmicSystemTypes.h"
+#include "System/CosmicSystemNoiseManager.h"
 #include "CosmicSystemGenerator.generated.h"
 
 class UCosmicNoiseClass;
-class UCosmicDefaultNoiseSettings;
 class UMaterialInstance;
 
 /**
  * Procedural generator of planetary systems.
- * Responsible for creating celestial bodies, orbits,
- * materials, and orbital configurations.
+ * Coordinates layout calculations, noise persistence, celestial body spawning,
+ * and orbital simulations across specialized subsystem managers.
  */
 UCLASS(HideCategories = (
     Replication, Input, Collision, Actor, LOD, Cooking, Networking,
     Physics, Navigation, Tags, DataLayers, LevelInstance
     ), AutoExpandCategories = ("Configuration", "Generation Rules", "Actions"))
-    class COSMICARCHITECTRUNTIME_API ACosmicSystemGenerator : public AActor 
+class COSMICARCHITECTRUNTIME_API ACosmicSystemGenerator : public AActor 
 {
     GENERATED_BODY()
 
 public:
     ACosmicSystemGenerator();
 
-    /* Base textures for procedural visual variation. */
-    UPROPERTY(EditAnywhere, Category = "Materials")
-    TArray<UTexture2D*> PosiblesTexturas;
-
-    /* Base material for generic terrestrial planets. */
+    /* Base material for generic terrestrial planets (defaults to MI_CosmicEarthV2 / MI_CosmicEarth2). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UMaterialInstance* BaseMaterial;
 
-    /* Material for moons. */
+    /* Material for moons (defaults to MI_CosmicMoonV2). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UMaterialInstance* MoonMaterial;
 
-    /* Ocean material for planets with water bodies. */
+    /* Ocean material for planets with water bodies (optional; auto-assigned by ocean subsystem if null). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UMaterialInstance* OceanMaterial;
 
-    /* Material for stars. */
+    /* Material for stars (defaults to MI_CosmicSun / M_CosmicStar). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UMaterialInstance* StarMaterial;
 
-    /* Material for gas giants. */
+    /* Material for gas giants (defaults to MI_CosmicGasGiant). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UMaterialInstance* GasGiantMaterial;
 
-    /* Material for planetary rings. */
+    /* Material for planetary rings (defaults to MI_CosmicRing). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UMaterialInstance* RingMaterial;
 
     /* Debug line thickness. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Debug")
-    float LineWidth = 100;
+    float LineWidth = 100.0f;
 
     /* Debug box color. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Debug")
@@ -77,6 +72,7 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Persistence", meta = (EditCondition = "bSaveGeneratedNoiseSettingsAssets"))
     FString GeneratedNoiseSettingsFolderId;
 #endif
+
 protected:
     UPROPERTY(VisibleDefaultsOnly, Category = "Root", BlueprintReadOnly)
     USceneComponent* Root;
@@ -106,19 +102,20 @@ protected:
 
     /* Diameter range for planets (km). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration", meta = (ClampMin = "0.001"))
-    FVector2D BodyDiameterRangeKm = FVector2D(8.f, 15.f);
+    FVector2D BodyDiameterRangeKm = FVector2D(8.0f, 15.0f);
 
     /* Diameter range for moons (km). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration", meta = (ClampMin = "0.001"))
-    FVector2D MoonDiameterRangeKm = FVector2D(2.f, 7.f);
+    FVector2D MoonDiameterRangeKm = FVector2D(2.0f, 7.0f);
 
     /* Surface gravity assigned to min and max planet radius. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration|Gravity", meta = (ClampMin = "0.0"))
-    FVector2D PlanetSurfaceGravityRange = FVector2D(3.f, 10.f);
+    FVector2D PlanetSurfaceGravityRange = FVector2D(3.0f, 10.0f);
 
     /* Surface gravity assigned to min and max moon radius. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration|Gravity", meta = (ClampMin = "0.0"))
-    FVector2D MoonSurfaceGravityRange = FVector2D(1.f, 5.f);
+    FVector2D MoonSurfaceGravityRange = FVector2D(1.0f, 5.0f);
+
     /** Fraction of system radius occupied by the star. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Configuration|Star", meta = (ClampMin = "0.01", ClampMax = "0.9"))
     float StarRadiusFraction = 0.1f;
@@ -161,10 +158,7 @@ protected:
 
     // GENERATION RULES – CLASSIFICATION AND PROBABILITIES
 
-    /** Size/distance ratio threshold to classify as gas giant. */
-    /** Fraction of total bodies remaining to generate for gas giants to appear.
- *  0.3 = only when 30% or fewer bodies remain to be generated.
- */
+    /** Fraction of total bodies remaining to generate for gas giants to appear. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Gas Giants",
         meta = (ClampMin = "0.0", ClampMax = "1.0"))
     float GasGiantAppearanceThreshold = 0.3f;
@@ -238,9 +232,17 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Generation Rules|Graphics", meta = (ClampMin = "16", ClampMax = "128"))
     int32 OceanResolutionWithoutOcean = 64;
 
-    /** Generated bodies (internal reference only). */
+    /** Generated celestial bodies and actors (internal reference). */
     UPROPERTY()
     TArray<AActor*> GeneratedBodies;
+
+    /** Noise generation manager. */
+    FCosmicSystemNoiseManager NoiseManager;
+
+public:
+    virtual void PostLoad() override;
+    virtual void PostActorCreated() override;
+    virtual void OnConstruction(const FTransform& Transform) override;
 
 #if WITH_EDITOR
     virtual bool ShouldTickIfViewportsOnly() const override { return true; }
@@ -248,82 +250,9 @@ protected:
     virtual void PostDuplicate(EDuplicateMode::Type Mode) override;
 #endif
 
-private:
-    enum class EPlanetType
-    {
-        GasGiant,
-        Telluric,
-        AsteroidBelt
-    };
+    /** Automatically resolves and populates default materials (MI_CosmicMoonV2, MI_CosmicEarthV2, etc.). */
+    void EnsureDefaultMaterials();
 
-    struct FPlanetClassification
-    {
-        EPlanetType Type;
-        bool bHasOcean;
-        float OceanSeaLevel;
-        bool bHasRings;
-        bool bHasMoons;
-        int32 MaxMoons;
-    };
-
-    FPlanetClassification ClassifyPlanet(
-        float OrbitDistanceKm,
-        float PlanetRadiusKm,
-        float SystemRadiusKm,
-        FRandomStream& Stream,
-        int32 RemainingBodies,
-        int32 TotalBodies) const;
-
-    UCosmicNoiseClass* CreateRandomNoiseSettings(FRandomStream& Stream, float PlanetRadius);
-
-    FColor GetRandomColor(FRandomStream& Stream, int min, int max);
-
-    float CalculateSurfaceGravity(float RadiusKm, const FVector2D& RadiusRangeKm, const FVector2D& GravityRange) const;
-#if WITH_EDITOR
-    UCosmicDefaultNoiseSettings* CreateOrReusePersistentRandomNoiseSettingsAsset();
-
-    bool ShouldCreatePersistentNoiseSettingsAssets() const;
-
-    void EnsureGeneratedNoiseSettingsFolderId();
-
-    FString GetGeneratedNoiseSettingsFolder() const;
-
-    FString MakeNoiseAssetName(int32 AssetIndex) const;
-
-    void LoadGeneratedNoiseSettingsAssets();
-
-    void SaveGeneratedNoiseSettingsAsset(UCosmicDefaultNoiseSettings* NoiseSettings) const;
-
-    static void SanitizeObjectName(FString& Name);
-#endif
-
-    void UpdateBodiesOrbitalPeriod();
-
-    int32 GeneratedNoiseAssetCounter = 0;
-
-#if WITH_EDITORONLY_DATA
-    UPROPERTY(Transient)
-    TArray<TObjectPtr<UCosmicDefaultNoiseSettings>> GeneratedNoiseSettingsAssets;
-#endif
-    /** Tries to place a planet respecting distances. Returns true if placed. */
-    bool TryPlacePlanet(
-        FRandomStream& Stream,
-        float SystemRadiusKm,
-        float StarRadiusKm,
-        const TArray<float>& ExistingOrbitDistances,
-        const TArray<float>& ExistingPlanetRadii,
-        float& OutOrbitDistance,
-        float& OutPlanetRadius,
-        bool bIsGasGiant) const;
-
-    /** Checks whether proposed orbital distance is valid against existing ones. */
-    bool IsOrbitDistanceValid(
-        float ProposedOrbitKm,
-        float ProposedRadiusKm,
-        const TArray<float>& ExistingOrbits,
-        const TArray<float>& ExistingRadii) const;
-
-public:
     void SetNumBodies(int32 NumBodies);
 
     UFUNCTION(CallInEditor, Category = "Actions")
@@ -340,4 +269,14 @@ public:
 
     UFUNCTION(CallInEditor, Category = "Actions")
     void StopOrbitSimulation();
+
+    void UpdateBodiesOrbitalPeriod();
+
+    // Backward-compatibility aliases and helper methods
+    using EPlanetType = ECosmicSystemPlanetType;
+    using FPlanetClassification = FCosmicBodyClassification;
+
+    FCosmicSystemLayoutConfig BuildLayoutConfig() const;
+    FCosmicSystemClassificationRules BuildClassificationRules() const;
+    FCosmicSystemGraphicsConfig BuildGraphicsConfig() const;
 };

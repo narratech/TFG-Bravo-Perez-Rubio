@@ -294,11 +294,22 @@ void UCosmicClipmapComponent::PostEditChangeProperty(FPropertyChangedEvent& Prop
         ? PropertyChangedEvent.Property->GetFName()
         : NAME_None;
 
-    // BASE MATERIAL / TEXTURE (update MID directly without reregistering components)
-    if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, BaseMaterial) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, DefaultTexture))
+    // BASE MATERIAL (update MID directly without reregistering components)
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, BaseMaterial))
     {
         BuildDynamicMaterial();
+        return;
+    }
+
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, ArchetypeIndex) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, bUseCustomArchetype) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, bEnableSnow) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, TerrainColorLow) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, TerrainColorMid) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, TerrainColorHigh) ||
+        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, RockColor))
+    {
+        UpdateMaterialParameters();
         return;
     }
 
@@ -559,44 +570,58 @@ void UCosmicClipmapComponent::ResetPointersAfterDuplicate(USceneComponent* NewRo
     ++SnappedProjectionRevision;
 }
 
-void UCosmicClipmapComponent::SetMaterialData(FColor Color1, FColor Color2, FColor ColorCold, FColor ColorHot,
-    FColor ColorSlope, float ScaleL, float ScaleM, float ScaleS)
+void UCosmicClipmapComponent::SetMaterialData(
+    int32 InArchetypeIndex,
+    bool bInUseCustomArchetype,
+    const FLinearColor& InTerrainColorLow,
+    const FLinearColor& InTerrainColorMid,
+    const FLinearColor& InTerrainColorHigh,
+    const FLinearColor& InRockColor,
+    bool bInEnableSnow)
 {
-    PlanetMainColor1 = Color1;
-    PlanetMainColor2 = Color2;
-    PlanetColdColor = ColorCold;
-    PlanetHotColor = ColorHot;
-    PlanetSlopeColor = ColorSlope;
-    NoiseScaleLarge = ScaleL;
-    NoiseScaleMedium = ScaleM;
-    NoiseScaleSmall = ScaleS;
+    ArchetypeIndex = InArchetypeIndex;
+    bUseCustomArchetype = bInUseCustomArchetype;
+    TerrainColorLow = InTerrainColorLow;
+    TerrainColorMid = InTerrainColorMid;
+    TerrainColorHigh = InTerrainColorHigh;
+    RockColor = InRockColor;
+    bEnableSnow = bInEnableSnow;
 
     if (DynamicPlanetMat)
     {
         DynamicPlanetMat->SetScalarParameterValue(FName("PlanetRadius"), PlanetRadius);
-        DynamicPlanetMat->SetVectorParameterValue(FName("BaseColor"), Color1);
-        DynamicPlanetMat->SetVectorParameterValue(FName("MidColor"), Color2);
-        DynamicPlanetMat->SetVectorParameterValue(FName("ColdColor"), ColorCold);
-        DynamicPlanetMat->SetVectorParameterValue(FName("HotColor"), ColorHot);
-        DynamicPlanetMat->SetVectorParameterValue(FName("SlopeColor"), ColorSlope);
-        DynamicPlanetMat->SetScalarParameterValue(FName("NoiseScaleLarge"), ScaleL);
-        DynamicPlanetMat->SetScalarParameterValue(FName("NoiseScaleMedium"), ScaleM);
-        DynamicPlanetMat->SetScalarParameterValue(FName("NoiseScaleSmall"), ScaleS);
-        if(DefaultTexture)
-            DynamicPlanetMat->SetTextureParameterValue(FName("Floortexture"), DefaultTexture);
+        DynamicPlanetMat->SetScalarParameterValue(FName("ArchetypeIndex"), static_cast<float>(ArchetypeIndex));
+        DynamicPlanetMat->SetScalarParameterValue(FName("UseCustomArchetype"), bUseCustomArchetype ? 1.0f : 0.0f);
+        DynamicPlanetMat->SetScalarParameterValue(FName("EnableSnow"), bEnableSnow ? 1.0f : 0.0f);
+        DynamicPlanetMat->SetVectorParameterValue(FName("TerrainColorLow"), TerrainColorLow);
+        DynamicPlanetMat->SetVectorParameterValue(FName("TerrainColorMid"), TerrainColorMid);
+        DynamicPlanetMat->SetVectorParameterValue(FName("TerrainColorHigh"), TerrainColorHigh);
+        DynamicPlanetMat->SetVectorParameterValue(FName("RockColor"), RockColor);
     }
+}
+
+void UCosmicClipmapComponent::UpdateMaterialParameters()
+{
+    SetMaterialData(
+        ArchetypeIndex,
+        bUseCustomArchetype,
+        TerrainColorLow,
+        TerrainColorMid,
+        TerrainColorHigh,
+        RockColor,
+        bEnableSnow
+    );
 }
 
 void UCosmicClipmapComponent::BuildDynamicMaterial() 
 {
-    if (BaseMaterial) {
-
+    if (BaseMaterial)
+    {
         DynamicPlanetMat = UMaterialInstanceDynamic::Create(BaseMaterial, this);
-
-        SetMaterialData(PlanetMainColor1, PlanetMainColor2, PlanetColdColor, PlanetHotColor,
-            PlanetSlopeColor, NoiseScaleLarge, NoiseScaleMedium, NoiseScaleSmall);
+        UpdateMaterialParameters();
     } 
-    else {
+    else
+    {
         DynamicPlanetMat = nullptr;
     }
 
@@ -609,7 +634,9 @@ void UCosmicClipmapComponent::BuildDynamicMaterial()
     }
 
     if (FarLevel)
+    {
         FarLevel->SetMaterial(0, DynamicPlanetMat);
+    }
 }
 
 void UCosmicClipmapComponent::UpdateNoiseEvaluator()

@@ -48,7 +48,6 @@ void ACosmicPlanet::PostInitializeComponents()
 {
     Super::PostInitializeComponents();
 
-    UpdateMaterialOnly();
     UpdateNoiseSettings();
     InitClipmap();
     UpdateOcean();
@@ -214,7 +213,6 @@ void ACosmicPlanet::PostDuplicate(EDuplicateMode::Type Mode)
             OceanComponent->ResetPointersAfterDuplicate(Root);
         }
 
-        UpdateMaterialOnly();
         UpdateNoiseSettings();
         InitClipmap();
         UpdateFoliage();
@@ -281,19 +279,7 @@ void ACosmicPlanet::RebuildPlanet()
     UpdateOcean();
 }
 
-/**
- * Updates terrain material parameters without reconstructing geometry.
- */
-void ACosmicPlanet::UpdateMaterialOnly()
-{
-    if (ClipmapComponent)
-    {
-        ClipmapComponent->SetMaterialData(
-            PlanetMainColor1, PlanetMainColor2, PlanetColdColor, PlanetHotColor,
-            PlanetSlopeColor, NoiseScaleLarge, NoiseScaleMedium, NoiseScaleSmall
-        );
-    }
-}
+
 
 /**
  * Unbinds delegates and cleans collisions to avoid memory leaks or reference errors.
@@ -403,7 +389,6 @@ void ACosmicPlanet::OnConstruction(const FTransform& Transform)
 
     if (!GetWorld()->IsGameWorld() && !bInitializedInEditor)
     {
-        UpdateMaterialOnly();
         UpdateNoiseSettings();
         InitClipmap();
         UpdateFoliage();
@@ -419,10 +404,14 @@ void ACosmicPlanet::OnConstruction(const FTransform& Transform)
 void ACosmicPlanet::InitPlanet(
     float InRadiusKm,
     UCosmicNoiseClass* NewNoiseClass,
-    FColor Color1, FColor Color2, FColor ColorCold, FColor ColorHot,
-    FColor ColorSlope, float ScaleL, float ScaleM, float ScaleS,
+    int32 InArchetypeIndex,
+    bool bInUseCustomArchetype,
+    const FLinearColor& InTerrainColorLow,
+    const FLinearColor& InTerrainColorMid,
+    const FLinearColor& InTerrainColorHigh,
+    const FLinearColor& InRockColor,
+    bool bInEnableSnow,
     UMaterialInstance* InBaseMaterial,
-    UTexture2D* InDefaultTexture,
     // Clipmap
     bool UseClipmap,
     int32 InBaseResolution,
@@ -455,12 +444,19 @@ void ACosmicPlanet::InitPlanet(
     if (ClipmapComponent)
     {
         ClipmapComponent->BaseMaterial = InBaseMaterial;
-        ClipmapComponent->DefaultTexture = InDefaultTexture;
         ClipmapComponent->BaseResolution = InBaseResolution;
         ClipmapComponent->NumLevels = InNumLevels;
         ClipmapComponent->MinTriangleSize = InMinTriangleSize;
         ClipmapComponent->HeightVisibility = InHeightVisibility;
         ClipmapComponent->UseClipmap = UseClipmap;
+
+        ClipmapComponent->ArchetypeIndex = InArchetypeIndex;
+        ClipmapComponent->bUseCustomArchetype = bInUseCustomArchetype;
+        ClipmapComponent->TerrainColorLow = InTerrainColorLow;
+        ClipmapComponent->TerrainColorMid = InTerrainColorMid;
+        ClipmapComponent->TerrainColorHigh = InTerrainColorHigh;
+        ClipmapComponent->RockColor = InRockColor;
+        ClipmapComponent->bEnableSnow = bInEnableSnow;
     }
 
     // Ocean configuration.
@@ -469,7 +465,10 @@ void ACosmicPlanet::InitPlanet(
         OceanComponent->bHasOcean = bInHasOcean;
         OceanComponent->SeaLevelKm = InSeaLevelKm;
         OceanComponent->OceanResolution = InOceanResolution;
-        OceanComponent->OceanMaterial = InOceanMaterial;
+        if (InOceanMaterial)
+        {
+            OceanComponent->OceanMaterial = InOceanMaterial;
+        }
 
         UpdateOcean();
     }
@@ -478,21 +477,56 @@ void ACosmicPlanet::InitPlanet(
     if (FoliageSpawnerComponent && InFoliageCollection)
         FoliageSpawnerComponent->FoliageCollection = InFoliageCollection;
 
-    // Assignment of colors and scales for terrain shader.
-    PlanetMainColor1 = Color1;
-    PlanetMainColor2 = Color2;
-    PlanetColdColor = ColorCold;
-    PlanetHotColor = ColorHot;
-    PlanetSlopeColor = ColorSlope;
-    NoiseScaleLarge = ScaleL;
-    NoiseScaleMedium = ScaleM;
-    NoiseScaleSmall = ScaleS;
-
     // Trigger reconstruction of systems after data loading.
     InitClipmap();
     UpdateFoliage();
     UpdateNoiseSettings();
-    UpdateMaterialOnly();
+}
+
+/**
+ * Simplified planet configuration delegating material appearance to ClipmapComponent properties.
+ */
+void ACosmicPlanet::InitPlanet(
+    float InRadiusKm,
+    UCosmicNoiseClass* NewNoiseClass,
+    UMaterialInstance* InBaseMaterial,
+    // Clipmap
+    bool UseClipmap,
+    int32 InBaseResolution,
+    int32 InNumLevels,
+    int32 InMinTriangleSize,
+    float InHeightVisibility,
+    // Ocean
+    bool bInHasOcean,
+    double InSeaLevelKm,
+    int32 InOceanResolution,
+    UMaterialInstance* InOceanMaterial,
+    // Foliage
+    UCosmicFoliageCollection* InFoliageCollection
+)
+{
+    InitPlanet(
+        InRadiusKm,
+        NewNoiseClass,
+        ClipmapComponent ? ClipmapComponent->ArchetypeIndex : 0,
+        ClipmapComponent ? ClipmapComponent->bUseCustomArchetype : false,
+        ClipmapComponent ? ClipmapComponent->TerrainColorLow : FLinearColor(0.212f, 0.028f, 0.026f, 1.0f),
+        ClipmapComponent ? ClipmapComponent->TerrainColorMid : FLinearColor(0.509f, 0.014f, 0.008f, 1.0f),
+        ClipmapComponent ? ClipmapComponent->TerrainColorHigh : FLinearColor(0.723f, 0.168f, 0.012f, 1.0f),
+        ClipmapComponent ? ClipmapComponent->RockColor : FLinearColor(0.799f, 0.397f, 0.171f, 1.0f),
+        ClipmapComponent ? ClipmapComponent->bEnableSnow : true,
+        InBaseMaterial,
+        UseClipmap,
+        InBaseResolution,
+        InNumLevels,
+        InMinTriangleSize,
+        InHeightVisibility,
+        bInHasOcean,
+        InSeaLevelKm,
+        InOceanResolution,
+        InOceanMaterial,
+        InFoliageCollection
+    );
 }
 
 /**
@@ -558,19 +592,7 @@ void ACosmicPlanet::PostEditChangeProperty(FPropertyChangedEvent& PropertyChange
 
     Super::PostEditChangeProperty(PropertyChangedEvent);
 
-    // Category: Quick visual material update.
-    if (PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, PlanetMainColor1) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, PlanetMainColor2) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, PlanetColdColor) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, PlanetHotColor) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, PlanetSlopeColor) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, NoiseScaleSmall) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, NoiseScaleMedium) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, NoiseScaleLarge))
-    {
-        UpdateMaterialOnly();
-        return;
-    }
+
 
     // Category: Changes to noise generator.
     if (PropertyName == GET_MEMBER_NAME_CHECKED(ACosmicPlanet, NoiseClass))

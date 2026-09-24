@@ -7,11 +7,20 @@
 #include "Materials/MaterialInstance.h"
 #include "Materials/MaterialInstanceConstant.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "UObject/ConstructorHelpers.h"
 
 UCosmicOceanComponent::UCosmicOceanComponent()
 {
     bTickInEditor = true;
     PrimaryComponentTick.bCanEverTick = true;
+
+    static ConstructorHelpers::FObjectFinder<UMaterialInstance> OceanMaterialAsset(
+        TEXT("/CosmicArchitect/CosmicArchitect/Resources/Materials/Ocean/MI_CosmicOceanV3.MI_CosmicOceanV3")
+    );
+    if (OceanMaterialAsset.Succeeded())
+    {
+        OceanMaterial = OceanMaterialAsset.Object;
+    }
 }
 
 void UCosmicOceanComponent::InitOcean(double PlanetRadiusKm, USceneComponent* Parent)
@@ -287,11 +296,11 @@ void UCosmicOceanComponent::BuildFarOceanMesh()
 
 void UCosmicOceanComponent::BuildDynamicMaterial()
 {
-    UMaterialInterface* BaseMaterial = nullptr;
+    UMaterialInterface* BaseMaterial = OceanMaterial;
 
-    if (bUseGeneratedMaterial)
+    if (!BaseMaterial)
     {
-        // Try to load MI_CosmicOceanV3 instance or MI_CosmicOceanV2
+        // Fallback in case OceanMaterial was cleared or not yet assigned
         const TCHAR* CandidatePaths[] = {
             TEXT("/CosmicArchitect/CosmicArchitect/Resources/Materials/Ocean/MI_CosmicOceanV3.MI_CosmicOceanV3"),
             TEXT("/CosmicArchitect/Resources/Materials/Ocean/MI_CosmicOceanV3.MI_CosmicOceanV3"),
@@ -303,18 +312,10 @@ void UCosmicOceanComponent::BuildDynamicMaterial()
             BaseMaterial = LoadObject<UMaterialInterface>(nullptr, Path);
             if (BaseMaterial)
             {
+                OceanMaterial = Cast<UMaterialInstance>(BaseMaterial);
                 break;
             }
         }
-
-        if (!BaseMaterial)
-        {
-            BaseMaterial = OceanMaterial;
-        }
-    }
-    else
-    {
-        BaseMaterial = OceanMaterial;
     }
 
     if (BaseMaterial)
@@ -342,16 +343,11 @@ void UCosmicOceanComponent::BuildDynamicMaterial()
         FarOceanMesh->SetMaterial(0, DynamicOceanMat);
     }
 
-    if (bUseGeneratedMaterial)
-    {
-        UpdateWaveParameters();
-    }
+    UpdateWaveParameters();
 }
 
 void UCosmicOceanComponent::UpdateWaveParameters()
 {
-    if (!bUseGeneratedMaterial) return;
-
     const double EffectiveRadius = PlanetRadiusCm + SeaLevelKm * 100000.0;
     const FVector OwnerLocation = GetOwner() ? GetOwner()->GetActorLocation() : FVector::ZeroVector;
 
@@ -684,9 +680,8 @@ void UCosmicOceanComponent::PostEditChangeProperty(FPropertyChangedEvent& Proper
         return;
     }
 
-    // Material mode or override material change
-    if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, bUseGeneratedMaterial) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, OceanMaterial))
+    // Material override change
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicOceanComponent, OceanMaterial))
     {
         BuildDynamicMaterial();
         return;
