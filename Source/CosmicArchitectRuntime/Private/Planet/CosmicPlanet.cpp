@@ -14,6 +14,8 @@
 #include "Engine/World.h"
 #include "UObject/Package.h"
 #include "Materials/MaterialInstance.h"
+#include "HAL/PlatformTime.h"
+#include "Engine/Engine.h"
 
 /**
  * Constructor of the ACosmicPlanet class.
@@ -109,6 +111,8 @@ void ACosmicPlanet::Tick(float DeltaSeconds)
     {
         const double DistanceToSurface = ClipmapComponent->GetDistanceToSurface(ViewerPos, SurfacePos, N);
         const FVector FoliageViewerPos = SurfacePos + N * DistanceToSurface;
+
+        const ECosmicPlanetUpdatePhase PhaseToExecute = CurrentPhase;
 
         switch (CurrentPhase)
         {
