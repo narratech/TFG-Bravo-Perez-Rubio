@@ -62,6 +62,15 @@ void FCosmicDefaultNoiseStrategy::Initialize(
     HumidityNoise.SetFractalOctaves(FMath::Min(BiomeParameters.HumidityOctaves, 3));
     HumidityNoise.SetFractalGain(0.5f);
     HumidityNoise.SetFractalLacunarity(2.0f);
+
+    // 3. 3D Alpine Mountain Ridge Layer (evaluated ONLY on mountainous land)
+    RidgeNoise.SetSeed(Seed + 200);
+    RidgeNoise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+    RidgeNoise.SetFractalType(FastNoiseLite::FractalType_Ridged);
+    RidgeNoise.SetFrequency(LayerParameters.Frequency * 3.5f);
+    RidgeNoise.SetFractalOctaves(3);
+    RidgeNoise.SetFractalLacunarity(2.0f);
+    RidgeNoise.SetFractalGain(0.5f);
 }
 
 void FCosmicDefaultNoiseStrategy::EvaluatePoint(const FVector& NoiseDir, float& OutHeight, FLinearColor& OutColor) const
@@ -94,27 +103,34 @@ void FCosmicDefaultNoiseStrategy::EvaluatePoint(const FVector& NoiseDir, float& 
         const float LandT = (BaseNoise - SeaLevel) / FMath::Max(0.001f, 1.0f - SeaLevel);
         LandMask = FMath::SmoothStep(0.0f, 0.04f, LandT);
 
-        // Base continental shield elevation
-        Height = LandT * Amp * ContinentScale;
+        // Smooth coastal plain and beach transition into continental interior
+        const float CoastCurve = FMath::Pow(LandT, 1.15f);
+        Height = CoastCurve * Amp * ContinentScale;
 
-        // 3. ANALYTICAL ALPINE MOUNTAIN RIDGES (ZERO extra noise cost!)
-        if (bEnableMountainRidges && LandT > 0.08f)
+        // 3. 3D ALPINE MOUNTAIN RIDGES (Seamless C1 Hermite envelope!)
+        // MountainMask starts at 0.0 at LandT = 0.10 with zero initial slope (perfectly smooth from plains!)
+        const float MountainMask = FMath::SmoothStep(0.10f, 0.40f, LandT);
+
+        if (bEnableMountainRidges && MountainMask > 0.0001f)
         {
-            // Slices and folds the continental signal to generate razor-sharp alpine crests
-            const float MountainT = (LandT - 0.08f) / 0.92f;
-            float Ridge = 1.0f - FMath::Abs(FMath::Sin(MountainT * PI * 1.5f));
+            // Sample 3D ridged fractal ONLY on mountainous land (0 cost on oceans and coastal plains!)
+            const float RawRidge = RidgeNoise.GetNoise(X, Y, Z);
+            float Ridge = FMath::Max(0.0f, (RawRidge + 1.0f) * 0.5f); // [0, 1]
             Ridge = FMath::Pow(Ridge, MountainSharpness);
-            Height += Ridge * Amp * MountainRidgeStrength;
+            Height += Ridge * Amp * MountainRidgeStrength * MountainMask;
         }
 
         // 4. ANALYTICAL GEOLOGICAL TERRACES (ZERO extra noise cost!)
         if (TerraceSteps > 0.0f)
         {
+            // Terraces fade in smoothly on higher ground so coastlines and beaches stay clean
+            const float TerraceWeight = FMath::SmoothStep(0.08f, 0.30f, LandT);
             const float StepSize = 1000.0f / TerraceSteps;
             const float Stepped = FMath::FloorToFloat(Height / StepSize) * StepSize;
             const float StepFrac = (Height - Stepped) / StepSize;
             const float SmoothFrac = FMath::SmoothStep(0.15f, 0.85f, StepFrac);
-            Height = Stepped + SmoothFrac * StepSize;
+            const float TerracedHeight = Stepped + SmoothFrac * StepSize;
+            Height = FMath::Lerp(Height, TerracedHeight, TerraceWeight);
         }
     }
 

@@ -56,4 +56,5 @@ public:
 protected:
     FastNoiseLite Noise;
     FastNoiseLite HumidityNoise;
+    FastNoiseLite RidgeNoise;
 };

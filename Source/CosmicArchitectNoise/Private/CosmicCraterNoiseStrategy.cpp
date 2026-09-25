@@ -156,6 +156,7 @@ void FCosmicCraterNoiseStrategy::EvaluatePoint(
         {
             const float t = CellDistance / DynamicRadius; // 0 = Center, 1.0 = Rim Crest
             float CraterDisplacement = 0.0f;
+            const float PeakRimHeight = CurrentDepth * CraterParameters.CraterRimHeight;
 
             // A. Interior Cavity (t < 1.0)
             if (t < 1.0f)
@@ -163,23 +164,24 @@ void FCosmicCraterNoiseStrategy::EvaluatePoint(
                 const float FloorStart = FMath::Clamp(CraterParameters.CraterFloorHeight, 0.0f, 0.90f);
                 float Bowl = 0.0f;
 
-                if (t < FloorStart)
+                if (t <= FloorStart)
                 {
                     // Flat floor zone (typical of large lunar craters with melted breccia)
                     Bowl = 1.0f;
                 }
                 else
                 {
-                    // Parabolic concave bowl excavation
-                    const float tNorm = (t - FloorStart) / FMath::Max(0.001f, 1.0f - FloorStart);
-                    Bowl = FMath::Pow(1.0f - FMath::SmoothStep(0.0f, 1.0f, tNorm), 1.8f);
+                    // Hermite C1 continuous curve: Bowl(FloorStart) = 1, Bowl(1.0) = 0, with zero derivative at both ends
+                    const float u = (t - FloorStart) / FMath::Max(0.001f, 1.0f - FloorStart);
+                    const float S = FMath::SmoothStep(0.0f, 1.0f, u);
+                    Bowl = 1.0f - S;
                 }
 
                 // Excavate cavity into negative displacement
                 CraterDisplacement -= Bowl * CurrentDepth;
 
                 // Central Rebound Peak (Elastic isostatic rebound for complex craters)
-                if (CraterParameters.CentralPeakHeight > 0.001f && (Oct == 0 || CurrentDepth > 100.0f))
+                if (CraterParameters.CentralPeakHeight > 0.001f && (Oct == 0 || CurrentDepth > 80.0f))
                 {
                     const float PeakRadius = FMath::Clamp(CraterParameters.CentralPeakRadius, 0.05f, 0.45f);
                     if (t < PeakRadius)
@@ -193,38 +195,46 @@ void FCosmicCraterNoiseStrategy::EvaluatePoint(
                         AccumulatedEjectaBrightness += PeakProfile * 0.5f;
                     }
                 }
-            }
 
-            // B. Raised Rim Crest (Gaussian bell centered at t = 1.0)
-            const float RimWidth = 0.18f;
-            const float RimDist = (t - 1.0f) / RimWidth;
-            const float RimExponent = (RimDist * RimDist) * CraterParameters.CraterRimSharpness;
-            if (RimExponent < 16.0f)
+                // Raised Rim - Inner slope rising up to t = 1.0
+                const float InnerRimWidth = 0.22f;
+                const float RimDist = (1.0f - t) / InnerRimWidth;
+                const float RimExponent = (RimDist * RimDist) * CraterParameters.CraterRimSharpness;
+                if (RimExponent < 16.0f)
+                {
+                    const float Rim = FMath::Exp(-RimExponent) * PeakRimHeight;
+                    CraterDisplacement += Rim;
+                    AccumulatedEjectaBrightness += FMath::Exp(-RimExponent) * 0.7f;
+                }
+            }
+            else
             {
-                const float Rim = FMath::Exp(-RimExponent) * CurrentDepth * CraterParameters.CraterRimHeight;
-                CraterDisplacement += Rim;
+                // B. Exterior Rim Descent & Ejecta Blanket (t >= 1.0)
+                // Seamless C1 transition: at t = 1.0, value is EXACTLY PeakRimHeight and derivative is 0!
+                const float OuterDist = t - 1.0f; // 0.0 at rim crest
 
-                // Elevated rims have high ejecta brightness
-                AccumulatedEjectaBrightness += FMath::Exp(-RimExponent) * 0.7f;
+                // Outer slope width expands with EjectaStrength for a natural apron
+                const float OuterRimWidth = 0.22f + CraterParameters.EjectaStrength * 0.25f;
+                const float OuterRimRatio = OuterDist / FMath::Max(0.001f, OuterRimWidth);
+                const float OuterExponent = (OuterRimRatio * OuterRimRatio) * (CraterParameters.CraterRimSharpness * 0.75f);
+
+                // Smooth asymptotic fade out to zero at InfluenceRadius (eliminates any boundary cut)
+                const float OuterFade = 1.0f - FMath::SmoothStep(1.3f, 2.1f, t);
+
+                if (OuterExponent < 18.0f && OuterFade > 0.0001f)
+                {
+                    const float OuterRim = FMath::Exp(-OuterExponent) * PeakRimHeight * OuterFade;
+                    CraterDisplacement += OuterRim;
+                    AccumulatedEjectaBrightness += FMath::Exp(-OuterExponent) * 0.7f * OuterFade;
+                }
             }
 
-            // C. Exterior Ejecta Blanket (t >= 1.0)
-            if (t >= 1.0f && CraterParameters.EjectaStrength > 0.001f)
-            {
-                const float EjectaDist = t - 1.0f;
-                const float EjectaFalloff = FMath::Exp(-3.0f * EjectaDist) * CraterParameters.EjectaStrength * (CurrentDepth * 0.15f);
-                CraterDisplacement += EjectaFalloff;
-
-                // Continuous radial ray blanket
-                AccumulatedEjectaBrightness += FMath::Exp(-2.2f * EjectaDist) * 0.45f;
-            }
-
-            // D. Wall & Floor Micro-Breakup (Rubble, talus, and fractured rock faces)
+            // C. Wall & Floor Micro-Breakup (Rubble, talus, and fractured rock faces)
             if (CraterParameters.CraterNoiseBreakup > 0.001f && t < 1.3f)
             {
                 const float Breakup = CraterBreakupNoise.GetNoise(SampleX * 4.0f, SampleY * 4.0f, SampleZ * 4.0f);
-                const float BreakupMask = 1.0f - FMath::SmoothStep(0.8f, 1.3f, t);
-                CraterDisplacement += Breakup * (CurrentDepth * 0.06f * CraterParameters.CraterNoiseBreakup) * BreakupMask;
+                const float BreakupMask = 1.0f - FMath::SmoothStep(0.85f, 1.25f, t);
+                CraterDisplacement += Breakup * (CurrentDepth * 0.05f * CraterParameters.CraterNoiseBreakup) * BreakupMask;
             }
 
             AccumulatedCraterHeight += CraterDisplacement;
