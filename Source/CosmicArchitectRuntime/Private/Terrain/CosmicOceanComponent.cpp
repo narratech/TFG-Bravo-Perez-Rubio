@@ -298,26 +298,6 @@ void UCosmicOceanComponent::BuildDynamicMaterial()
 {
     UMaterialInterface* BaseMaterial = OceanMaterial;
 
-    if (!BaseMaterial)
-    {
-        // Fallback in case OceanMaterial was cleared or not yet assigned
-        const TCHAR* CandidatePaths[] = {
-            TEXT("/CosmicArchitect/CosmicArchitect/Resources/Materials/Ocean/MI_CosmicOceanV3.MI_CosmicOceanV3"),
-            TEXT("/CosmicArchitect/Resources/Materials/Ocean/MI_CosmicOceanV3.MI_CosmicOceanV3"),
-            TEXT("/CosmicArchitect/CosmicArchitect/Resources/Materials/Ocean/MI_CosmicOceanV2.MI_CosmicOceanV2")
-        };
-
-        for (const TCHAR* Path : CandidatePaths)
-        {
-            BaseMaterial = LoadObject<UMaterialInterface>(nullptr, Path);
-            if (BaseMaterial)
-            {
-                OceanMaterial = Cast<UMaterialInstance>(BaseMaterial);
-                break;
-            }
-        }
-    }
-
     if (BaseMaterial)
     {
         DynamicOceanMat = UMaterialInstanceDynamic::Create(BaseMaterial, this);
@@ -574,13 +554,11 @@ bool UCosmicOceanComponent::CheckAndApplyOceanMeshUpdate()
 
     if (NearOceanMesh && !bPerformanceMode)
     {
-        NearOceanMesh->UpdateMeshSection_LinearColor(
-            0,
-            CompletedTask.CalculatedVertices,
-            CompletedTask.CalculatedNormals,
-            TArray<FVector2D>(),
+        NearOceanMesh->UpdateMeshSection_FastVectors(
+            MoveTemp(CompletedTask.CalculatedVertices),
+            MoveTemp(CompletedTask.CalculatedNormals),
             TArray<FLinearColor>(),
-            TArray<FProcMeshTangent>()
+            false
         );
 
         // Only swap to NearOceanMesh after its vertices have been correctly positioned
