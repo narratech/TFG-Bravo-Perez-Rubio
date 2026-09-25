@@ -102,19 +102,21 @@ float UCosmicPlanetCollisionManager::CalculateActorRelevance(
 		return -1.0f;
 	}
 
-	// Check interface if implemented
+	// Check interface if implemented (directly on actor or on any of its components)
 	float PriorityMultiplier = 0.5f;
-	if (Candidate->GetClass()->ImplementsInterface(UCosmicCollisionTarget::StaticClass()))
+	ICosmicCollisionTarget* TargetInterface = Cast<ICosmicCollisionTarget>(Candidate);
+	if (!TargetInterface)
 	{
-		ICosmicCollisionTarget* TargetInterface = Cast<ICosmicCollisionTarget>(Candidate);
-		if (TargetInterface)
+		TargetInterface = Candidate->FindComponentByInterface<ICosmicCollisionTarget>();
+	}
+
+	if (TargetInterface)
+	{
+		if (!TargetInterface->IsCollisionRelevant())
 		{
-			if (!TargetInterface->IsCollisionRelevant())
-			{
-				return -1.0f;
-			}
-			PriorityMultiplier = FMath::Clamp(TargetInterface->GetCollisionPriority(), 0.0f, 1.0f);
+			return -1.0f;
 		}
+		PriorityMultiplier = FMath::Clamp(TargetInterface->GetCollisionPriority(), 0.0f, 1.0f);
 	}
 
 	// Check explicit priority tag

@@ -4,11 +4,9 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
 #include "InputActionValue.h"
-#include "Terrain/ICosmicCollisionTarget.h"
 #include "CosmicSpaceShip.generated.h"
 
-class ACosmicPlanet;
-class UCosmicPlanetCollisionManager;
+class UCosmicCollisionTargetComponent;
 
 /**
  * Main Pawn used for 6DOF space navigation.
@@ -25,7 +23,7 @@ class UCosmicPlanetCollisionManager;
  * with zero or minimal gravity.
  */
 UCLASS(Blueprintable, BlueprintType)
-class COSMICARCHITECTRUNTIME_API ACosmicSpaceShip : public APawn, public ICosmicCollisionTarget
+class COSMICARCHITECTRUNTIME_API ACosmicSpaceShip : public APawn
 {
 	GENERATED_BODY()
 
@@ -44,11 +42,6 @@ public:
 
 	virtual void Tick(float DeltaTime) override;
 
-	// ~ICosmicCollisionTarget interface
-	virtual bool IsCollisionRelevant() const override;
-	virtual float GetCollisionPriority() const override;
-	// ~End ICosmicCollisionTarget interface
-
 protected:
 
 	/**
@@ -58,20 +51,6 @@ protected:
 	 * once simulation begins.
 	 */
 	virtual void BeginPlay() override;
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-
-	/** Discovered planets in the world */
-	UPROPERTY(Transient)
-	TArray<TWeakObjectPtr<ACosmicPlanet>> RegisteredPlanets;
-
-	/** Currently subscribed planetary collision manager */
-	UPROPERTY(Transient)
-	TWeakObjectPtr<UCosmicPlanetCollisionManager> CurrentPlanetCollisionManager;
-
-	/** Updates subscription to the nearest planet if necessary */
-	void UpdateNearestPlanetSubscription();
-
-	float PlanetCheckCooldown = 0.0f;
 
 	// ============================================================
 	// INPUT SYSTEM
@@ -121,6 +100,13 @@ protected:
 	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Componentes")
 	class UCameraComponent* CameraComp;
+
+	/**
+	 * Planetary collision target component.
+	 * Manages procedural ground collision allocation underneath the ship.
+	 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Componentes")
+	TObjectPtr<UCosmicCollisionTargetComponent> CollisionTargetComp;
 
 	// ============================================================
 	// MOVEMENT VARIABLES

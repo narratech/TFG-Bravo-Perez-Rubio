@@ -1,7 +1,6 @@
 // Javier Bravo, David Rubio, Sergio Perez 2026 All Rights Reserved.
 #include "System/CosmicSpaceShip.h"
-#include "Planet/CosmicPlanet.h"
-#include "Terrain/CosmicPlanetCollisionManager.h"
+#include "Terrain/CosmicCollisionTargetComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
@@ -57,6 +56,10 @@ ACosmicSpaceShip::ACosmicSpaceShip()
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->SetupAttachment(SpringArmComp);
 
+	// Planetary collision target component
+	CollisionTargetComp = CreateDefaultSubobject<UCosmicCollisionTargetComponent>(TEXT("CollisionTargetComp"));
+	CollisionTargetComp->Priority = 0.85f;
+
 	// Initial configuration of braking system.
 	BrakingSpeed = 5.0f;
 }
@@ -74,74 +77,11 @@ void ACosmicSpaceShip::BeginPlay()
 			WorldSettings->bEnableWorldBoundsChecks = false;
 		}
 	}
-
-	// Discover planets and subscribe to the nearest planet's collision manager
-	ACosmicPlanet* NearestPlanet = ICosmicCollisionTarget::RegisterAndSubscribeToNearestPlanet(this, &RegisteredPlanets);
-	if (NearestPlanet)
-	{
-		CurrentPlanetCollisionManager = NearestPlanet->CollisionManager;
-	}
-}
-
-void ACosmicSpaceShip::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-	if (CurrentPlanetCollisionManager.IsValid())
-	{
-		CurrentPlanetCollisionManager->UnregisterCollisionTarget(this);
-		CurrentPlanetCollisionManager = nullptr;
-	}
-
-	Super::EndPlay(EndPlayReason);
 }
 
 void ACosmicSpaceShip::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
-	// Periodically verify nearest planet subscription as spaceship traverses deep space
-	PlanetCheckCooldown += DeltaTime;
-	if (PlanetCheckCooldown >= 1.5f || !CurrentPlanetCollisionManager.IsValid())
-	{
-		PlanetCheckCooldown = 0.0f;
-		UpdateNearestPlanetSubscription();
-	}
-}
-
-void ACosmicSpaceShip::UpdateNearestPlanetSubscription()
-{
-	TArray<ACosmicPlanet*> ValidPlanets;
-	for (const TWeakObjectPtr<ACosmicPlanet>& PlanetPtr : RegisteredPlanets)
-	{
-		if (PlanetPtr.IsValid())
-		{
-			ValidPlanets.Add(PlanetPtr.Get());
-		}
-	}
-
-	if (ValidPlanets.Num() == 0)
-	{
-		ACosmicPlanet* Nearest = ICosmicCollisionTarget::RegisterAndSubscribeToNearestPlanet(this, &RegisteredPlanets);
-		if (Nearest)
-		{
-			CurrentPlanetCollisionManager = Nearest->CollisionManager;
-		}
-		return;
-	}
-
-	ACosmicPlanet* NearestPlanet = ICosmicCollisionTarget::FindNearestPlanet(this, ValidPlanets);
-	if (NearestPlanet && NearestPlanet->CollisionManager != CurrentPlanetCollisionManager.Get())
-	{
-		if (CurrentPlanetCollisionManager.IsValid())
-		{
-			CurrentPlanetCollisionManager->UnregisterCollisionTarget(this);
-		}
-
-		if (NearestPlanet->CollisionManager)
-		{
-			NearestPlanet->CollisionManager->RegisterCollisionTarget(this);
-			CurrentPlanetCollisionManager = NearestPlanet->CollisionManager;
-		}
-	}
 }
 
 void ACosmicSpaceShip::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -283,24 +223,4 @@ void ACosmicSpaceShip::EndBoost(const FInputActionValue& Value)
 
 	// Residual braking will be managed
 	// later via Tick/runtime.
-}
-
-bool ACosmicSpaceShip::IsCollisionRelevant() const
-{
-	return !IsPendingKillPending();
-}
-
-float ACosmicSpaceShip::GetCollisionPriority() const
-{
-	if (IsLocallyControlled())
-	{
-		return 1.0f;
-	}
-
-	if (ShipMesh && ShipMesh->IsSimulatingPhysics())
-	{
-		return 0.85f;
-	}
-
-	return 0.75f;
-}
+}

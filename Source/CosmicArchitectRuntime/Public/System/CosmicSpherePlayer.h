@@ -5,16 +5,14 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
-#include "Terrain/ICosmicCollisionTarget.h"
 #include "CosmicSpherePlayer.generated.h"
 
 class UCosmicGravityComponent;
+class UCosmicCollisionTargetComponent;
 class USpringArmComponent;
 class UCameraComponent;
 class UInputMappingContext;
 class UInputAction;
-class ACosmicPlanet;
-class UCosmicPlanetCollisionManager;
 
 /**
  * Main Character used for planetary navigation.
@@ -23,7 +21,7 @@ class UCosmicPlanetCollisionManager;
  * (UCharacterMovementComponent::SetGravityDirection) and networked prediction/replication.
  */
 UCLASS(Blueprintable, BlueprintType)
-class COSMICARCHITECTRUNTIME_API ACosmicSpherePlayer : public ACharacter, public ICosmicCollisionTarget
+class COSMICARCHITECTRUNTIME_API ACosmicSpherePlayer : public ACharacter
 {
 	GENERATED_BODY()
 
@@ -44,27 +42,8 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetBase(UPrimitiveComponent* NewBaseComponent, const FName BoneName = NAME_None, bool bNotifyPawn = true) override;
 
-	// ~ICosmicCollisionTarget interface
-	virtual bool IsCollisionRelevant() const override;
-	virtual float GetCollisionPriority() const override;
-	// ~End ICosmicCollisionTarget interface
-
 protected:
 	virtual void BeginPlay() override;
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-
-	/** Discovered planets in the world */
-	UPROPERTY(Transient)
-	TArray<TWeakObjectPtr<ACosmicPlanet>> RegisteredPlanets;
-
-	/** Currently subscribed planetary collision manager */
-	UPROPERTY(Transient)
-	TWeakObjectPtr<UCosmicPlanetCollisionManager> CurrentPlanetCollisionManager;
-
-	/** Updates subscription to the nearest planet if necessary */
-	void UpdateNearestPlanetSubscription();
-
-	float PlanetCheckCooldown = 0.0f;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	/**
@@ -92,6 +71,13 @@ protected:
 	 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Components")
 	TObjectPtr<UCosmicGravityComponent> GravityComp;
+
+	/**
+	 * Planetary collision target component.
+	 * Manages procedural ground collision allocation underneath the player.
+	 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "CosmicArchitect|Components")
+	TObjectPtr<UCosmicCollisionTargetComponent> CollisionTargetComp;
 
 	/**
 	 * Indicates whether the player is grounded on a valid surface.
