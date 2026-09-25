@@ -139,6 +139,9 @@ struct COSMICARCHITECTNOISE_API FCosmicNoiseCraterParameters
     UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "1", ClampMax = "8"))
     int32 CraterOctaves = 3;
 
+    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0.05", ClampMax = "1.0"))
+    float CraterDensity = 0.55f;
+
     UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0", ClampMax = "2"))
     float CraterRadiusMultiplier = 1.0f;
 
@@ -149,7 +152,16 @@ struct COSMICARCHITECTNOISE_API FCosmicNoiseCraterParameters
     float CraterRimSharpness = 2.5f;
 
     UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0", ClampMax = "1"))
-    float CraterFloorHeight = 0.f;
+    float CraterFloorHeight = 0.0f;
+
+    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float CentralPeakHeight = 0.35f;
+
+    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0.05", ClampMax = "0.5"))
+    float CentralPeakRadius = 0.22f;
+
+    UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0.0", ClampMax = "2.0"))
+    float EjectaStrength = 0.45f;
 
     UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0", ClampMax = "1"))
     float CraterDistortion = 0.15f;
@@ -162,6 +174,9 @@ struct COSMICARCHITECTNOISE_API FCosmicNoiseCraterParameters
 
     UPROPERTY(EditAnywhere, Category = "Craters", meta = (ClampMin = "0", ClampMax = "1"))
     float CraterNoiseBreakup = 0.2f;
+
+    UPROPERTY(EditAnywhere, Category = "Craters - Maria Basins", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float MariaThreshold = 0.35f;
 };
 
 USTRUCT(BlueprintType)

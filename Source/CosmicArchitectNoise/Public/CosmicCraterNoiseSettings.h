@@ -6,10 +6,14 @@
 #include "CosmicCraterNoiseSettings.generated.h"
 
 /**
- * Configuration used to generate a crater-based noise strategy.
+ * Configuration for the realistic planetary/lunar crater noise strategy.
  *
- * This class encapsulates all parameters required to initialize
- * an instance of FCosmicCraterNoiseStrategy.
+ * Simulates high-fidelity impact craters:
+ * - Sparse Poisson-like Voronoi distribution (eliminates golf-ball honeycomb artifacts).
+ * - Multi-scale crater hierarchy (giant basins, complex craters with central peaks, micro-impacts).
+ * - Central rebound peaks (isostatic elastic rebound).
+ * - Raised rims and radial ejecta blankets.
+ * - Planetary vertex color encoding (R: Normalized Altitude, G: Fresh Ejecta Rays, B: Maria Basalt vs Highlands).
  */
 UCLASS()
 class COSMICARCHITECTNOISE_API UCosmicCraterNoiseSettings : public UCosmicNoiseClass
@@ -18,33 +22,24 @@ class COSMICARCHITECTNOISE_API UCosmicCraterNoiseSettings : public UCosmicNoiseC
 
 public:
 
-    /**
-     * Seed used for procedural noise generation.
-     */
+    /** Seed used for procedural generation */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
-    int32 Seed;
+    int32 Seed = 1337;
 
-    /**
-     * General parameters of the noise layers.
-     */
+    /** General parameters of the macro planetary base terrain layer */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseLayer LayerParameters;
 
-    /**
-     * Parameters related to biome generation.
-     */
-    UPROPERTY(EditAnywhere, Category = "Noise Settings")
-    FCosmicNoiseBiomeParameters BiomeParameters;
-
-    /**
-     * Specific parameters for crater generation.
-     */
+    /** Specific parameters for multi-scale crater generation */
     UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseCraterParameters CraterParameters;
 
+    /** Height normalization scale factor */
+    UPROPERTY(EditAnywhere, Category = "Noise Settings", meta = (ClampMin = "0.01", ClampMax = "5.0"))
+    float HeightNormalizationScale = 1.0f;
+
     /**
-     * Creates and initializes the crater noise strategy
-     * using parameters configured in this class.
+     * Creates and initializes the crater noise strategy.
      *
      * @return Fully initialized noise strategy.
      */

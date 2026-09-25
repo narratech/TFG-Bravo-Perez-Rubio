@@ -7,8 +7,19 @@ TSharedPtr<ICosmicNoiseStrategy> UCosmicDefaultNoiseSettings::CreateStrategy() c
 {
     auto Strategy = MakeShared<FCosmicDefaultNoiseStrategy>();
 
-    Strategy->Initialize(Seed, LayerParameters, BiomeParameters);
+    Strategy->Initialize(
+        Seed,
+        LayerParameters,
+        BiomeParameters,
+        SeaLevel,
+        OceanDepthScale,
+        ContinentScale,
+        bEnableMountainRidges,
+        MountainSharpness,
+        MountainRidgeStrength,
+        TerraceSteps,
+        HeightNormalizationScale
+    );
 
     return Strategy;
 }
- 

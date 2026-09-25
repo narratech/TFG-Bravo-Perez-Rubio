@@ -7,8 +7,12 @@ TSharedPtr<ICosmicNoiseStrategy> UCosmicCraterNoiseSettings::CreateStrategy() co
 {
     auto Strategy = MakeShared<FCosmicCraterNoiseStrategy>();
 
-    Strategy->Initialize(Seed, LayerParameters, BiomeParameters, CraterParameters);
+    Strategy->Initialize(
+        Seed,
+        LayerParameters,
+        CraterParameters,
+        HeightNormalizationScale
+    );
 
     return Strategy;
 }
- 

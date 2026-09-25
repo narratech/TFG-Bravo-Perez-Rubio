@@ -1,9 +1,7 @@
 // Javier Bravo, David Rubio, Sergio Perez 2026 All Rights Reserved.
 #include "CosmicArchitectFactory.h"
 #include "CosmicNoiseDSettingsActions.h"
-#include "CosmicNoiseESettingsActions.h"
 #include "CosmicNoiseCSettingsActions.h"
-#include "CosmicNoiseRSettingsActions.h"
 #include "CosmicNoiseMultiSettingsActions.h"
 #include "CosmicNoiseErosionSettingsActions.h"
 #include "CosmicFoliageCollectionActions.h"
@@ -31,14 +29,8 @@ void FCosmicArchitectFactoryModule::StartupModule()
     TSharedPtr<FCosmicNoiseDefaultSettingsActions> NoiseActions = MakeShareable(new FCosmicNoiseDefaultSettingsActions());
     NoiseActions->MyAssetCategory = CosmicCategory;
 
-    TSharedPtr<FCosmicNoiseEarthSettingsActions> EarthNoiseActions = MakeShareable(new FCosmicNoiseEarthSettingsActions());
-    EarthNoiseActions->MyAssetCategory = CosmicCategory;
-
     TSharedPtr<FCosmicNoiseCraterSettingsActions> CraterNoiseActions = MakeShareable(new FCosmicNoiseCraterSettingsActions());
     CraterNoiseActions->MyAssetCategory = CosmicCategory;
-
-    TSharedPtr<FCosmicNoiseRealisticSettingsActions> RealisticNoiseActions = MakeShareable(new FCosmicNoiseRealisticSettingsActions());
-    RealisticNoiseActions->MyAssetCategory = CosmicCategory;
 
     TSharedPtr<FCosmicNoiseMultiSettingsActions> MultiNoiseActions = MakeShareable(new FCosmicNoiseMultiSettingsActions());
     MultiNoiseActions->MyAssetCategory = CosmicCategory;
@@ -53,9 +45,7 @@ void FCosmicArchitectFactoryModule::StartupModule()
     BiomeActions->MyAssetCategory = CosmicCategory;
 
     AssetTools.RegisterAssetTypeActions(NoiseActions.ToSharedRef());
-    AssetTools.RegisterAssetTypeActions(EarthNoiseActions.ToSharedRef());
     AssetTools.RegisterAssetTypeActions(CraterNoiseActions.ToSharedRef());
-    AssetTools.RegisterAssetTypeActions(RealisticNoiseActions.ToSharedRef());
     AssetTools.RegisterAssetTypeActions(MultiNoiseActions.ToSharedRef());
     AssetTools.RegisterAssetTypeActions(ErosionNoiseActions.ToSharedRef());
     AssetTools.RegisterAssetTypeActions(FoliageActions.ToSharedRef());

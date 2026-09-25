@@ -3,83 +3,57 @@
 
 #include "CoreMinimal.h"
 #include "ICosmicNoiseStrategy.h"
+#include "CosmicNoiseTypes.h"
 #include "ThirdParty/FastNoiseLite.h"
 
 /**
- * Standard procedural noise strategy used to
- * generate planetary surfaces with dynamic biomes.
+ * Hyper-fast procedural noise strategy for planetary surfaces.
  *
- * This implementation combines:
- * - Procedural base noise.
- * - Humidity variations.
- * - Temperature variations.
- * - Biome influence on final height.
+ * Combines minimal noise sampling (1-2 evaluations per vertex) with analytical geomorphology:
+ * - Hypsometric ocean basin and continental shelf slicing.
+ * - Analytical alpine mountain crests (zero extra octave cost).
+ * - Analytical geological terrace steps.
+ * - Planetary latitudinal gradient and altitudinal cooling lapse rate.
  */
 class COSMICARCHITECTNOISE_API FCosmicDefaultNoiseStrategy : public ICosmicNoiseStrategy
 {
 public:
+    virtual ~FCosmicDefaultNoiseStrategy() override = default;
 
-    /**
-     * Seed used to initialize all noise generators.
-     */
-    UPROPERTY(EditAnywhere, Category = "Noise Settings")
-    int32 Seed;
-
-    /**
-     * General parameters of the main noise layer.
-     */
-    UPROPERTY(EditAnywhere, Category = "Noise Settings")
+    int32 Seed = 1337;
     FCosmicNoiseLayer LayerParameters;
-
-    /**
-     * Parameters used for biome generation.
-     */
-    UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseBiomeParameters BiomeParameters;
 
-    /**
-     * Initializes the noise strategy and configures all
-     * necessary internal generators.
-     *
-     * @param Seed Procedural seed used for noises.
-     * @param LayerParameters Base noise configuration.
-     * @param BiomeParameters Biome configuration.
-     */
+    float SeaLevel = 0.0f;
+    float OceanDepthScale = 0.6f;
+    float ContinentScale = 1.0f;
+    bool bEnableMountainRidges = true;
+    float MountainSharpness = 2.5f;
+    float MountainRidgeStrength = 0.85f;
+    float TerraceSteps = 0.0f;
+    float HeightNormalizationScale = 1.0f;
+
     void Initialize(
-        int32 Seed,
-        FCosmicNoiseLayer LayerParameters,
-        FCosmicNoiseBiomeParameters BiomeParameters
+        int32 InSeed,
+        const FCosmicNoiseLayer& InLayerParameters,
+        const FCosmicNoiseBiomeParameters& InBiomeParameters,
+        float InSeaLevel = 0.0f,
+        float InOceanDepthScale = 0.6f,
+        float InContinentScale = 1.0f,
+        bool bInEnableMountainRidges = true,
+        float InMountainSharpness = 2.5f,
+        float InMountainRidgeStrength = 0.85f,
+        float InTerraceSteps = 0.0f,
+        float InHeightNormalizationScale = 1.0f
     );
 
-    /**
-     * Evaluates a point on the procedural surface and calculates:
-     * - Final height.
-     * - Representative biome color.
-     *
-     * @param NoiseDir Normalized direction used as noise coordinate.
-     * @param OutHeight Calculated resultant height.
-     * @param OutColor Color associated with the generated biome.
-     */
-    void EvaluatePoint(
+    virtual void EvaluatePoint(
         const FVector& NoiseDir,
         float& OutHeight,
         FLinearColor& OutColor
     ) const override;
 
 protected:
-
-    /**
-     * Noise generator used to calculate humidity.
-     */
-    FastNoiseLite HumidityNoise;
-
-    /**
-     * Noise generator used to calculate temperature.
-     */
-    FastNoiseLite TempNoise;
-
-    /**
-     * Main terrain base noise generator.
-     */
     FastNoiseLite Noise;
+    FastNoiseLite HumidityNoise;
 };

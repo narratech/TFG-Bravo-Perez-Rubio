@@ -3,96 +3,67 @@
 
 #include "CoreMinimal.h"
 #include "ICosmicNoiseStrategy.h"
+#include "CosmicNoiseTypes.h"
 #include "ThirdParty/FastNoiseLite.h"
 
 /**
- * Procedural noise generation strategy oriented
- * toward cratered planetary surfaces.
+ * Procedural noise strategy for high-fidelity planetary and lunar impact cratering.
  *
- * This implementation combines:
- * - Procedural base noise.
- * - Biome generation.
- * - Humidity and temperature variations.
- * - Multilayer crater generation.
+ * Implements:
+ * - Sparse Voronoi distribution (eliminates golf-ball honeycomb artifacts).
+ * - Central rebound peaks (elastic rebound for complex craters).
+ * - Raised rims and radial ejecta blankets.
+ * - Non-circular rim domain distortion.
+ * - Interior talus rubble and rock breakup.
+ * - Planetary vertex color encoding (Normalized Altitude, Fresh Ejecta Rays, Basaltic Maria vs Highlands).
  */
 class COSMICARCHITECTNOISE_API FCosmicCraterNoiseStrategy : public ICosmicNoiseStrategy
 {
 public:
+    virtual ~FCosmicCraterNoiseStrategy() override = default;
 
-    /**
-     * Seed used to initialize all noise generators.
-     */
-    UPROPERTY(EditAnywhere, Category = "Noise Settings")
-    int32 Seed;
-
-    /**
-     * General parameters of base noise layers.
-     */
-    UPROPERTY(EditAnywhere, Category = "Noise Settings")
+    int32 Seed = 1337;
     FCosmicNoiseLayer LayerParameters;
-
-    /**
-     * Parameters related to biome generation.
-     */
-    UPROPERTY(EditAnywhere, Category = "Noise Settings")
-    FCosmicNoiseBiomeParameters BiomeParameters;
-
-    /**
-     * Specific parameters used for crater generation.
-     */
-    UPROPERTY(EditAnywhere, Category = "Noise Settings")
     FCosmicNoiseCraterParameters CraterParameters;
+    float HeightNormalizationScale = 1.0f;
 
-    /**
-     * Initializes the noise strategy and configures all
-     * necessary internal generators.
-     *
-     * @param Seed Procedural seed used for noises.
-     * @param LayerParameters Base noise configuration.
-     * @param BiomeParameters Biome configuration.
-     * @param CraterParameters Crater generation configuration.
-     */
     void Initialize(
-        int32 Seed,
-        FCosmicNoiseLayer LayerParameters,
-        FCosmicNoiseBiomeParameters BiomeParameters,
-        FCosmicNoiseCraterParameters CraterParameters
+        int32 InSeed,
+        const FCosmicNoiseLayer& InLayerParameters,
+        const FCosmicNoiseCraterParameters& InCraterParameters,
+        float InHeightNormalizationScale = 1.0f
     );
 
-    /**
-     * Evaluates a point on the procedural surface and calculates:
-     * - Final height.
-     * - Representative biome color.
-     *
-     * @param NoiseDir Normalized direction used as noise coordinate.
-     * @param OutHeight Calculated resultant height.
-     * @param OutColor Color associated with the generated biome.
-     */
-    void EvaluatePoint(
+    void Initialize(
+        int32 InSeed,
+        const FCosmicNoiseLayer& InLayerParameters,
+        const FCosmicNoiseBiomeParameters& InBiomeParameters,
+        const FCosmicNoiseCraterParameters& InCraterParameters
+    );
+
+    virtual void EvaluatePoint(
         const FVector& NoiseDir,
         float& OutHeight,
         FLinearColor& OutColor
     ) const override;
 
 protected:
+    /** Macro planetary crust topography noise */
+    FastNoiseLite BaseNoise;
 
-    /**
-     * Noise generator used to calculate humidity.
-     */
-    FastNoiseLite HumidityNoise;
+    /** Cellular distance generator for crater bowl & rim geometry */
+    FastNoiseLite CraterDistNoise;
 
-    /**
-     * Noise generator used to calculate temperature.
-     */
-    FastNoiseLite TempNoise;
+    /** Cellular cell-value hash generator for sparse crater distribution */
+    FastNoiseLite CraterCellNoise;
 
-    /**
-     * Main terrain base noise generator.
-     */
-    FastNoiseLite Noise;
+    /** Simplex noise for non-circular crater rim domain distortion */
+    FastNoiseLite CraterDistortNoise;
 
-    /**
-     * Noise generator used for crater formation.
-     */
-    FastNoiseLite CraterNoise;
+    /** High-frequency micro-breakup roughness on crater walls */
+    FastNoiseLite CraterBreakupNoise;
+
+    /** Precomputed normalization extrema */
+    float CachedMinHeight = -500.0f;
+    float CachedMaxHeight = 500.0f;
 };
