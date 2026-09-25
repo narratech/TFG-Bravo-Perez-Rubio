@@ -129,6 +129,91 @@ void ACosmicSpherePlayer::SetBase(UPrimitiveComponent* NewBaseComponent, const F
 	}
 }
 
+void ACosmicSpherePlayer::OnRep_ReplicatedBasedMovement()
+{
+	if (!IsReplicatingMovement())
+	{
+		return;
+	}
+
+	if (GetLocalRole() != ROLE_SimulatedProxy)
+	{
+		return;
+	}
+
+	// Skip base updates while playing root motion, it is handled inside of OnRep_RootMotion
+	if (IsPlayingNetworkedRootMotionMontage())
+	{
+		return;
+	}
+
+	UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+	if (!MoveComp)
+	{
+		return;
+	}
+
+	MoveComp->bNetworkUpdateReceived = true;
+	FGuardValue_Bitfield(bInBaseReplication, true);
+
+	const FBasedMovementInfo& RepBasedMovement = GetReplicatedBasedMovement();
+	const bool bBaseChanged = (BasedMovement.MovementBase != RepBasedMovement.MovementBase || BasedMovement.BoneName != RepBasedMovement.BoneName);
+	if (bBaseChanged)
+	{
+		// Even though we will copy the replicated based movement info, we need to use SetBase() to set up tick dependencies and trigger notifications.
+		SetBase(RepBasedMovement.MovementBase, RepBasedMovement.BoneName);
+	}
+
+	// Make sure to use the values of relative location/rotation etc from the server.
+	BasedMovement = RepBasedMovement;
+
+	if (RepBasedMovement.HasRelativeLocation())
+	{
+		// Update transform relative to movement base
+		const FVector OldLocation = GetActorLocation();
+		const FQuat OldRotation = GetActorQuat();
+		MovementBaseUtility::GetMovementBaseTransform(RepBasedMovement.MovementBase, RepBasedMovement.BoneName, MoveComp->OldBaseLocation, MoveComp->OldBaseQuat);
+		const FTransform BaseTransform(MoveComp->OldBaseQuat, MoveComp->OldBaseLocation);
+		const FVector NewLocation = BaseTransform.TransformPositionNoScale(RepBasedMovement.Location);
+		FRotator NewRotation;
+
+		if (RepBasedMovement.HasRelativeRotation())
+		{
+			// Relative location, relative rotation
+			NewRotation = (FRotationMatrix(RepBasedMovement.Rotation) * FQuatRotationMatrix(MoveComp->OldBaseQuat)).Rotator();
+			
+			if (MoveComp->ShouldRemainVertical())
+			{
+				if (MoveComp->HasCustomGravity())
+				{
+					// Rotate into gravity space, zero Pitch and Roll relative to planet gravity, and rotate back to world space
+					FRotator GravityRelativeDesiredRotation = (MoveComp->GetGravityToWorldTransform() * NewRotation.Quaternion()).Rotator();
+					GravityRelativeDesiredRotation.Pitch = 0.f;
+					GravityRelativeDesiredRotation.Yaw = FRotator::NormalizeAxis(GravityRelativeDesiredRotation.Yaw);
+					GravityRelativeDesiredRotation.Roll = 0.f;
+					NewRotation = (MoveComp->GetWorldToGravityTransform() * GravityRelativeDesiredRotation.Quaternion()).Rotator();
+				}
+				else
+				{
+					NewRotation.Pitch = 0.f;
+					NewRotation.Roll = 0.f;
+				}
+			}
+		}
+		else
+		{
+			// Relative location, absolute rotation
+			NewRotation = RepBasedMovement.Rotation;
+		}
+
+		// When position or base changes, movement mode will need to be updated. This assumes rotation changes don't affect that.
+		MoveComp->bJustTeleported |= (bBaseChanged || NewLocation != OldLocation);
+		MoveComp->bNetworkSmoothingComplete = false;
+		MoveComp->SmoothCorrection(OldLocation, OldRotation, NewLocation, NewRotation.Quaternion());
+		OnUpdateSimulatedPosition(OldLocation, OldRotation);
+	}
+}
+
 
 float ACosmicSpherePlayer::GetCurrentGravityMagnitude() const
 {
@@ -266,4 +351,4 @@ void ACosmicSpherePlayer::Look(const FInputActionValue& Value)
 
 		SpringArmComp->SetRelativeRotation(FRotator(CameraPitch, CameraYaw, 0.0f));
 	}
-}
+}

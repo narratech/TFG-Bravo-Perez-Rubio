@@ -41,6 +41,7 @@ public:
 	 */
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetBase(UPrimitiveComponent* NewBaseComponent, const FName BoneName = NAME_None, bool bNotifyPawn = true) override;
+	virtual void OnRep_ReplicatedBasedMovement() override;
 
 protected:
 	virtual void BeginPlay() override;
