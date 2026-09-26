@@ -1199,7 +1199,7 @@ void EvaluatePlanetaryMasterSurfaceCore(
 
     // --- 12. Volcanic / Thermal Emission ---
     float3 Emissive = float3(0.0f, 0.0f, 0.0f);
-    if (ArchetypeIndex == 3) // Volcanic world
+    if (bUseCustomArchetype <= 0.5f && ArchetypeIndex == 3) // Volcanic world preset
     {
         float MagmaMask = saturate((0.32f - AltitudeNorm) / 0.20f) * saturate(1.0f - RawSlope * 1.2f);
         MagmaMask *= saturate(1.0f - MacroH * 1.6f);
