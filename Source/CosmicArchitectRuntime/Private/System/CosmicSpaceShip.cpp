@@ -135,9 +135,9 @@ void ACosmicSpaceShip::AplicarTraslacion(const FInputActionValue& Value)
 			}
 		}
 
-		// Local force applied proportionally
-		// to input and delta time.
-		FVector LocalForce = MovementVector * ThrusterForce * GetWorld()->GetDeltaSeconds();
+		// Local force applied proportionally to input.
+		// AddForce already integrates over DeltaTime internally in the physics step.
+		FVector LocalForce = MovementVector * ThrusterForce;
 
 		// Increases propulsion power
 		// while boost is active.
@@ -161,17 +161,20 @@ void ACosmicSpaceShip::AplicarOrientacion(const FInputActionValue& Value)
 
 	if (!LookAxisVector.IsNearlyZero() && ShipMesh)
 	{
-		// Local torque used for:
+		// Local angular impulse used for:
 		// - Pitch
 		// - Yaw
-		FVector LocalTorque = FVector(0.0f, LookAxisVector.Y * -1.0f, LookAxisVector.X) * RotationTorque * GetWorld()->GetDeltaSeconds();
+		// Mouse axis input is already a per-frame displacement delta, so we apply an angular impulse
+		// directly (AddAngularImpulseInDegrees) instead of AddTorqueInDegrees (which multiplies by DeltaTime
+		// during physics integration and would cause mouse sensitivity to scale with DeltaTime).
+		FVector LocalImpulse = FVector(0.0f, LookAxisVector.Y * -1.0f, LookAxisVector.X) * RotationTorque;
 
 		// Conversion from local space
 		// to world space.
-		FVector WorldTorque = ShipMesh->GetComponentRotation().RotateVector(LocalTorque);
+		FVector WorldImpulse = ShipMesh->GetComponentRotation().RotateVector(LocalImpulse);
 
-		// Physics application of angular torque.
-		ShipMesh->AddTorqueInDegrees(WorldTorque, NAME_None, true);
+		// Physics application of angular impulse.
+		ShipMesh->AddAngularImpulseInDegrees(WorldImpulse, NAME_None, true);
 	}
 }
 
@@ -183,7 +186,7 @@ void ACosmicSpaceShip::AplicarAlabeo(const FInputActionValue& Value)
 	{
 		// Roll is applied on the ship's
 		// forward longitudinal axis.
-		FVector LocalTorque = FVector(RollValue, 0.0f, 0.0f) * AlabeoTorque * GetWorld()->GetDeltaSeconds();
+		FVector LocalTorque = FVector(RollValue, 0.0f, 0.0f) * AlabeoTorque;
 
 		// Conversion to world coordinates.
 		FVector WorldTorque = ShipMesh->GetComponentRotation().RotateVector(LocalTorque);

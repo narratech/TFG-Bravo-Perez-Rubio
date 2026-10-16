@@ -50,6 +50,122 @@
  * @param OutNormal        - Output: perturbed surface normal in world space
  * @param OutRoughnessBias - Output: distance-based roughness addition for specular AA
  */
+// ============================================================================
+// Procedural 3D Cellular Sea Foam & SingleLayerWater Shoreline Depth Helpers
+// ============================================================================
+
+/**
+ * Fast 3D hash for procedural sea foam (avoids UV seams on spherical planets).
+ */
+float3 GerstnerHash33(float3 p)
+{
+    p = frac(p * float3(0.1031f, 0.1030f, 0.0973f));
+    p += dot(p, p.yxz + 33.33f);
+    return frac((p.xxy + p.yxx) * p.zyx);
+}
+
+/**
+ * Smooth 3D value noise in [0, 1] for macro foam patch breakup.
+ */
+float GerstnerNoise3D(float3 p)
+{
+    float3 i = floor(p);
+    float3 f = frac(p);
+    float3 u = f * f * (3.0f - 2.0f * f);
+
+    float n000 = dot(GerstnerHash33(i + float3(0, 0, 0)), float3(0.333f, 0.333f, 0.333f));
+    float n100 = dot(GerstnerHash33(i + float3(1, 0, 0)), float3(0.333f, 0.333f, 0.333f));
+    float n010 = dot(GerstnerHash33(i + float3(0, 1, 0)), float3(0.333f, 0.333f, 0.333f));
+    float n110 = dot(GerstnerHash33(i + float3(1, 1, 0)), float3(0.333f, 0.333f, 0.333f));
+    float n001 = dot(GerstnerHash33(i + float3(0, 0, 1)), float3(0.333f, 0.333f, 0.333f));
+    float n101 = dot(GerstnerHash33(i + float3(1, 0, 1)), float3(0.333f, 0.333f, 0.333f));
+    float n011 = dot(GerstnerHash33(i + float3(0, 1, 1)), float3(0.333f, 0.333f, 0.333f));
+    float n111 = dot(GerstnerHash33(i + float3(1, 1, 1)), float3(0.333f, 0.333f, 0.333f));
+
+    return lerp(
+        lerp(lerp(n000, n100, u.x), lerp(n010, n110, u.x), u.y),
+        lerp(lerp(n001, n101, u.x), lerp(n011, n111, u.x), u.y),
+        u.z);
+}
+
+/**
+ * Evaluates a multi-scale porous sea foam pattern (macro patches + lacy cellular filaments + micro bubbles).
+ * Evaluated in Lagrangian water-parcel space so foam physically rides and compresses with wave crests.
+ */
+void EvaluateOceanFoamPattern(
+    in float3 LocalWaterPosCm,
+    in float3 WindDriftCm,
+    in float  CameraDistCm,
+    out float OutMacroPatch,
+    out float OutBubbleWeb)
+{
+    // 1. Macro patch breakup (~2.8m scale)
+    float3 P_macro = (LocalWaterPosCm + WindDriftCm * 0.35f) * 0.0036f;
+    OutMacroPatch = GerstnerNoise3D(P_macro);
+
+    // 2. Meso cellular filaments / lacy foam webbing (~55cm & ~24cm scales)
+    float3 P_meso1 = (LocalWaterPosCm + WindDriftCm * 0.65f) * 0.018f;
+    float3 P_meso2 = (LocalWaterPosCm - WindDriftCm * 0.45f) * 0.041f;
+
+    float Ridge1 = 1.0f - abs(GerstnerNoise3D(P_meso1) * 2.0f - 1.0f);
+    float Ridge2 = 1.0f - abs(GerstnerNoise3D(P_meso2) * 2.0f - 1.0f);
+    float Webbing = saturate(Ridge1 * 0.60f + Ridge2 * 0.40f);
+    Webbing = Webbing * Webbing; // Sharpen filaments so water gaps show through
+
+    // 3. Micro bubble porosity (~9cm scale, faded out with distance to prevent subpixel shimmering)
+    float MicroFade = saturate(1.0f - CameraDistCm / 25000.0f);
+    float MicroBubbles = 0.5f;
+    if (MicroFade > 0.01f)
+    {
+        float3 P_micro = LocalWaterPosCm * 0.11f + WindDriftCm * 0.9f;
+        float Ridge3 = 1.0f - abs(GerstnerNoise3D(P_micro) * 2.0f - 1.0f);
+        MicroBubbles = Ridge3 * Ridge3;
+    }
+
+    float CombinedWeb = lerp(Webbing, Webbing * 0.65f + MicroBubbles * 0.35f, MicroFade);
+    OutBubbleWeb = saturate(CombinedWeb * (0.55f + 0.45f * OutMacroPatch));
+}
+
+/**
+ * Samples the vertical water column depth (in cm) behind the surface in SingleLayerWater BasePass.
+ * Safely returns deep water (100000.0 cm) in Vertex Shaders, HitProxy, or non-BasePass stages.
+ */
+float SampleOceanWaterDepthCm(FMaterialVertexParameters Parameters, float3 SurfaceRadialNormal)
+{
+    return 100000.0f;
+}
+
+float SampleOceanWaterDepthCm(FMaterialPixelParameters Parameters, float3 SurfaceRadialNormal)
+{
+#if PIXELSHADER && IS_BASE_PASS && MATERIAL_SHADINGMODEL_SINGLELAYERWATER && !SCENE_TEXTURES_DISABLED
+    float WaterPixelDepth = GetPixelDepth(Parameters);
+    float2 ViewportUV = clamp(
+        Parameters.ViewBufferUV,
+        SingleLayerWater.SceneWithoutSingleLayerWaterMinMaxUV.xy,
+        SingleLayerWater.SceneWithoutSingleLayerWaterMinMaxUV.zw);
+
+    float SceneDeviceZ = WaterSampleSceneDepthWithoutWater(
+        SingleLayerWater.SceneDepthWithoutSingleLayerWaterTexture,
+        View.SharedBilinearClampedSampler,
+        ViewportUV,
+        SingleLayerWater.SceneWithoutSingleLayerWaterTextureSize,
+        SingleLayerWater.SceneWithoutSingleLayerWaterInvTextureSize);
+
+    float OpaqueSceneDepth = ConvertFromDeviceZ(max(SceneDeviceZ, 0.000000000001f));
+    float RayWaterDepth = max(0.0f, OpaqueSceneDepth - WaterPixelDepth);
+
+    // Project view-ray depth onto the radial normal so shallow shoreline depth is view-angle invariant
+    float ViewCos = max(abs(dot(SurfaceRadialNormal, Parameters.CameraVector)), 0.25f);
+    return RayWaterDepth * ViewCos;
+#else
+    return 100000.0f;
+#endif
+}
+
+/**
+ * Compute spherical Gerstner wave displacement, analytical normal, roughness bias,
+ * procedural sea foam mask (crest whitecaps + shoreline surf), and subsurface crest mask.
+ */
 void CalculateSphericalGerstner(
     in float3 InWorldPos,
     in float3 PlanetCenter,
@@ -64,14 +180,23 @@ void CalculateSphericalGerstner(
     in float  ActionFalloff,
     in float3 CameraWorldPos,
     in int    NumActiveWaves,
+    in float  FoamIntensity,
+    in float  FoamThreshold,
+    in float  ShoreFoamDepth,
+    in float  WaterDepthCm,
     out float3 OutDisplacement,
     out float3 OutNormal,
-    out float  OutRoughnessBias)
+    out float  OutRoughnessBias,
+    out float  OutFoamMask,
+    out float  OutCrestMask)
 {
     // --- Planetary Surface Basis ---
     float3 RadialVec = InWorldPos - PlanetCenter;
     float CurrentDist = length(RadialVec);
     float3 N_base = RadialVec / max(CurrentDist, 1.0f); // Radial surface normal
+
+    OutFoamMask = 0.0f;
+    OutCrestMask = 0.0f;
 
     // --- Fast Early-Exit for Calm / Disabled Water ---
     if (AmplitudeScale < 0.001f || NumActiveWaves <= 0)
@@ -128,6 +253,10 @@ void CalculateSphericalGerstner(
     // --- Accumulators ---
     float3 DispAccum = float3(0.0f, 0.0f, 0.0f);
     float3 TangentPerturb = float3(0.0f, 0.0f, 0.0f);
+    float  TotalAmpAccum = 0.0f;
+    float  VerticalElevAccum = 0.0f;
+    float  JacobianAccum = 0.0f;
+    float  CrestEnergyAccum = 0.0f;
 
     // --- Directional Spread Basis ---
     // Determine primary wave origin on the sphere
@@ -279,6 +408,17 @@ void CalculateSphericalGerstner(
         // --- Analytical Normal Perturbation ---
         // Exact surface gradient along tangent T_dir:
         TangentPerturb += T_dir * (K * Amp * CosP * TotalAtten);
+
+        // --- Crest & Whitecap Jacobian Accumulation ---
+        float WeightedAmp = Amp * TotalAtten;
+        TotalAmpAccum += WeightedAmp;
+        VerticalElevAccum += WeightedAmp * SinP;
+        JacobianAccum += Q_eff * (K * Amp) * SinP * TotalAtten;
+
+        // Leeward-shifted phase (Phase + 0.42 rad) so foam trails naturally down the back of breaking crests
+        float SinP_Trail = SinP * 0.913f + CosP * 0.408f;
+        float HarmonicWeight = (i < 2) ? 0.65f : (1.05f + 0.10f * (float)i);
+        CrestEnergyAccum += WeightedAmp * HarmonicWeight * (0.35f + 0.65f * Q_eff) * max(SinP_Trail, 0.0f);
     }
 
     OutDisplacement = DispAccum;
@@ -288,6 +428,98 @@ void CalculateSphericalGerstner(
     // Since T_dir is strictly perpendicular to N_base, (N_base - TangentPerturb)
     // has length >= 1.0, guaranteed non-zero, never inverts into the planet.
     OutNormal = normalize(N_base - TangentPerturb);
+
+#if PIXELSHADER
+    // --- Pixel-Stage Procedural Foam & Subsurface Crest Calculation ---
+    float SafeTotalAmp = max(TotalAmpAccum, 0.001f);
+    float NormElevation = VerticalElevAccum / SafeTotalAmp; // [-1..1]
+    float NormCrestEnergy = CrestEnergyAccum / SafeTotalAmp;
+
+    // Subsurface Scattering / Turquoise Crest Mask (active on elevated crests and shallow water)
+    float WaveCrestGlow = smoothstep(0.15f, 0.72f, NormElevation) * LODFade;
+    float ShallowGlow = (ShoreFoamDepth > 0.01f)
+        ? saturate(1.0f - WaterDepthCm / max(ShoreFoamDepth * 2.8f, 10.0f)) * 0.65f
+        : 0.0f;
+    OutCrestMask = saturate(max(WaveCrestGlow, ShallowGlow));
+
+    if (FoamIntensity > 0.001f)
+    {
+        // 1. Lagrangian coordinates (foam rides with horizontal wave displacement, wrapped for LWC precision)
+        float EffectiveSpeed = max(WaveParams[0].w * SpeedScale, 0.25f);
+        float3 HorizontalDisp = DispAccum - N_base * dot(DispAccum, N_base);
+        float3 WrappedRelPos = fmod(RadialVec, 65536.0f);
+        float3 LocalWaterPosCm = WrappedRelPos - HorizontalDisp * 0.85f;
+        float3 WindDriftCm = PrimaryOrigin * (InTime * 38.0f * EffectiveSpeed);
+
+        float MacroPatch, BubbleWeb;
+        EvaluateOceanFoamPattern(LocalWaterPosCm, WindDriftCm, CameraDist, MacroPatch, BubbleWeb);
+
+        // 2. Whitecap Crest Energy (combines harmonic convergence, crest elevation, and Jacobian compression)
+        float Thresh = clamp(FoamThreshold, 0.05f, 0.95f);
+        float RawCrestSignal = NormCrestEnergy * 0.68f + max(NormElevation, 0.0f) * 0.48f + max(JacobianAccum, 0.0f) * 1.15f;
+        // Modulate threshold slightly by macro noise so whitecaps appear in natural broken groups
+        float EffectiveThresh = Thresh + (1.0f - MacroPatch) * 0.18f;
+        float CrestFoamEnergy = smoothstep(EffectiveThresh, EffectiveThresh + 0.32f, RawCrestSignal);
+
+        // 3. Shoreline / Shallow Surf Foam Energy
+        float ShoreFoamEnergy = 0.0f;
+        if (ShoreFoamDepth > 0.01f && WaterDepthCm < ShoreFoamDepth)
+        {
+            float ShoreProx = saturate(1.0f - WaterDepthCm / max(ShoreFoamDepth, 1.0f));
+            // Dense contact rim right at the water-terrain intersection (hides polygon cut)
+            float ContactRim = pow(saturate(1.0f - WaterDepthCm / max(ShoreFoamDepth * 0.22f, 6.0f)), 1.35f);
+            // Animated surf bands rolling toward the shore
+            float SurfBandFreq = 6.2831853f / max(ShoreFoamDepth * 0.28f, 20.0f);
+            float SurfPhase = WaterDepthCm * SurfBandFreq + InTime * 3.2f * EffectiveSpeed + MacroPatch * 3.0f;
+            float SurfRollers = pow(saturate(sin(SurfPhase) * 0.5f + 0.5f), 2.2f) * smoothstep(0.0f, 0.85f, ShoreProx) * ShoreProx;
+
+            ShoreFoamEnergy = saturate(ContactRim * 1.15f + SurfRollers * 0.80f);
+        }
+
+        // 4. Cellular Bubble Erosion: lacy filaments at the edges, dense white froth at the core
+        float CombinedEnergy = saturate(max(CrestFoamEnergy, ShoreFoamEnergy) * FoamIntensity) * LODFade;
+        float ErodedBubbles = smoothstep(1.0f - CombinedEnergy, 1.0f - CombinedEnergy * 0.30f + 0.06f, BubbleWeb);
+        float DenseCore = smoothstep(0.62f, 0.95f, CombinedEnergy);
+
+        OutFoamMask = saturate(lerp(ErodedBubbles * saturate(CombinedEnergy * 1.65f), 1.0f, DenseCore * 0.75f));
+
+        // 5. Dynamic Foam Roughness: real sea foam is diffuse/matte (~0.68), preventing mirror reflections on whitecaps
+        OutRoughnessBias = saturate(OutRoughnessBias + OutFoamMask * 0.65f);
+    }
+#endif
+}
+
+/**
+ * Backward-compatible 16-argument overload for CalculateSphericalGerstner (without foam outputs).
+ */
+void CalculateSphericalGerstner(
+    in float3 InWorldPos,
+    in float3 PlanetCenter,
+    in float  PlanetRadius,
+    in float  InTime,
+    in float3 WaveOrigins[GERSTNER_MAX_WAVES],
+    in float4 WaveParams[GERSTNER_MAX_WAVES],
+    in float  AmplitudeScale,
+    in float  SteepnessScale,
+    in float  SpeedScale,
+    in float  ActionRadius,
+    in float  ActionFalloff,
+    in float3 CameraWorldPos,
+    in int    NumActiveWaves,
+    out float3 OutDisplacement,
+    out float3 OutNormal,
+    out float  OutRoughnessBias)
+{
+    float DummyFoam, DummyCrest;
+    CalculateSphericalGerstner(
+        InWorldPos, PlanetCenter, PlanetRadius, InTime,
+        WaveOrigins, WaveParams,
+        AmplitudeScale, SteepnessScale, SpeedScale,
+        ActionRadius, ActionFalloff, CameraWorldPos,
+        NumActiveWaves,
+        0.0f, 0.5f, 0.0f, 100000.0f,
+        OutDisplacement, OutNormal, OutRoughnessBias,
+        DummyFoam, DummyCrest);
 }
 
 /**
@@ -486,16 +718,25 @@ float3 EvaluateOceanArtist(
     float3 CameraPos,
     float  WaveCount,
     float  WaveSpread,
+    float  FoamIntensity,
+    float  FoamThreshold,
+    float  ShoreFoamDepth,
+    float  WaterDepthCm,
     out float3 OutNormal,
-    out float  OutRoughnessBias)
+    out float  OutRoughnessBias,
+    out float  OutFoamMask,
+    out float  OutCrestMask)
 {
     float H = max(WaveHeight, 0.0f);
     float L = max(WaveLength, 20.0f);
     float S = max(WaveSpeed, 0.0f);
     float Q = clamp(WaveSteepness, 0.0f, 1.0f);
     float C = clamp(WaveChop, 0.0f, 2.0f);
-    int ActiveWaves = clamp((int)(WaveCount + 0.5f), 1, GERSTNER_MAX_WAVES);
+    int ActiveWaves = clamp((int)(WaveCount + 0.5f), 0, GERSTNER_MAX_WAVES);
     float Spread = clamp(WaveSpread, 0.0f, 2.0f);
+
+    OutFoamMask = 0.0f;
+    OutCrestMask = 0.0f;
 
     // Fast Early-Exit: Calm water / Far sphere in orbital mode (Solution 3)
     if (H < 0.001f || ActiveWaves <= 0)
@@ -607,9 +848,169 @@ float3 EvaluateOceanArtist(
         0.0f, 0.0f, // Global ocean across the whole planet
         CameraPos,
         ActiveWaves,
-        Displacement, OutNormal, OutRoughnessBias);
+        FoamIntensity, FoamThreshold, ShoreFoamDepth, WaterDepthCm,
+        Displacement, OutNormal, OutRoughnessBias,
+        OutFoamMask, OutCrestMask);
 
     return Displacement;
+}
+
+/**
+ * Overload accepting Unreal's Custom node `Parameters` struct directly to sample SingleLayerWater depth automatically.
+ */
+#define DEFINE_OCEAN_ARTIST_PARAMETERS_OVERLOAD(PARAM_TYPE) \
+float3 EvaluateOceanArtist( \
+    PARAM_TYPE Parameters, \
+    float3 WorldPos, \
+    float3 PlanetCenter, \
+    float  PlanetRadius, \
+    float  Time, \
+    float  WaveHeight, \
+    float  WaveLength, \
+    float  WaveSpeed, \
+    float  WaveSteepness, \
+    float  WaveChop, \
+    float3 WindDirection, \
+    float3 CameraPos, \
+    float  WaveCount, \
+    float  WaveSpread, \
+    float  FoamIntensity, \
+    float  FoamThreshold, \
+    float  ShoreFoamDepth, \
+    out float3 OutNormal, \
+    out float  OutRoughnessBias, \
+    out float  OutFoamMask, \
+    out float  OutCrestMask) \
+{ \
+    float3 RadialN = normalize(max(length(WorldPos - PlanetCenter), 1.0f) > 0.0f ? (WorldPos - PlanetCenter) : float3(0, 0, 1)); \
+    float WaterDepthCm = SampleOceanWaterDepthCm(Parameters, RadialN); \
+    return EvaluateOceanArtist( \
+        WorldPos, PlanetCenter, PlanetRadius, Time, \
+        WaveHeight, WaveLength, WaveSpeed, WaveSteepness, WaveChop, \
+        WindDirection, CameraPos, WaveCount, WaveSpread, \
+        FoamIntensity, FoamThreshold, ShoreFoamDepth, WaterDepthCm, \
+        OutNormal, OutRoughnessBias, OutFoamMask, OutCrestMask); \
+} \
+float3 EvaluateOceanArtist( \
+    PARAM_TYPE Parameters, \
+    float3 WorldPos, \
+    float3 PlanetCenter, \
+    float  PlanetRadius, \
+    float  Time, \
+    float  WaveHeight, \
+    float  WaveLength, \
+    float  WaveSpeed, \
+    float  WaveSteepness, \
+    float  WaveChop, \
+    float4 WindDirection, \
+    float3 CameraPos, \
+    float  WaveCount, \
+    float  WaveSpread, \
+    float  FoamIntensity, \
+    float  FoamThreshold, \
+    float  ShoreFoamDepth, \
+    out float3 OutNormal, \
+    out float  OutRoughnessBias, \
+    out float  OutFoamMask, \
+    out float  OutCrestMask) \
+{ \
+    return EvaluateOceanArtist( \
+        Parameters, \
+        WorldPos, PlanetCenter, PlanetRadius, Time, \
+        WaveHeight, WaveLength, WaveSpeed, WaveSteepness, WaveChop, \
+        WindDirection.xyz, CameraPos, WaveCount, WaveSpread, \
+        FoamIntensity, FoamThreshold, ShoreFoamDepth, \
+        OutNormal, OutRoughnessBias, OutFoamMask, OutCrestMask); \
+} \
+float3 EvaluateOceanArtist( \
+    PARAM_TYPE Parameters, \
+    float3 WorldPos, \
+    float3 PlanetCenter, \
+    float  PlanetRadius, \
+    float  Time, \
+    float  WaveHeight, \
+    float  WaveLength, \
+    float  WaveSpeed, \
+    float  WaveSteepness, \
+    float  WaveChop, \
+    float3 WindDirection, \
+    float3 CameraPos, \
+    float  WaveCount, \
+    float  WaveSpread, \
+    out float3 OutNormal, \
+    out float  OutRoughnessBias, \
+    out float  OutFoamMask, \
+    out float  OutCrestMask) \
+{ \
+    return EvaluateOceanArtist( \
+        Parameters, \
+        WorldPos, PlanetCenter, PlanetRadius, Time, \
+        WaveHeight, WaveLength, WaveSpeed, WaveSteepness, WaveChop, \
+        WindDirection, CameraPos, WaveCount, WaveSpread, \
+        1.0f, 0.42f, 180.0f, \
+        OutNormal, OutRoughnessBias, OutFoamMask, OutCrestMask); \
+} \
+float3 EvaluateOceanArtist( \
+    PARAM_TYPE Parameters, \
+    float3 WorldPos, \
+    float3 PlanetCenter, \
+    float  PlanetRadius, \
+    float  Time, \
+    float  WaveHeight, \
+    float  WaveLength, \
+    float  WaveSpeed, \
+    float  WaveSteepness, \
+    float  WaveChop, \
+    float4 WindDirection, \
+    float3 CameraPos, \
+    float  WaveCount, \
+    float  WaveSpread, \
+    out float3 OutNormal, \
+    out float  OutRoughnessBias, \
+    out float  OutFoamMask, \
+    out float  OutCrestMask) \
+{ \
+    return EvaluateOceanArtist( \
+        Parameters, \
+        WorldPos, PlanetCenter, PlanetRadius, Time, \
+        WaveHeight, WaveLength, WaveSpeed, WaveSteepness, WaveChop, \
+        WindDirection.xyz, CameraPos, WaveCount, WaveSpread, \
+        1.0f, 0.42f, 180.0f, \
+        OutNormal, OutRoughnessBias, OutFoamMask, OutCrestMask); \
+}
+
+DEFINE_OCEAN_ARTIST_PARAMETERS_OVERLOAD(FMaterialPixelParameters)
+DEFINE_OCEAN_ARTIST_PARAMETERS_OVERLOAD(FMaterialVertexParameters)
+#undef DEFINE_OCEAN_ARTIST_PARAMETERS_OVERLOAD
+
+/**
+ * Backward-compatible 15-argument overload for EvaluateOceanArtist (without foam outputs).
+ */
+float3 EvaluateOceanArtist(
+    float3 WorldPos,
+    float3 PlanetCenter,
+    float  PlanetRadius,
+    float  Time,
+    float  WaveHeight,
+    float  WaveLength,
+    float  WaveSpeed,
+    float  WaveSteepness,
+    float  WaveChop,
+    float3 WindDirection,
+    float3 CameraPos,
+    float  WaveCount,
+    float  WaveSpread,
+    out float3 OutNormal,
+    out float  OutRoughnessBias)
+{
+    float DummyFoam, DummyCrest;
+    return EvaluateOceanArtist(
+        WorldPos, PlanetCenter, PlanetRadius, Time,
+        WaveHeight, WaveLength, WaveSpeed, WaveSteepness, WaveChop,
+        WindDirection, CameraPos,
+        WaveCount, WaveSpread,
+        0.0f, 0.5f, 0.0f, 100000.0f,
+        OutNormal, OutRoughnessBias, DummyFoam, DummyCrest);
 }
 
 /**

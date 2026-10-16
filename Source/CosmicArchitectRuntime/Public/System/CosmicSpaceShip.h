@@ -118,7 +118,7 @@ protected:
 	 * Higher values result in greater linear acceleration of the ship.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Fisicas")
-	float ThrusterForce = 500000.0f;
+	float ThrusterForce = 8000.0f;
 
 	/**
 	 * Base torque for rotation (pitch/yaw).
@@ -126,13 +126,13 @@ protected:
 	 * Controls the turn sensitivity of the ship.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Fisicas")
-	float RotationTorque = 300000.0f;
+	float RotationTorque = 80.0f;
 
 	/**
 	 * Torque applied for roll.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CosmicArchitect|Fisicas")
-	float AlabeoTorque = 300000.0f;
+	float AlabeoTorque = 5000.0f;
 
 	/**
 	 * Power multiplier during boost.
