@@ -23,11 +23,11 @@
 
 // Default Configurable Distance LOD Ranges in Kilometers
 #ifndef GERSTNER_FADE_START_KM
-#define GERSTNER_FADE_START_KM 1.0f
+#define GERSTNER_FADE_START_KM 1.5f
 #endif
 
 #ifndef GERSTNER_FADE_END_KM
-#define GERSTNER_FADE_END_KM   1.5f
+#define GERSTNER_FADE_END_KM   3.5f
 #endif
 
 /**
@@ -89,41 +89,244 @@ float GerstnerNoise3D(float3 p)
 }
 
 /**
- * Evaluates a multi-scale porous sea foam pattern (macro patches + lacy cellular filaments + micro bubbles).
- * Evaluated in Lagrangian water-parcel space so foam physically rides and compresses with wave crests.
+ * Smooth 3D value noise with analytical spatial gradient (returns float4(value, dN/dx, dN/dy, dN/dz)).
+ * Used for seam-free, zero-tiling spherical capillary ripples and wind chop normals.
+ */
+float4 GerstnerNoise3DGrad(float3 p)
+{
+    float3 i = floor(p);
+    float3 f = frac(p);
+    // Quintic Hermite interpolation for C2-continuous normals (no grid creases)
+    float3 u  = f * f * f * (f * (f * 6.0f - 15.0f) + 10.0f);
+    float3 du = 30.0f * f * f * (f * (f - 2.0f) + 1.0f);
+
+    float n000 = dot(GerstnerHash33(i + float3(0, 0, 0)), float3(0.3333f, 0.3333f, 0.3333f));
+    float n100 = dot(GerstnerHash33(i + float3(1, 0, 0)), float3(0.3333f, 0.3333f, 0.3333f));
+    float n010 = dot(GerstnerHash33(i + float3(0, 1, 0)), float3(0.3333f, 0.3333f, 0.3333f));
+    float n110 = dot(GerstnerHash33(i + float3(1, 1, 0)), float3(0.3333f, 0.3333f, 0.3333f));
+    float n001 = dot(GerstnerHash33(i + float3(0, 0, 1)), float3(0.3333f, 0.3333f, 0.3333f));
+    float n101 = dot(GerstnerHash33(i + float3(1, 0, 1)), float3(0.3333f, 0.3333f, 0.3333f));
+    float n011 = dot(GerstnerHash33(i + float3(0, 1, 1)), float3(0.3333f, 0.3333f, 0.3333f));
+    float n111 = dot(GerstnerHash33(i + float3(1, 1, 1)), float3(0.3333f, 0.3333f, 0.3333f));
+
+    float k0 = n000;
+    float k1 = n100 - n000;
+    float k2 = n010 - n000;
+    float k3 = n001 - n000;
+    float k4 = n000 - n100 - n010 + n110;
+    float k5 = n000 - n010 - n001 + n011;
+    float k6 = n000 - n100 - n001 + n101;
+    float k7 = -n000 + n100 + n010 - n110 + n001 - n101 - n011 + n111;
+
+    float val = k0 + k1*u.x + k2*u.y + k3*u.z + k4*u.x*u.y + k5*u.y*u.z + k6*u.z*u.x + k7*u.x*u.y*u.z;
+    float3 grad = du * float3(
+        k1 + k4*u.y + k6*u.z + k7*u.y*u.z,
+        k2 + k5*u.z + k4*u.x + k7*u.z*u.x,
+        k3 + k6*u.x + k5*u.y + k7*u.x*u.y);
+    return float4(val, grad);
+}
+
+/**
+ * Fast 2x2x2 3D Worley/Voronoi cellular edge distance for authentic webbed sea foam.
+ * Returns float2(F1_dist, F2_minus_F1_edge) — small edge values trace crisp frothy foam filaments.
+ */
+float2 GerstnerWorley3D(float3 p)
+{
+    float3 baseCell = floor(p - 0.5f);
+    float d1 = 8.0f;
+    float d2 = 8.0f;
+
+    [unroll]
+    for (int z = 0; z <= 1; ++z)
+    {
+        [unroll]
+        for (int y = 0; y <= 1; ++y)
+        {
+            [unroll]
+            for (int x = 0; x <= 1; ++x)
+            {
+                float3 cell = baseCell + float3((float)x, (float)y, (float)z);
+                float3 jitter = 0.15f + 0.70f * GerstnerHash33(cell);
+                float3 diff = (cell + jitter) - p;
+                float distSq = dot(diff, diff);
+                if (distSq < d1)
+                {
+                    d2 = d1;
+                    d1 = distSq;
+                }
+                else if (distSq < d2)
+                {
+                    d2 = distSq;
+                }
+            }
+        }
+    }
+    float f1 = sqrt(d1);
+    float f2 = sqrt(d2);
+    return float2(f1, f2 - f1);
+}
+
+// Orthonormal 3x3 rotation matrices to eliminate Cartesian lattice alignment in 3D procedural noise
+static const float3x3 GERSTNER_ROT1 = float3x3(
+     0.5403f, -0.6816f,  0.4935f,
+     0.7858f,  0.6164f, -0.0504f,
+    -0.2999f,  0.3941f,  0.8683f
+);
+
+static const float3x3 GERSTNER_ROT2 = float3x3(
+    -0.4161f,  0.6428f,  0.6431f,
+     0.8312f, -0.0211f,  0.5556f,
+     0.3688f,  0.7657f, -0.5270f
+);
+
+/**
+ * Evaluates multi-scale procedural capillary ripples and wind-chop normal perturbation
+ * in spherical tangent space (rotated octaves -> zero seams, zero Cartesian grid artifacts)
+ * plus Toksvig roughness variance for smooth silvery horizon anti-aliasing.
+ */
+void EvaluateCapillaryNormals(
+    in float3 WrappedRelPosCm,
+    in float3 N_base,
+    in float3 WindDirTangent,
+    in float  InTime,
+    in float  EffectiveSpeed,
+    in float  CameraDistCm,
+    in float  ChopFactor,
+    out float3 OutCapillaryPerturb,
+    out float  OutCapillaryRoughBias)
+{
+    OutCapillaryPerturb = float3(0.0f, 0.0f, 0.0f);
+    OutCapillaryRoughBias = 0.0f;
+
+    float3 CrossWind = cross(N_base, WindDirTangent);
+    float cwLen = length(CrossWind);
+    CrossWind = (cwLen > 0.001f) ? (CrossWind / cwLen) : float3(1.0f, 0.0f, 0.0f);
+
+    float Strength = 0.50f + 0.45f * saturate(ChopFactor);
+
+    // Distance fade per octave so sub-pixel ripples convert cleanly into specular roughness (silvery horizon)
+    float FadeMid   = saturate(1.0f - (CameraDistCm - 12000.0f) / 45000.0f); // ~120m to 570m
+    float FadeFine  = saturate(1.0f - (CameraDistCm - 3000.0f)  / 14000.0f); // ~30m to 170m
+    float FadeMicro = saturate(1.0f - (CameraDistCm - 700.0f)   / 4500.0f);  // ~7m to 52m
+
+    float3 AccumGrad = float3(0.0f, 0.0f, 0.0f);
+
+    // Anisotropic stretch: ripples are slightly longer perpendicular to wind (wind-driven wavelets)
+    float3 AnisoPos = WrappedRelPosCm + WindDirTangent * dot(WrappedRelPosCm, WindDirTangent) * 0.40f;
+
+    // Octave 1: Medium wind chop (~6.5m scale, rotated basis)
+    float3 WarpOffset = float3(0.0f, 0.0f, 0.0f);
+    if (FadeMid > 0.005f)
+    {
+        float3 P1 = mul(GERSTNER_ROT1, AnisoPos * 0.0015f - WindDirTangent * (InTime * 0.42f * EffectiveSpeed) + CrossWind * (InTime * 0.10f * EffectiveSpeed));
+        float4 G1 = GerstnerNoise3DGrad(P1);
+        float3 Grad1 = mul(transpose(GERSTNER_ROT1), G1.yzw);
+
+        float3 P1b = mul(GERSTNER_ROT2, AnisoPos * 0.0022f - WindDirTangent * (InTime * 0.32f * EffectiveSpeed) - CrossWind * (InTime * 0.18f * EffectiveSpeed));
+        float4 G1b = GerstnerNoise3DGrad(P1b);
+        float3 Grad1b = mul(transpose(GERSTNER_ROT2), G1b.yzw);
+
+        AccumGrad += (Grad1 * 0.55f + Grad1b * 0.45f) * (0.095f * Strength * FadeMid);
+        WarpOffset = (Grad1 + Grad1b) * 28.0f;
+    }
+
+    // Octave 2: Fine wind ripples (~2.4m scale, domain-warped by Octave 1 for fluid organic sparkle)
+    if (FadeFine > 0.005f)
+    {
+        float3 P2 = mul(GERSTNER_ROT2, (AnisoPos + WarpOffset) * 0.0042f - WindDirTangent * (InTime * 0.85f * EffectiveSpeed) - CrossWind * (InTime * 0.24f * EffectiveSpeed));
+        float4 G2 = GerstnerNoise3DGrad(P2);
+        float3 Grad2 = mul(transpose(GERSTNER_ROT2), G2.yzw);
+
+        float3 P2b = mul(GERSTNER_ROT1, (AnisoPos - WarpOffset * 0.6f) * 0.0063f - WindDirTangent * (InTime * 0.64f * EffectiveSpeed) + CrossWind * (InTime * 0.36f * EffectiveSpeed));
+        float4 G2b = GerstnerNoise3DGrad(P2b);
+        float3 Grad2b = mul(transpose(GERSTNER_ROT1), G2b.yzw);
+
+        AccumGrad += (Grad2 * 0.55f + Grad2b * 0.45f) * (0.065f * Strength * FadeFine);
+    }
+
+    // Octave 3: Micro capillary glints (~0.90m scale)
+    if (FadeMicro > 0.005f)
+    {
+        float3 P3 = mul(GERSTNER_ROT1, AnisoPos * 0.0110f - WindDirTangent * (InTime * 1.35f * EffectiveSpeed) + CrossWind * (InTime * 0.45f * EffectiveSpeed));
+        float4 G3 = GerstnerNoise3DGrad(P3);
+        float3 Grad3 = mul(transpose(GERSTNER_ROT1), G3.yzw);
+        AccumGrad += Grad3 * (0.032f * Strength * FadeMicro);
+    }
+
+    // Project gradient strictly onto the sphere tangent plane
+    OutCapillaryPerturb = AccumGrad - N_base * dot(AccumGrad, N_base);
+
+    // Toksvig-style roughness compensation as fine octaves fade out with distance
+    float LostDetail = (1.0f - FadeMicro) * 0.025f + (1.0f - FadeFine) * 0.055f + (1.0f - FadeMid) * 0.085f;
+    OutCapillaryRoughBias = LostDetail * Strength;
+}
+
+/**
+ * Evaluates a multi-scale lacy cellular sea foam pattern (Black Flag style:
+ * organic domain-warped patches + stretched windrow trails + wispy webbed filaments).
  */
 void EvaluateOceanFoamPattern(
     in float3 LocalWaterPosCm,
     in float3 WindDriftCm,
+    in float3 WindDirTangent,
     in float  CameraDistCm,
     out float OutMacroPatch,
-    out float OutBubbleWeb)
+    out float OutBubbleWeb,
+    out float OutWindrowMask)
 {
-    // 1. Macro patch breakup (~2.8m scale)
-    float3 P_macro = (LocalWaterPosCm + WindDriftCm * 0.35f) * 0.0036f;
-    OutMacroPatch = GerstnerNoise3D(P_macro);
+    // Organic domain warp using rotated octaves (zero Cartesian grid alignment)
+    float3 WarpP1 = mul(GERSTNER_ROT1, (LocalWaterPosCm + WindDriftCm * 0.22f) * 0.0009f);
+    float3 WarpP2 = mul(GERSTNER_ROT2, (LocalWaterPosCm + WindDriftCm * 0.35f) * 0.0023f + float3(13.7f, 7.1f, 3.9f));
+    float w1 = GerstnerNoise3D(WarpP1) - 0.5f;
+    float w2 = GerstnerNoise3D(WarpP2) - 0.5f;
+    float3 WarpedPos = LocalWaterPosCm + WindDirTangent * (w1 * 380.0f) + float3(w2, w1 - w2, -w1) * 190.0f;
 
-    // 2. Meso cellular filaments / lacy foam webbing (~55cm & ~24cm scales)
-    float3 P_meso1 = (LocalWaterPosCm + WindDriftCm * 0.65f) * 0.018f;
-    float3 P_meso2 = (LocalWaterPosCm - WindDriftCm * 0.45f) * 0.041f;
+    // 1. Macro patch breakup (~12m & ~4.2m rotated octaves)
+    float MacroLarge = GerstnerNoise3D(mul(GERSTNER_ROT1, (WarpedPos + WindDriftCm * 0.18f) * 0.00085f));
+    float MacroMed   = GerstnerNoise3D(mul(GERSTNER_ROT2, (WarpedPos + WindDriftCm * 0.32f) * 0.0024f));
+    OutMacroPatch = saturate(MacroLarge * 0.62f + MacroMed * 0.38f);
 
-    float Ridge1 = 1.0f - abs(GerstnerNoise3D(P_meso1) * 2.0f - 1.0f);
-    float Ridge2 = 1.0f - abs(GerstnerNoise3D(P_meso2) * 2.0f - 1.0f);
-    float Webbing = saturate(Ridge1 * 0.60f + Ridge2 * 0.40f);
-    Webbing = Webbing * Webbing; // Sharpen filaments so water gaps show through
+    // 2. Stretched windrow / turbulent foam streaks elongated along wind flow (Black Flag foreground webs)
+    float3 StreakCoord = (WarpedPos + WindDriftCm * 0.42f) * 0.0022f;
+    StreakCoord -= WindDirTangent * dot(StreakCoord, WindDirTangent) * 0.68f;
+    float StreakA = GerstnerNoise3D(mul(GERSTNER_ROT1, StreakCoord));
+    float StreakB = GerstnerNoise3D(mul(GERSTNER_ROT2, StreakCoord * 2.15f));
+    float StreakVal = StreakA * 0.60f + StreakB * 0.40f;
+    OutWindrowMask = smoothstep(0.48f, 0.80f, StreakVal) * smoothstep(0.30f, 0.72f, OutMacroPatch);
 
-    // 3. Micro bubble porosity (~9cm scale, faded out with distance to prevent subpixel shimmering)
-    float MicroFade = saturate(1.0f - CameraDistCm / 25000.0f);
-    float MicroBubbles = 0.5f;
-    if (MicroFade > 0.01f)
+    // 3. Porous lacy sea-foam webbing (thin crisp veins + open water holes -> NEVER solid snow caps!)
+    float FoamHoles = GerstnerNoise3D(mul(GERSTNER_ROT1, (WarpedPos + WindDriftCm * 0.40f) * 0.0105f));
+
+    float3 LaceP1 = mul(GERSTNER_ROT2, (WarpedPos + WindDriftCm * 0.50f) * 0.0095f);
+    float3 LaceP2 = mul(GERSTNER_ROT1, (WarpedPos - WindDriftCm * 0.35f) * 0.0215f);
+    float Ridge1 = 1.0f - abs(GerstnerNoise3D(LaceP1) * 2.0f - 1.0f);
+    float Ridge2 = 1.0f - abs(GerstnerNoise3D(LaceP2) * 2.0f - 1.0f);
+    // Sharp, thin lacy filaments so dark/turquoise water shows cleanly through the gaps
+    float VeinsCoarse = smoothstep(0.64f, 0.96f, Ridge1);
+    float VeinsFine   = smoothstep(0.56f, 0.94f, Ridge2);
+
+    float FineFade = saturate(1.0f - (CameraDistCm - 4500.0f) / 26000.0f);
+    float WorleyWeb = 0.0f;
+    if (FineFade > 0.01f)
     {
-        float3 P_micro = LocalWaterPosCm * 0.11f + WindDriftCm * 0.9f;
-        float Ridge3 = 1.0f - abs(GerstnerNoise3D(P_micro) * 2.0f - 1.0f);
-        MicroBubbles = Ridge3 * Ridge3;
+        float2 CellFine = GerstnerWorley3D(mul(GERSTNER_ROT2, (WarpedPos + WindDriftCm * 0.45f) * 0.024f));
+        WorleyWeb = 1.0f - smoothstep(0.015f, 0.14f, CellFine.y);
     }
 
-    float CombinedWeb = lerp(Webbing, Webbing * 0.65f + MicroBubbles * 0.35f, MicroFade);
-    OutBubbleWeb = saturate(CombinedWeb * (0.55f + 0.45f * OutMacroPatch));
+    // Multiply by FoamHoles breakup so interior of foam patches stays frothy and porous
+    float PorousMask = smoothstep(0.28f, 0.76f, FoamHoles);
+    float Web = saturate(VeinsCoarse * (0.45f + 0.55f * PorousMask) + VeinsFine * 0.55f * PorousMask + WorleyWeb * 0.35f * FineFade * PorousMask);
+
+    // 4. Micro bubble grain close-up (~24cm)
+    float MicroFade = saturate(1.0f - CameraDistCm / 12000.0f);
+    float MicroGrain = 0.78f;
+    if (MicroFade > 0.01f)
+    {
+        float nMicro = GerstnerNoise3D(mul(GERSTNER_ROT1, WarpedPos * 0.042f + WindDriftCm * 0.7f));
+        MicroGrain = smoothstep(0.22f, 0.76f, nMicro);
+    }
+
+    OutBubbleWeb = saturate(Web * lerp(1.0f, 0.60f + 0.50f * MicroGrain, MicroFade));
 }
 
 /**
@@ -343,22 +546,21 @@ void CalculateSphericalGerstner(
         // Skip negligible waves
         if (Amp < 0.005f) continue;
 
-        // --- Octave / Frequency-Based Distance LOD (Solution 2) ---
-        // High frequency ripples (small L) cannot be resolved by vertices at distance,
-        // causing subpixel geometric aliasing. Cull them progressively as distance increases.
+        // --- Octave / Frequency-Based Distance LOD ---
+        // Cull high-frequency waves cleanly before they become sub-pixel specular static
         float WaveLOD = 1.0f;
         if (bHasCamera)
         {
-            // Waves are culled when CameraDist exceeds ~500 wavelengths, capped by FadeEndCm
-            float WaveCutoff = clamp(L * 500.0f, 30000.0f, FadeEndCm);
-            float WaveStart  = WaveCutoff * 0.5f;
+            float WaveCutoff = clamp(L * 65.0f, 6000.0f, FadeEndCm);
+            float WaveStart  = WaveCutoff * 0.45f;
             WaveLOD = saturate(1.0f - (CameraDist - WaveStart) / max(WaveCutoff - WaveStart, 1.0f));
             if (WaveLOD < 0.001f) continue;
         }
 
-        // --- Geodesic Distance (Great Circle Arc Length) ---
+        // --- Geodesic Distance (Haversine Great-Circle Arc Length for LWC/float32 stability) ---
         float DotNO = clamp(dot(N_base, O), -0.9999f, 0.9999f);
-        float Angle = acos(DotNO);
+        float Chord = length(N_base - O);
+        float Angle = 2.0f * asin(clamp(Chord * 0.5f, 0.0f, 1.0f));
         float ArcLen = PlanetRadius * Angle;
 
         // --- Action Radius Attenuation ---
@@ -389,9 +591,13 @@ void CalculateSphericalGerstner(
         float Q_eff = clamp(Q * Damping, 0.0f, 1.0f);
 
         // --- Wave Kinematics ---
+        static const float PhaseOffsets[12] = {
+            0.00f, 1.73f, 3.91f, 0.67f, 2.84f, 5.12f,
+            1.19f, 4.37f, 2.05f, 5.63f, 0.94f, 3.48f
+        };
         float K = GERSTNER_TWO_PI / L;             // Wavenumber
         float Omega = sqrt(GERSTNER_GRAVITY * K);  // Angular frequency (deep water dispersion)
-        float Phase = K * ArcLen - (Omega * Spd * InTime);
+        float Phase = K * ArcLen - (Omega * Spd * InTime) + PhaseOffsets[i];
 
         float SinP, CosP;
         sincos(Phase, SinP, CosP);
@@ -399,34 +605,72 @@ void CalculateSphericalGerstner(
         // --- Combined Attenuation ---
         float TotalAtten = ActionAtten * Damping * LODFade * WaveLOD;
 
+        // --- Trochoidal Horizontal Displacement (True Gerstner Crest Sharpening) ---
+        // Cap per-wave slope (K * Amp) safely so short waves never create a cross-hatch polka-dot grid
+        float SafeSlope = min(K * Amp, 0.145f);
+        float SafeAmp   = SafeSlope / K;
+        float MaxSafeHoriz = 0.55f / (K * max((float)ActiveLimit * 0.55f, 1.0f));
+        float HorizAmp = min(SafeAmp * (1.10f + Q_eff * 1.85f), MaxSafeHoriz) * Q_eff;
+
         // --- Displacement ---
-        // Horizontal: along sphere tangent T_dir (draws water toward crests, creating sharp trochoidal crests)
-        // Vertical: along radial normal N_base (raises/lowers water)
-        DispAccum += T_dir * (Q_eff * Amp * CosP * TotalAtten);
-        DispAccum += N_base * (Amp * SinP * TotalAtten);
+        float DispWeight = TotalAtten;
+#if !PIXELSHADER
+        DispWeight *= smoothstep(220.0f, 750.0f, L);
+#endif
+        DispAccum += T_dir * (HorizAmp * CosP * DispWeight);
+        DispAccum += N_base * (SafeAmp * SinP * DispWeight);
 
         // --- Analytical Normal Perturbation ---
-        // Exact surface gradient along tangent T_dir:
-        TangentPerturb += T_dir * (K * Amp * CosP * TotalAtten);
+        float SlopeFactor = 1.0f / max(1.0f - K * HorizAmp * SinP * TotalAtten * 0.48f, 0.55f);
+        TangentPerturb += T_dir * (SafeSlope * CosP * TotalAtten * SlopeFactor);
 
-        // --- Crest & Whitecap Jacobian Accumulation ---
-        float WeightedAmp = Amp * TotalAtten;
-        TotalAmpAccum += WeightedAmp;
-        VerticalElevAccum += WeightedAmp * SinP;
-        JacobianAccum += Q_eff * (K * Amp) * SinP * TotalAtten;
+        // --- Crest & Whitecap Accumulation (driven by primary swells & medium waves 0..5, not micro-chop) ---
+        float WeightedAmp = SafeAmp * TotalAtten;
+        float SwellMask = (i < 6) ? 1.0f : 0.18f;
+        TotalAmpAccum += WeightedAmp * SwellMask;
+        VerticalElevAccum += WeightedAmp * SwellMask * SinP;
+        JacobianAccum += (K * HorizAmp) * SinP * TotalAtten * SwellMask;
 
-        // Leeward-shifted phase (Phase + 0.42 rad) so foam trails naturally down the back of breaking crests
-        float SinP_Trail = SinP * 0.913f + CosP * 0.408f;
-        float HarmonicWeight = (i < 2) ? 0.65f : (1.05f + 0.10f * (float)i);
-        CrestEnergyAccum += WeightedAmp * HarmonicWeight * (0.35f + 0.65f * Q_eff) * max(SinP_Trail, 0.0f);
+        // Leeward-shifted phase (Phase + 0.35 rad) so foam trails naturally down the back of breaking crests
+        float SinP_Trail = SinP * 0.939f + CosP * 0.343f;
+        float HarmonicWeight = (i < 3) ? 1.05f : ((i < 6) ? 0.85f : 0.15f);
+        CrestEnergyAccum += WeightedAmp * HarmonicWeight * (0.40f + 0.60f * Q_eff) * max(SinP_Trail, 0.0f);
     }
 
     OutDisplacement = DispAccum;
 
+    // Build wind tangent direction on the sphere for capillary ripples and foam windrows
+    float3 WindDirTangent = PrimaryOrigin - N_base * dot(PrimaryOrigin, N_base);
+    float wdtLen = length(WindDirTangent);
+    WindDirTangent = (wdtLen > 0.001f) ? (WindDirTangent / wdtLen) : U_spread;
+
+#if PIXELSHADER
+    // --- Pixel-Stage Capillary Ripples & Wind-Chop Normals ---
+    float EffectiveSpeed = max(WaveParams[0].w * SpeedScale, 0.25f);
+    // Camera-relative LWC-safe wrapping eliminates 1cm float32 stair-step grain at 100km planet radius
+    float3 WrappedRelPos = (InWorldPos - CameraWorldPos) + fmod(CameraWorldPos - PlanetCenter, 65536.0f);
+
+    float3 CapillaryPerturb;
+    float  CapillaryRoughBias;
+    EvaluateCapillaryNormals(
+        WrappedRelPos,
+        N_base,
+        WindDirTangent,
+        InTime,
+        EffectiveSpeed,
+        CameraDist,
+        SteepnessScale,
+        CapillaryPerturb,
+        CapillaryRoughBias);
+
+    TangentPerturb += CapillaryPerturb * LODFade;
+    OutRoughnessBias = saturate(OutRoughnessBias + CapillaryRoughBias);
+#endif
+
     // --- Perturbed Normal ---
     // Subtract tangent perturbation from the radial normal:
-    // Since T_dir is strictly perpendicular to N_base, (N_base - TangentPerturb)
-    // has length >= 1.0, guaranteed non-zero, never inverts into the planet.
+    // Since T_dir and CapillaryPerturb are strictly perpendicular to N_base,
+    // (N_base - TangentPerturb) has length >= 1.0, guaranteed non-zero, never inverts into the planet.
     OutNormal = normalize(N_base - TangentPerturb);
 
 #if PIXELSHADER
@@ -435,40 +679,40 @@ void CalculateSphericalGerstner(
     float NormElevation = VerticalElevAccum / SafeTotalAmp; // [-1..1]
     float NormCrestEnergy = CrestEnergyAccum / SafeTotalAmp;
 
-    // Subsurface Scattering / Turquoise Crest Mask (active on elevated crests and shallow water)
-    float WaveCrestGlow = smoothstep(0.15f, 0.72f, NormElevation) * LODFade;
+    // Subsurface Scattering / Emerald-Turquoise Crest Mask (tight, focused on thin upper wave crests & ridges)
+    float SlopeMag = saturate(length(TangentPerturb) * 0.85f);
+    float WaveCrestGlow = saturate(smoothstep(0.24f, 0.78f, NormElevation) * (0.55f + 0.60f * SlopeMag) + max(JacobianAccum, 0.0f) * 0.35f) * LODFade;
     float ShallowGlow = (ShoreFoamDepth > 0.01f)
-        ? saturate(1.0f - WaterDepthCm / max(ShoreFoamDepth * 2.8f, 10.0f)) * 0.65f
+        ? saturate(1.0f - WaterDepthCm / max(ShoreFoamDepth * 3.0f, 10.0f)) * 0.75f
         : 0.0f;
     OutCrestMask = saturate(max(WaveCrestGlow, ShallowGlow));
 
     if (FoamIntensity > 0.001f)
     {
         // 1. Lagrangian coordinates (foam rides with horizontal wave displacement, wrapped for LWC precision)
-        float EffectiveSpeed = max(WaveParams[0].w * SpeedScale, 0.25f);
         float3 HorizontalDisp = DispAccum - N_base * dot(DispAccum, N_base);
-        float3 WrappedRelPos = fmod(RadialVec, 65536.0f);
         float3 LocalWaterPosCm = WrappedRelPos - HorizontalDisp * 0.85f;
-        float3 WindDriftCm = PrimaryOrigin * (InTime * 38.0f * EffectiveSpeed);
+        float3 WindDriftCm = WindDirTangent * (InTime * 42.0f * EffectiveSpeed);
 
-        float MacroPatch, BubbleWeb;
-        EvaluateOceanFoamPattern(LocalWaterPosCm, WindDriftCm, CameraDist, MacroPatch, BubbleWeb);
+        float MacroPatch, BubbleWeb, WindrowMask;
+        EvaluateOceanFoamPattern(LocalWaterPosCm, WindDriftCm, WindDirTangent, CameraDist, MacroPatch, BubbleWeb, WindrowMask);
 
-        // 2. Whitecap Crest Energy (combines harmonic convergence, crest elevation, and Jacobian compression)
+        // 2. Whitecap Crest Energy (breaking swell peaks + leeward trails, broken up by macro FBM)
         float Thresh = clamp(FoamThreshold, 0.05f, 0.95f);
-        float RawCrestSignal = NormCrestEnergy * 0.68f + max(NormElevation, 0.0f) * 0.48f + max(JacobianAccum, 0.0f) * 1.15f;
-        // Modulate threshold slightly by macro noise so whitecaps appear in natural broken groups
-        float EffectiveThresh = Thresh + (1.0f - MacroPatch) * 0.18f;
-        float CrestFoamEnergy = smoothstep(EffectiveThresh, EffectiveThresh + 0.32f, RawCrestSignal);
+        float RawCrestSignal = NormCrestEnergy * 0.65f + max(NormElevation, 0.0f) * 0.52f + max(JacobianAccum, 0.0f) * 0.75f;
+        // Organic macro breakup so whitecaps sweep naturally across wave crests
+        float EffectiveThresh = Thresh + (1.0f - MacroPatch) * 0.28f;
+        float CrestFoamEnergy = smoothstep(EffectiveThresh, EffectiveThresh + 0.30f, RawCrestSignal);
+
+        // Elongated windrow & turbulent lacy foam webs stretching across wave slopes (Black Flag signature)
+        float AmbientLaceEnergy = WindrowMask * (0.48f + 0.52f * saturate(NormCrestEnergy + 0.20f)) * smoothstep(0.95f, 0.10f, Thresh);
 
         // 3. Shoreline / Shallow Surf Foam Energy
         float ShoreFoamEnergy = 0.0f;
         if (ShoreFoamDepth > 0.01f && WaterDepthCm < ShoreFoamDepth)
         {
             float ShoreProx = saturate(1.0f - WaterDepthCm / max(ShoreFoamDepth, 1.0f));
-            // Dense contact rim right at the water-terrain intersection (hides polygon cut)
             float ContactRim = pow(saturate(1.0f - WaterDepthCm / max(ShoreFoamDepth * 0.22f, 6.0f)), 1.35f);
-            // Animated surf bands rolling toward the shore
             float SurfBandFreq = 6.2831853f / max(ShoreFoamDepth * 0.28f, 20.0f);
             float SurfPhase = WaterDepthCm * SurfBandFreq + InTime * 3.2f * EffectiveSpeed + MacroPatch * 3.0f;
             float SurfRollers = pow(saturate(sin(SurfPhase) * 0.5f + 0.5f), 2.2f) * smoothstep(0.0f, 0.85f, ShoreProx) * ShoreProx;
@@ -476,15 +720,26 @@ void CalculateSphericalGerstner(
             ShoreFoamEnergy = saturate(ContactRim * 1.15f + SurfRollers * 0.80f);
         }
 
-        // 4. Cellular Bubble Erosion: lacy filaments at the edges, dense white froth at the core
-        float CombinedEnergy = saturate(max(CrestFoamEnergy, ShoreFoamEnergy) * FoamIntensity) * LODFade;
-        float ErodedBubbles = smoothstep(1.0f - CombinedEnergy, 1.0f - CombinedEnergy * 0.30f + 0.06f, BubbleWeb);
-        float DenseCore = smoothstep(0.62f, 0.95f, CombinedEnergy);
+        // 4. Crisp Porous Lacy Sea Foam: threshold-eroded frothy webbing with open water gaps
+        float OpenSeaEnergy = max(CrestFoamEnergy, AmbientLaceEnergy * 0.75f);
+        float CombinedEnergy = saturate(max(OpenSeaEnergy, ShoreFoamEnergy) * FoamIntensity) * LODFade;
 
-        OutFoamMask = saturate(lerp(ErodedBubbles * saturate(CombinedEnergy * 1.65f), 1.0f, DenseCore * 0.75f));
+        // Distance fade for delicate foam webs to prevent distant white noise
+        float FoamDistFade = saturate(1.0f - (CameraDist - 22000.0f) / 110000.0f);
+        CombinedEnergy *= FoamDistFade;
 
-        // 5. Dynamic Foam Roughness: real sea foam is diffuse/matte (~0.68), preventing mirror reflections on whitecaps
-        OutRoughnessBias = saturate(OutRoughnessBias + OutFoamMask * 0.65f);
+        // Threshold erosion: edges dissolve into thin lacy filaments, cores stay frothy & porous (never solid ovals)
+        float ErodedLace = smoothstep(1.0f - CombinedEnergy * 0.92f, 1.0f - CombinedEnergy * 0.35f + 0.08f, BubbleWeb);
+        float CrestFroth = smoothstep(0.70f, 0.98f, CombinedEnergy) * smoothstep(0.36f, 0.88f, BubbleWeb);
+
+        OutFoamMask = saturate(max(ErodedLace * smoothstep(0.04f, 0.32f, CombinedEnergy) * 1.10f, CrestFroth));
+
+        // Aerated subsurface turquoise glow beneath and around foam patches (makes foam sit IN the water)
+        float AeratedHalo = saturate(CombinedEnergy * 0.55f + OutFoamMask * 0.45f) * 0.45f;
+        OutCrestMask = saturate(max(OutCrestMask, AeratedHalo));
+
+        // 5. Dynamic Foam Roughness: real sea foam is diffuse/matte (~0.75), killing mirror glare on whitecaps
+        OutRoughnessBias = saturate(OutRoughnessBias + OutFoamMask * 0.75f);
     }
 #endif
 }
@@ -752,53 +1007,56 @@ float3 EvaluateOceanArtist(
         return float3(0.0f, 0.0f, 0.0f);
     }
 
-    // Natural 12-Tier Oceanographic Spectrum:
-    // Trimodal Swell (0..2) + Wind waves (3..5) + Choppy waves (6..8) + Capillary ripples (9..11)
+    // Natural 12-Tier Phillips/JONSWAP-Inspired Oceanographic Spectrum:
+    // Irrational wavelength spacing & golden-angle directional distribution prevent grid tiling.
+    // Rolling Swell (0..2) + Choppy Wind Waves (3..6) + Subtle Surface Wavelets (7..11)
     static const float WaveLenRatios[12] = {
-        1.000f, 0.940f, 0.880f,
-        0.510f, 0.380f, 0.280f, 0.200f,
-        0.140f, 0.098f, 0.068f, 0.047f, 0.032f
+        1.000f, 0.731f, 0.543f,
+        0.389f, 0.281f, 0.203f, 0.149f,
+        0.107f, 0.079f, 0.057f, 0.041f, 0.029f
     };
 
     static const float BaseAmpWeights[12] = {
-        0.160f, 0.150f, 0.140f,
-        0.110f, 0.090f, 0.075f, 0.060f,
-        0.050f, 0.045f, 0.040f, 0.040f, 0.040f
+        0.340f, 0.245f, 0.175f,
+        0.115f, 0.078f, 0.052f, 0.034f,
+        0.022f, 0.015f, 0.010f, 0.007f, 0.005f
     };
 
     static const float WaveSteepMults[12] = {
-        0.80f, 0.85f, 0.90f, 0.98f, 1.05f, 1.12f,
-        1.18f, 1.25f, 1.30f, 1.35f, 1.40f, 1.45f
+        0.85f, 0.90f, 0.95f, 1.00f, 1.04f, 1.08f,
+        1.10f, 1.05f, 1.00f, 0.95f, 0.90f, 0.85f
     };
 
     static const float WaveSpeedMults[12] = {
-        1.00f, 1.04f, 0.96f, 1.12f, 1.02f, 1.20f,
-        0.92f, 1.18f, 1.05f, 1.26f, 0.98f, 1.32f
+        1.00f, 1.06f, 0.94f, 1.12f, 0.98f, 1.18f,
+        0.91f, 1.15f, 1.04f, 1.24f, 0.96f, 1.28f
     };
 
+    // Polar spread angle from wind axis (radians) + golden-angle azimuth around wind axis
     static const float WaveSpreadAngles[12] = {
-         0.052f, -0.366f,  0.436f,
-         0.785f, -0.820f,  1.100f, -0.550f,
-         1.300f, -1.200f,  0.600f, -0.950f,  1.450f
+         0.08f,  0.27f,  0.39f,
+         0.52f,  0.64f,  0.76f,  0.48f,
+         0.88f,  0.72f,  0.95f,  0.61f,  1.05f
     };
 
-    static const int WaveSpreadAxes[12] = {
-        0, 0, 0, 1, 2, 3, 0, 1, 2, 3, 2, 3
+    static const float WaveAzimuths[12] = {
+        0.31f, 2.71f, 5.11f,
+        1.23f, 3.63f, 6.03f, 2.15f,
+        4.55f, 0.67f, 3.07f, 5.47f, 1.59f
     };
 
-    // Calculate normalized energy distribution so total wave amplitude strictly equals H
-    // Waves 0, 1, 2 form the primary trimodal swell (independent of WaveChop C)
-    float TotalWeight = 0.0f;
+    // RMS-based energy normalization: preserves dramatic visible swell height H
+    float TotalWeightSq = 0.0f;
     [unroll]
     for (int w = 0; w < GERSTNER_MAX_WAVES; ++w)
     {
         if (w < ActiveWaves)
         {
             float WeightW = (w < 3) ? BaseAmpWeights[w] : (BaseAmpWeights[w] * C);
-            TotalWeight += WeightW;
+            TotalWeightSq += WeightW * WeightW;
         }
     }
-    TotalWeight = max(TotalWeight, 0.001f);
+    float NormFactor = max(sqrt(TotalWeightSq) * 1.55f, 0.001f);
 
     // Primary wind direction & orthonormal surface tangent basis
     float3 Primary = length(WindDirection) > 0.001f ? normalize(WindDirection) : float3(0.0f, 0.0f, 1.0f);
@@ -806,8 +1064,6 @@ float3 EvaluateOceanArtist(
     float3 CrossUp = cross(Primary, UpVec);
     float3 U_spread = CrossUp / max(length(CrossUp), 0.001f);
     float3 V_spread = cross(Primary, U_spread);
-    float3 UV_diag1 = normalize(U_spread + V_spread);
-    float3 UV_diag2 = normalize(U_spread - V_spread);
 
     float4 Params[GERSTNER_MAX_WAVES];
     float3 Origins[GERSTNER_MAX_WAVES];
@@ -818,18 +1074,15 @@ float3 EvaluateOceanArtist(
         if (i < ActiveWaves)
         {
             float Weight = (i < 3) ? BaseAmpWeights[i] : (BaseAmpWeights[i] * C);
-            float WaveAmp = H * (Weight / TotalWeight);
+            float WaveAmp = H * (Weight / NormFactor);
             float WaveLen = L * WaveLenRatios[i];
             float WaveQ   = clamp(Q * WaveSteepMults[i], 0.0f, 1.0f);
             float WaveSpd = S * WaveSpeedMults[i];
 
             Params[i] = float4(WaveAmp, WaveLen, WaveQ, WaveSpd);
 
-            float3 axis = U_spread;
-            if (WaveSpreadAxes[i] == 1) axis = V_spread;
-            else if (WaveSpreadAxes[i] == 2) axis = UV_diag1;
-            else if (WaveSpreadAxes[i] == 3) axis = UV_diag2;
-
+            float az = WaveAzimuths[i];
+            float3 axis = U_spread * cos(az) + V_spread * sin(az);
             float ang = WaveSpreadAngles[i] * Spread;
             Origins[i] = normalize(Primary * cos(ang) + axis * sin(ang));
         }
