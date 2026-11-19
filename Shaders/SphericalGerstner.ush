@@ -126,46 +126,6 @@ float4 GerstnerNoise3DGrad(float3 p)
     return float4(val, grad);
 }
 
-/**
- * Fast 2x2x2 3D Worley/Voronoi cellular edge distance for authentic webbed sea foam.
- * Returns float2(F1_dist, F2_minus_F1_edge) — small edge values trace crisp frothy foam filaments.
- */
-float2 GerstnerWorley3D(float3 p)
-{
-    float3 baseCell = floor(p - 0.5f);
-    float d1 = 8.0f;
-    float d2 = 8.0f;
-
-    [unroll]
-    for (int z = 0; z <= 1; ++z)
-    {
-        [unroll]
-        for (int y = 0; y <= 1; ++y)
-        {
-            [unroll]
-            for (int x = 0; x <= 1; ++x)
-            {
-                float3 cell = baseCell + float3((float)x, (float)y, (float)z);
-                float3 jitter = 0.15f + 0.70f * GerstnerHash33(cell);
-                float3 diff = (cell + jitter) - p;
-                float distSq = dot(diff, diff);
-                if (distSq < d1)
-                {
-                    d2 = d1;
-                    d1 = distSq;
-                }
-                else if (distSq < d2)
-                {
-                    d2 = distSq;
-                }
-            }
-        }
-    }
-    float f1 = sqrt(d1);
-    float f2 = sqrt(d2);
-    return float2(f1, f2 - f1);
-}
-
 // Orthonormal 3x3 rotation matrices to eliminate Cartesian lattice alignment in 3D procedural noise
 static const float3x3 GERSTNER_ROT1 = float3x3(
      0.5403f, -0.6816f,  0.4935f,
@@ -259,74 +219,6 @@ void EvaluateCapillaryNormals(
     // Toksvig-style roughness compensation as fine octaves fade out with distance
     float LostDetail = (1.0f - FadeMicro) * 0.025f + (1.0f - FadeFine) * 0.055f + (1.0f - FadeMid) * 0.085f;
     OutCapillaryRoughBias = LostDetail * Strength;
-}
-
-/**
- * Evaluates a multi-scale lacy cellular sea foam pattern (Black Flag style:
- * organic domain-warped patches + stretched windrow trails + wispy webbed filaments).
- */
-void EvaluateOceanFoamPattern(
-    in float3 LocalWaterPosCm,
-    in float3 WindDriftCm,
-    in float3 WindDirTangent,
-    in float  CameraDistCm,
-    out float OutMacroPatch,
-    out float OutBubbleWeb,
-    out float OutWindrowMask)
-{
-    // Organic domain warp using rotated octaves (zero Cartesian grid alignment)
-    float3 WarpP1 = mul(GERSTNER_ROT1, (LocalWaterPosCm + WindDriftCm * 0.22f) * 0.0009f);
-    float3 WarpP2 = mul(GERSTNER_ROT2, (LocalWaterPosCm + WindDriftCm * 0.35f) * 0.0023f + float3(13.7f, 7.1f, 3.9f));
-    float w1 = GerstnerNoise3D(WarpP1) - 0.5f;
-    float w2 = GerstnerNoise3D(WarpP2) - 0.5f;
-    float3 WarpedPos = LocalWaterPosCm + WindDirTangent * (w1 * 380.0f) + float3(w2, w1 - w2, -w1) * 190.0f;
-
-    // 1. Macro patch breakup (~12m & ~4.2m rotated octaves)
-    float MacroLarge = GerstnerNoise3D(mul(GERSTNER_ROT1, (WarpedPos + WindDriftCm * 0.18f) * 0.00085f));
-    float MacroMed   = GerstnerNoise3D(mul(GERSTNER_ROT2, (WarpedPos + WindDriftCm * 0.32f) * 0.0024f));
-    OutMacroPatch = saturate(MacroLarge * 0.62f + MacroMed * 0.38f);
-
-    // 2. Stretched windrow / turbulent foam streaks elongated along wind flow (Black Flag foreground webs)
-    float3 StreakCoord = (WarpedPos + WindDriftCm * 0.42f) * 0.0022f;
-    StreakCoord -= WindDirTangent * dot(StreakCoord, WindDirTangent) * 0.68f;
-    float StreakA = GerstnerNoise3D(mul(GERSTNER_ROT1, StreakCoord));
-    float StreakB = GerstnerNoise3D(mul(GERSTNER_ROT2, StreakCoord * 2.15f));
-    float StreakVal = StreakA * 0.60f + StreakB * 0.40f;
-    OutWindrowMask = smoothstep(0.48f, 0.80f, StreakVal) * smoothstep(0.30f, 0.72f, OutMacroPatch);
-
-    // 3. Porous lacy sea-foam webbing (thin crisp veins + open water holes -> NEVER solid snow caps!)
-    float FoamHoles = GerstnerNoise3D(mul(GERSTNER_ROT1, (WarpedPos + WindDriftCm * 0.40f) * 0.0105f));
-
-    float3 LaceP1 = mul(GERSTNER_ROT2, (WarpedPos + WindDriftCm * 0.50f) * 0.0095f);
-    float3 LaceP2 = mul(GERSTNER_ROT1, (WarpedPos - WindDriftCm * 0.35f) * 0.0215f);
-    float Ridge1 = 1.0f - abs(GerstnerNoise3D(LaceP1) * 2.0f - 1.0f);
-    float Ridge2 = 1.0f - abs(GerstnerNoise3D(LaceP2) * 2.0f - 1.0f);
-    // Sharp, thin lacy filaments so dark/turquoise water shows cleanly through the gaps
-    float VeinsCoarse = smoothstep(0.64f, 0.96f, Ridge1);
-    float VeinsFine   = smoothstep(0.56f, 0.94f, Ridge2);
-
-    float FineFade = saturate(1.0f - (CameraDistCm - 4500.0f) / 26000.0f);
-    float WorleyWeb = 0.0f;
-    if (FineFade > 0.01f)
-    {
-        float2 CellFine = GerstnerWorley3D(mul(GERSTNER_ROT2, (WarpedPos + WindDriftCm * 0.45f) * 0.024f));
-        WorleyWeb = 1.0f - smoothstep(0.015f, 0.14f, CellFine.y);
-    }
-
-    // Multiply by FoamHoles breakup so interior of foam patches stays frothy and porous
-    float PorousMask = smoothstep(0.28f, 0.76f, FoamHoles);
-    float Web = saturate(VeinsCoarse * (0.45f + 0.55f * PorousMask) + VeinsFine * 0.55f * PorousMask + WorleyWeb * 0.35f * FineFade * PorousMask);
-
-    // 4. Micro bubble grain close-up (~24cm)
-    float MicroFade = saturate(1.0f - CameraDistCm / 12000.0f);
-    float MicroGrain = 0.78f;
-    if (MicroFade > 0.01f)
-    {
-        float nMicro = GerstnerNoise3D(mul(GERSTNER_ROT1, WarpedPos * 0.042f + WindDriftCm * 0.7f));
-        MicroGrain = smoothstep(0.22f, 0.76f, nMicro);
-    }
-
-    OutBubbleWeb = saturate(Web * lerp(1.0f, 0.60f + 0.50f * MicroGrain, MicroFade));
 }
 
 /**
@@ -459,7 +351,6 @@ void CalculateSphericalGerstner(
     float  TotalAmpAccum = 0.0f;
     float  VerticalElevAccum = 0.0f;
     float  JacobianAccum = 0.0f;
-    float  CrestEnergyAccum = 0.0f;
 
     // --- Directional Spread Basis ---
     // Determine primary wave origin on the sphere
@@ -624,17 +515,12 @@ void CalculateSphericalGerstner(
         float SlopeFactor = 1.0f / max(1.0f - K * HorizAmp * SinP * TotalAtten * 0.48f, 0.55f);
         TangentPerturb += T_dir * (SafeSlope * CosP * TotalAtten * SlopeFactor);
 
-        // --- Crest & Whitecap Accumulation (driven by primary swells & medium waves 0..5, not micro-chop) ---
+        // --- Crest Elevation & Jacobian Accumulation (for subsurface scattering) ---
         float WeightedAmp = SafeAmp * TotalAtten;
         float SwellMask = (i < 6) ? 1.0f : 0.18f;
         TotalAmpAccum += WeightedAmp * SwellMask;
         VerticalElevAccum += WeightedAmp * SwellMask * SinP;
         JacobianAccum += (K * HorizAmp) * SinP * TotalAtten * SwellMask;
-
-        // Leeward-shifted phase (Phase + 0.35 rad) so foam trails naturally down the back of breaking crests
-        float SinP_Trail = SinP * 0.939f + CosP * 0.343f;
-        float HarmonicWeight = (i < 3) ? 1.05f : ((i < 6) ? 0.85f : 0.15f);
-        CrestEnergyAccum += WeightedAmp * HarmonicWeight * (0.40f + 0.60f * Q_eff) * max(SinP_Trail, 0.0f);
     }
 
     OutDisplacement = DispAccum;
@@ -674,73 +560,18 @@ void CalculateSphericalGerstner(
     OutNormal = normalize(N_base - TangentPerturb);
 
 #if PIXELSHADER
-    // --- Pixel-Stage Procedural Foam & Subsurface Crest Calculation ---
+    // --- Pixel-Stage Subsurface Crest Scattering Calculation (Foam Disabled) ---
     float SafeTotalAmp = max(TotalAmpAccum, 0.001f);
     float NormElevation = VerticalElevAccum / SafeTotalAmp; // [-1..1]
-    float NormCrestEnergy = CrestEnergyAccum / SafeTotalAmp;
 
-    // Subsurface Scattering / Emerald-Turquoise Crest Mask (tight, focused on thin upper wave crests & ridges)
+    // Subsurface Scattering / Emerald-Turquoise Crest Mask (focused on thin upper wave crests & shallow water)
     float SlopeMag = saturate(length(TangentPerturb) * 0.85f);
     float WaveCrestGlow = saturate(smoothstep(0.24f, 0.78f, NormElevation) * (0.55f + 0.60f * SlopeMag) + max(JacobianAccum, 0.0f) * 0.35f) * LODFade;
     float ShallowGlow = (ShoreFoamDepth > 0.01f)
         ? saturate(1.0f - WaterDepthCm / max(ShoreFoamDepth * 3.0f, 10.0f)) * 0.75f
         : 0.0f;
     OutCrestMask = saturate(max(WaveCrestGlow, ShallowGlow));
-
-    if (FoamIntensity > 0.001f)
-    {
-        // 1. Lagrangian coordinates (foam rides with horizontal wave displacement, wrapped for LWC precision)
-        float3 HorizontalDisp = DispAccum - N_base * dot(DispAccum, N_base);
-        float3 LocalWaterPosCm = WrappedRelPos - HorizontalDisp * 0.85f;
-        float3 WindDriftCm = WindDirTangent * (InTime * 42.0f * EffectiveSpeed);
-
-        float MacroPatch, BubbleWeb, WindrowMask;
-        EvaluateOceanFoamPattern(LocalWaterPosCm, WindDriftCm, WindDirTangent, CameraDist, MacroPatch, BubbleWeb, WindrowMask);
-
-        // 2. Whitecap Crest Energy (breaking swell peaks + leeward trails, broken up by macro FBM)
-        float Thresh = clamp(FoamThreshold, 0.05f, 0.95f);
-        float RawCrestSignal = NormCrestEnergy * 0.65f + max(NormElevation, 0.0f) * 0.52f + max(JacobianAccum, 0.0f) * 0.75f;
-        // Organic macro breakup so whitecaps sweep naturally across wave crests
-        float EffectiveThresh = Thresh + (1.0f - MacroPatch) * 0.28f;
-        float CrestFoamEnergy = smoothstep(EffectiveThresh, EffectiveThresh + 0.30f, RawCrestSignal);
-
-        // Elongated windrow & turbulent lacy foam webs stretching across wave slopes (Black Flag signature)
-        float AmbientLaceEnergy = WindrowMask * (0.48f + 0.52f * saturate(NormCrestEnergy + 0.20f)) * smoothstep(0.95f, 0.10f, Thresh);
-
-        // 3. Shoreline / Shallow Surf Foam Energy
-        float ShoreFoamEnergy = 0.0f;
-        if (ShoreFoamDepth > 0.01f && WaterDepthCm < ShoreFoamDepth)
-        {
-            float ShoreProx = saturate(1.0f - WaterDepthCm / max(ShoreFoamDepth, 1.0f));
-            float ContactRim = pow(saturate(1.0f - WaterDepthCm / max(ShoreFoamDepth * 0.22f, 6.0f)), 1.35f);
-            float SurfBandFreq = 6.2831853f / max(ShoreFoamDepth * 0.28f, 20.0f);
-            float SurfPhase = WaterDepthCm * SurfBandFreq + InTime * 3.2f * EffectiveSpeed + MacroPatch * 3.0f;
-            float SurfRollers = pow(saturate(sin(SurfPhase) * 0.5f + 0.5f), 2.2f) * smoothstep(0.0f, 0.85f, ShoreProx) * ShoreProx;
-
-            ShoreFoamEnergy = saturate(ContactRim * 1.15f + SurfRollers * 0.80f);
-        }
-
-        // 4. Crisp Porous Lacy Sea Foam: threshold-eroded frothy webbing with open water gaps
-        float OpenSeaEnergy = max(CrestFoamEnergy, AmbientLaceEnergy * 0.75f);
-        float CombinedEnergy = saturate(max(OpenSeaEnergy, ShoreFoamEnergy) * FoamIntensity) * LODFade;
-
-        // Distance fade for delicate foam webs to prevent distant white noise
-        float FoamDistFade = saturate(1.0f - (CameraDist - 22000.0f) / 110000.0f);
-        CombinedEnergy *= FoamDistFade;
-
-        // Threshold erosion: edges dissolve into thin lacy filaments, cores stay frothy & porous (never solid ovals)
-        float ErodedLace = smoothstep(1.0f - CombinedEnergy * 0.92f, 1.0f - CombinedEnergy * 0.35f + 0.08f, BubbleWeb);
-        float CrestFroth = smoothstep(0.70f, 0.98f, CombinedEnergy) * smoothstep(0.36f, 0.88f, BubbleWeb);
-
-        OutFoamMask = saturate(max(ErodedLace * smoothstep(0.04f, 0.32f, CombinedEnergy) * 1.10f, CrestFroth));
-
-        // Aerated subsurface turquoise glow beneath and around foam patches (makes foam sit IN the water)
-        float AeratedHalo = saturate(CombinedEnergy * 0.55f + OutFoamMask * 0.45f) * 0.45f;
-        OutCrestMask = saturate(max(OutCrestMask, AeratedHalo));
-
-        // 5. Dynamic Foam Roughness: real sea foam is diffuse/matte (~0.75), killing mirror glare on whitecaps
-        OutRoughnessBias = saturate(OutRoughnessBias + OutFoamMask * 0.75f);
-    }
+    OutFoamMask = 0.0f;
 #endif
 }
 
