@@ -6,6 +6,7 @@
 #include "System/CosmicSystemOrbitController.h"
 #include "Planet/CosmicPlanet.h"
 #include "Planet/CosmicRingComponent.h"
+#include "CosmicFoliageCollection.h"
 #include "Engine/World.h"
 #include "Engine/PointLight.h"
 #include "Materials/MaterialInstance.h"
@@ -106,6 +107,39 @@ void ACosmicSystemGenerator::EnsureDefaultMaterials()
     if (!RingMaterial)
     {
         RingMaterial = FCosmicCelestialBodySpawner::GetDefaultRingMaterial();
+    }
+
+    auto PopulateDefaultFoliageArray = [](TArray<TObjectPtr<UCosmicFoliageCollection>>& TargetArray, ECosmicPlanetArchetype Archetype)
+    {
+        TargetArray.RemoveAll([](const TObjectPtr<UCosmicFoliageCollection>& Item) { return Item == nullptr; });
+        if (TargetArray.IsEmpty())
+        {
+            const TArray<UCosmicFoliageCollection*> Defaults =
+                FCosmicCelestialBodySpawner::GetDefaultFoliageCollectionsForArchetype(Archetype);
+            for (UCosmicFoliageCollection* Col : Defaults)
+            {
+                if (Col)
+                {
+                    TargetArray.Add(Col);
+                }
+            }
+        }
+    };
+
+    if (!HasAnyFlags(RF_ClassDefaultObject))
+    {
+        PopulateDefaultFoliageArray(EarthLikeFoliageCollections, ECosmicPlanetArchetype::EarthLike);
+        PopulateDefaultFoliageArray(DesertFoliageCollections, ECosmicPlanetArchetype::AridDesert);
+        PopulateDefaultFoliageArray(FrozenFoliageCollections, ECosmicPlanetArchetype::FrozenIce);
+        PopulateDefaultFoliageArray(CrateredFoliageCollections, ECosmicPlanetArchetype::CrateredBarren);
+        for (UCosmicFoliageCollection* VolcanicCol : FCosmicCelestialBodySpawner::GetDefaultFoliageCollectionsForArchetype(ECosmicPlanetArchetype::VolcanicScorched))
+        {
+            if (VolcanicCol)
+            {
+                CrateredFoliageCollections.AddUnique(VolcanicCol);
+            }
+        }
+        PopulateDefaultFoliageArray(MoonFoliageCollections, ECosmicPlanetArchetype::Moon);
     }
 
     // Note: OceanMaterial is deliberately not required or forced here,
@@ -329,7 +363,12 @@ void ACosmicSystemGenerator::GenerateBodies()
         PlanetRadii.Add(NewRadius);
 
         const bool bIsGasGiant = (Classification.Type == ECosmicSystemPlanetType::GasGiant);
-        UMaterialInstance* PlanetMat = bIsGasGiant ? GasGiantMaterial : BaseMaterial;
+        const bool bUseRockySurfaceMat = !bIsGasGiant &&
+            (Classification.Archetype == ECosmicPlanetArchetype::CrateredBarren ||
+             Classification.Archetype == ECosmicPlanetArchetype::VolcanicScorched);
+        UMaterialInstance* PlanetMat = bIsGasGiant
+            ? GasGiantMaterial
+            : ((bUseRockySurfaceMat && MoonMaterial) ? MoonMaterial : BaseMaterial);
 
         FString FolderId;
         FString BaseFolder;
@@ -338,16 +377,48 @@ void ACosmicSystemGenerator::GenerateBodies()
         BaseFolder = GeneratedNoiseSettingsAssetFolder;
 #endif
 
-        UCosmicNoiseClass* PlanetNoise = bIsGasGiant ? nullptr : NoiseManager.CreateRandomNoiseSettings(
-            Stream, NewRadius, World, FolderId, BaseFolder, bSaveGeneratedNoiseSettingsAssets);
+        UCosmicNoiseClass* PlanetNoise = bIsGasGiant ? nullptr : NoiseManager.CreateNoiseSettingsForArchetype(
+            Stream, NewRadius, Classification.Archetype, Classification.bHasOcean,
+            World, FolderId, BaseFolder, bSaveGeneratedNoiseSettingsAssets);
 
-        FCosmicPlanetAppearanceParams Appearance = FCosmicPlanetAppearanceParams::MakeTelluricAppearance(Stream);
+        FCosmicPlanetAppearanceParams Appearance = FCosmicPlanetAppearanceParams::MakeAppearanceForArchetype(
+            Classification.Archetype, Stream);
+
+        UCosmicFoliageCollection* PlanetFoliage = nullptr;
+        if (!bIsGasGiant)
+        {
+            switch (Classification.Archetype)
+            {
+            case ECosmicPlanetArchetype::EarthLike:
+                PlanetFoliage = FCosmicCelestialBodySpawner::SelectFoliageCollection(
+                    EarthLikeFoliageCollections, ECosmicPlanetArchetype::EarthLike, Stream);
+                break;
+            case ECosmicPlanetArchetype::AridDesert:
+                PlanetFoliage = FCosmicCelestialBodySpawner::SelectFoliageCollection(
+                    DesertFoliageCollections, ECosmicPlanetArchetype::AridDesert, Stream);
+                break;
+            case ECosmicPlanetArchetype::FrozenIce:
+                PlanetFoliage = FCosmicCelestialBodySpawner::SelectFoliageCollection(
+                    FrozenFoliageCollections, ECosmicPlanetArchetype::FrozenIce, Stream);
+                break;
+            case ECosmicPlanetArchetype::VolcanicScorched:
+                PlanetFoliage = FCosmicCelestialBodySpawner::SelectFoliageCollection(
+                    CrateredFoliageCollections, ECosmicPlanetArchetype::VolcanicScorched, Stream);
+                break;
+            case ECosmicPlanetArchetype::CrateredBarren:
+            default:
+                PlanetFoliage = FCosmicCelestialBodySpawner::SelectFoliageCollection(
+                    CrateredFoliageCollections, ECosmicPlanetArchetype::CrateredBarren, Stream);
+                break;
+            }
+        }
 
         ACosmicPlanet* Planet = FCosmicCelestialBodySpawner::SpawnPlanet(
             World, this, Star, GetActorLocation(),
             NewOrbit, NewRadius, Classification, PlanetNoise,
             PlanetMat, OceanMaterial, RingMaterial,
-            Appearance, GraphicsConfig, BodyDiameterRangeKm, PlanetSurfaceGravityRange, Stream
+            Appearance, GraphicsConfig, BodyDiameterRangeKm, PlanetSurfaceGravityRange, Stream,
+            PlanetFoliage
         );
 
         if (!Planet)
@@ -370,15 +441,21 @@ void ACosmicSystemGenerator::GenerateBodies()
             float MoonRadiusKm = NewRadius * Stream.FRandRange(MoonRadiusFactorMin, MoonRadiusFactorMax);
             MoonRadiusKm = FMath::Clamp(MoonRadiusKm, MoonDiameterRangeKm.X * 0.5f, MoonDiameterRangeKm.Y * 0.5f);
 
-            UCosmicNoiseClass* MoonNoise = NoiseManager.CreateRandomNoiseSettings(
-                Stream, MoonRadiusKm, World, FolderId, BaseFolder, bSaveGeneratedNoiseSettingsAssets);
+            UCosmicNoiseClass* MoonNoise = NoiseManager.CreateNoiseSettingsForArchetype(
+                Stream, MoonRadiusKm, ECosmicPlanetArchetype::Moon, false,
+                World, FolderId, BaseFolder, bSaveGeneratedNoiseSettingsAssets);
 
-            FCosmicPlanetAppearanceParams MoonAppearance = FCosmicPlanetAppearanceParams::MakeMoonAppearance(Stream);
+            FCosmicPlanetAppearanceParams MoonAppearance = FCosmicPlanetAppearanceParams::MakeAppearanceForArchetype(
+                ECosmicPlanetArchetype::Moon, Stream);
+
+            UCosmicFoliageCollection* MoonFoliage = FCosmicCelestialBodySpawner::SelectFoliageCollection(
+                MoonFoliageCollections, ECosmicPlanetArchetype::Moon, Stream);
 
             ACosmicPlanet* Moon = FCosmicCelestialBodySpawner::SpawnMoon(
                 World, Planet, MoonOrbitKm, MoonRadiusKm,
                 MoonNoise, MoonMaterial, MoonAppearance,
-                MoonDiameterRangeKm, MoonSurfaceGravityRange, Stream
+                MoonDiameterRangeKm, MoonSurfaceGravityRange, Stream,
+                MoonFoliage
             );
 
             if (Moon)

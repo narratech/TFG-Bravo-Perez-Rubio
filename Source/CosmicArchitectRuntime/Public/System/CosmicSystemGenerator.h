@@ -9,6 +9,7 @@
 #include "CosmicSystemGenerator.generated.h"
 
 class UCosmicNoiseClass;
+class UCosmicFoliageCollection;
 class UMaterialInstance;
 
 /**
@@ -19,7 +20,7 @@ class UMaterialInstance;
 UCLASS(HideCategories = (
     Replication, Input, Collision, Actor, LOD, Cooking, Networking,
     Physics, Navigation, Tags, DataLayers, LevelInstance
-    ), AutoExpandCategories = ("Configuration", "Generation Rules", "Actions"))
+    ), AutoExpandCategories = ("Configuration", "Generation Rules", "Foliage", "Actions"))
 class COSMICARCHITECTRUNTIME_API ACosmicSystemGenerator : public AActor 
 {
     GENERATED_BODY()
@@ -50,6 +51,26 @@ public:
     /* Material for planetary rings (defaults to MI_CosmicRing). */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UMaterialInstance* RingMaterial;
+
+    /* Foliage collections randomly assigned to Earth-like / Lush Habitable planets. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
+    TArray<TObjectPtr<UCosmicFoliageCollection>> EarthLikeFoliageCollections;
+
+    /* Foliage collections randomly assigned to Arid / Desert / Canyon Mesa planets. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
+    TArray<TObjectPtr<UCosmicFoliageCollection>> DesertFoliageCollections;
+
+    /* Foliage collections randomly assigned to Frozen / Tundra / Glacial planets. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
+    TArray<TObjectPtr<UCosmicFoliageCollection>> FrozenFoliageCollections;
+
+    /* Foliage collections randomly assigned to Cratered / Barren / Volcanic rocky planets. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
+    TArray<TObjectPtr<UCosmicFoliageCollection>> CrateredFoliageCollections;
+
+    /* Foliage collections randomly assigned to Moons. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage")
+    TArray<TObjectPtr<UCosmicFoliageCollection>> MoonFoliageCollections;
 
     /* Debug line thickness. */
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Debug")

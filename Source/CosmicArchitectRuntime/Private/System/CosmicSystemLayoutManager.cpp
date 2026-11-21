@@ -45,9 +45,10 @@ bool FCosmicSystemLayoutManager::TryPlacePlanet(
     for (int32 Attempt = 0; Attempt < LayoutConfig.MaxGenerationAttempts; ++Attempt)
     {
         const float Orbit = Stream.FRandRange(MinDist, MaxDist);
-        float Radius = Orbit * Stream.FRandRange(RadiusFactorMin, RadiusFactorMax);
-
-        Radius = FMath::Clamp(Radius, DiameterRange.X * 0.5f, DiameterRange.Y * 0.5f);
+        const float MinRadius = DiameterRange.X * 0.5f;
+        const float MaxRadius = DiameterRange.Y * 0.5f;
+        float Radius = Stream.FRandRange(MinRadius, MaxRadius);
+        Radius = FMath::Clamp(Radius, MinRadius, MaxRadius);
 
         if (!IsOrbitDistanceValid(Orbit, Radius, ExistingOrbitDistances, ExistingPlanetRadii, LayoutConfig.MinDistanceBetweenBodies))
         {
@@ -91,8 +92,10 @@ FCosmicBodyClassification FCosmicSystemLayoutManager::ClassifyPlanet(
     FCosmicBodyClassification Result;
 
     const float OrbitalFraction = OrbitDistanceKm / SystemRadiusKm;
-    const bool bInHabitableZone = (OrbitalFraction >= Rules.HabitableZoneInnerFraction &&
-        OrbitalFraction <= Rules.HabitableZoneOuterFraction);
+    const float EffectiveHabitableInner = FMath::Max(Rules.HabitableZoneInnerFraction, 0.42f);
+    const float EffectiveHabitableOuter = FMath::Max(Rules.HabitableZoneOuterFraction, 0.72f);
+    const bool bInHabitableZone = (OrbitalFraction >= EffectiveHabitableInner &&
+        OrbitalFraction <= EffectiveHabitableOuter);
     const bool bInBeltZone = (OrbitalFraction >= Rules.BeltZoneInnerFraction &&
         OrbitalFraction <= Rules.BeltZoneOuterFraction);
 
@@ -125,11 +128,55 @@ FCosmicBodyClassification FCosmicSystemLayoutManager::ClassifyPlanet(
         if (bInHabitableZone && Stream.FRandRange(0.0f, 1.0f) < Rules.TelluricOceanProbability)
         {
             Result.bHasOcean = true;
-            Result.OceanSeaLevel = Stream.FRandRange(-0.00002f, 0.00002f) * PlanetRadiusKm;
+            // Align sea level with MI_CosmicEarth2 SandMaxAltitudeKm (0.082 km) and beach/land foliage thresholds (0.070 - 0.082 km)
+            Result.OceanSeaLevel = 0.07f;
+            Result.Archetype = ECosmicPlanetArchetype::EarthLike;
         }
         else
         {
             Result.bHasOcean = false;
+            Result.OceanSeaLevel = 0.0f;
+
+            const float Roll = Stream.FRandRange(0.0f, 1.0f);
+            if (OrbitalFraction < EffectiveHabitableInner)
+            {
+                // Inner warm/scorched zone: Desert Mesa, Cratered Barren, or Volcanic
+                if (Roll < 0.45f)
+                {
+                    Result.Archetype = ECosmicPlanetArchetype::AridDesert;
+                }
+                else if (Roll < 0.75f)
+                {
+                    Result.Archetype = ECosmicPlanetArchetype::CrateredBarren;
+                }
+                else
+                {
+                    Result.Archetype = ECosmicPlanetArchetype::VolcanicScorched;
+                }
+            }
+            else if (bInHabitableZone)
+            {
+                // Dry habitable zone: Arid Desert Canyon/Savanna, Frozen Highland, or Cratered
+                if (Roll < 0.55f)
+                {
+                    Result.Archetype = ECosmicPlanetArchetype::AridDesert;
+                }
+                else if (Roll < 0.80f)
+                {
+                    Result.Archetype = ECosmicPlanetArchetype::FrozenIce;
+                }
+                else
+                {
+                    Result.Archetype = ECosmicPlanetArchetype::CrateredBarren;
+                }
+            }
+            else
+            {
+                // Outer cold zone: Frozen Ice/Tundra or Cratered Barren
+                Result.Archetype = (Roll < 0.55f)
+                    ? ECosmicPlanetArchetype::FrozenIce
+                    : ECosmicPlanetArchetype::CrateredBarren;
+            }
         }
     }
 

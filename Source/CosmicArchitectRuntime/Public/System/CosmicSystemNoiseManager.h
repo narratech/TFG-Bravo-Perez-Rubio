@@ -4,11 +4,16 @@
 
 #include "CoreMinimal.h"
 #include "CosmicNoiseClass.h"
+#include "System/CosmicSystemTypes.h"
 
 class UCosmicDefaultNoiseSettings;
+class UCosmicMultiNoiseSettings;
+class UCosmicErosionMultifractalNoiseSettings;
+class UCosmicCraterNoiseSettings;
 
 /**
  * Manages procedural noise generation and optional editor asset persistence for planetary systems.
+ * Supports MultiNoise, ErosionMultifractal, Crater, and Default noise strategies tailored per planet archetype.
  */
 class COSMICARCHITECTRUNTIME_API FCosmicSystemNoiseManager
 {
@@ -18,10 +23,22 @@ public:
     /** Resets the asset counter and in-memory asset cache. */
     void Reset();
 
-    /** Generates random procedural noise settings for a planet or moon. */
+    /** Generates random procedural noise settings for a planet or moon (backward compatible). */
     UCosmicNoiseClass* CreateRandomNoiseSettings(
         FRandomStream& Stream,
         float PlanetRadius,
+        UWorld* World,
+        const FString& FolderId,
+        const FString& BaseAssetFolder,
+        bool bSavePersistentAssets
+    );
+
+    /** Generates high-quality procedural noise settings (MultiNoise, ErosionMultifractal, or Crater) for a specific planetary archetype. */
+    UCosmicNoiseClass* CreateNoiseSettingsForArchetype(
+        FRandomStream& Stream,
+        float PlanetRadius,
+        ECosmicPlanetArchetype Archetype,
+        bool bHasOcean,
         UWorld* World,
         const FString& FolderId,
         const FString& BaseAssetFolder,
@@ -52,12 +69,13 @@ public:
     );
 
     /** Saves a dirty noise settings asset to disk. */
-    static void SaveGeneratedNoiseSettingsAsset(UCosmicDefaultNoiseSettings* NoiseSettings);
+    static void SaveGeneratedNoiseSettingsAsset(UCosmicNoiseClass* NoiseSettings);
 
-    /** Finds or creates a persistent UCosmicDefaultNoiseSettings asset in the content browser. */
-    UCosmicDefaultNoiseSettings* CreateOrReusePersistentRandomNoiseSettingsAsset(
+    /** Finds or creates a persistent UCosmicNoiseClass asset of the requested subclass in the content browser. */
+    UCosmicNoiseClass* CreateOrReusePersistentNoiseSettingsAsset(
         const FString& FolderId,
-        const FString& BaseAssetFolder
+        const FString& BaseAssetFolder,
+        TSubclassOf<UCosmicNoiseClass> SettingsClass
     );
 
     /** Sanitizes string characters to be valid Unreal asset/package name tokens. */
@@ -71,6 +89,6 @@ private:
     int32 GeneratedNoiseAssetCounter = 0;
 
 #if WITH_EDITOR
-    TArray<TObjectPtr<UCosmicDefaultNoiseSettings>> GeneratedNoiseSettingsAssets;
+    TArray<TObjectPtr<UCosmicNoiseClass>> GeneratedNoiseSettingsAssets;
 #endif
 };

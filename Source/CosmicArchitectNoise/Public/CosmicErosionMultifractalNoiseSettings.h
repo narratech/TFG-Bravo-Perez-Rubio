@@ -23,33 +23,33 @@ struct COSMICARCHITECTNOISE_API FCosmicStrataTerraceParameters
 	 * Vertical spacing (altitude height difference) between consecutive geological terrace benches / strata shelves.
 	 * Lower values = more tightly packed strata bands. Higher values = massive mesa steps and towering cliffs.
 	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Strata & Terraces", meta = (ClampMin = "10.0", ClampMax = "1000.0"))
-	float TerraceInterval = 140.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Strata & Terraces", meta = (ClampMin = "10.0", ClampMax = "10000.0"))
+	float TerraceInterval = 2200.0f;
 
 	/**
 	 * Sharpness of the terrace transition (0.0 = completely smooth slope, 0.95 = near-vertical scarp cliffs with flat plateaus).
 	 * Modulates the continuous sine-harmonic shaping curve.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Strata & Terraces", meta = (ClampMin = "0.0", ClampMax = "0.95"))
-	float TerraceSharpness = 0.82f;
+	float TerraceSharpness = 0.80f;
 
 	/**
 	 * Global weight/blend factor of the terrace profile onto the raw terrain height (0.0 to 1.0).
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Strata & Terraces", meta = (ClampMin = "0.0", ClampMax = "1.0"))
-	float TerraceWeight = 0.70f;
+	float TerraceWeight = 0.45f;
 
 	/**
 	 * Intensity of geological domain folding / warping applied to strata layers, simulating tilted sedimentary beds and anticlines.
 	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Strata & Terraces", meta = (ClampMin = "0.0", ClampMax = "200.0"))
-	float TerraceWarpIntensity = 35.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Strata & Terraces", meta = (ClampMin = "0.0", ClampMax = "5000.0"))
+	float TerraceWarpIntensity = 600.0f;
 
 	/**
 	 * Spatial frequency for geological folding and strata warping.
 	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Strata & Terraces", meta = (ClampMin = "0.0001", ClampMax = "0.1"))
-	float TerraceWarpFrequency = 0.0025f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Strata & Terraces", meta = (ClampMin = "0.0001", ClampMax = "50.0"))
+	float TerraceWarpFrequency = 3.0f;
 };
 
 /**
@@ -67,8 +67,8 @@ struct COSMICARCHITECTNOISE_API FCosmicErosionParameters
 	/**
 	 * Maximum depth carved into the bedrock along major river drainage arteries.
 	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Erosion & Drainage", meta = (ClampMin = "0.0", ClampMax = "2000.0"))
-	float FluvialCarveDepth = 220.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Erosion & Drainage", meta = (ClampMin = "0.0", ClampMax = "10000.0"))
+	float FluvialCarveDepth = 2400.0f;
 
 	/**
 	 * Width threshold for river drainage valleys (based on Voronoi Distance2Sub).
@@ -131,8 +131,8 @@ struct COSMICARCHITECTNOISE_API FCosmicMultifractalParameters
 	/**
 	 * Tectonic domain warp frequency used to shear mountain chains into realistic tectonic fold belts.
 	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Multifractal", meta = (ClampMin = "0.0001", ClampMax = "0.05"))
-	float TectonicWarpFrequency = 0.0015f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Multifractal", meta = (ClampMin = "0.0001", ClampMax = "50.0"))
+	float TectonicWarpFrequency = 1.5f;
 
 	/**
 	 * Amplitude of tectonic domain warp displacement.

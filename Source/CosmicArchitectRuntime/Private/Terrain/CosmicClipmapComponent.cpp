@@ -687,6 +687,13 @@ void UCosmicClipmapComponent::UpdateMaterialParameters()
     DynamicPlanetMat->SetScalarParameterValue(FName("NormalStrength"), NormalStrength);
     DynamicPlanetMat->SetScalarParameterValue(FName("SlopeCliffThreshold"), SlopeCliffThreshold);
     DynamicPlanetMat->SetScalarParameterValue(FName("SlopeCliffFallOff"), SlopeCliffFallOff);
+
+    // Synchronize coastal beach sand threshold with active ocean sea level
+    const bool bPlanetHasOcean = OceanComponent && OceanComponent->bHasOcean;
+    const float SandMaxAltKm = bPlanetHasOcean
+        ? static_cast<float>(OceanComponent->SeaLevelKm) + 0.012f
+        : -100.0f;
+    DynamicPlanetMat->SetScalarParameterValue(FName("SandMaxAltitudeKm"), SandMaxAltKm);
 }
 
 void UCosmicClipmapComponent::BuildDynamicMaterial() 

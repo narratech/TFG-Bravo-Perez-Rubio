@@ -10,10 +10,11 @@ class ACosmicPlanet;
 class APointLight;
 class UCosmicNoiseClass;
 class UCosmicRingComponent;
+class UCosmicFoliageCollection;
 class UMaterialInstance;
 
 /**
- * Handles creation, component composition, material resolution,
+ * Handles creation, component composition, material resolution, foliage asset provisioning,
  * and appearance initialization of celestial bodies (stars, planets, moons, asteroid belts).
  */
 class COSMICARCHITECTRUNTIME_API FCosmicCelestialBodySpawner
@@ -38,9 +39,23 @@ public:
     static UMaterialInstance* GetDefaultRingMaterial();
 
     /**
-     * Initializes planet visual appearance and terrain shader parameters.
-     * Encapsulates both archetype linear colors and legacy parameters to remain resilient
-     * against parameter renaming by other subsystems.
+     * Ensures all built-in biome and foliage collection DataAssets exist in
+     * /CosmicArchitect/CosmicArchitect/Resources/Foliage/ and returns the collections for a planet archetype.
+     */
+    static void EnsureDefaultFoliageAssets();
+
+    /** Returns the list of default FoliageCollections for the specified planetary archetype. */
+    static TArray<UCosmicFoliageCollection*> GetDefaultFoliageCollectionsForArchetype(ECosmicPlanetArchetype Archetype);
+
+    /** Randomly selects a FoliageCollection from the candidate list (or archetype defaults if empty). */
+    static UCosmicFoliageCollection* SelectFoliageCollection(
+        const TArray<TObjectPtr<UCosmicFoliageCollection>>& Candidates,
+        ECosmicPlanetArchetype FallbackArchetype,
+        FRandomStream& Stream
+    );
+
+    /**
+     * Initializes planet visual appearance, terrain shader parameters, and procedural foliage collection.
      */
     static void InitializePlanetAppearance(
         ACosmicPlanet* Planet,
@@ -56,7 +71,8 @@ public:
         bool bHasOcean,
         double OceanSeaLevel,
         int32 OceanResolution,
-        UMaterialInstance* OceanMaterial
+        UMaterialInstance* OceanMaterial,
+        UCosmicFoliageCollection* FoliageCollection = nullptr
     );
 
     /** Spawns and configures the central Star planet and its gravity component. */
@@ -79,7 +95,7 @@ public:
         float MoonDiameterMaxKm
     );
 
-    /** Spawns a planetary body with noise, clipmap, optional ocean, gravity, orbit, and rings. */
+    /** Spawns a planetary body with noise, clipmap, optional ocean, foliage collection, gravity, orbit, and rings. */
     static ACosmicPlanet* SpawnPlanet(
         UWorld* World,
         AActor* OwnerActor,
@@ -96,10 +112,11 @@ public:
         const FCosmicSystemGraphicsConfig& GraphicsConfig,
         const FVector2D& BodyDiameterRangeKm,
         const FVector2D& PlanetGravityRange,
-        FRandomStream& Stream
+        FRandomStream& Stream,
+        UCosmicFoliageCollection* FoliageCollection = nullptr
     );
 
-    /** Spawns a moon orbiting a parent planet with noise, clipmap, gravity, and orbit component. */
+    /** Spawns a moon orbiting a parent planet with noise, clipmap, rock foliage collection, gravity, and orbit component. */
     static ACosmicPlanet* SpawnMoon(
         UWorld* World,
         ACosmicPlanet* ParentPlanet,
@@ -110,7 +127,8 @@ public:
         const FCosmicPlanetAppearanceParams& Appearance,
         const FVector2D& MoonDiameterRangeKm,
         const FVector2D& MoonGravityRange,
-        FRandomStream& Stream
+        FRandomStream& Stream,
+        UCosmicFoliageCollection* FoliageCollection = nullptr
     );
 
     /** Spawns an asteroid belt ring around the central star. */
