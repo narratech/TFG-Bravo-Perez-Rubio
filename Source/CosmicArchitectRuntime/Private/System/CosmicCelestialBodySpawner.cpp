@@ -10,8 +10,10 @@
 #include "CosmicFoliageBiome.h"
 #include "CosmicFoliageCollection.h"
 #include "CosmicFoliageTypes.h"
-#include "Components/PointLightComponent.h"
-#include "Engine/PointLight.h"
+#include "Components/DirectionalLightComponent.h"
+#include "Engine/DirectionalLight.h"
+// #include "Components/PointLightComponent.h"
+// #include "Engine/PointLight.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "Materials/MaterialInstance.h"
@@ -677,13 +679,9 @@ ACosmicPlanet* FCosmicCelestialBodySpawner::SpawnStar(
     return Star;
 }
 
-APointLight* FCosmicCelestialBodySpawner::SpawnStarLight(
+ADirectionalLight* FCosmicCelestialBodySpawner::SpawnStarDirectionalLight(
     UWorld* World,
-    ACosmicPlanet* Star,
-    float SystemRadiusKm,
-    float MaxBodyRadiusKm,
-    float MoonOrbitDistanceFactorMax,
-    float MoonDiameterMaxKm)
+    ACosmicPlanet* Star)
 {
     if (!World || !Star)
     {
@@ -693,32 +691,68 @@ APointLight* FCosmicCelestialBodySpawner::SpawnStarLight(
     FActorSpawnParameters SpawnParams;
     SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-    APointLight* PointLight = World->SpawnActor<APointLight>(
-        APointLight::StaticClass(),
+    ADirectionalLight* DirectionalLight = World->SpawnActor<ADirectionalLight>(
+        ADirectionalLight::StaticClass(),
         Star->GetActorLocation(),
         Star->GetActorRotation(),
         SpawnParams
     );
 
-    if (PointLight)
+    if (DirectionalLight)
     {
-        PointLight->AttachToActor(Star, FAttachmentTransformRules::KeepWorldTransform);
-        if (UPointLightComponent* PL = Cast<UPointLightComponent>(PointLight->GetLightComponent()))
+        DirectionalLight->AttachToActor(Star, FAttachmentTransformRules::KeepWorldTransform);
+        if (UDirectionalLightComponent* DL = Cast<UDirectionalLightComponent>(DirectionalLight->GetLightComponent()))
         {
-            const float MaxMoonReachKm = MaxBodyRadiusKm * MoonOrbitDistanceFactorMax + (MoonDiameterMaxKm * 0.5f);
-            const float MaxRingReachKm = MaxBodyRadiusKm * 2.8f;
-            const float LightRangeKm = FMath::Max(SystemRadiusKm + FMath::Max(MaxMoonReachKm, MaxRingReachKm), SystemRadiusKm * 1.1f);
-
-            PL->AttenuationRadius = LightRangeKm * 100000.0f;
-            PL->Intensity = 5.0f;
-            PL->bUseInverseSquaredFalloff = false;
-            PL->LightFalloffExponent = 1.0f;
-            PL->MarkRenderStateDirty();
+            DL->Intensity = 5.0f;
+            DL->MarkRenderStateDirty();
         }
     }
 
-    return PointLight;
+    return DirectionalLight;
 }
+
+// APointLight* FCosmicCelestialBodySpawner::SpawnStarLight(
+//     UWorld* World,
+//     ACosmicPlanet* Star,
+//     float SystemRadiusKm,
+//     float MaxBodyRadiusKm,
+//     float MoonOrbitDistanceFactorMax,
+//     float MoonDiameterMaxKm)
+// {
+//     if (!World || !Star)
+//     {
+//         return nullptr;
+//     }
+//
+//     FActorSpawnParameters SpawnParams;
+//     SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+//
+//     APointLight* PointLight = World->SpawnActor<APointLight>(
+//         APointLight::StaticClass(),
+//         Star->GetActorLocation(),
+//         Star->GetActorRotation(),
+//         SpawnParams
+//     );
+//
+//     if (PointLight)
+//     {
+//         PointLight->AttachToActor(Star, FAttachmentTransformRules::KeepWorldTransform);
+//         if (UPointLightComponent* PL = Cast<UPointLightComponent>(PointLight->GetLightComponent()))
+//         {
+//             const float MaxMoonReachKm = MaxBodyRadiusKm * MoonOrbitDistanceFactorMax + (MoonDiameterMaxKm * 0.5f);
+//             const float MaxRingReachKm = MaxBodyRadiusKm * 2.8f;
+//             const float LightRangeKm = FMath::Max(SystemRadiusKm + FMath::Max(MaxMoonReachKm, MaxRingReachKm), SystemRadiusKm * 1.1f);
+//
+//             PL->AttenuationRadius = LightRangeKm * 100000.0f;
+//             PL->Intensity = 5.0f;
+//             PL->bUseInverseSquaredFalloff = false;
+//             PL->LightFalloffExponent = 1.0f;
+//             PL->MarkRenderStateDirty();
+//         }
+//     }
+//
+//     return PointLight;
+// }
 
 ACosmicPlanet* FCosmicCelestialBodySpawner::SpawnPlanet(
     UWorld* World,

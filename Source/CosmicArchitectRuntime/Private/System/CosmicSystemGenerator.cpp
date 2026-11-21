@@ -8,7 +8,8 @@
 #include "Planet/CosmicRingComponent.h"
 #include "CosmicFoliageCollection.h"
 #include "Engine/World.h"
-#include "Engine/PointLight.h"
+#include "Engine/DirectionalLight.h"
+// #include "Engine/PointLight.h"
 #include "Materials/MaterialInstance.h"
 #include "UObject/ConstructorHelpers.h"
 #include "DrawDebugHelpers.h"
@@ -307,18 +308,24 @@ void ACosmicSystemGenerator::GenerateBodies()
     }
     GeneratedBodies.Add(Star);
 
-    // --- STAR POINT LIGHT ---
-    const float MaxBodyRadiusKm = FMath::Max3(
-        (float)BodyDiameterRangeKm.Y * 0.5f,
-        (float)MoonDiameterRangeKm.Y * 0.5f,
-        GasGiantRadiusMax
-    );
-
-    if (APointLight* PointLight = FCosmicCelestialBodySpawner::SpawnStarLight(
-        World, Star, SystemRadiusKm, MaxBodyRadiusKm, MoonOrbitDistanceFactorMax, MoonDiameterRangeKm.Y))
+    // --- STAR DIRECTIONAL LIGHT ---
+    if (ADirectionalLight* DirectionalLight = FCosmicCelestialBodySpawner::SpawnStarDirectionalLight(World, Star))
     {
-        GeneratedBodies.Add(PointLight);
+        GeneratedBodies.Add(DirectionalLight);
     }
+
+    // // --- STAR POINT LIGHT ---
+    // const float MaxBodyRadiusKm = FMath::Max3(
+    //     (float)BodyDiameterRangeKm.Y * 0.5f,
+    //     (float)MoonDiameterRangeKm.Y * 0.5f,
+    //     GasGiantRadiusMax
+    // );
+    //
+    // if (APointLight* PointLight = FCosmicCelestialBodySpawner::SpawnStarLight(
+    //     World, Star, SystemRadiusKm, MaxBodyRadiusKm, MoonOrbitDistanceFactorMax, MoonDiameterRangeKm.Y))
+    // {
+    //     GeneratedBodies.Add(PointLight);
+    // }
 
     // --- PLANETS & MOONS ---
     int32 BodiesSpawned = 0;

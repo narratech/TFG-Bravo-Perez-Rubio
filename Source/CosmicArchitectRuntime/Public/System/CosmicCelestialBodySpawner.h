@@ -7,7 +7,8 @@
 
 class AActor;
 class ACosmicPlanet;
-class APointLight;
+class ADirectionalLight;
+// class APointLight;
 class UCosmicNoiseClass;
 class UCosmicRingComponent;
 class UCosmicFoliageCollection;
@@ -85,15 +86,21 @@ public:
         FRandomStream& Stream
     );
 
-    /** Spawns and configures the Star's point light with sufficient radius to illuminate the system. */
-    static APointLight* SpawnStarLight(
+    /** Spawns and configures the Star's directional light. */
+    static ADirectionalLight* SpawnStarDirectionalLight(
         UWorld* World,
-        ACosmicPlanet* Star,
-        float SystemRadiusKm,
-        float MaxBodyRadiusKm,
-        float MoonOrbitDistanceFactorMax,
-        float MoonDiameterMaxKm
+        ACosmicPlanet* Star
     );
+
+    // /** Spawns and configures the Star's point light with sufficient radius to illuminate the system. */
+    // static APointLight* SpawnStarLight(
+    //     UWorld* World,
+    //     ACosmicPlanet* Star,
+    //     float SystemRadiusKm,
+    //     float MaxBodyRadiusKm,
+    //     float MoonOrbitDistanceFactorMax,
+    //     float MoonDiameterMaxKm
+    // );
 
     /** Spawns a planetary body with noise, clipmap, optional ocean, foliage collection, gravity, orbit, and rings. */
     static ACosmicPlanet* SpawnPlanet(
