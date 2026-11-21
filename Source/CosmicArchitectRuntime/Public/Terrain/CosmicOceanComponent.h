@@ -167,39 +167,39 @@ public:
 	UMaterialInstance* OceanMaterial = nullptr;
 
 	/**
-	 * Maximum wave height in cm (peak-to-trough amplitude, e.g. 150 = 1.5m).
+	 * Maximum wave height in cm (peak-to-trough amplitude, e.g. 50 = 0.5m).
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Waves",
 		meta = (EditCondition = "bHasOcean", ClampMin = "0.0"))
-	float WaveHeight = 150.0f;
+	float WaveHeight = 50.0f;
 
 	/**
-	 * Dominant swell wavelength in cm (distance between crests, e.g. 6000 = 60m).
+	 * Dominant swell wavelength in cm (distance between crests, e.g. 2000 = 20m).
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Waves",
 		meta = (EditCondition = "bHasOcean", ClampMin = "20.0"))
-	float WaveLength = 6000.0f;
+	float WaveLength = 2000.0f;
 
 	/**
 	 * Wave movement speed multiplier (1.0 = standard physical speed).
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Waves",
 		meta = (EditCondition = "bHasOcean", ClampMin = "0.0", ClampMax = "10.0"))
-	float WaveSpeed = 0.7f;
+	float WaveSpeed = 0.2f;
 
 	/**
 	 * Crest sharpness / trochoid peak [0.0 = smooth swell, 1.0 = sharp peaked waves].
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Waves",
 		meta = (EditCondition = "bHasOcean", ClampMin = "0.0", ClampMax = "1.0"))
-	float WaveSteepness = 0.7f;
+	float WaveSteepness = 1.0f;
 
 	/**
 	 * Secondary cross-waves and surface turbulence [0.0 = uniform swell, 1.0 = open sea, 2.0 = stormy].
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Waves",
 		meta = (EditCondition = "bHasOcean", ClampMin = "0.0", ClampMax = "2.0"))
-	float WaveChop = 1.0f;
+	float WaveChop = 1.679186f;
 
 	/**
 	 * Number of active Gerstner waves evaluated by the shader (1 to 12).
@@ -220,14 +220,14 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Waves",
 		meta = (EditCondition = "bHasOcean", ClampMin = "0.1", ClampMax = "100.0"))
-	float WaveFadeStartKm = 1.0f;
+	float WaveFadeStartKm = 0.1f;
 
 	/**
 	 * Distance from camera in kilometers where ocean waves are completely faded to a calm surface (0 displacement).
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Waves",
 		meta = (EditCondition = "bHasOcean", ClampMin = "0.2", ClampMax = "300.0"))
-	float WaveFadeEndKm = 1.5f;
+	float WaveFadeEndKm = 0.2f;
 
 	/**
 	 * Primary wind and dominant swell direction vector on the sphere.
@@ -241,35 +241,35 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Appearance",
 		meta = (EditCondition = "bHasOcean"))
-	FLinearColor WaterColor = FLinearColor(0.15f, 0.5f, 0.66f, 1.0f);
+	FLinearColor WaterColor = FLinearColor(0.076497f, 0.394219f, 0.489583f, 1.0f);
 
 	/**
 	 * Deep water absorption color coefficients.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Appearance",
 		meta = (EditCondition = "bHasOcean"))
-	FLinearColor WaterAbsortion = FLinearColor(0.35f, 0.07f, 0.03f, 1.0f);
+	FLinearColor WaterAbsortion = FLinearColor(0.515625f, 0.087254f, 0.013428f, 1.0f);
 
 	/**
 	 * Water scattering color coefficients.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Appearance",
 		meta = (EditCondition = "bHasOcean"))
-	FLinearColor WaterScattering = FLinearColor(0.029f, 0.0875f, 0.104f, 1.0f);
+	FLinearColor WaterScattering = FLinearColor(0.199653f, 0.479167f, 0.456344f, 1.0f);
 
 	/**
 	 * Water scattering amount multiplier.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Appearance",
 		meta = (EditCondition = "bHasOcean", ClampMin = "0.0", ClampMax = "10.0"))
-	float WaterScatteringAmount = 1.0f;
+	float WaterScatteringAmount = 1.45f;
 
 	/**
 	 * Base surface roughness for specular highlight.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ocean|Appearance",
 		meta = (EditCondition = "bHasOcean", ClampMin = "0.0", ClampMax = "1.0"))
-	float WaterRoughness = 0.005f;
+	float WaterRoughness = 0.065f;
 
 protected:
 
