@@ -137,6 +137,7 @@ struct FPlanetaryMasterOutput
     float  SlopeMask;            // Height-blended exposed cliff rock mask [0..1]
     float  WetnessMask;          // Puddle and moisture mask [0..1]
     float  StrataMask;           // Sedimentary stratum band coordinate [0..1]
+    float  SandMask;             // Coastal beach sand mask [0..1]
     float  LODFactor;            // Distance LOD blend factor [0..1]
     float  NearDetailWeight;     // Near surface detail blend factor [0..1]
     float  FarDetailWeight;      // Far surface detail blend factor [0..1]
@@ -193,26 +194,6 @@ void GetPlanetaryMasterTangentFrame(in float3 N_base, out float3 OutTangent1, ou
         OutTangent1 = float3(1.0f - N_base.x * N_base.x * a, b, -N_base.x);
         OutTangent2 = float3(b, 1.0f - N_base.y * N_base.y * a, -N_base.y);
     }
-}
-
-/**
- * Fast procedural 3D noise hash fallback when 3D texture is unavailable.
- */
-float PlanetaryMasterAnalyticalNoise3D(float3 P)
-{
-    float3 i = floor(P);
-    float3 f = frac(P);
-    f = f * f * (3.0f - 2.0f * f); // Smoothstep hermite curve
-
-    float3 step = float3(110.0f, 241.0f, 17.0f);
-    float n = dot(i, step);
-
-    float4 v1 = frac(sin(n + float4(0.0f, step.x, step.y, step.x + step.y)) * 43758.5453f);
-    float4 v2 = frac(sin(n + step.z + float4(0.0f, step.x, step.y, step.x + step.y)) * 43758.5453f);
-
-    float4 v12 = lerp(v1, v2, f.z);
-    float2 v12_y = lerp(v12.xz, v12.yw, f.y);
-    return lerp(v12_y.x, v12_y.y, f.x);
 }
 
 /**
@@ -663,6 +644,9 @@ void EvaluatePlanetaryMasterSurfaceCore(
     in float  bEnableSnow,             // 1.0 to enable snow, 0.0 to disable completely
     in float3 InSnowColor,             // Snow albedo tint
     in float  InMagmaIntensity,        // 0.0 disables volcanic emission; > 0 enables HDR thermal magma
+    in float  InSandMaxAltitudeKm,     // Max altitude in km above PlanetRadius for coastal beach sand
+    in float  InSandMinTemperature,    // Min climate temperature [0..1] required for beach sand
+    in float3 InSandColor,             // Coastal beach sand base color tint
     in float3 InBiomeColorPolarIce,    // Biome 0: Polar Ice / Glacial
     in float3 InBiomeColorTundra,      // Biome 1: Tundra
     in float3 InBiomeColorTaiga,       // Biome 2: Taiga / Boreal Conifer
@@ -685,6 +669,8 @@ void EvaluatePlanetaryMasterSurfaceCore(
     in float3 InNearRockTexNormal,     // Pre-sampled or triplanar rock normal (Near)
     in float3 InNearSnowTexColor,      // Pre-sampled or triplanar snow albedo (Near)
     in float3 InNearSnowTexNormal,     // Pre-sampled or triplanar snow normal (Near)
+    in float3 InNearSandTexColor,      // Pre-sampled or triplanar beach sand albedo (Near)
+    in float3 InNearSandTexNormal,     // Pre-sampled or triplanar beach sand normal (Near)
     in float  bHasFarDetail,           // 1.0 if 2D far detail textures are active
     in FPlanetaryFarDetailParameters FarDetailParams,
     in float3 InFarSurfaceTexColor,    // Pre-sampled or triplanar surface albedo (Far)
@@ -693,6 +679,8 @@ void EvaluatePlanetaryMasterSurfaceCore(
     in float3 InFarRockTexNormal,      // Pre-sampled or triplanar rock normal (Far)
     in float3 InFarSnowTexColor,       // Pre-sampled or triplanar snow albedo (Far)
     in float3 InFarSnowTexNormal,      // Pre-sampled or triplanar snow normal (Far)
+    in float3 InFarSandTexColor,       // Pre-sampled or triplanar beach sand albedo (Far)
+    in float3 InFarSandTexNormal,      // Pre-sampled or triplanar beach sand normal (Far)
     out FPlanetaryMasterOutput OutSurface,
     out float OutTempWarped,
     out float OutHumidityWarped)
@@ -860,9 +848,38 @@ void EvaluatePlanetaryMasterSurfaceCore(
     float3 CliffAlbedo = StrataTint * 1.15f;
     float  CliffRoughness = saturate(0.88f + StrataRoughDelta);
 
-    // Blend flat biome terrain with stratified cliff rock
-    float3 BaseAlbedo   = lerp(BiomeColor, CliffAlbedo, CliffMask);
-    float  EffRoughness = lerp(BiomeRoughness, CliffRoughness, CliffMask);
+    // --- 7b. Coastal Beach Sand Layer (Altitude in km & Min Temperature) ---
+    // Below InSandMaxAltitudeKm and above InSandMinTemperature, flat terrain becomes beach sand.
+    // Steep cliffs (CliffMask) always override sand so rock remains exposed on slopes.
+    float SandBlended = 0.0f;
+    float SandMask = 0.0f;
+    if (InSandMinTemperature < 0.999f)
+    {
+        float AltitudeKm = AltitudeFromCenter * 0.00001f; // 1 km = 100,000 cm
+        float SandFadeKm = 0.015f;                        // 15m smooth coastal transition band
+        float SandAltWarped = AltitudeKm + (MacroH - 0.5f) * 0.01f;
+        float SandAltWeight = 1.0f - smoothstep(InSandMaxAltitudeKm - SandFadeKm, InSandMaxAltitudeKm, SandAltWarped);
+        float SandTempWeight = smoothstep(InSandMinTemperature - 0.04f, InSandMinTemperature + 0.04f, TempWarped);
+        float SandRaw = SandAltWeight * SandTempWeight;
+
+        if (SandRaw > 0.001f)
+        {
+            SandBlended = ComputeMasterHeightBlend2(
+                1.0f - SandRaw, HeightFlat,
+                SandRaw, 0.65f,
+                0.16f) * saturate(SandRaw * 2.0f);
+            SandMask = SandBlended * (1.0f - CliffMask);
+        }
+    }
+
+    // Blend flat biome terrain with beach sand first, then override with stratified cliff rock
+    float3 FlatAlbedo    = lerp(BiomeColor, InSandColor, SandBlended);
+    float  FlatRoughness = lerp(BiomeRoughness, 0.88f, SandBlended);
+    BiomeMetallic        = lerp(BiomeMetallic, 0.0f, SandMask);
+    BiomeSpecular        = lerp(BiomeSpecular, 0.38f, SandMask);
+
+    float3 BaseAlbedo   = lerp(FlatAlbedo, CliffAlbedo, CliffMask);
+    float  EffRoughness = lerp(FlatRoughness, CliffRoughness, CliffMask);
 
     // Add horizontal sedimentary shelf ribbing to the normal on steep cliffs
     if (CliffMask > 0.01f)
@@ -914,9 +931,15 @@ void EvaluatePlanetaryMasterSurfaceCore(
         float3 BlendedSnowColor = InNearSnowTexColor * NearWeightNorm + InFarSnowTexColor * FarWeightNorm;
         float3 BlendedSnowNormal = normalize(InNearSnowTexNormal * NearWeightNorm + InFarSnowTexNormal * FarWeightNorm);
 
-        // 2. Blend Surface with Rock based on CliffMask
-        float3 BlendedTexAlbedo = lerp(BlendedSurfaceColor, BlendedRockColor, CliffMask);
-        float3 BlendedTexNormal = normalize(lerp(BlendedSurfaceNormal, BlendedRockNormal, CliffMask));
+        float3 BlendedSandColor = InNearSandTexColor * NearWeightNorm + InFarSandTexColor * FarWeightNorm;
+        float3 BlendedSandNormal = normalize(InNearSandTexNormal * NearWeightNorm + InFarSandTexNormal * FarWeightNorm);
+
+        // 2. Blend Surface with Beach Sand first, then override with Rock based on CliffMask
+        float3 BlendedFlatAlbedo = lerp(BlendedSurfaceColor, BlendedSandColor, SandBlended);
+        float3 BlendedFlatNormal = normalize(lerp(BlendedSurfaceNormal, BlendedSandNormal, SandBlended));
+
+        float3 BlendedTexAlbedo = lerp(BlendedFlatAlbedo, BlendedRockColor, CliffMask);
+        float3 BlendedTexNormal = normalize(lerp(BlendedFlatNormal, BlendedRockNormal, CliffMask));
 
         // 3. Blend with Snow based on SnowMask
         if (SnowMask > 0.001f)
@@ -981,6 +1004,7 @@ void EvaluatePlanetaryMasterSurfaceCore(
     OutSurface.SlopeMask        = CliffMask;
     OutSurface.WetnessMask      = WetnessMask;
     OutSurface.StrataMask       = Strata01;
+    OutSurface.SandMask         = SandMask;
     OutSurface.LODFactor        = MacroLOD;
     OutSurface.NearDetailWeight = NearDetailWeight;
     OutSurface.FarDetailWeight  = FarDetailWeight;
@@ -991,10 +1015,10 @@ void EvaluatePlanetaryMasterSurfaceCore(
 // ============================================================================
 
 /**
- * Master Evaluation with In-Shader 2D Spherical Triplanar Textures & Normal Maps
- * Evaluates Near & Far detail tiers using 6 individual texture samplers.
+ * Master Evaluation with In-Shader 2D Spherical Triplanar Textures & Normal Maps + Coastal Beach Sand.
+ * Beach sand reuses InNearSurfaceAlbedoSampler to avoid consuming extra UE5 sampler slots.
  */
-void EvaluatePlanetaryMasterSurfaceWithTriplanar(
+void EvaluatePlanetaryMasterSurfaceWithTriplanarSand(
     in float3 InWorldPos,
     in float3 InPlanetCenter,
     in float  InPlanetRadius,
@@ -1013,6 +1037,9 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanar(
     in float  bEnableSnow,
     in float3 InSnowColor,
     in float  InMagmaIntensity,
+    in float  InSandMaxAltitudeKm,
+    in float  InSandMinTemperature,
+    in float3 InSandColor,
     in float3 InBiomeColorPolarIce,
     in float3 InBiomeColorTundra,
     in float3 InBiomeColorTaiga,
@@ -1039,6 +1066,8 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanar(
     in SamplerState InNearSnowAlbedoSampler,
     in Texture2D InNearSnowNormal,
     in SamplerState InNearSnowNormalSampler,
+    in Texture2D InNearSandAlbedo,
+    in Texture2D InNearSandNormal,
     in float  InNearDetailDistance,
     in float  InNearDetailFadeRange,
     in float  InNearDetailTiling,
@@ -1062,6 +1091,12 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanar(
 
     float CamLenSq = dot(InCameraWorldPos, InCameraWorldPos);
     float CameraDistance = (CamLenSq > 100.0f) ? length(InWorldPos - InCameraWorldPos) : 100000.0f;
+
+    // Conservative fast-skip guard for coastal sand sampling (0 extra texture fetches outside beaches)
+    float AltitudeKm = (DistFromCenter - InPlanetRadius) * 0.00001f;
+    bool bMightHaveSand = (InSandMinTemperature < 0.999f)
+                       && (AltitudeKm <= InSandMaxAltitudeKm + 0.05f)
+                       && (saturate(InVertexColor.g) >= InSandMinTemperature - 0.20f);
 
     // Near Parameters
     FPlanetaryNearDetailParameters NearParams;
@@ -1090,13 +1125,15 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanar(
     float FarExit = 1.0f - smoothstep(FarParams.Distance - FarParams.FadeRange, FarParams.Distance, CameraDistance);
     float FarWeight = FarEntrance * FarExit;
 
-    // 1. Near Triplanar Sampling (Evaluated when NearWeight > 0.001)
+    // 1. Near Triplanar Sampling
     float3 NearSurfaceTexCol  = float3(1.0f, 1.0f, 1.0f);
     float3 NearSurfaceTexNorm = GeometryNormal;
     float3 NearRockTexCol     = float3(1.0f, 1.0f, 1.0f);
     float3 NearRockTexNorm    = GeometryNormal;
     float3 NearSnowTexCol     = float3(1.0f, 1.0f, 1.0f);
     float3 NearSnowTexNorm    = GeometryNormal;
+    float3 NearSandTexCol     = float3(1.0f, 1.0f, 1.0f);
+    float3 NearSandTexNorm    = GeometryNormal;
 
     if (NearWeight > 0.001f)
     {
@@ -1111,15 +1148,23 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanar(
             NearSnowTexCol     = SampleMasterTriplanarAlbedo(InNearSnowAlbedo, InNearSnowAlbedoSampler, LocalPos, GeometryNormal, NearParams.SnowTiling, 4.0f);
             NearSnowTexNorm    = SampleMasterTriplanarNormal(InNearSnowNormal, InNearSnowNormalSampler, LocalPos, GeometryNormal, NearParams.SnowTiling, 4.0f, NearParams.NormalStrength);
         }
+
+        if (bMightHaveSand)
+        {
+            NearSandTexCol     = SampleMasterTriplanarAlbedo(InNearSandAlbedo, InNearSurfaceAlbedoSampler, LocalPos, GeometryNormal, NearParams.SurfaceTiling, 4.0f);
+            NearSandTexNorm    = SampleMasterTriplanarNormal(InNearSandNormal, InNearSurfaceAlbedoSampler, LocalPos, GeometryNormal, NearParams.SurfaceTiling, 4.0f, NearParams.NormalStrength);
+        }
     }
 
-    // 2. Far Triplanar Sampling (Evaluated when FarWeight > 0.001 - Reusing Texture Objects with Far Tiling)
+    // 2. Far Triplanar Sampling
     float3 FarSurfaceTexCol  = float3(1.0f, 1.0f, 1.0f);
     float3 FarSurfaceTexNorm = GeometryNormal;
     float3 FarRockTexCol     = float3(1.0f, 1.0f, 1.0f);
     float3 FarRockTexNorm    = GeometryNormal;
     float3 FarSnowTexCol     = float3(1.0f, 1.0f, 1.0f);
     float3 FarSnowTexNorm    = GeometryNormal;
+    float3 FarSandTexCol     = float3(1.0f, 1.0f, 1.0f);
+    float3 FarSandTexNorm    = GeometryNormal;
 
     if (FarWeight > 0.001f)
     {
@@ -1134,6 +1179,12 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanar(
             FarSnowTexCol     = SampleMasterTriplanarAlbedo(InNearSnowAlbedo, InNearSnowAlbedoSampler, LocalPos, GeometryNormal, FarParams.SnowTiling, 4.0f);
             FarSnowTexNorm    = SampleMasterTriplanarNormal(InNearSnowNormal, InNearSnowNormalSampler, LocalPos, GeometryNormal, FarParams.SnowTiling, 4.0f, FarParams.NormalStrength);
         }
+
+        if (bMightHaveSand)
+        {
+            FarSandTexCol     = SampleMasterTriplanarAlbedo(InNearSandAlbedo, InNearSurfaceAlbedoSampler, LocalPos, GeometryNormal, FarParams.SurfaceTiling, 4.0f);
+            FarSandTexNorm    = SampleMasterTriplanarNormal(InNearSandNormal, InNearSurfaceAlbedoSampler, LocalPos, GeometryNormal, FarParams.SurfaceTiling, 4.0f, FarParams.NormalStrength);
+        }
     }
 
     float TempWarped, HumWarped;
@@ -1143,6 +1194,7 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanar(
         InMacroFrequency, InMicroFrequency, InNormalStrength,
         InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
         bEnableSnow, InSnowColor, InMagmaIntensity,
+        InSandMaxAltitudeKm, InSandMinTemperature, InSandColor,
         InBiomeColorPolarIce, InBiomeColorTundra, InBiomeColorTaiga, InBiomeColorGrassland,
         InBiomeColorForest, InBiomeColorDesert, InBiomeColorSavannah, InBiomeColorRainforest,
         InStrataColor1, InStrataColor2, InStrataColor3,
@@ -1151,175 +1203,20 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanar(
         NearSurfaceTexCol, NearSurfaceTexNorm,
         NearRockTexCol, NearRockTexNorm,
         NearSnowTexCol, NearSnowTexNorm,
+        NearSandTexCol, NearSandTexNorm,
         1.0f, FarParams,
         FarSurfaceTexCol, FarSurfaceTexNorm,
         FarRockTexCol, FarRockTexNorm,
         FarSnowTexCol, FarSnowTexNorm,
+        FarSandTexCol, FarSandTexNorm,
         OutSurface, TempWarped, HumWarped);
 }
 
-/**
- * Master Evaluation with In-Shader 2D Spherical Triplanar Textures
- * (Near & Far tiers, 3 Shared Albedo Samplers for Unreal Engine 16-Sampler Limit)
- */
-void EvaluatePlanetaryMasterSurfaceWithTriplanar(
-    in float3 InWorldPos,
-    in float3 InPlanetCenter,
-    in float  InPlanetRadius,
-    in float3 InCameraWorldPos,
-    in float4 InVertexColor,
-    in float3 InMeshWorldNormal,
-    in Texture3D InVolumeTexture,
-    in SamplerState InVolumeSampler,
-    in float  InMacroFrequency,
-    in float  InMicroFrequency,
-    in float  InNormalStrength,
-    in float  InSlopeCliffThreshold,
-    in float  InSlopeCliffFalloff,
-    in float  InSnowTemperatureThreshold,
-    in float  InWetnessIntensity,
-    in float  bEnableSnow,
-    in float3 InSnowColor,
-    in float  InMagmaIntensity,
-    in float3 InBiomeColorPolarIce,
-    in float3 InBiomeColorTundra,
-    in float3 InBiomeColorTaiga,
-    in float3 InBiomeColorGrassland,
-    in float3 InBiomeColorForest,
-    in float3 InBiomeColorDesert,
-    in float3 InBiomeColorSavannah,
-    in float3 InBiomeColorRainforest,
-    in float3 InStrataColor1,
-    in float3 InStrataColor2,
-    in float3 InStrataColor3,
-    in float  InStrataFrequency,
-    in float  InStrataDistortion,
-    in float  InStrataNormalStrength,
-    in Texture2D InNearSurfaceAlbedo,
-    in Texture2D InNearSurfaceNormal,
-    in SamplerState InNearSurfaceAlbedoSampler,
-    in Texture2D InNearRockAlbedo,
-    in Texture2D InNearRockNormal,
-    in SamplerState InNearRockAlbedoSampler,
-    in Texture2D InNearSnowAlbedo,
-    in Texture2D InNearSnowNormal,
-    in SamplerState InNearSnowAlbedoSampler,
-    in float  InNearDetailDistance,
-    in float  InNearDetailFadeRange,
-    in float  InNearDetailTiling,
-    in float  InNearDetailRockTiling,
-    in float  InNearDetailSnowTiling,
-    in float  InNearDetailColorBlend,
-    in float  InNearDetailNormalStrength,
-    in float  InFarDetailDistance,
-    in float  InFarDetailFadeRange,
-    in float  InFarDetailTiling,
-    in float  InFarDetailRockTiling,
-    in float  InFarDetailSnowTiling,
-    in float  InFarDetailColorBlend,
-    in float  InFarDetailNormalStrength,
-    out FPlanetaryMasterOutput OutSurface)
-{
-    EvaluatePlanetaryMasterSurfaceWithTriplanar(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bEnableSnow, InSnowColor, InMagmaIntensity,
-        InBiomeColorPolarIce, InBiomeColorTundra, InBiomeColorTaiga, InBiomeColorGrassland,
-        InBiomeColorForest, InBiomeColorDesert, InBiomeColorSavannah, InBiomeColorRainforest,
-        InStrataColor1, InStrataColor2, InStrataColor3,
-        InStrataFrequency, InStrataDistortion, InStrataNormalStrength,
-        InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler,
-        InNearSurfaceNormal, InNearSurfaceAlbedoSampler,
-        InNearRockAlbedo, InNearRockAlbedoSampler,
-        InNearRockNormal, InNearRockAlbedoSampler,
-        InNearSnowAlbedo, InNearSnowAlbedoSampler,
-        InNearSnowNormal, InNearSnowAlbedoSampler,
-        InNearDetailDistance, InNearDetailFadeRange, InNearDetailTiling, InNearDetailRockTiling, InNearDetailSnowTiling,
-        InNearDetailColorBlend, InNearDetailNormalStrength,
-        InFarDetailDistance, InFarDetailFadeRange, InFarDetailTiling, InFarDetailRockTiling, InFarDetailSnowTiling,
-        InFarDetailColorBlend, InFarDetailNormalStrength,
-        OutSurface);
-}
-
-// ============================================================================
-// MODULAR ENTRY POINTS FOR UNREAL ENGINE 5 MATERIAL GRAPH
-// ============================================================================
-
-/**
- * Lightweight Modular Evaluator:
- * Returns float4(WarpedTemp, WarpedHum, CliffSlope, Strata01) for graph-based logic.
- */
-float4 EvaluatePlanetaryMasterCoordinates(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float4 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InMacroFrequency,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InStrataFrequency,
-    float  InStrataDistortion)
-{
-    float3 LocalPos = InWorldPos - InPlanetCenter;
-    float DistFromCenter = length(LocalPos);
-    float3 RadialNormal = LocalPos / max(DistFromCenter, 1.0f);
-    float3 GeometryNormal = (length(InMeshWorldNormal) > 0.01f) ? normalize(InMeshWorldNormal) : RadialNormal;
-    float AltitudeFromCenter = DistFromCenter - InPlanetRadius;
-
-    float3 T1, T2;
-    GetPlanetaryMasterTangentFrame(RadialNormal, T1, T2);
-
-    float MacroH = 0.5f;
-    float3 MacroGrad = ComputeMasterVolumeSurfaceGradient(
-        InVolumeTexture, InVolumeSampler,
-        InWorldPos, T1, T2,
-        max(InMacroFrequency, 0.000001f), 200.0f, MacroH);
-
-    float TempWarped = saturate(InVertexColor.g + (MacroH - 0.5f) * 0.15f);
-    float HumWarped  = saturate(InVertexColor.b + (MacroGrad.x + MacroGrad.y) * 0.08f);
-
-    float SlopeCos = saturate(dot(RadialNormal, GeometryNormal));
-    float RawSlope = 1.0f - SlopeCos;
-    float HalfFalloff = max(InSlopeCliffFalloff * 0.5f, 0.001f);
-    float CliffSlope = smoothstep(InSlopeCliffThreshold - HalfFalloff, InSlopeCliffThreshold + HalfFalloff, RawSlope);
-
-    float BaseCoord = (AltitudeFromCenter * 0.01f) * max(InStrataFrequency, 0.0001f);
-    float DistortedCoord = BaseCoord + (MacroH * 2.0f - 1.0f) * InStrataDistortion;
-    float Strata01 = (sin(DistortedCoord) + 0.5f * sin(DistortedCoord * 2.718f + 1.4f)) * 0.33f + 0.5f;
-
-    return float4(TempWarped, HumWarped, CliffSlope, saturate(Strata01));
-}
-
-float4 EvaluatePlanetaryMasterCoordinates(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InMacroFrequency,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InStrataFrequency,
-    float  InStrataDistortion)
-{
-    return EvaluatePlanetaryMasterCoordinates(
-        InWorldPos, InPlanetCenter, InPlanetRadius, float4(InVertexColor, 1.0f), InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InMacroFrequency, InSlopeCliffThreshold, InSlopeCliffFalloff,
-        InStrataFrequency, InStrataDistortion);
-}
-
-// ============================================================================
-// ALL-IN-ONE CUSTOM NODE EVALUATORS (UE5 MATERIAL GRAPH COMPATIBILITY)
-// Consolidates 2D Triplanar Near & Far Detail workflow with Manual Biomes, Strata & Snow
-// ============================================================================
-
-// 1. Principal UE5 Custom Node Signature: 6 Texture2D + Sampler Pairs, float3 InVertexColor, out float OutEmissive
+// ============================================================================
+// UE5 MATERIAL GRAPH CUSTOM NODE ENTRY POINT
+// ============================================================================
+
+// 10. Beach Sand Extension (float3 InVertexColor, out float OutEmissive)
 float4 EvaluatePlanetaryMasterFull(
     float3 InWorldPos,
     float3 InPlanetCenter,
@@ -1339,6 +1236,9 @@ float4 EvaluatePlanetaryMasterFull(
     float  bEnableSnow,
     float3 InSnowColor,
     float  InMagmaIntensity,
+    float  InSandMaxAltitudeKm,
+    float  InSandMinTemperature,
+    float3 InSandColor,
     float3 InBiomeColorPolarIce,
     float3 InBiomeColorTundra,
     float3 InBiomeColorTaiga,
@@ -1365,6 +1265,8 @@ float4 EvaluatePlanetaryMasterFull(
     SamplerState InNearSnowAlbedoSampler,
     Texture2D InNearSnowNormal,
     SamplerState InNearSnowNormalSampler,
+    Texture2D InNearSandAlbedo,
+    Texture2D InNearSandNormal,
     float  InNearDetailDistance,
     float  InNearDetailFadeRange,
     float  InNearDetailTiling,
@@ -1387,12 +1289,13 @@ float4 EvaluatePlanetaryMasterFull(
     out float4 OutMasks)
 {
     FPlanetaryMasterOutput OutSurface;
-    EvaluatePlanetaryMasterSurfaceWithTriplanar(
+    EvaluatePlanetaryMasterSurfaceWithTriplanarSand(
         InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
         float4(InVertexColor, 1.0f), InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
         InMacroFrequency, InMicroFrequency, InNormalStrength,
         InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
         bEnableSnow, InSnowColor, InMagmaIntensity,
+        InSandMaxAltitudeKm, InSandMinTemperature, InSandColor,
         InBiomeColorPolarIce, InBiomeColorTundra, InBiomeColorTaiga, InBiomeColorGrassland,
         InBiomeColorForest, InBiomeColorDesert, InBiomeColorSavannah, InBiomeColorRainforest,
         InStrataColor1, InStrataColor2, InStrataColor3,
@@ -1403,6 +1306,7 @@ float4 EvaluatePlanetaryMasterFull(
         InNearRockNormal, InNearRockNormalSampler,
         InNearSnowAlbedo, InNearSnowAlbedoSampler,
         InNearSnowNormal, InNearSnowNormalSampler,
+        InNearSandAlbedo, InNearSandNormal,
         InNearDetailDistance, InNearDetailFadeRange, InNearDetailTiling,
         InNearDetailRockTiling, InNearDetailSnowTiling, InNearDetailColorBlend,
         InNearDetailNormalStrength,
@@ -1421,721 +1325,3 @@ float4 EvaluatePlanetaryMasterFull(
     return float4(OutSurface.BaseColor, OutSurface.Roughness);
 }
 
-// 2. 6 Texture2D + Sampler Pairs, float4 InVertexColor, out float3 OutEmissive
-float4 EvaluatePlanetaryMasterFull(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float4 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity,
-    float  bEnableSnow,
-    float3 InSnowColor,
-    float  InMagmaIntensity,
-    float3 InBiomeColorPolarIce,
-    float3 InBiomeColorTundra,
-    float3 InBiomeColorTaiga,
-    float3 InBiomeColorGrassland,
-    float3 InBiomeColorForest,
-    float3 InBiomeColorDesert,
-    float3 InBiomeColorSavannah,
-    float3 InBiomeColorRainforest,
-    float3 InStrataColor1,
-    float3 InStrataColor2,
-    float3 InStrataColor3,
-    float  InStrataFrequency,
-    float  InStrataDistortion,
-    float  InStrataNormalStrength,
-    Texture2D InNearSurfaceAlbedo,
-    SamplerState InNearSurfaceAlbedoSampler,
-    Texture2D InNearSurfaceNormal,
-    SamplerState InNearSurfaceNormalSampler,
-    Texture2D InNearRockAlbedo,
-    SamplerState InNearRockAlbedoSampler,
-    Texture2D InNearRockNormal,
-    SamplerState InNearRockNormalSampler,
-    Texture2D InNearSnowAlbedo,
-    SamplerState InNearSnowAlbedoSampler,
-    Texture2D InNearSnowNormal,
-    SamplerState InNearSnowNormalSampler,
-    float  InNearDetailDistance,
-    float  InNearDetailFadeRange,
-    float  InNearDetailTiling,
-    float  InNearDetailRockTiling,
-    float  InNearDetailSnowTiling,
-    float  InNearDetailColorBlend,
-    float  InNearDetailNormalStrength,
-    float  InFarDetailDistance,
-    float  InFarDetailFadeRange,
-    float  InFarDetailTiling,
-    float  InFarDetailRockTiling,
-    float  InFarDetailSnowTiling,
-    float  InFarDetailColorBlend,
-    float  InFarDetailNormalStrength,
-    out float3 OutWorldNormal,
-    out float3 OutEmissive,
-    out float  OutMetallic,
-    out float  OutSpecular,
-    out float  OutAO,
-    out float4 OutMasks)
-{
-    FPlanetaryMasterOutput OutSurface;
-    EvaluatePlanetaryMasterSurfaceWithTriplanar(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
-        InVertexColor, InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
-        InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bEnableSnow, InSnowColor, InMagmaIntensity,
-        InBiomeColorPolarIce, InBiomeColorTundra, InBiomeColorTaiga, InBiomeColorGrassland,
-        InBiomeColorForest, InBiomeColorDesert, InBiomeColorSavannah, InBiomeColorRainforest,
-        InStrataColor1, InStrataColor2, InStrataColor3,
-        InStrataFrequency, InStrataDistortion, InStrataNormalStrength,
-        InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler,
-        InNearSurfaceNormal, InNearSurfaceNormalSampler,
-        InNearRockAlbedo, InNearRockAlbedoSampler,
-        InNearRockNormal, InNearRockNormalSampler,
-        InNearSnowAlbedo, InNearSnowAlbedoSampler,
-        InNearSnowNormal, InNearSnowNormalSampler,
-        InNearDetailDistance, InNearDetailFadeRange, InNearDetailTiling,
-        InNearDetailRockTiling, InNearDetailSnowTiling, InNearDetailColorBlend,
-        InNearDetailNormalStrength,
-        InFarDetailDistance, InFarDetailFadeRange, InFarDetailTiling,
-        InFarDetailRockTiling, InFarDetailSnowTiling, InFarDetailColorBlend,
-        InFarDetailNormalStrength,
-        OutSurface);
-
-    OutWorldNormal = OutSurface.WorldNormal;
-    OutEmissive    = OutSurface.Emissive;
-    OutMetallic    = OutSurface.Metallic;
-    OutSpecular    = OutSurface.Specular;
-    OutAO          = OutSurface.AmbientOcclusion;
-    OutMasks       = float4(OutSurface.SnowMask, OutSurface.SlopeMask, OutSurface.WetnessMask, OutSurface.StrataMask);
-
-    return float4(OutSurface.BaseColor, OutSurface.Roughness);
-}
-
-// 3. 6 Texture2D + Sampler Pairs, float3 InVertexColor, out float3 OutEmissive
-float4 EvaluatePlanetaryMasterFull(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float3 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity,
-    float  bEnableSnow,
-    float3 InSnowColor,
-    float  InMagmaIntensity,
-    float3 InBiomeColorPolarIce,
-    float3 InBiomeColorTundra,
-    float3 InBiomeColorTaiga,
-    float3 InBiomeColorGrassland,
-    float3 InBiomeColorForest,
-    float3 InBiomeColorDesert,
-    float3 InBiomeColorSavannah,
-    float3 InBiomeColorRainforest,
-    float3 InStrataColor1,
-    float3 InStrataColor2,
-    float3 InStrataColor3,
-    float  InStrataFrequency,
-    float  InStrataDistortion,
-    float  InStrataNormalStrength,
-    Texture2D InNearSurfaceAlbedo,
-    SamplerState InNearSurfaceAlbedoSampler,
-    Texture2D InNearSurfaceNormal,
-    SamplerState InNearSurfaceNormalSampler,
-    Texture2D InNearRockAlbedo,
-    SamplerState InNearRockAlbedoSampler,
-    Texture2D InNearRockNormal,
-    SamplerState InNearRockNormalSampler,
-    Texture2D InNearSnowAlbedo,
-    SamplerState InNearSnowAlbedoSampler,
-    Texture2D InNearSnowNormal,
-    SamplerState InNearSnowNormalSampler,
-    float  InNearDetailDistance,
-    float  InNearDetailFadeRange,
-    float  InNearDetailTiling,
-    float  InNearDetailRockTiling,
-    float  InNearDetailSnowTiling,
-    float  InNearDetailColorBlend,
-    float  InNearDetailNormalStrength,
-    float  InFarDetailDistance,
-    float  InFarDetailFadeRange,
-    float  InFarDetailTiling,
-    float  InFarDetailRockTiling,
-    float  InFarDetailSnowTiling,
-    float  InFarDetailColorBlend,
-    float  InFarDetailNormalStrength,
-    out float3 OutWorldNormal,
-    out float3 OutEmissive,
-    out float  OutMetallic,
-    out float  OutSpecular,
-    out float  OutAO,
-    out float4 OutMasks)
-{
-    return EvaluatePlanetaryMasterFull(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
-        float4(InVertexColor, 1.0f), InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
-        InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bEnableSnow, InSnowColor, InMagmaIntensity,
-        InBiomeColorPolarIce, InBiomeColorTundra, InBiomeColorTaiga, InBiomeColorGrassland,
-        InBiomeColorForest, InBiomeColorDesert, InBiomeColorSavannah, InBiomeColorRainforest,
-        InStrataColor1, InStrataColor2, InStrataColor3,
-        InStrataFrequency, InStrataDistortion, InStrataNormalStrength,
-        InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler,
-        InNearSurfaceNormal, InNearSurfaceNormalSampler,
-        InNearRockAlbedo, InNearRockAlbedoSampler,
-        InNearRockNormal, InNearRockNormalSampler,
-        InNearSnowAlbedo, InNearSnowAlbedoSampler,
-        InNearSnowNormal, InNearSnowNormalSampler,
-        InNearDetailDistance, InNearDetailFadeRange, InNearDetailTiling,
-        InNearDetailRockTiling, InNearDetailSnowTiling, InNearDetailColorBlend,
-        InNearDetailNormalStrength,
-        InFarDetailDistance, InFarDetailFadeRange, InFarDetailTiling,
-        InFarDetailRockTiling, InFarDetailSnowTiling, InFarDetailColorBlend,
-        InFarDetailNormalStrength,
-        OutWorldNormal, OutEmissive, OutMetallic, OutSpecular, OutAO, OutMasks);
-}
-
-// 4. 6 Texture2D + Sampler Pairs, float4 InVertexColor, out float OutEmissive
-float4 EvaluatePlanetaryMasterFull(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float4 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity,
-    float  bEnableSnow,
-    float3 InSnowColor,
-    float  InMagmaIntensity,
-    float3 InBiomeColorPolarIce,
-    float3 InBiomeColorTundra,
-    float3 InBiomeColorTaiga,
-    float3 InBiomeColorGrassland,
-    float3 InBiomeColorForest,
-    float3 InBiomeColorDesert,
-    float3 InBiomeColorSavannah,
-    float3 InBiomeColorRainforest,
-    float3 InStrataColor1,
-    float3 InStrataColor2,
-    float3 InStrataColor3,
-    float  InStrataFrequency,
-    float  InStrataDistortion,
-    float  InStrataNormalStrength,
-    Texture2D InNearSurfaceAlbedo,
-    SamplerState InNearSurfaceAlbedoSampler,
-    Texture2D InNearSurfaceNormal,
-    SamplerState InNearSurfaceNormalSampler,
-    Texture2D InNearRockAlbedo,
-    SamplerState InNearRockAlbedoSampler,
-    Texture2D InNearRockNormal,
-    SamplerState InNearRockNormalSampler,
-    Texture2D InNearSnowAlbedo,
-    SamplerState InNearSnowAlbedoSampler,
-    Texture2D InNearSnowNormal,
-    SamplerState InNearSnowNormalSampler,
-    float  InNearDetailDistance,
-    float  InNearDetailFadeRange,
-    float  InNearDetailTiling,
-    float  InNearDetailRockTiling,
-    float  InNearDetailSnowTiling,
-    float  InNearDetailColorBlend,
-    float  InNearDetailNormalStrength,
-    float  InFarDetailDistance,
-    float  InFarDetailFadeRange,
-    float  InFarDetailTiling,
-    float  InFarDetailRockTiling,
-    float  InFarDetailSnowTiling,
-    float  InFarDetailColorBlend,
-    float  InFarDetailNormalStrength,
-    out float3 OutWorldNormal,
-    out float  OutEmissive,
-    out float  OutMetallic,
-    out float  OutSpecular,
-    out float  OutAO,
-    out float4 OutMasks)
-{
-    float3 Emiss3;
-    float4 Res = EvaluatePlanetaryMasterFull(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
-        InVertexColor, InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
-        InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bEnableSnow, InSnowColor, InMagmaIntensity,
-        InBiomeColorPolarIce, InBiomeColorTundra, InBiomeColorTaiga, InBiomeColorGrassland,
-        InBiomeColorForest, InBiomeColorDesert, InBiomeColorSavannah, InBiomeColorRainforest,
-        InStrataColor1, InStrataColor2, InStrataColor3,
-        InStrataFrequency, InStrataDistortion, InStrataNormalStrength,
-        InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler,
-        InNearSurfaceNormal, InNearSurfaceNormalSampler,
-        InNearRockAlbedo, InNearRockAlbedoSampler,
-        InNearRockNormal, InNearRockNormalSampler,
-        InNearSnowAlbedo, InNearSnowAlbedoSampler,
-        InNearSnowNormal, InNearSnowNormalSampler,
-        InNearDetailDistance, InNearDetailFadeRange, InNearDetailTiling,
-        InNearDetailRockTiling, InNearDetailSnowTiling, InNearDetailColorBlend,
-        InNearDetailNormalStrength,
-        InFarDetailDistance, InFarDetailFadeRange, InFarDetailTiling,
-        InFarDetailRockTiling, InFarDetailSnowTiling, InFarDetailColorBlend,
-        InFarDetailNormalStrength,
-        OutWorldNormal, Emiss3, OutMetallic, OutSpecular, OutAO, OutMasks);
-    OutEmissive = max(Emiss3.r, max(Emiss3.g, Emiss3.b));
-    return Res;
-}
-
-// 5. 3 Shared Samplers: float3 InVertexColor, out float OutEmissive
-float4 EvaluatePlanetaryMasterFull(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float3 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity,
-    float  bEnableSnow,
-    float3 InSnowColor,
-    float  InMagmaIntensity,
-    float3 InBiomeColorPolarIce,
-    float3 InBiomeColorTundra,
-    float3 InBiomeColorTaiga,
-    float3 InBiomeColorGrassland,
-    float3 InBiomeColorForest,
-    float3 InBiomeColorDesert,
-    float3 InBiomeColorSavannah,
-    float3 InBiomeColorRainforest,
-    float3 InStrataColor1,
-    float3 InStrataColor2,
-    float3 InStrataColor3,
-    float  InStrataFrequency,
-    float  InStrataDistortion,
-    float  InStrataNormalStrength,
-    Texture2D InNearSurfaceAlbedo,
-    Texture2D InNearSurfaceNormal,
-    SamplerState InNearSurfaceAlbedoSampler,
-    Texture2D InNearRockAlbedo,
-    Texture2D InNearRockNormal,
-    SamplerState InNearRockAlbedoSampler,
-    Texture2D InNearSnowAlbedo,
-    Texture2D InNearSnowNormal,
-    SamplerState InNearSnowAlbedoSampler,
-    float  InNearDetailDistance,
-    float  InNearDetailFadeRange,
-    float  InNearDetailTiling,
-    float  InNearDetailRockTiling,
-    float  InNearDetailSnowTiling,
-    float  InNearDetailColorBlend,
-    float  InNearDetailNormalStrength,
-    float  InFarDetailDistance,
-    float  InFarDetailFadeRange,
-    float  InFarDetailTiling,
-    float  InFarDetailRockTiling,
-    float  InFarDetailSnowTiling,
-    float  InFarDetailColorBlend,
-    float  InFarDetailNormalStrength,
-    out float3 OutWorldNormal,
-    out float  OutEmissive,
-    out float  OutMetallic,
-    out float  OutSpecular,
-    out float  OutAO,
-    out float4 OutMasks)
-{
-    return EvaluatePlanetaryMasterFull(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bEnableSnow, InSnowColor, InMagmaIntensity,
-        InBiomeColorPolarIce, InBiomeColorTundra, InBiomeColorTaiga, InBiomeColorGrassland,
-        InBiomeColorForest, InBiomeColorDesert, InBiomeColorSavannah, InBiomeColorRainforest,
-        InStrataColor1, InStrataColor2, InStrataColor3,
-        InStrataFrequency, InStrataDistortion, InStrataNormalStrength,
-        InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler,
-        InNearSurfaceNormal, InNearSurfaceAlbedoSampler,
-        InNearRockAlbedo, InNearRockAlbedoSampler,
-        InNearRockNormal, InNearRockAlbedoSampler,
-        InNearSnowAlbedo, InNearSnowAlbedoSampler,
-        InNearSnowNormal, InNearSnowAlbedoSampler,
-        InNearDetailDistance, InNearDetailFadeRange, InNearDetailTiling,
-        InNearDetailRockTiling, InNearDetailSnowTiling, InNearDetailColorBlend,
-        InNearDetailNormalStrength,
-        InFarDetailDistance, InFarDetailFadeRange, InFarDetailTiling,
-        InFarDetailRockTiling, InFarDetailSnowTiling, InFarDetailColorBlend,
-        InFarDetailNormalStrength,
-        OutWorldNormal, OutEmissive, OutMetallic, OutSpecular, OutAO, OutMasks);
-}
-
-// 6. 3 Shared Samplers: float4 InVertexColor, out float3 OutEmissive
-float4 EvaluatePlanetaryMasterFull(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float4 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity,
-    float  bEnableSnow,
-    float3 InSnowColor,
-    float  InMagmaIntensity,
-    float3 InBiomeColorPolarIce,
-    float3 InBiomeColorTundra,
-    float3 InBiomeColorTaiga,
-    float3 InBiomeColorGrassland,
-    float3 InBiomeColorForest,
-    float3 InBiomeColorDesert,
-    float3 InBiomeColorSavannah,
-    float3 InBiomeColorRainforest,
-    float3 InStrataColor1,
-    float3 InStrataColor2,
-    float3 InStrataColor3,
-    float  InStrataFrequency,
-    float  InStrataDistortion,
-    float  InStrataNormalStrength,
-    Texture2D InNearSurfaceAlbedo,
-    Texture2D InNearSurfaceNormal,
-    SamplerState InNearSurfaceAlbedoSampler,
-    Texture2D InNearRockAlbedo,
-    Texture2D InNearRockNormal,
-    SamplerState InNearRockAlbedoSampler,
-    Texture2D InNearSnowAlbedo,
-    Texture2D InNearSnowNormal,
-    SamplerState InNearSnowAlbedoSampler,
-    float  InNearDetailDistance,
-    float  InNearDetailFadeRange,
-    float  InNearDetailTiling,
-    float  InNearDetailRockTiling,
-    float  InNearDetailSnowTiling,
-    float  InNearDetailColorBlend,
-    float  InNearDetailNormalStrength,
-    float  InFarDetailDistance,
-    float  InFarDetailFadeRange,
-    float  InFarDetailTiling,
-    float  InFarDetailRockTiling,
-    float  InFarDetailSnowTiling,
-    float  InFarDetailColorBlend,
-    float  InFarDetailNormalStrength,
-    out float3 OutWorldNormal,
-    out float3 OutEmissive,
-    out float  OutMetallic,
-    out float  OutSpecular,
-    out float  OutAO,
-    out float4 OutMasks)
-{
-    return EvaluatePlanetaryMasterFull(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bEnableSnow, InSnowColor, InMagmaIntensity,
-        InBiomeColorPolarIce, InBiomeColorTundra, InBiomeColorTaiga, InBiomeColorGrassland,
-        InBiomeColorForest, InBiomeColorDesert, InBiomeColorSavannah, InBiomeColorRainforest,
-        InStrataColor1, InStrataColor2, InStrataColor3,
-        InStrataFrequency, InStrataDistortion, InStrataNormalStrength,
-        InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler,
-        InNearSurfaceNormal, InNearSurfaceAlbedoSampler,
-        InNearRockAlbedo, InNearRockAlbedoSampler,
-        InNearRockNormal, InNearRockAlbedoSampler,
-        InNearSnowAlbedo, InNearSnowAlbedoSampler,
-        InNearSnowNormal, InNearSnowAlbedoSampler,
-        InNearDetailDistance, InNearDetailFadeRange, InNearDetailTiling,
-        InNearDetailRockTiling, InNearDetailSnowTiling, InNearDetailColorBlend,
-        InNearDetailNormalStrength,
-        InFarDetailDistance, InFarDetailFadeRange, InFarDetailTiling,
-        InFarDetailRockTiling, InFarDetailSnowTiling, InFarDetailColorBlend,
-        InFarDetailNormalStrength,
-        OutWorldNormal, OutEmissive, OutMetallic, OutSpecular, OutAO, OutMasks);
-}
-
-// 7. 3 Shared Samplers: float3 InVertexColor, out float3 OutEmissive
-float4 EvaluatePlanetaryMasterFull(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float3 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity,
-    float  bEnableSnow,
-    float3 InSnowColor,
-    float  InMagmaIntensity,
-    float3 InBiomeColorPolarIce,
-    float3 InBiomeColorTundra,
-    float3 InBiomeColorTaiga,
-    float3 InBiomeColorGrassland,
-    float3 InBiomeColorForest,
-    float3 InBiomeColorDesert,
-    float3 InBiomeColorSavannah,
-    float3 InBiomeColorRainforest,
-    float3 InStrataColor1,
-    float3 InStrataColor2,
-    float3 InStrataColor3,
-    float  InStrataFrequency,
-    float  InStrataDistortion,
-    float  InStrataNormalStrength,
-    Texture2D InNearSurfaceAlbedo,
-    Texture2D InNearSurfaceNormal,
-    SamplerState InNearSurfaceAlbedoSampler,
-    Texture2D InNearRockAlbedo,
-    Texture2D InNearRockNormal,
-    SamplerState InNearRockAlbedoSampler,
-    Texture2D InNearSnowAlbedo,
-    Texture2D InNearSnowNormal,
-    SamplerState InNearSnowAlbedoSampler,
-    float  InNearDetailDistance,
-    float  InNearDetailFadeRange,
-    float  InNearDetailTiling,
-    float  InNearDetailRockTiling,
-    float  InNearDetailSnowTiling,
-    float  InNearDetailColorBlend,
-    float  InNearDetailNormalStrength,
-    float  InFarDetailDistance,
-    float  InFarDetailFadeRange,
-    float  InFarDetailTiling,
-    float  InFarDetailRockTiling,
-    float  InFarDetailSnowTiling,
-    float  InFarDetailColorBlend,
-    float  InFarDetailNormalStrength,
-    out float3 OutWorldNormal,
-    out float3 OutEmissive,
-    out float  OutMetallic,
-    out float  OutSpecular,
-    out float  OutAO,
-    out float4 OutMasks)
-{
-    return EvaluatePlanetaryMasterFull(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, float4(InVertexColor, 1.0f), InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bEnableSnow, InSnowColor, InMagmaIntensity,
-        InBiomeColorPolarIce, InBiomeColorTundra, InBiomeColorTaiga, InBiomeColorGrassland,
-        InBiomeColorForest, InBiomeColorDesert, InBiomeColorSavannah, InBiomeColorRainforest,
-        InStrataColor1, InStrataColor2, InStrataColor3,
-        InStrataFrequency, InStrataDistortion, InStrataNormalStrength,
-        InNearSurfaceAlbedo, InNearSurfaceNormal, InNearSurfaceAlbedoSampler,
-        InNearRockAlbedo, InNearRockNormal, InNearRockAlbedoSampler,
-        InNearSnowAlbedo, InNearSnowNormal, InNearSnowAlbedoSampler,
-        InNearDetailDistance, InNearDetailFadeRange, InNearDetailTiling,
-        InNearDetailRockTiling, InNearDetailSnowTiling, InNearDetailColorBlend,
-        InNearDetailNormalStrength,
-        InFarDetailDistance, InFarDetailFadeRange, InFarDetailTiling,
-        InFarDetailRockTiling, InFarDetailSnowTiling, InFarDetailColorBlend,
-        InFarDetailNormalStrength,
-        OutWorldNormal, OutEmissive, OutMetallic, OutSpecular, OutAO, OutMasks);
-}
-
-// 8. 3 Shared Samplers: float4 InVertexColor, out float OutEmissive
-float4 EvaluatePlanetaryMasterFull(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float4 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity,
-    float  bEnableSnow,
-    float3 InSnowColor,
-    float  InMagmaIntensity,
-    float3 InBiomeColorPolarIce,
-    float3 InBiomeColorTundra,
-    float3 InBiomeColorTaiga,
-    float3 InBiomeColorGrassland,
-    float3 InBiomeColorForest,
-    float3 InBiomeColorDesert,
-    float3 InBiomeColorSavannah,
-    float3 InBiomeColorRainforest,
-    float3 InStrataColor1,
-    float3 InStrataColor2,
-    float3 InStrataColor3,
-    float  InStrataFrequency,
-    float  InStrataDistortion,
-    float  InStrataNormalStrength,
-    Texture2D InNearSurfaceAlbedo,
-    Texture2D InNearSurfaceNormal,
-    SamplerState InNearSurfaceAlbedoSampler,
-    Texture2D InNearRockAlbedo,
-    Texture2D InNearRockNormal,
-    SamplerState InNearRockAlbedoSampler,
-    Texture2D InNearSnowAlbedo,
-    Texture2D InNearSnowNormal,
-    SamplerState InNearSnowAlbedoSampler,
-    float  InNearDetailDistance,
-    float  InNearDetailFadeRange,
-    float  InNearDetailTiling,
-    float  InNearDetailRockTiling,
-    float  InNearDetailSnowTiling,
-    float  InNearDetailColorBlend,
-    float  InNearDetailNormalStrength,
-    float  InFarDetailDistance,
-    float  InFarDetailFadeRange,
-    float  InFarDetailTiling,
-    float  InFarDetailRockTiling,
-    float  InFarDetailSnowTiling,
-    float  InFarDetailColorBlend,
-    float  InFarDetailNormalStrength,
-    out float3 OutWorldNormal,
-    out float  OutEmissive,
-    out float  OutMetallic,
-    out float  OutSpecular,
-    out float  OutAO,
-    out float4 OutMasks)
-{
-    float3 Emiss3;
-    float4 Res = EvaluatePlanetaryMasterFull(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bEnableSnow, InSnowColor, InMagmaIntensity,
-        InBiomeColorPolarIce, InBiomeColorTundra, InBiomeColorTaiga, InBiomeColorGrassland,
-        InBiomeColorForest, InBiomeColorDesert, InBiomeColorSavannah, InBiomeColorRainforest,
-        InStrataColor1, InStrataColor2, InStrataColor3,
-        InStrataFrequency, InStrataDistortion, InStrataNormalStrength,
-        InNearSurfaceAlbedo, InNearSurfaceNormal, InNearSurfaceAlbedoSampler,
-        InNearRockAlbedo, InNearRockNormal, InNearRockAlbedoSampler,
-        InNearSnowAlbedo, InNearSnowNormal, InNearSnowAlbedoSampler,
-        InNearDetailDistance, InNearDetailFadeRange, InNearDetailTiling,
-        InNearDetailRockTiling, InNearDetailSnowTiling, InNearDetailColorBlend,
-        InNearDetailNormalStrength,
-        InFarDetailDistance, InFarDetailFadeRange, InFarDetailTiling,
-        InFarDetailRockTiling, InFarDetailSnowTiling, InFarDetailColorBlend,
-        InFarDetailNormalStrength,
-        OutWorldNormal, Emiss3, OutMetallic, OutSpecular, OutAO, OutMasks);
-    OutEmissive = max(Emiss3.r, max(Emiss3.g, Emiss3.b));
-    return Res;
-}
-
-// 9. Simplified Single Surface Tiling & 3 Shared Samplers: float3 InVertexColor, out float OutEmissive
-float4 EvaluatePlanetaryMasterFull(
-    float3 InWorldPos,
-    float3 InPlanetCenter,
-    float  InPlanetRadius,
-    float3 InCameraWorldPos,
-    float3 InVertexColor,
-    float3 InMeshWorldNormal,
-    Texture3D InVolumeTexture,
-    SamplerState InVolumeSampler,
-    float  InMacroFrequency,
-    float  InMicroFrequency,
-    float  InNormalStrength,
-    float  InSlopeCliffThreshold,
-    float  InSlopeCliffFalloff,
-    float  InSnowTemperatureThreshold,
-    float  InWetnessIntensity,
-    float  bEnableSnow,
-    float3 InSnowColor,
-    float  InMagmaIntensity,
-    float3 InBiomeColorPolarIce,
-    float3 InBiomeColorTundra,
-    float3 InBiomeColorTaiga,
-    float3 InBiomeColorGrassland,
-    float3 InBiomeColorForest,
-    float3 InBiomeColorDesert,
-    float3 InBiomeColorSavannah,
-    float3 InBiomeColorRainforest,
-    float3 InStrataColor1,
-    float3 InStrataColor2,
-    float3 InStrataColor3,
-    float  InStrataFrequency,
-    float  InStrataDistortion,
-    float  InStrataNormalStrength,
-    Texture2D InNearSurfaceAlbedo,
-    Texture2D InNearSurfaceNormal,
-    SamplerState InNearSurfaceAlbedoSampler,
-    Texture2D InNearRockAlbedo,
-    Texture2D InNearRockNormal,
-    SamplerState InNearRockAlbedoSampler,
-    Texture2D InNearSnowAlbedo,
-    Texture2D InNearSnowNormal,
-    SamplerState InNearSnowAlbedoSampler,
-    float  InNearDetailDistance,
-    float  InNearDetailFadeRange,
-    float  InNearDetailTiling,
-    float  InNearDetailColorBlend,
-    float  InNearDetailNormalStrength,
-    float  InFarDetailDistance,
-    float  InFarDetailFadeRange,
-    float  InFarDetailTiling,
-    float  InFarDetailColorBlend,
-    float  InFarDetailNormalStrength,
-    out float3 OutWorldNormal,
-    out float  OutEmissive,
-    out float  OutMetallic,
-    out float  OutSpecular,
-    out float  OutAO,
-    out float4 OutMasks)
-{
-    return EvaluatePlanetaryMasterFull(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bEnableSnow, InSnowColor, InMagmaIntensity,
-        InBiomeColorPolarIce, InBiomeColorTundra, InBiomeColorTaiga, InBiomeColorGrassland,
-        InBiomeColorForest, InBiomeColorDesert, InBiomeColorSavannah, InBiomeColorRainforest,
-        InStrataColor1, InStrataColor2, InStrataColor3,
-        InStrataFrequency, InStrataDistortion, InStrataNormalStrength,
-        InNearSurfaceAlbedo, InNearSurfaceNormal, InNearSurfaceAlbedoSampler,
-        InNearRockAlbedo, InNearRockNormal, InNearRockAlbedoSampler,
-        InNearSnowAlbedo, InNearSnowNormal, InNearSnowAlbedoSampler,
-        InNearDetailDistance, InNearDetailFadeRange, InNearDetailTiling,
-        InNearDetailTiling * 1.5f, InNearDetailTiling * 2.0f, InNearDetailColorBlend,
-        InNearDetailNormalStrength,
-        InFarDetailDistance, InFarDetailFadeRange, InFarDetailTiling,
-        InFarDetailTiling * 1.5f, InFarDetailTiling * 2.0f, InFarDetailColorBlend,
-        InFarDetailNormalStrength,
-        OutWorldNormal, OutEmissive, OutMetallic, OutSpecular, OutAO, OutMasks);
-}
