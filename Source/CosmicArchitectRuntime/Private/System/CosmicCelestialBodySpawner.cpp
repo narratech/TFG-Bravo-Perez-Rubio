@@ -826,7 +826,7 @@ ACosmicPlanet* FCosmicCelestialBodySpawner::SpawnPlanet(
         PlanetMaterial,
         !bIsGasGiant,
         ClipRes,
-        bIsGasGiant ? 1 : 7,
+        bIsGasGiant ? 1 : 8,
         100,
         bIsGasGiant ? 0.0f : 2.5f,
         Classification.bHasOcean,
