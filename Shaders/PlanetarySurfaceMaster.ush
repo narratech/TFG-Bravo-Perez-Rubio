@@ -506,11 +506,14 @@ void EvaluateMasterWhittakerBiomes(
 }
 
 // ============================================================================
-// PLANETARY ARCHETYPE PRESETS
+// MANUAL BIOME & STRATA INITIALIZATION (EARTH-LIKE DEFAULTS)
 // ============================================================================
 
 /**
- * Initializes Earth-Like terrestrial archetype with 8 biomes & sedimentary strata:
+ * Initializes the 8 analytical Whittaker biomes and geological strata parameters
+ * from user-configured material inputs.
+ * Climatological layout (Temperature, Humidity) and PBR response match the
+ * Earth-Like reference distribution:
  *   0: Polar Ice / Glacial
  *   1: Tundra
  *   2: Taiga / Boreal Conifer
@@ -520,7 +523,21 @@ void EvaluateMasterWhittakerBiomes(
  *   6: Savannah / Scrubland
  *   7: Tropical Rainforest
  */
-void InitEarthLikeMasterArchetype(
+void InitManualPlanetaryBiomes(
+    in float3 InBiomeColorPolarIce,
+    in float3 InBiomeColorTundra,
+    in float3 InBiomeColorTaiga,
+    in float3 InBiomeColorGrassland,
+    in float3 InBiomeColorForest,
+    in float3 InBiomeColorDesert,
+    in float3 InBiomeColorSavannah,
+    in float3 InBiomeColorRainforest,
+    in float3 InStrataColor1,
+    in float3 InStrataColor2,
+    in float3 InStrataColor3,
+    in float  InStrataFrequency,
+    in float  InStrataDistortion,
+    in float  InStrataNormalStrength,
     out FPlanetaryBiomeDefinition Biomes[PLANETARY_MAX_BIOMES],
     out int BiomeCount,
     out FPlanetaryStrataParameters StrataParams)
@@ -530,7 +547,7 @@ void InitEarthLikeMasterArchetype(
     // 0: Polar Ice / Glacial
     Biomes[0].ClimatologicalCenter = float2(0.05f, 0.20f);
     Biomes[0].ClimatologicalRadius = float2(0.18f, 0.30f);
-    Biomes[0].BaseColor            = float3(0.88f, 0.92f, 0.96f);
+    Biomes[0].BaseColor            = InBiomeColorPolarIce;
     Biomes[0].Roughness            = 0.35f;
     Biomes[0].Metallic             = 0.00f;
     Biomes[0].Specular             = 0.55f;
@@ -540,7 +557,7 @@ void InitEarthLikeMasterArchetype(
     // 1: Tundra
     Biomes[1].ClimatologicalCenter = float2(0.20f, 0.30f);
     Biomes[1].ClimatologicalRadius = float2(0.18f, 0.25f);
-    Biomes[1].BaseColor            = float3(0.42f, 0.40f, 0.32f);
+    Biomes[1].BaseColor            = InBiomeColorTundra;
     Biomes[1].Roughness            = 0.85f;
     Biomes[1].Metallic             = 0.00f;
     Biomes[1].Specular             = 0.40f;
@@ -550,7 +567,7 @@ void InitEarthLikeMasterArchetype(
     // 2: Taiga / Boreal Conifer
     Biomes[2].ClimatologicalCenter = float2(0.35f, 0.60f);
     Biomes[2].ClimatologicalRadius = float2(0.20f, 0.25f);
-    Biomes[2].BaseColor            = float3(0.12f, 0.22f, 0.10f);
+    Biomes[2].BaseColor            = InBiomeColorTaiga;
     Biomes[2].Roughness            = 0.75f;
     Biomes[2].Metallic             = 0.00f;
     Biomes[2].Specular             = 0.45f;
@@ -560,7 +577,7 @@ void InitEarthLikeMasterArchetype(
     // 3: Temperate Grassland
     Biomes[3].ClimatologicalCenter = float2(0.55f, 0.30f);
     Biomes[3].ClimatologicalRadius = float2(0.20f, 0.25f);
-    Biomes[3].BaseColor            = float3(0.32f, 0.38f, 0.16f);
+    Biomes[3].BaseColor            = InBiomeColorGrassland;
     Biomes[3].Roughness            = 0.70f;
     Biomes[3].Metallic             = 0.00f;
     Biomes[3].Specular             = 0.45f;
@@ -570,7 +587,7 @@ void InitEarthLikeMasterArchetype(
     // 4: Temperate Deciduous Forest
     Biomes[4].ClimatologicalCenter = float2(0.60f, 0.70f);
     Biomes[4].ClimatologicalRadius = float2(0.20f, 0.25f);
-    Biomes[4].BaseColor            = float3(0.14f, 0.30f, 0.09f);
+    Biomes[4].BaseColor            = InBiomeColorForest;
     Biomes[4].Roughness            = 0.65f;
     Biomes[4].Metallic             = 0.00f;
     Biomes[4].Specular             = 0.48f;
@@ -580,7 +597,7 @@ void InitEarthLikeMasterArchetype(
     // 5: Arid Sand Desert
     Biomes[5].ClimatologicalCenter = float2(0.85f, 0.12f);
     Biomes[5].ClimatologicalRadius = float2(0.22f, 0.20f);
-    Biomes[5].BaseColor            = float3(0.76f, 0.58f, 0.35f);
+    Biomes[5].BaseColor            = InBiomeColorDesert;
     Biomes[5].Roughness            = 0.90f;
     Biomes[5].Metallic             = 0.00f;
     Biomes[5].Specular             = 0.35f;
@@ -590,7 +607,7 @@ void InitEarthLikeMasterArchetype(
     // 6: Savannah / Scrubland
     Biomes[6].ClimatologicalCenter = float2(0.80f, 0.42f);
     Biomes[6].ClimatologicalRadius = float2(0.20f, 0.25f);
-    Biomes[6].BaseColor            = float3(0.55f, 0.48f, 0.22f);
+    Biomes[6].BaseColor            = InBiomeColorSavannah;
     Biomes[6].Roughness            = 0.80f;
     Biomes[6].Metallic             = 0.00f;
     Biomes[6].Specular             = 0.40f;
@@ -600,282 +617,21 @@ void InitEarthLikeMasterArchetype(
     // 7: Tropical Rainforest
     Biomes[7].ClimatologicalCenter = float2(0.85f, 0.85f);
     Biomes[7].ClimatologicalRadius = float2(0.22f, 0.22f);
-    Biomes[7].BaseColor            = float3(0.06f, 0.20f, 0.05f);
+    Biomes[7].BaseColor            = InBiomeColorRainforest;
     Biomes[7].Roughness            = 0.55f;
     Biomes[7].Metallic             = 0.00f;
     Biomes[7].Specular             = 0.50f;
     Biomes[7].MicroTiling          = 0.8f;
     Biomes[7].NormalStrength       = 1.2f;
 
-    // Geological Strata: Sandstone, Iron Clay, Shale
-    StrataParams.Frequency      = 0.08f;
-    StrataParams.Distortion     = 0.45f;
-    StrataParams.ColorTier1     = float3(0.58f, 0.45f, 0.32f); // Sandstone
-    StrataParams.ColorTier2     = float3(0.42f, 0.25f, 0.18f); // Iron Clay
-    StrataParams.ColorTier3     = float3(0.22f, 0.20f, 0.22f); // Dark Shale
+    // Geological Strata
+    StrataParams.Frequency      = max(InStrataFrequency, 0.0001f);
+    StrataParams.Distortion     = max(InStrataDistortion, 0.0f);
+    StrataParams.ColorTier1     = InStrataColor1;
+    StrataParams.ColorTier2     = InStrataColor2;
+    StrataParams.ColorTier3     = InStrataColor3;
     StrataParams.RoughnessDelta = 0.15f;
-    StrataParams.NormalStrength = 0.35f;
-}
-
-/**
- * Initializes Mars-Like ferric desert / barren rocky archetype:
- *   0: Polar CO2 Dry Ice Caps
- *   1: High Altitude Basaltic Plateau
- *   2: Ferric Orange Sand Dunes
- *   3: Deep Canyon Ochre Rock
- *   4: Dark Basalt Ejecta Plains
- */
-void InitMarsLikeMasterArchetype(
-    out FPlanetaryBiomeDefinition Biomes[PLANETARY_MAX_BIOMES],
-    out int BiomeCount,
-    out FPlanetaryStrataParameters StrataParams)
-{
-    BiomeCount = 5;
-
-    // 0: Polar Dry Ice Caps
-    Biomes[0].ClimatologicalCenter = float2(0.10f, 0.50f);
-    Biomes[0].ClimatologicalRadius = float2(0.22f, 0.50f);
-    Biomes[0].BaseColor            = float3(0.85f, 0.82f, 0.80f);
-    Biomes[0].Roughness            = 0.40f;
-    Biomes[0].Metallic             = 0.00f;
-    Biomes[0].Specular             = 0.50f;
-    Biomes[0].MicroTiling          = 1.5f;
-    Biomes[0].NormalStrength       = 0.7f;
-
-    // 1: High Altitude Basaltic Plateau
-    Biomes[1].ClimatologicalCenter = float2(0.35f, 0.30f);
-    Biomes[1].ClimatologicalRadius = float2(0.25f, 0.40f);
-    Biomes[1].BaseColor            = float3(0.32f, 0.22f, 0.18f);
-    Biomes[1].Roughness            = 0.92f;
-    Biomes[1].Metallic             = 0.02f;
-    Biomes[1].Specular             = 0.35f;
-    Biomes[1].MicroTiling          = 2.0f;
-    Biomes[1].NormalStrength       = 1.3f;
-
-    // 2: Ferric Orange Sand Dunes
-    Biomes[2].ClimatologicalCenter = float2(0.65f, 0.20f);
-    Biomes[2].ClimatologicalRadius = float2(0.28f, 0.35f);
-    Biomes[2].BaseColor            = float3(0.68f, 0.28f, 0.12f);
-    Biomes[2].Roughness            = 0.85f;
-    Biomes[2].Metallic             = 0.00f;
-    Biomes[2].Specular             = 0.30f;
-    Biomes[2].MicroTiling          = 2.5f;
-    Biomes[2].NormalStrength       = 0.8f;
-
-    // 3: Deep Canyon Ochre Rock
-    Biomes[3].ClimatologicalCenter = float2(0.70f, 0.75f);
-    Biomes[3].ClimatologicalRadius = float2(0.25f, 0.35f);
-    Biomes[3].BaseColor            = float3(0.48f, 0.20f, 0.10f);
-    Biomes[3].Roughness            = 0.88f;
-    Biomes[3].Metallic             = 0.01f;
-    Biomes[3].Specular             = 0.35f;
-    Biomes[3].MicroTiling          = 1.8f;
-    Biomes[3].NormalStrength       = 1.4f;
-
-    // 4: Dark Basalt Ejecta Plains
-    Biomes[4].ClimatologicalCenter = float2(0.90f, 0.45f);
-    Biomes[4].ClimatologicalRadius = float2(0.25f, 0.40f);
-    Biomes[4].BaseColor            = float3(0.18f, 0.14f, 0.12f);
-    Biomes[4].Roughness            = 0.95f;
-    Biomes[4].Metallic             = 0.05f;
-    Biomes[4].Specular             = 0.32f;
-    Biomes[4].MicroTiling          = 2.2f;
-    Biomes[4].NormalStrength       = 1.2f;
-
-    // Geological Strata: Ferric Orange, Deep Ochre, Dark Basalt
-    StrataParams.Frequency      = 0.06f;
-    StrataParams.Distortion     = 0.60f;
-    StrataParams.ColorTier1     = float3(0.65f, 0.26f, 0.12f); // Ferric Sandstone
-    StrataParams.ColorTier2     = float3(0.42f, 0.16f, 0.08f); // Ochre Hematite
-    StrataParams.ColorTier3     = float3(0.16f, 0.12f, 0.10f); // Dark Basalt Bed
-    StrataParams.RoughnessDelta = 0.18f;
-    StrataParams.NormalStrength = 0.45f;
-}
-
-/**
- * Initializes Ice Moon archetype (Europa / Enceladus):
- *   0: Pure Translucent Blue Ice
- *   1: White Compacted Firn & Frost
- *   2: Tholin Organic Amber Ridges
- *   3: Fractured Chaotic Rifts
- */
-void InitIceMoonMasterArchetype(
-    out FPlanetaryBiomeDefinition Biomes[PLANETARY_MAX_BIOMES],
-    out int BiomeCount,
-    out FPlanetaryStrataParameters StrataParams)
-{
-    BiomeCount = 4;
-
-    // 0: Pure Glacial Blue Ice
-    Biomes[0].ClimatologicalCenter = float2(0.20f, 0.30f);
-    Biomes[0].ClimatologicalRadius = float2(0.30f, 0.40f);
-    Biomes[0].BaseColor            = float3(0.55f, 0.75f, 0.88f);
-    Biomes[0].Roughness            = 0.18f;
-    Biomes[0].Metallic             = 0.00f;
-    Biomes[0].Specular             = 0.60f;
-    Biomes[0].MicroTiling          = 1.0f;
-    Biomes[0].NormalStrength       = 0.5f;
-
-    // 1: White Compacted Firn & Frost
-    Biomes[1].ClimatologicalCenter = float2(0.20f, 0.80f);
-    Biomes[1].ClimatologicalRadius = float2(0.30f, 0.40f);
-    Biomes[1].BaseColor            = float3(0.92f, 0.94f, 0.97f);
-    Biomes[1].Roughness            = 0.65f;
-    Biomes[1].Metallic             = 0.00f;
-    Biomes[1].Specular             = 0.50f;
-    Biomes[1].MicroTiling          = 2.0f;
-    Biomes[1].NormalStrength       = 0.8f;
-
-    // 2: Tholin Organic Amber Ridges
-    Biomes[2].ClimatologicalCenter = float2(0.70f, 0.30f);
-    Biomes[2].ClimatologicalRadius = float2(0.35f, 0.40f);
-    Biomes[2].BaseColor            = float3(0.52f, 0.30f, 0.18f);
-    Biomes[2].Roughness            = 0.75f;
-    Biomes[2].Metallic             = 0.00f;
-    Biomes[2].Specular             = 0.40f;
-    Biomes[2].MicroTiling          = 2.5f;
-    Biomes[2].NormalStrength       = 1.3f;
-
-    // 3: Fractured Chaotic Rifts
-    Biomes[3].ClimatologicalCenter = float2(0.80f, 0.80f);
-    Biomes[3].ClimatologicalRadius = float2(0.35f, 0.40f);
-    Biomes[3].BaseColor            = float3(0.35f, 0.42f, 0.48f);
-    Biomes[3].Roughness            = 0.40f;
-    Biomes[3].Metallic             = 0.00f;
-    Biomes[3].Specular             = 0.55f;
-    Biomes[3].MicroTiling          = 1.8f;
-    Biomes[3].NormalStrength       = 1.5f;
-
-    // Geological Strata: Frost White, Deep Cyan Glacial, Tholin Amber
-    StrataParams.Frequency      = 0.10f;
-    StrataParams.Distortion     = 0.35f;
-    StrataParams.ColorTier1     = float3(0.88f, 0.93f, 0.98f); // Compacted Frost
-    StrataParams.ColorTier2     = float3(0.38f, 0.62f, 0.78f); // Deep Cryo Ice
-    StrataParams.ColorTier3     = float3(0.48f, 0.28f, 0.15f); // Tholin Hydrocarbon
-    StrataParams.RoughnessDelta = 0.22f;
-    StrataParams.NormalStrength = 0.30f;
-}
-
-/**
- * Initializes Volcanic World archetype (Io / Mustafar):
- *   0: Hardened Basalt Crust
- *   1: Yellow/Orange Sulfur Deposition Fields
- *   2: Dark Obsidian Glass Scree
- *   3: Active Magma Vent / Thermal Cracks (Emissive)
- */
-void InitVolcanicMasterArchetype(
-    out FPlanetaryBiomeDefinition Biomes[PLANETARY_MAX_BIOMES],
-    out int BiomeCount,
-    out FPlanetaryStrataParameters StrataParams)
-{
-    BiomeCount = 4;
-
-    // 0: Hardened Basalt Crust
-    Biomes[0].ClimatologicalCenter = float2(0.30f, 0.30f);
-    Biomes[0].ClimatologicalRadius = float2(0.35f, 0.40f);
-    Biomes[0].BaseColor            = float3(0.12f, 0.11f, 0.10f);
-    Biomes[0].Roughness            = 0.90f;
-    Biomes[0].Metallic             = 0.05f;
-    Biomes[0].Specular             = 0.35f;
-    Biomes[0].MicroTiling          = 2.0f;
-    Biomes[0].NormalStrength       = 1.2f;
-
-    // 1: Yellow/Orange Sulfur Fields
-    Biomes[1].ClimatologicalCenter = float2(0.30f, 0.80f);
-    Biomes[1].ClimatologicalRadius = float2(0.35f, 0.40f);
-    Biomes[1].BaseColor            = float3(0.75f, 0.62f, 0.14f);
-    Biomes[1].Roughness            = 0.82f;
-    Biomes[1].Metallic             = 0.00f;
-    Biomes[1].Specular             = 0.38f;
-    Biomes[1].MicroTiling          = 2.5f;
-    Biomes[1].NormalStrength       = 0.9f;
-
-    // 2: Dark Obsidian Glass
-    Biomes[2].ClimatologicalCenter = float2(0.75f, 0.30f);
-    Biomes[2].ClimatologicalRadius = float2(0.35f, 0.40f);
-    Biomes[2].BaseColor            = float3(0.04f, 0.04f, 0.05f);
-    Biomes[2].Roughness            = 0.15f;
-    Biomes[2].Metallic             = 0.00f;
-    Biomes[2].Specular             = 0.70f;
-    Biomes[2].MicroTiling          = 1.0f;
-    Biomes[2].NormalStrength       = 0.8f;
-
-    // 3: Active Magma Vent (Emissive thermal crust)
-    Biomes[3].ClimatologicalCenter = float2(0.85f, 0.85f);
-    Biomes[3].ClimatologicalRadius = float2(0.25f, 0.30f);
-    Biomes[3].BaseColor            = float3(0.30f, 0.05f, 0.02f);
-    Biomes[3].Roughness            = 0.60f;
-    Biomes[3].Metallic             = 0.00f;
-    Biomes[3].Specular             = 0.40f;
-    Biomes[3].MicroTiling          = 1.5f;
-    Biomes[3].NormalStrength       = 1.0f;
-
-    // Geological Strata: Volcanic Ash, Dark Basalt, Yellow Sulfur Crust
-    StrataParams.Frequency      = 0.07f;
-    StrataParams.Distortion     = 0.50f;
-    StrataParams.ColorTier1     = float3(0.20f, 0.18f, 0.16f); // Volcanic Ash
-    StrataParams.ColorTier2     = float3(0.08f, 0.07f, 0.06f); // Vitric Basalt
-    StrataParams.ColorTier3     = float3(0.68f, 0.48f, 0.10f); // Sulfur Deposit
-    StrataParams.RoughnessDelta = 0.20f;
-    StrataParams.NormalStrength = 0.40f;
-}
-
-/**
- * Initializes Custom Parameterized planetary archetype using 4 user-defined colors:
- *   - InTerrainColorLow: Basins, craters, ocean beds, cold/humid lowlands
- *   - InTerrainColorMid: Continental plains, dominant planetary ground/regolith
- *   - InTerrainColorHigh: Mountain ridges, peaks, arid/cold highlands
- *   - InRockColor: Base rock tint for cliffs (automatically derives 3 geological strata tiers)
- */
-void InitCustomMasterArchetype(
-    in float3 InTerrainColorLow,
-    in float3 InTerrainColorMid,
-    in float3 InTerrainColorHigh,
-    in float3 InRockColor,
-    out FPlanetaryBiomeDefinition Biomes[PLANETARY_MAX_BIOMES],
-    out int BiomeCount,
-    out FPlanetaryStrataParameters StrataParams)
-{
-    BiomeCount = 3;
-
-    // 0: Lowlands / Depressions / Basins (Cold or Humid phase)
-    Biomes[0].ClimatologicalCenter = float2(0.20f, 0.65f);
-    Biomes[0].ClimatologicalRadius = float2(0.35f, 0.40f);
-    Biomes[0].BaseColor            = InTerrainColorLow;
-    Biomes[0].Roughness            = 0.70f;
-    Biomes[0].Metallic             = 0.00f;
-    Biomes[0].Specular             = 0.45f;
-    Biomes[0].MicroTiling          = 1.0f;
-    Biomes[0].NormalStrength       = 0.9f;
-
-    // 1: Midlands / Plains / Dominant Terrain (Temperate central phase)
-    Biomes[1].ClimatologicalCenter = float2(0.50f, 0.50f);
-    Biomes[1].ClimatologicalRadius = float2(0.35f, 0.35f);
-    Biomes[1].BaseColor            = InTerrainColorMid;
-    Biomes[1].Roughness            = 0.80f;
-    Biomes[1].Metallic             = 0.00f;
-    Biomes[1].Specular             = 0.40f;
-    Biomes[1].MicroTiling          = 1.2f;
-    Biomes[1].NormalStrength       = 1.0f;
-
-    // 2: Highlands / Ridges / Arid or Peaks (Warm or Arid phase)
-    Biomes[2].ClimatologicalCenter = float2(0.80f, 0.35f);
-    Biomes[2].ClimatologicalRadius = float2(0.35f, 0.40f);
-    Biomes[2].BaseColor            = InTerrainColorHigh;
-    Biomes[2].Roughness            = 0.88f;
-    Biomes[2].Metallic             = 0.00f;
-    Biomes[2].Specular             = 0.35f;
-    Biomes[2].MicroTiling          = 1.6f;
-    Biomes[2].NormalStrength       = 1.2f;
-
-    // Geological Strata derived procedurally from InRockColor:
-    StrataParams.Frequency      = 0.08f;
-    StrataParams.Distortion     = 0.45f;
-    StrataParams.ColorTier1     = InRockColor * 1.25f; // Upper/weathered shelf (lighter)
-    StrataParams.ColorTier2     = InRockColor * 1.00f; // Primary cliff rock stratum
-    StrataParams.ColorTier3     = InRockColor * 0.70f; // Deep dense sedimentary stratum (darker)
-    StrataParams.RoughnessDelta = 0.15f;
-    StrataParams.NormalStrength = 0.35f;
+    StrataParams.NormalStrength = max(InStrataNormalStrength, 0.0f);
 }
 
 // ============================================================================
@@ -897,7 +653,6 @@ void EvaluatePlanetaryMasterSurfaceCore(
     in float3 InMeshWorldNormal,
     in Texture3D InVolumeTexture,
     in SamplerState InVolumeSampler,
-    in float  InArchetypeIndex,
     in float  InMacroFrequency,
     in float  InMicroFrequency,        // Secondary procedural meso/macro frequency (symmetrical to MacroFrequency)
     in float  InNormalStrength,
@@ -905,12 +660,23 @@ void EvaluatePlanetaryMasterSurfaceCore(
     in float  InSlopeCliffFalloff,
     in float  InSnowTemperatureThreshold,
     in float  InWetnessIntensity,
-    in float  bUseCustomArchetype,     // 1.0 to use custom 4-color archetype, 0.0 for InArchetypeIndex
-    in float3 InTerrainColorLow,       // Lowlands / basins / cold-humid valleys
-    in float3 InTerrainColorMid,       // Midlands / plains / dominant planetary ground
-    in float3 InTerrainColorHigh,      // Highlands / peaks / arid or cold ridges
-    in float3 InRockColor,             // Base cliff rock tint (generates 3 strata tiers)
     in float  bEnableSnow,             // 1.0 to enable snow, 0.0 to disable completely
+    in float3 InSnowColor,             // Snow albedo tint
+    in float  InMagmaIntensity,        // 0.0 disables volcanic emission; > 0 enables HDR thermal magma
+    in float3 InBiomeColorPolarIce,    // Biome 0: Polar Ice / Glacial
+    in float3 InBiomeColorTundra,      // Biome 1: Tundra
+    in float3 InBiomeColorTaiga,       // Biome 2: Taiga / Boreal Conifer
+    in float3 InBiomeColorGrassland,   // Biome 3: Temperate Grassland
+    in float3 InBiomeColorForest,      // Biome 4: Temperate Deciduous Forest
+    in float3 InBiomeColorDesert,      // Biome 5: Arid Sand Desert
+    in float3 InBiomeColorSavannah,    // Biome 6: Savannah / Scrubland
+    in float3 InBiomeColorRainforest,  // Biome 7: Tropical Rainforest
+    in float3 InStrataColor1,          // Sedimentary stratum tier 1 (e.g. Sandstone)
+    in float3 InStrataColor2,          // Sedimentary stratum tier 2 (e.g. Iron Clay)
+    in float3 InStrataColor3,          // Sedimentary stratum tier 3 (e.g. Dark Shale)
+    in float  InStrataFrequency,       // Vertical repetition frequency of strata bands
+    in float  InStrataDistortion,      // 3D noise folding/undulation of strata bands
+    in float  InStrataNormalStrength,  // Horizontal ledge / shelf normal perturbation strength
     in float  bHasNearDetail,          // 1.0 if 2D near detail textures are active
     in FPlanetaryNearDetailParameters NearDetailParams,
     in float3 InNearSurfaceTexColor,   // Pre-sampled or triplanar surface albedo (Near)
@@ -997,34 +763,29 @@ void EvaluatePlanetaryMasterSurfaceCore(
     OutTempWarped     = TempWarped;
     OutHumidityWarped = HumidityWarped;
 
-    // --- 4. Archetype & Biome Initialization ---
+    // --- 4. Manual Biome & Strata Initialization ---
     FPlanetaryBiomeDefinition Biomes[PLANETARY_MAX_BIOMES];
     FPlanetaryStrataParameters StrataParams;
     int BiomeCount = 8;
-    int ArchetypeIndex = (int)round(InArchetypeIndex);
 
-    if (bUseCustomArchetype > 0.5f)
-    {
-        InitCustomMasterArchetype(
-            InTerrainColorLow, InTerrainColorMid, InTerrainColorHigh, InRockColor,
-            Biomes, BiomeCount, StrataParams);
-    }
-    else if (ArchetypeIndex == 1)
-    {
-        InitMarsLikeMasterArchetype(Biomes, BiomeCount, StrataParams);
-    }
-    else if (ArchetypeIndex == 2)
-    {
-        InitIceMoonMasterArchetype(Biomes, BiomeCount, StrataParams);
-    }
-    else if (ArchetypeIndex == 3)
-    {
-        InitVolcanicMasterArchetype(Biomes, BiomeCount, StrataParams);
-    }
-    else
-    {
-        InitEarthLikeMasterArchetype(Biomes, BiomeCount, StrataParams);
-    }
+    InitManualPlanetaryBiomes(
+        InBiomeColorPolarIce,
+        InBiomeColorTundra,
+        InBiomeColorTaiga,
+        InBiomeColorGrassland,
+        InBiomeColorForest,
+        InBiomeColorDesert,
+        InBiomeColorSavannah,
+        InBiomeColorRainforest,
+        InStrataColor1,
+        InStrataColor2,
+        InStrataColor3,
+        InStrataFrequency,
+        InStrataDistortion,
+        InStrataNormalStrength,
+        Biomes,
+        BiomeCount,
+        StrataParams);
 
     // --- 5. Whittaker Evaluation (Analytical Gaussian RBF) ---
     float3 BiomeColor;
@@ -1128,8 +889,7 @@ void EvaluatePlanetaryMasterSurfaceCore(
 
         if (SnowMask > 0.001f)
         {
-            float3 SnowAlbedo = float3(0.92f, 0.94f, 0.98f);
-            BaseAlbedo    = lerp(BaseAlbedo, SnowAlbedo, SnowMask);
+            BaseAlbedo    = lerp(BaseAlbedo, InSnowColor, SnowMask);
             EffRoughness  = lerp(EffRoughness, 0.65f, SnowMask);
             BiomeMetallic = lerp(BiomeMetallic, 0.0f, SnowMask);
             BiomeSpecular = lerp(BiomeSpecular, 0.50f, SnowMask);
@@ -1199,14 +959,14 @@ void EvaluatePlanetaryMasterSurfaceCore(
 
     // --- 12. Volcanic / Thermal Emission ---
     float3 Emissive = float3(0.0f, 0.0f, 0.0f);
-    if (bUseCustomArchetype <= 0.5f && ArchetypeIndex == 3) // Volcanic world preset
+    if (InMagmaIntensity > 0.001f)
     {
         float MagmaMask = saturate((0.32f - AltitudeNorm) / 0.20f) * saturate(1.0f - RawSlope * 1.2f);
         MagmaMask *= saturate(1.0f - MacroH * 1.6f);
 
         float3 MagmaHDR = float3(3.0f, 0.40f, 0.02f);
-        Emissive = MagmaHDR * (MagmaMask * 5.0f);
-        BaseAlbedo = lerp(BaseAlbedo, float3(0.04f, 0.02f, 0.01f), MagmaMask);
+        Emissive = MagmaHDR * (MagmaMask * 5.0f * InMagmaIntensity);
+        BaseAlbedo = lerp(BaseAlbedo, float3(0.04f, 0.02f, 0.01f), saturate(MagmaMask * InMagmaIntensity));
     }
 
     // --- 13. Pack Output Struct ---
@@ -1226,61 +986,6 @@ void EvaluatePlanetaryMasterSurfaceCore(
     OutSurface.FarDetailWeight  = FarDetailWeight;
 }
 
-// Backward-compatible core overload (Full Near & Far details with default archetypes)
-void EvaluatePlanetaryMasterSurfaceCore(
-    in float3 InWorldPos,
-    in float3 InPlanetCenter,
-    in float  InPlanetRadius,
-    in float3 InCameraWorldPos,
-    in float4 InVertexColor,
-    in float3 InMeshWorldNormal,
-    in Texture3D InVolumeTexture,
-    in SamplerState InVolumeSampler,
-    in float  InArchetypeIndex,
-    in float  InMacroFrequency,
-    in float  InMicroFrequency,
-    in float  InNormalStrength,
-    in float  InSlopeCliffThreshold,
-    in float  InSlopeCliffFalloff,
-    in float  InSnowTemperatureThreshold,
-    in float  InWetnessIntensity,
-    in float  bHasNearDetail,
-    in FPlanetaryNearDetailParameters NearDetailParams,
-    in float3 InNearSurfaceTexColor,
-    in float3 InNearSurfaceTexNormal,
-    in float3 InNearRockTexColor,
-    in float3 InNearRockTexNormal,
-    in float3 InNearSnowTexColor,
-    in float3 InNearSnowTexNormal,
-    in float  bHasFarDetail,
-    in FPlanetaryFarDetailParameters FarDetailParams,
-    in float3 InFarSurfaceTexColor,
-    in float3 InFarSurfaceTexNormal,
-    in float3 InFarRockTexColor,
-    in float3 InFarRockTexNormal,
-    in float3 InFarSnowTexColor,
-    in float3 InFarSnowTexNormal,
-    out FPlanetaryMasterOutput OutSurface,
-    out float OutTempWarped,
-    out float OutHumidityWarped)
-{
-    EvaluatePlanetaryMasterSurfaceCore(
-        InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
-        InVertexColor, InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
-        InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
-        InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        0.0f, float3(0,0,0), float3(0,0,0), float3(0,0,0), float3(0,0,0), 1.0f,
-        bHasNearDetail, NearDetailParams,
-        InNearSurfaceTexColor, InNearSurfaceTexNormal,
-        InNearRockTexColor, InNearRockTexNormal,
-        InNearSnowTexColor, InNearSnowTexNormal,
-        bHasFarDetail, FarDetailParams,
-        InFarSurfaceTexColor, InFarSurfaceTexNormal,
-        InFarRockTexColor, InFarRockTexNormal,
-        InFarSnowTexColor, InFarSnowTexNormal,
-        OutSurface, OutTempWarped, OutHumidityWarped);
-}
-
 // ============================================================================
 // CONVENIENCE EVALUATION INTERFACES (2D TRIPLANAR DETAIL FLOW: NEAR & FAR)
 // ============================================================================
@@ -1288,7 +993,6 @@ void EvaluatePlanetaryMasterSurfaceCore(
 /**
  * Master Evaluation with In-Shader 2D Spherical Triplanar Textures & Normal Maps
  * Evaluates Near & Far detail tiers using 6 individual texture samplers.
- * Fully integrates custom 4-color archetypes and dynamic snow toggle.
  */
 void EvaluatePlanetaryMasterSurfaceWithTriplanar(
     in float3 InWorldPos,
@@ -1299,7 +1003,6 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanar(
     in float3 InMeshWorldNormal,
     in Texture3D InVolumeTexture,
     in SamplerState InVolumeSampler,
-    in float  InArchetypeIndex,
     in float  InMacroFrequency,
     in float  InMicroFrequency,
     in float  InNormalStrength,
@@ -1307,12 +1010,23 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanar(
     in float  InSlopeCliffFalloff,
     in float  InSnowTemperatureThreshold,
     in float  InWetnessIntensity,
-    in float  bUseCustomArchetype,
-    in float3 InTerrainColorLow,
-    in float3 InTerrainColorMid,
-    in float3 InTerrainColorHigh,
-    in float3 InRockColor,
     in float  bEnableSnow,
+    in float3 InSnowColor,
+    in float  InMagmaIntensity,
+    in float3 InBiomeColorPolarIce,
+    in float3 InBiomeColorTundra,
+    in float3 InBiomeColorTaiga,
+    in float3 InBiomeColorGrassland,
+    in float3 InBiomeColorForest,
+    in float3 InBiomeColorDesert,
+    in float3 InBiomeColorSavannah,
+    in float3 InBiomeColorRainforest,
+    in float3 InStrataColor1,
+    in float3 InStrataColor2,
+    in float3 InStrataColor3,
+    in float  InStrataFrequency,
+    in float  InStrataDistortion,
+    in float  InStrataNormalStrength,
     in Texture2D InNearSurfaceAlbedo,
     in SamplerState InNearSurfaceAlbedoSampler,
     in Texture2D InNearSurfaceNormal,
@@ -1426,9 +1140,13 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanar(
     EvaluatePlanetaryMasterSurfaceCore(
         InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
         InVertexColor, InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
-        InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InMacroFrequency, InMicroFrequency, InNormalStrength,
         InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseCustomArchetype, InTerrainColorLow, InTerrainColorMid, InTerrainColorHigh, InRockColor, bEnableSnow,
+        bEnableSnow, InSnowColor, InMagmaIntensity,
+        InBiomeColorPolarIce, InBiomeColorTundra, InBiomeColorTaiga, InBiomeColorGrassland,
+        InBiomeColorForest, InBiomeColorDesert, InBiomeColorSavannah, InBiomeColorRainforest,
+        InStrataColor1, InStrataColor2, InStrataColor3,
+        InStrataFrequency, InStrataDistortion, InStrataNormalStrength,
         1.0f, NearParams,
         NearSurfaceTexCol, NearSurfaceTexNorm,
         NearRockTexCol, NearRockTexNorm,
@@ -1453,7 +1171,6 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanar(
     in float3 InMeshWorldNormal,
     in Texture3D InVolumeTexture,
     in SamplerState InVolumeSampler,
-    in float  InArchetypeIndex,
     in float  InMacroFrequency,
     in float  InMicroFrequency,
     in float  InNormalStrength,
@@ -1461,12 +1178,23 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanar(
     in float  InSlopeCliffFalloff,
     in float  InSnowTemperatureThreshold,
     in float  InWetnessIntensity,
-    in float  bUseCustomArchetype,
-    in float3 InTerrainColorLow,
-    in float3 InTerrainColorMid,
-    in float3 InTerrainColorHigh,
-    in float3 InRockColor,
     in float  bEnableSnow,
+    in float3 InSnowColor,
+    in float  InMagmaIntensity,
+    in float3 InBiomeColorPolarIce,
+    in float3 InBiomeColorTundra,
+    in float3 InBiomeColorTaiga,
+    in float3 InBiomeColorGrassland,
+    in float3 InBiomeColorForest,
+    in float3 InBiomeColorDesert,
+    in float3 InBiomeColorSavannah,
+    in float3 InBiomeColorRainforest,
+    in float3 InStrataColor1,
+    in float3 InStrataColor2,
+    in float3 InStrataColor3,
+    in float  InStrataFrequency,
+    in float  InStrataDistortion,
+    in float  InStrataNormalStrength,
     in Texture2D InNearSurfaceAlbedo,
     in Texture2D InNearSurfaceNormal,
     in SamplerState InNearSurfaceAlbedoSampler,
@@ -1494,9 +1222,13 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanar(
 {
     EvaluatePlanetaryMasterSurfaceWithTriplanar(
         InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InVolumeTexture, InVolumeSampler, InMacroFrequency, InMicroFrequency, InNormalStrength,
         InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseCustomArchetype, InTerrainColorLow, InTerrainColorMid, InTerrainColorHigh, InRockColor, bEnableSnow,
+        bEnableSnow, InSnowColor, InMagmaIntensity,
+        InBiomeColorPolarIce, InBiomeColorTundra, InBiomeColorTaiga, InBiomeColorGrassland,
+        InBiomeColorForest, InBiomeColorDesert, InBiomeColorSavannah, InBiomeColorRainforest,
+        InStrataColor1, InStrataColor2, InStrataColor3,
+        InStrataFrequency, InStrataDistortion, InStrataNormalStrength,
         InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler,
         InNearSurfaceNormal, InNearSurfaceAlbedoSampler,
         InNearRockAlbedo, InNearRockAlbedoSampler,
@@ -1584,7 +1316,7 @@ float4 EvaluatePlanetaryMasterCoordinates(
 
 // ============================================================================
 // ALL-IN-ONE CUSTOM NODE EVALUATORS (UE5 MATERIAL GRAPH COMPATIBILITY)
-// Consolidates 2D Triplanar Near & Far Detail workflow with Custom Archetypes & Snow Toggle
+// Consolidates 2D Triplanar Near & Far Detail workflow with Manual Biomes, Strata & Snow
 // ============================================================================
 
 // 1. Principal UE5 Custom Node Signature: 6 Texture2D + Sampler Pairs, float3 InVertexColor, out float OutEmissive
@@ -1597,7 +1329,6 @@ float4 EvaluatePlanetaryMasterFull(
     float3 InMeshWorldNormal,
     Texture3D InVolumeTexture,
     SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
     float  InMacroFrequency,
     float  InMicroFrequency,
     float  InNormalStrength,
@@ -1605,12 +1336,23 @@ float4 EvaluatePlanetaryMasterFull(
     float  InSlopeCliffFalloff,
     float  InSnowTemperatureThreshold,
     float  InWetnessIntensity,
-    float  bUseCustomArchetype,
-    float3 InTerrainColorLow,
-    float3 InTerrainColorMid,
-    float3 InTerrainColorHigh,
-    float3 InRockColor,
     float  bEnableSnow,
+    float3 InSnowColor,
+    float  InMagmaIntensity,
+    float3 InBiomeColorPolarIce,
+    float3 InBiomeColorTundra,
+    float3 InBiomeColorTaiga,
+    float3 InBiomeColorGrassland,
+    float3 InBiomeColorForest,
+    float3 InBiomeColorDesert,
+    float3 InBiomeColorSavannah,
+    float3 InBiomeColorRainforest,
+    float3 InStrataColor1,
+    float3 InStrataColor2,
+    float3 InStrataColor3,
+    float  InStrataFrequency,
+    float  InStrataDistortion,
+    float  InStrataNormalStrength,
     Texture2D InNearSurfaceAlbedo,
     SamplerState InNearSurfaceAlbedoSampler,
     Texture2D InNearSurfaceNormal,
@@ -1648,9 +1390,13 @@ float4 EvaluatePlanetaryMasterFull(
     EvaluatePlanetaryMasterSurfaceWithTriplanar(
         InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
         float4(InVertexColor, 1.0f), InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
-        InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InMacroFrequency, InMicroFrequency, InNormalStrength,
         InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseCustomArchetype, InTerrainColorLow, InTerrainColorMid, InTerrainColorHigh, InRockColor, bEnableSnow,
+        bEnableSnow, InSnowColor, InMagmaIntensity,
+        InBiomeColorPolarIce, InBiomeColorTundra, InBiomeColorTaiga, InBiomeColorGrassland,
+        InBiomeColorForest, InBiomeColorDesert, InBiomeColorSavannah, InBiomeColorRainforest,
+        InStrataColor1, InStrataColor2, InStrataColor3,
+        InStrataFrequency, InStrataDistortion, InStrataNormalStrength,
         InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler,
         InNearSurfaceNormal, InNearSurfaceNormalSampler,
         InNearRockAlbedo, InNearRockAlbedoSampler,
@@ -1685,7 +1431,6 @@ float4 EvaluatePlanetaryMasterFull(
     float3 InMeshWorldNormal,
     Texture3D InVolumeTexture,
     SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
     float  InMacroFrequency,
     float  InMicroFrequency,
     float  InNormalStrength,
@@ -1693,12 +1438,23 @@ float4 EvaluatePlanetaryMasterFull(
     float  InSlopeCliffFalloff,
     float  InSnowTemperatureThreshold,
     float  InWetnessIntensity,
-    float  bUseCustomArchetype,
-    float3 InTerrainColorLow,
-    float3 InTerrainColorMid,
-    float3 InTerrainColorHigh,
-    float3 InRockColor,
     float  bEnableSnow,
+    float3 InSnowColor,
+    float  InMagmaIntensity,
+    float3 InBiomeColorPolarIce,
+    float3 InBiomeColorTundra,
+    float3 InBiomeColorTaiga,
+    float3 InBiomeColorGrassland,
+    float3 InBiomeColorForest,
+    float3 InBiomeColorDesert,
+    float3 InBiomeColorSavannah,
+    float3 InBiomeColorRainforest,
+    float3 InStrataColor1,
+    float3 InStrataColor2,
+    float3 InStrataColor3,
+    float  InStrataFrequency,
+    float  InStrataDistortion,
+    float  InStrataNormalStrength,
     Texture2D InNearSurfaceAlbedo,
     SamplerState InNearSurfaceAlbedoSampler,
     Texture2D InNearSurfaceNormal,
@@ -1736,9 +1492,13 @@ float4 EvaluatePlanetaryMasterFull(
     EvaluatePlanetaryMasterSurfaceWithTriplanar(
         InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
         InVertexColor, InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
-        InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InMacroFrequency, InMicroFrequency, InNormalStrength,
         InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseCustomArchetype, InTerrainColorLow, InTerrainColorMid, InTerrainColorHigh, InRockColor, bEnableSnow,
+        bEnableSnow, InSnowColor, InMagmaIntensity,
+        InBiomeColorPolarIce, InBiomeColorTundra, InBiomeColorTaiga, InBiomeColorGrassland,
+        InBiomeColorForest, InBiomeColorDesert, InBiomeColorSavannah, InBiomeColorRainforest,
+        InStrataColor1, InStrataColor2, InStrataColor3,
+        InStrataFrequency, InStrataDistortion, InStrataNormalStrength,
         InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler,
         InNearSurfaceNormal, InNearSurfaceNormalSampler,
         InNearRockAlbedo, InNearRockAlbedoSampler,
@@ -1773,7 +1533,6 @@ float4 EvaluatePlanetaryMasterFull(
     float3 InMeshWorldNormal,
     Texture3D InVolumeTexture,
     SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
     float  InMacroFrequency,
     float  InMicroFrequency,
     float  InNormalStrength,
@@ -1781,12 +1540,23 @@ float4 EvaluatePlanetaryMasterFull(
     float  InSlopeCliffFalloff,
     float  InSnowTemperatureThreshold,
     float  InWetnessIntensity,
-    float  bUseCustomArchetype,
-    float3 InTerrainColorLow,
-    float3 InTerrainColorMid,
-    float3 InTerrainColorHigh,
-    float3 InRockColor,
     float  bEnableSnow,
+    float3 InSnowColor,
+    float  InMagmaIntensity,
+    float3 InBiomeColorPolarIce,
+    float3 InBiomeColorTundra,
+    float3 InBiomeColorTaiga,
+    float3 InBiomeColorGrassland,
+    float3 InBiomeColorForest,
+    float3 InBiomeColorDesert,
+    float3 InBiomeColorSavannah,
+    float3 InBiomeColorRainforest,
+    float3 InStrataColor1,
+    float3 InStrataColor2,
+    float3 InStrataColor3,
+    float  InStrataFrequency,
+    float  InStrataDistortion,
+    float  InStrataNormalStrength,
     Texture2D InNearSurfaceAlbedo,
     SamplerState InNearSurfaceAlbedoSampler,
     Texture2D InNearSurfaceNormal,
@@ -1823,9 +1593,13 @@ float4 EvaluatePlanetaryMasterFull(
     return EvaluatePlanetaryMasterFull(
         InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
         float4(InVertexColor, 1.0f), InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
-        InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InMacroFrequency, InMicroFrequency, InNormalStrength,
         InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseCustomArchetype, InTerrainColorLow, InTerrainColorMid, InTerrainColorHigh, InRockColor, bEnableSnow,
+        bEnableSnow, InSnowColor, InMagmaIntensity,
+        InBiomeColorPolarIce, InBiomeColorTundra, InBiomeColorTaiga, InBiomeColorGrassland,
+        InBiomeColorForest, InBiomeColorDesert, InBiomeColorSavannah, InBiomeColorRainforest,
+        InStrataColor1, InStrataColor2, InStrataColor3,
+        InStrataFrequency, InStrataDistortion, InStrataNormalStrength,
         InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler,
         InNearSurfaceNormal, InNearSurfaceNormalSampler,
         InNearRockAlbedo, InNearRockAlbedoSampler,
@@ -1851,7 +1625,6 @@ float4 EvaluatePlanetaryMasterFull(
     float3 InMeshWorldNormal,
     Texture3D InVolumeTexture,
     SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
     float  InMacroFrequency,
     float  InMicroFrequency,
     float  InNormalStrength,
@@ -1859,12 +1632,23 @@ float4 EvaluatePlanetaryMasterFull(
     float  InSlopeCliffFalloff,
     float  InSnowTemperatureThreshold,
     float  InWetnessIntensity,
-    float  bUseCustomArchetype,
-    float3 InTerrainColorLow,
-    float3 InTerrainColorMid,
-    float3 InTerrainColorHigh,
-    float3 InRockColor,
     float  bEnableSnow,
+    float3 InSnowColor,
+    float  InMagmaIntensity,
+    float3 InBiomeColorPolarIce,
+    float3 InBiomeColorTundra,
+    float3 InBiomeColorTaiga,
+    float3 InBiomeColorGrassland,
+    float3 InBiomeColorForest,
+    float3 InBiomeColorDesert,
+    float3 InBiomeColorSavannah,
+    float3 InBiomeColorRainforest,
+    float3 InStrataColor1,
+    float3 InStrataColor2,
+    float3 InStrataColor3,
+    float  InStrataFrequency,
+    float  InStrataDistortion,
+    float  InStrataNormalStrength,
     Texture2D InNearSurfaceAlbedo,
     SamplerState InNearSurfaceAlbedoSampler,
     Texture2D InNearSurfaceNormal,
@@ -1902,9 +1686,13 @@ float4 EvaluatePlanetaryMasterFull(
     float4 Res = EvaluatePlanetaryMasterFull(
         InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos,
         InVertexColor, InMeshWorldNormal, InVolumeTexture, InVolumeSampler,
-        InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InMacroFrequency, InMicroFrequency, InNormalStrength,
         InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseCustomArchetype, InTerrainColorLow, InTerrainColorMid, InTerrainColorHigh, InRockColor, bEnableSnow,
+        bEnableSnow, InSnowColor, InMagmaIntensity,
+        InBiomeColorPolarIce, InBiomeColorTundra, InBiomeColorTaiga, InBiomeColorGrassland,
+        InBiomeColorForest, InBiomeColorDesert, InBiomeColorSavannah, InBiomeColorRainforest,
+        InStrataColor1, InStrataColor2, InStrataColor3,
+        InStrataFrequency, InStrataDistortion, InStrataNormalStrength,
         InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler,
         InNearSurfaceNormal, InNearSurfaceNormalSampler,
         InNearRockAlbedo, InNearRockAlbedoSampler,
@@ -1932,7 +1720,6 @@ float4 EvaluatePlanetaryMasterFull(
     float3 InMeshWorldNormal,
     Texture3D InVolumeTexture,
     SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
     float  InMacroFrequency,
     float  InMicroFrequency,
     float  InNormalStrength,
@@ -1940,12 +1727,23 @@ float4 EvaluatePlanetaryMasterFull(
     float  InSlopeCliffFalloff,
     float  InSnowTemperatureThreshold,
     float  InWetnessIntensity,
-    float  bUseCustomArchetype,
-    float3 InTerrainColorLow,
-    float3 InTerrainColorMid,
-    float3 InTerrainColorHigh,
-    float3 InRockColor,
     float  bEnableSnow,
+    float3 InSnowColor,
+    float  InMagmaIntensity,
+    float3 InBiomeColorPolarIce,
+    float3 InBiomeColorTundra,
+    float3 InBiomeColorTaiga,
+    float3 InBiomeColorGrassland,
+    float3 InBiomeColorForest,
+    float3 InBiomeColorDesert,
+    float3 InBiomeColorSavannah,
+    float3 InBiomeColorRainforest,
+    float3 InStrataColor1,
+    float3 InStrataColor2,
+    float3 InStrataColor3,
+    float  InStrataFrequency,
+    float  InStrataDistortion,
+    float  InStrataNormalStrength,
     Texture2D InNearSurfaceAlbedo,
     Texture2D InNearSurfaceNormal,
     SamplerState InNearSurfaceAlbedoSampler,
@@ -1978,9 +1776,13 @@ float4 EvaluatePlanetaryMasterFull(
 {
     return EvaluatePlanetaryMasterFull(
         InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InVolumeTexture, InVolumeSampler, InMacroFrequency, InMicroFrequency, InNormalStrength,
         InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseCustomArchetype, InTerrainColorLow, InTerrainColorMid, InTerrainColorHigh, InRockColor, bEnableSnow,
+        bEnableSnow, InSnowColor, InMagmaIntensity,
+        InBiomeColorPolarIce, InBiomeColorTundra, InBiomeColorTaiga, InBiomeColorGrassland,
+        InBiomeColorForest, InBiomeColorDesert, InBiomeColorSavannah, InBiomeColorRainforest,
+        InStrataColor1, InStrataColor2, InStrataColor3,
+        InStrataFrequency, InStrataDistortion, InStrataNormalStrength,
         InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler,
         InNearSurfaceNormal, InNearSurfaceAlbedoSampler,
         InNearRockAlbedo, InNearRockAlbedoSampler,
@@ -2006,7 +1808,6 @@ float4 EvaluatePlanetaryMasterFull(
     float3 InMeshWorldNormal,
     Texture3D InVolumeTexture,
     SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
     float  InMacroFrequency,
     float  InMicroFrequency,
     float  InNormalStrength,
@@ -2014,12 +1815,23 @@ float4 EvaluatePlanetaryMasterFull(
     float  InSlopeCliffFalloff,
     float  InSnowTemperatureThreshold,
     float  InWetnessIntensity,
-    float  bUseCustomArchetype,
-    float3 InTerrainColorLow,
-    float3 InTerrainColorMid,
-    float3 InTerrainColorHigh,
-    float3 InRockColor,
     float  bEnableSnow,
+    float3 InSnowColor,
+    float  InMagmaIntensity,
+    float3 InBiomeColorPolarIce,
+    float3 InBiomeColorTundra,
+    float3 InBiomeColorTaiga,
+    float3 InBiomeColorGrassland,
+    float3 InBiomeColorForest,
+    float3 InBiomeColorDesert,
+    float3 InBiomeColorSavannah,
+    float3 InBiomeColorRainforest,
+    float3 InStrataColor1,
+    float3 InStrataColor2,
+    float3 InStrataColor3,
+    float  InStrataFrequency,
+    float  InStrataDistortion,
+    float  InStrataNormalStrength,
     Texture2D InNearSurfaceAlbedo,
     Texture2D InNearSurfaceNormal,
     SamplerState InNearSurfaceAlbedoSampler,
@@ -2052,9 +1864,13 @@ float4 EvaluatePlanetaryMasterFull(
 {
     return EvaluatePlanetaryMasterFull(
         InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InVolumeTexture, InVolumeSampler, InMacroFrequency, InMicroFrequency, InNormalStrength,
         InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseCustomArchetype, InTerrainColorLow, InTerrainColorMid, InTerrainColorHigh, InRockColor, bEnableSnow,
+        bEnableSnow, InSnowColor, InMagmaIntensity,
+        InBiomeColorPolarIce, InBiomeColorTundra, InBiomeColorTaiga, InBiomeColorGrassland,
+        InBiomeColorForest, InBiomeColorDesert, InBiomeColorSavannah, InBiomeColorRainforest,
+        InStrataColor1, InStrataColor2, InStrataColor3,
+        InStrataFrequency, InStrataDistortion, InStrataNormalStrength,
         InNearSurfaceAlbedo, InNearSurfaceAlbedoSampler,
         InNearSurfaceNormal, InNearSurfaceAlbedoSampler,
         InNearRockAlbedo, InNearRockAlbedoSampler,
@@ -2080,7 +1896,6 @@ float4 EvaluatePlanetaryMasterFull(
     float3 InMeshWorldNormal,
     Texture3D InVolumeTexture,
     SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
     float  InMacroFrequency,
     float  InMicroFrequency,
     float  InNormalStrength,
@@ -2088,12 +1903,23 @@ float4 EvaluatePlanetaryMasterFull(
     float  InSlopeCliffFalloff,
     float  InSnowTemperatureThreshold,
     float  InWetnessIntensity,
-    float  bUseCustomArchetype,
-    float3 InTerrainColorLow,
-    float3 InTerrainColorMid,
-    float3 InTerrainColorHigh,
-    float3 InRockColor,
     float  bEnableSnow,
+    float3 InSnowColor,
+    float  InMagmaIntensity,
+    float3 InBiomeColorPolarIce,
+    float3 InBiomeColorTundra,
+    float3 InBiomeColorTaiga,
+    float3 InBiomeColorGrassland,
+    float3 InBiomeColorForest,
+    float3 InBiomeColorDesert,
+    float3 InBiomeColorSavannah,
+    float3 InBiomeColorRainforest,
+    float3 InStrataColor1,
+    float3 InStrataColor2,
+    float3 InStrataColor3,
+    float  InStrataFrequency,
+    float  InStrataDistortion,
+    float  InStrataNormalStrength,
     Texture2D InNearSurfaceAlbedo,
     Texture2D InNearSurfaceNormal,
     SamplerState InNearSurfaceAlbedoSampler,
@@ -2126,9 +1952,13 @@ float4 EvaluatePlanetaryMasterFull(
 {
     return EvaluatePlanetaryMasterFull(
         InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, float4(InVertexColor, 1.0f), InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InVolumeTexture, InVolumeSampler, InMacroFrequency, InMicroFrequency, InNormalStrength,
         InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseCustomArchetype, InTerrainColorLow, InTerrainColorMid, InTerrainColorHigh, InRockColor, bEnableSnow,
+        bEnableSnow, InSnowColor, InMagmaIntensity,
+        InBiomeColorPolarIce, InBiomeColorTundra, InBiomeColorTaiga, InBiomeColorGrassland,
+        InBiomeColorForest, InBiomeColorDesert, InBiomeColorSavannah, InBiomeColorRainforest,
+        InStrataColor1, InStrataColor2, InStrataColor3,
+        InStrataFrequency, InStrataDistortion, InStrataNormalStrength,
         InNearSurfaceAlbedo, InNearSurfaceNormal, InNearSurfaceAlbedoSampler,
         InNearRockAlbedo, InNearRockNormal, InNearRockAlbedoSampler,
         InNearSnowAlbedo, InNearSnowNormal, InNearSnowAlbedoSampler,
@@ -2151,7 +1981,6 @@ float4 EvaluatePlanetaryMasterFull(
     float3 InMeshWorldNormal,
     Texture3D InVolumeTexture,
     SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
     float  InMacroFrequency,
     float  InMicroFrequency,
     float  InNormalStrength,
@@ -2159,12 +1988,23 @@ float4 EvaluatePlanetaryMasterFull(
     float  InSlopeCliffFalloff,
     float  InSnowTemperatureThreshold,
     float  InWetnessIntensity,
-    float  bUseCustomArchetype,
-    float3 InTerrainColorLow,
-    float3 InTerrainColorMid,
-    float3 InTerrainColorHigh,
-    float3 InRockColor,
     float  bEnableSnow,
+    float3 InSnowColor,
+    float  InMagmaIntensity,
+    float3 InBiomeColorPolarIce,
+    float3 InBiomeColorTundra,
+    float3 InBiomeColorTaiga,
+    float3 InBiomeColorGrassland,
+    float3 InBiomeColorForest,
+    float3 InBiomeColorDesert,
+    float3 InBiomeColorSavannah,
+    float3 InBiomeColorRainforest,
+    float3 InStrataColor1,
+    float3 InStrataColor2,
+    float3 InStrataColor3,
+    float  InStrataFrequency,
+    float  InStrataDistortion,
+    float  InStrataNormalStrength,
     Texture2D InNearSurfaceAlbedo,
     Texture2D InNearSurfaceNormal,
     SamplerState InNearSurfaceAlbedoSampler,
@@ -2198,9 +2038,13 @@ float4 EvaluatePlanetaryMasterFull(
     float3 Emiss3;
     float4 Res = EvaluatePlanetaryMasterFull(
         InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InVolumeTexture, InVolumeSampler, InMacroFrequency, InMicroFrequency, InNormalStrength,
         InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseCustomArchetype, InTerrainColorLow, InTerrainColorMid, InTerrainColorHigh, InRockColor, bEnableSnow,
+        bEnableSnow, InSnowColor, InMagmaIntensity,
+        InBiomeColorPolarIce, InBiomeColorTundra, InBiomeColorTaiga, InBiomeColorGrassland,
+        InBiomeColorForest, InBiomeColorDesert, InBiomeColorSavannah, InBiomeColorRainforest,
+        InStrataColor1, InStrataColor2, InStrataColor3,
+        InStrataFrequency, InStrataDistortion, InStrataNormalStrength,
         InNearSurfaceAlbedo, InNearSurfaceNormal, InNearSurfaceAlbedoSampler,
         InNearRockAlbedo, InNearRockNormal, InNearRockAlbedoSampler,
         InNearSnowAlbedo, InNearSnowNormal, InNearSnowAlbedoSampler,
@@ -2225,7 +2069,6 @@ float4 EvaluatePlanetaryMasterFull(
     float3 InMeshWorldNormal,
     Texture3D InVolumeTexture,
     SamplerState InVolumeSampler,
-    float  InArchetypeIndex,
     float  InMacroFrequency,
     float  InMicroFrequency,
     float  InNormalStrength,
@@ -2233,12 +2076,23 @@ float4 EvaluatePlanetaryMasterFull(
     float  InSlopeCliffFalloff,
     float  InSnowTemperatureThreshold,
     float  InWetnessIntensity,
-    float  bUseCustomArchetype,
-    float3 InTerrainColorLow,
-    float3 InTerrainColorMid,
-    float3 InTerrainColorHigh,
-    float3 InRockColor,
     float  bEnableSnow,
+    float3 InSnowColor,
+    float  InMagmaIntensity,
+    float3 InBiomeColorPolarIce,
+    float3 InBiomeColorTundra,
+    float3 InBiomeColorTaiga,
+    float3 InBiomeColorGrassland,
+    float3 InBiomeColorForest,
+    float3 InBiomeColorDesert,
+    float3 InBiomeColorSavannah,
+    float3 InBiomeColorRainforest,
+    float3 InStrataColor1,
+    float3 InStrataColor2,
+    float3 InStrataColor3,
+    float  InStrataFrequency,
+    float  InStrataDistortion,
+    float  InStrataNormalStrength,
     Texture2D InNearSurfaceAlbedo,
     Texture2D InNearSurfaceNormal,
     SamplerState InNearSurfaceAlbedoSampler,
@@ -2267,9 +2121,13 @@ float4 EvaluatePlanetaryMasterFull(
 {
     return EvaluatePlanetaryMasterFull(
         InWorldPos, InPlanetCenter, InPlanetRadius, InCameraWorldPos, InVertexColor, InMeshWorldNormal,
-        InVolumeTexture, InVolumeSampler, InArchetypeIndex, InMacroFrequency, InMicroFrequency, InNormalStrength,
+        InVolumeTexture, InVolumeSampler, InMacroFrequency, InMicroFrequency, InNormalStrength,
         InSlopeCliffThreshold, InSlopeCliffFalloff, InSnowTemperatureThreshold, InWetnessIntensity,
-        bUseCustomArchetype, InTerrainColorLow, InTerrainColorMid, InTerrainColorHigh, InRockColor, bEnableSnow,
+        bEnableSnow, InSnowColor, InMagmaIntensity,
+        InBiomeColorPolarIce, InBiomeColorTundra, InBiomeColorTaiga, InBiomeColorGrassland,
+        InBiomeColorForest, InBiomeColorDesert, InBiomeColorSavannah, InBiomeColorRainforest,
+        InStrataColor1, InStrataColor2, InStrataColor3,
+        InStrataFrequency, InStrataDistortion, InStrataNormalStrength,
         InNearSurfaceAlbedo, InNearSurfaceNormal, InNearSurfaceAlbedoSampler,
         InNearRockAlbedo, InNearRockNormal, InNearRockAlbedoSampler,
         InNearSnowAlbedo, InNearSnowNormal, InNearSnowAlbedoSampler,

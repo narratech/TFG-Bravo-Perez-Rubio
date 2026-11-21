@@ -62,29 +62,40 @@ public:
     void ResetPointersAfterDuplicate(USceneComponent* NewRoot);
 
     /**
-     * Configures visual parameters of planetary material.
-     *
-     * @param InArchetypeIndex Preset archetype index (0: Earth, 1: Mars, 2: Ice Moon, 3: Volcanic).
-     * @param bInUseCustomArchetype If true, enables custom terrain and rock colors.
-     * @param InTerrainColorLow Color for lowland depressions/basins.
-     * @param InTerrainColorMid Color for midland plains.
-     * @param InTerrainColorHigh Color for highlands and peaks.
-     * @param InRockColor Color for steep cliffs, slopes and bedrock.
-     * @param bInEnableSnow If true, enables dynamic snow accumulation.
+     * Configures manual biome, strata, and environmental parameters of the planetary material
+     * and pushes them to the active DynamicPlanetMat.
      */
     void SetMaterialData(
-        int32 InArchetypeIndex,
-        bool bInUseCustomArchetype,
-        const FLinearColor& InTerrainColorLow,
-        const FLinearColor& InTerrainColorMid,
-        const FLinearColor& InTerrainColorHigh,
-        const FLinearColor& InRockColor,
-        bool bInEnableSnow
+        const FLinearColor& InBiomeColorPolarIce,
+        const FLinearColor& InBiomeColorTundra,
+        const FLinearColor& InBiomeColorTaiga,
+        const FLinearColor& InBiomeColorGrassland,
+        const FLinearColor& InBiomeColorForest,
+        const FLinearColor& InBiomeColorDesert,
+        const FLinearColor& InBiomeColorSavannah,
+        const FLinearColor& InBiomeColorRainforest,
+        const FLinearColor& InStrataColor1,
+        const FLinearColor& InStrataColor2,
+        const FLinearColor& InStrataColor3,
+        float InStrataFrequency,
+        float InStrataDistortion,
+        float InStrataNormalStrength,
+        bool bInEnableSnow,
+        const FLinearColor& InSnowColor,
+        float InSnowTemperatureThreshold,
+        float InWetnessIntensity,
+        float InMagmaIntensity,
+        float InMacroFrequency,
+        float InMicroFrequency,
+        float InNormalStrength,
+        float InSlopeCliffThreshold,
+        float InSlopeCliffFallOff
     );
 
     /**
      * Updates active DynamicPlanetMat with the component's current material properties.
      */
+    UFUNCTION(BlueprintCallable, Category = "Materials")
     void UpdateMaterialParameters();
 
     /**
@@ -131,34 +142,107 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UMaterialInstance* BaseMaterial;
 
+    // --- Analytical Whittaker Biomes (Earth-Like defaults) ---
 
-    /** Archetype preset index (0: Earth-Like, 1: Mars-Like, 2: Ice Moon, 3: Volcanic). Used when bUseCustomArchetype is false. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Archetype", meta = (ClampMin = "0"))
-    int32 ArchetypeIndex = 0;
+    /** Biome 0: Polar Ice / Glacial albedo color. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Biomes")
+    FLinearColor BiomeColorPolarIce = FLinearColor(0.88f, 0.92f, 0.96f, 1.0f);
+
+    /** Biome 1: Tundra albedo color. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Biomes")
+    FLinearColor BiomeColorTundra = FLinearColor(0.42f, 0.40f, 0.32f, 1.0f);
+
+    /** Biome 2: Taiga / Boreal Conifer albedo color. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Biomes")
+    FLinearColor BiomeColorTaiga = FLinearColor(0.12f, 0.22f, 0.10f, 1.0f);
+
+    /** Biome 3: Temperate Grassland albedo color. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Biomes")
+    FLinearColor BiomeColorGrassland = FLinearColor(0.32f, 0.38f, 0.16f, 1.0f);
+
+    /** Biome 4: Temperate Deciduous Forest albedo color. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Biomes")
+    FLinearColor BiomeColorForest = FLinearColor(0.14f, 0.30f, 0.09f, 1.0f);
+
+    /** Biome 5: Arid Sand Desert albedo color. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Biomes")
+    FLinearColor BiomeColorDesert = FLinearColor(0.76f, 0.58f, 0.35f, 1.0f);
+
+    /** Biome 6: Savannah / Scrubland albedo color. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Biomes")
+    FLinearColor BiomeColorSavannah = FLinearColor(0.55f, 0.48f, 0.22f, 1.0f);
+
+    /** Biome 7: Tropical Rainforest albedo color. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Biomes")
+    FLinearColor BiomeColorRainforest = FLinearColor(0.06f, 0.20f, 0.05f, 1.0f);
+
+    // --- Geological Sedimentary Strata (Earth-Like defaults) ---
+
+    /** Sedimentary rock stratum tier 1 color (e.g. Sandstone). */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Strata")
+    FLinearColor StrataColor1 = FLinearColor(0.58f, 0.45f, 0.32f, 1.0f);
+
+    /** Sedimentary rock stratum tier 2 color (e.g. Iron Clay). */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Strata")
+    FLinearColor StrataColor2 = FLinearColor(0.42f, 0.25f, 0.18f, 1.0f);
+
+    /** Sedimentary rock stratum tier 3 color (e.g. Dark Shale). */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Strata")
+    FLinearColor StrataColor3 = FLinearColor(0.22f, 0.20f, 0.22f, 1.0f);
+
+    /** Vertical repetition frequency of cliff rock strata bands. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Strata", meta = (ClampMin = "0.001", UIMin = "0.01", UIMax = "0.5"))
+    float StrataFrequency = 0.08f;
+
+    /** 3D noise folding / undulation intensity of cliff rock strata. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Strata", meta = (ClampMin = "0.0", UIMin = "0.0", UIMax = "2.0"))
+    float StrataDistortion = 0.45f;
+
+    /** Horizontal shelf / ledge normal perturbation strength on cliffs. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Strata", meta = (ClampMin = "0.0", UIMin = "0.0", UIMax = "2.0"))
+    float StrataNormalStrength = 0.35f;
+
+    // --- Snow, Wetness, Magma & Surface Relief (Earth-Like defaults) ---
 
     /** Enables dynamic snow accumulation on cold zones and mountain peaks. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Archetype")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Environment")
     bool bEnableSnow = true;
 
-    /** Steep cliffs, slopes, and bedrock strata color. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Colors")
-    FLinearColor RockColor = FLinearColor(0.799f, 0.397f, 0.171f, 1.0f);
+    /** Snow / glaciation albedo tint color. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Environment", meta = (EditCondition = "bEnableSnow"))
+    FLinearColor SnowColor = FLinearColor(0.92f, 0.94f, 0.98f, 1.0f);
 
-    /** Highlands / Ridges / Peaks terrain tint color. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Colors")
-    FLinearColor TerrainColorHigh = FLinearColor(0.723f, 0.168f, 0.012f, 1.0f);
+    /** Temperature threshold below which snow begins to accumulate [0..1]. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Environment", meta = (EditCondition = "bEnableSnow", ClampMin = "0.0", ClampMax = "1.0"))
+    float SnowTemperatureThreshold = 0.22f;
 
-    /** Lowlands / Depressions / Basin terrain tint color. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Colors")
-    FLinearColor TerrainColorLow = FLinearColor(0.212f, 0.028f, 0.026f, 1.0f);
+    /** Intensity of porous soil darkening and water puddles in humid flat areas. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Environment", meta = (ClampMin = "0.0", UIMin = "0.0", UIMax = "2.0"))
+    float WetnessIntensity = 1.0f;
 
-    /** Midlands / Plains / Dominant terrain tint color. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Colors")
-    FLinearColor TerrainColorMid = FLinearColor(0.509f, 0.014f, 0.008f, 1.0f);
+    /** Volcanic thermal magma emission intensity (0 disables magma emission). */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Environment", meta = (ClampMin = "0.0", UIMin = "0.0", UIMax = "5.0"))
+    float MagmaIntensity = 0.0f;
 
-    /** Controls whether custom palette colors (TerrainColorLow/Mid/High, RockColor) are used instead of preset archetypes. */
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Archetype")
-    bool bUseCustomArchetype = false;
+    /** Primary macro 3D volume noise frequency. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Surface", meta = (ClampMin = "0.0000001"))
+    float MacroFrequency = 0.00003f;
+
+    /** Secondary meso/micro 3D volume noise frequency. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Surface", meta = (ClampMin = "0.0000001"))
+    float MicroFrequency = 0.000002f;
+
+    /** Procedural tangent-space normal perturbation strength. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Surface", meta = (ClampMin = "0.0", UIMin = "0.0", UIMax = "3.0"))
+    float NormalStrength = 1.0f;
+
+    /** Slope threshold where flat biome soil transitions into stratified cliff rock [0..1]. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Surface", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float SlopeCliffThreshold = 0.15f;
+
+    /** Smoothness falloff band around SlopeCliffThreshold. */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials|Surface", meta = (ClampMin = "0.001", ClampMax = "1.0"))
+    float SlopeCliffFallOff = 0.20f;
 
     /** Base resolution of each clipmap level */
     UPROPERTY(EditAnywhere, Category = "Clipmap", meta = (ClampMin = "8", ClampMax = "256"))

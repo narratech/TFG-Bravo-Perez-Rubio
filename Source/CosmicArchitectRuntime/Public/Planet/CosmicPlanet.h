@@ -3,6 +3,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "System/CosmicSystemTypes.h"
 #include "CosmicPlanet.generated.h"
 
 class UCosmicClipmapComponent;
@@ -84,13 +85,7 @@ public:
 	void InitPlanet(
 		float InRadiusKm,
 		UCosmicNoiseClass* NewNoiseClass,
-		int32 InArchetypeIndex,
-		bool bInUseCustomArchetype,
-		const FLinearColor& InTerrainColorLow,
-		const FLinearColor& InTerrainColorMid,
-		const FLinearColor& InTerrainColorHigh,
-		const FLinearColor& InRockColor,
-		bool bInEnableSnow,
+		const FCosmicPlanetAppearanceParams& InAppearance,
 		UMaterialInstance* InBaseMaterial,
 		// Clipmap
 		bool UseClipmap = true,

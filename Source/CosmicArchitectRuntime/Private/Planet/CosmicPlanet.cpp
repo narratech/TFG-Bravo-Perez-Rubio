@@ -404,13 +404,7 @@ void ACosmicPlanet::OnConstruction(const FTransform& Transform)
 void ACosmicPlanet::InitPlanet(
     float InRadiusKm,
     UCosmicNoiseClass* NewNoiseClass,
-    int32 InArchetypeIndex,
-    bool bInUseCustomArchetype,
-    const FLinearColor& InTerrainColorLow,
-    const FLinearColor& InTerrainColorMid,
-    const FLinearColor& InTerrainColorHigh,
-    const FLinearColor& InRockColor,
-    bool bInEnableSnow,
+    const FCosmicPlanetAppearanceParams& InAppearance,
     UMaterialInstance* InBaseMaterial,
     // Clipmap
     bool UseClipmap,
@@ -450,13 +444,33 @@ void ACosmicPlanet::InitPlanet(
         ClipmapComponent->HeightVisibility = InHeightVisibility;
         ClipmapComponent->UseClipmap = UseClipmap;
 
-        ClipmapComponent->ArchetypeIndex = InArchetypeIndex;
-        ClipmapComponent->bUseCustomArchetype = bInUseCustomArchetype;
-        ClipmapComponent->TerrainColorLow = InTerrainColorLow;
-        ClipmapComponent->TerrainColorMid = InTerrainColorMid;
-        ClipmapComponent->TerrainColorHigh = InTerrainColorHigh;
-        ClipmapComponent->RockColor = InRockColor;
-        ClipmapComponent->bEnableSnow = bInEnableSnow;
+        ClipmapComponent->BiomeColorPolarIce   = InAppearance.BiomeColorPolarIce;
+        ClipmapComponent->BiomeColorTundra     = InAppearance.BiomeColorTundra;
+        ClipmapComponent->BiomeColorTaiga      = InAppearance.BiomeColorTaiga;
+        ClipmapComponent->BiomeColorGrassland  = InAppearance.BiomeColorGrassland;
+        ClipmapComponent->BiomeColorForest     = InAppearance.BiomeColorForest;
+        ClipmapComponent->BiomeColorDesert     = InAppearance.BiomeColorDesert;
+        ClipmapComponent->BiomeColorSavannah   = InAppearance.BiomeColorSavannah;
+        ClipmapComponent->BiomeColorRainforest = InAppearance.BiomeColorRainforest;
+
+        ClipmapComponent->StrataColor1         = InAppearance.StrataColor1;
+        ClipmapComponent->StrataColor2         = InAppearance.StrataColor2;
+        ClipmapComponent->StrataColor3         = InAppearance.StrataColor3;
+        ClipmapComponent->StrataFrequency      = InAppearance.StrataFrequency;
+        ClipmapComponent->StrataDistortion     = InAppearance.StrataDistortion;
+        ClipmapComponent->StrataNormalStrength = InAppearance.StrataNormalStrength;
+
+        ClipmapComponent->bEnableSnow              = InAppearance.bEnableSnow;
+        ClipmapComponent->SnowColor                = InAppearance.SnowColor;
+        ClipmapComponent->SnowTemperatureThreshold = InAppearance.SnowTemperatureThreshold;
+        ClipmapComponent->WetnessIntensity         = InAppearance.WetnessIntensity;
+        ClipmapComponent->MagmaIntensity           = InAppearance.MagmaIntensity;
+
+        ClipmapComponent->MacroFrequency      = InAppearance.MacroFrequency;
+        ClipmapComponent->MicroFrequency      = InAppearance.MicroFrequency;
+        ClipmapComponent->NormalStrength      = InAppearance.NormalStrength;
+        ClipmapComponent->SlopeCliffThreshold = InAppearance.SlopeCliffThreshold;
+        ClipmapComponent->SlopeCliffFallOff   = InAppearance.SlopeCliffFallOff;
     }
 
     // Ocean configuration.
@@ -505,16 +519,39 @@ void ACosmicPlanet::InitPlanet(
     UCosmicFoliageCollection* InFoliageCollection
 )
 {
+    FCosmicPlanetAppearanceParams CurrentAppearance;
+    if (ClipmapComponent)
+    {
+        CurrentAppearance.BiomeColorPolarIce       = ClipmapComponent->BiomeColorPolarIce;
+        CurrentAppearance.BiomeColorTundra         = ClipmapComponent->BiomeColorTundra;
+        CurrentAppearance.BiomeColorTaiga          = ClipmapComponent->BiomeColorTaiga;
+        CurrentAppearance.BiomeColorGrassland      = ClipmapComponent->BiomeColorGrassland;
+        CurrentAppearance.BiomeColorForest         = ClipmapComponent->BiomeColorForest;
+        CurrentAppearance.BiomeColorDesert         = ClipmapComponent->BiomeColorDesert;
+        CurrentAppearance.BiomeColorSavannah       = ClipmapComponent->BiomeColorSavannah;
+        CurrentAppearance.BiomeColorRainforest     = ClipmapComponent->BiomeColorRainforest;
+        CurrentAppearance.StrataColor1             = ClipmapComponent->StrataColor1;
+        CurrentAppearance.StrataColor2             = ClipmapComponent->StrataColor2;
+        CurrentAppearance.StrataColor3             = ClipmapComponent->StrataColor3;
+        CurrentAppearance.StrataFrequency          = ClipmapComponent->StrataFrequency;
+        CurrentAppearance.StrataDistortion         = ClipmapComponent->StrataDistortion;
+        CurrentAppearance.StrataNormalStrength     = ClipmapComponent->StrataNormalStrength;
+        CurrentAppearance.bEnableSnow              = ClipmapComponent->bEnableSnow;
+        CurrentAppearance.SnowColor                = ClipmapComponent->SnowColor;
+        CurrentAppearance.SnowTemperatureThreshold = ClipmapComponent->SnowTemperatureThreshold;
+        CurrentAppearance.WetnessIntensity         = ClipmapComponent->WetnessIntensity;
+        CurrentAppearance.MagmaIntensity           = ClipmapComponent->MagmaIntensity;
+        CurrentAppearance.MacroFrequency           = ClipmapComponent->MacroFrequency;
+        CurrentAppearance.MicroFrequency           = ClipmapComponent->MicroFrequency;
+        CurrentAppearance.NormalStrength           = ClipmapComponent->NormalStrength;
+        CurrentAppearance.SlopeCliffThreshold      = ClipmapComponent->SlopeCliffThreshold;
+        CurrentAppearance.SlopeCliffFallOff        = ClipmapComponent->SlopeCliffFallOff;
+    }
+
     InitPlanet(
         InRadiusKm,
         NewNoiseClass,
-        ClipmapComponent ? ClipmapComponent->ArchetypeIndex : 0,
-        ClipmapComponent ? ClipmapComponent->bUseCustomArchetype : false,
-        ClipmapComponent ? ClipmapComponent->TerrainColorLow : FLinearColor(0.212f, 0.028f, 0.026f, 1.0f),
-        ClipmapComponent ? ClipmapComponent->TerrainColorMid : FLinearColor(0.509f, 0.014f, 0.008f, 1.0f),
-        ClipmapComponent ? ClipmapComponent->TerrainColorHigh : FLinearColor(0.723f, 0.168f, 0.012f, 1.0f),
-        ClipmapComponent ? ClipmapComponent->RockColor : FLinearColor(0.799f, 0.397f, 0.171f, 1.0f),
-        ClipmapComponent ? ClipmapComponent->bEnableSnow : true,
+        CurrentAppearance,
         InBaseMaterial,
         UseClipmap,
         InBaseResolution,

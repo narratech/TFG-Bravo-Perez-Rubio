@@ -293,21 +293,41 @@ void UCosmicClipmapComponent::PostEditChangeProperty(FPropertyChangedEvent& Prop
     const FName PropertyName = PropertyChangedEvent.Property
         ? PropertyChangedEvent.Property->GetFName()
         : NAME_None;
+    const FName MemberPropertyName = PropertyChangedEvent.MemberProperty
+        ? PropertyChangedEvent.MemberProperty->GetFName()
+        : PropertyName;
 
     // BASE MATERIAL (update MID directly without reregistering components)
-    if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, BaseMaterial))
+    if (MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, BaseMaterial))
     {
         BuildDynamicMaterial();
         return;
     }
 
-    if (PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, ArchetypeIndex) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, bUseCustomArchetype) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, bEnableSnow) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, TerrainColorLow) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, TerrainColorMid) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, TerrainColorHigh) ||
-        PropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, RockColor))
+    if (MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, BiomeColorPolarIce) ||
+        MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, BiomeColorTundra) ||
+        MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, BiomeColorTaiga) ||
+        MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, BiomeColorGrassland) ||
+        MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, BiomeColorForest) ||
+        MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, BiomeColorDesert) ||
+        MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, BiomeColorSavannah) ||
+        MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, BiomeColorRainforest) ||
+        MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, StrataColor1) ||
+        MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, StrataColor2) ||
+        MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, StrataColor3) ||
+        MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, StrataFrequency) ||
+        MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, StrataDistortion) ||
+        MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, StrataNormalStrength) ||
+        MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, bEnableSnow) ||
+        MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, SnowColor) ||
+        MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, SnowTemperatureThreshold) ||
+        MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, WetnessIntensity) ||
+        MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, MagmaIntensity) ||
+        MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, MacroFrequency) ||
+        MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, MicroFrequency) ||
+        MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, NormalStrength) ||
+        MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, SlopeCliffThreshold) ||
+        MemberPropertyName == GET_MEMBER_NAME_CHECKED(UCosmicClipmapComponent, SlopeCliffFallOff))
     {
         UpdateMaterialParameters();
         return;
@@ -571,46 +591,102 @@ void UCosmicClipmapComponent::ResetPointersAfterDuplicate(USceneComponent* NewRo
 }
 
 void UCosmicClipmapComponent::SetMaterialData(
-    int32 InArchetypeIndex,
-    bool bInUseCustomArchetype,
-    const FLinearColor& InTerrainColorLow,
-    const FLinearColor& InTerrainColorMid,
-    const FLinearColor& InTerrainColorHigh,
-    const FLinearColor& InRockColor,
-    bool bInEnableSnow)
+    const FLinearColor& InBiomeColorPolarIce,
+    const FLinearColor& InBiomeColorTundra,
+    const FLinearColor& InBiomeColorTaiga,
+    const FLinearColor& InBiomeColorGrassland,
+    const FLinearColor& InBiomeColorForest,
+    const FLinearColor& InBiomeColorDesert,
+    const FLinearColor& InBiomeColorSavannah,
+    const FLinearColor& InBiomeColorRainforest,
+    const FLinearColor& InStrataColor1,
+    const FLinearColor& InStrataColor2,
+    const FLinearColor& InStrataColor3,
+    float InStrataFrequency,
+    float InStrataDistortion,
+    float InStrataNormalStrength,
+    bool bInEnableSnow,
+    const FLinearColor& InSnowColor,
+    float InSnowTemperatureThreshold,
+    float InWetnessIntensity,
+    float InMagmaIntensity,
+    float InMacroFrequency,
+    float InMicroFrequency,
+    float InNormalStrength,
+    float InSlopeCliffThreshold,
+    float InSlopeCliffFallOff)
 {
-    ArchetypeIndex = InArchetypeIndex;
-    bUseCustomArchetype = bInUseCustomArchetype;
-    TerrainColorLow = InTerrainColorLow;
-    TerrainColorMid = InTerrainColorMid;
-    TerrainColorHigh = InTerrainColorHigh;
-    RockColor = InRockColor;
-    bEnableSnow = bInEnableSnow;
+    BiomeColorPolarIce       = InBiomeColorPolarIce;
+    BiomeColorTundra         = InBiomeColorTundra;
+    BiomeColorTaiga          = InBiomeColorTaiga;
+    BiomeColorGrassland      = InBiomeColorGrassland;
+    BiomeColorForest         = InBiomeColorForest;
+    BiomeColorDesert         = InBiomeColorDesert;
+    BiomeColorSavannah       = InBiomeColorSavannah;
+    BiomeColorRainforest     = InBiomeColorRainforest;
 
-    if (DynamicPlanetMat)
-    {
-        DynamicPlanetMat->SetScalarParameterValue(FName("PlanetRadius"), PlanetRadius);
-        DynamicPlanetMat->SetScalarParameterValue(FName("ArchetypeIndex"), static_cast<float>(ArchetypeIndex));
-        DynamicPlanetMat->SetScalarParameterValue(FName("UseCustomArchetype"), bUseCustomArchetype ? 1.0f : 0.0f);
-        DynamicPlanetMat->SetScalarParameterValue(FName("EnableSnow"), bEnableSnow ? 1.0f : 0.0f);
-        DynamicPlanetMat->SetVectorParameterValue(FName("TerrainColorLow"), TerrainColorLow);
-        DynamicPlanetMat->SetVectorParameterValue(FName("TerrainColorMid"), TerrainColorMid);
-        DynamicPlanetMat->SetVectorParameterValue(FName("TerrainColorHigh"), TerrainColorHigh);
-        DynamicPlanetMat->SetVectorParameterValue(FName("RockColor"), RockColor);
-    }
+    StrataColor1             = InStrataColor1;
+    StrataColor2             = InStrataColor2;
+    StrataColor3             = InStrataColor3;
+    StrataFrequency          = InStrataFrequency;
+    StrataDistortion         = InStrataDistortion;
+    StrataNormalStrength     = InStrataNormalStrength;
+
+    bEnableSnow              = bInEnableSnow;
+    SnowColor                = InSnowColor;
+    SnowTemperatureThreshold = InSnowTemperatureThreshold;
+    WetnessIntensity         = InWetnessIntensity;
+    MagmaIntensity           = InMagmaIntensity;
+
+    MacroFrequency           = InMacroFrequency;
+    MicroFrequency           = InMicroFrequency;
+    NormalStrength           = InNormalStrength;
+    SlopeCliffThreshold      = InSlopeCliffThreshold;
+    SlopeCliffFallOff        = InSlopeCliffFallOff;
+
+    UpdateMaterialParameters();
 }
 
 void UCosmicClipmapComponent::UpdateMaterialParameters()
 {
-    SetMaterialData(
-        ArchetypeIndex,
-        bUseCustomArchetype,
-        TerrainColorLow,
-        TerrainColorMid,
-        TerrainColorHigh,
-        RockColor,
-        bEnableSnow
-    );
+    if (!DynamicPlanetMat)
+    {
+        return;
+    }
+
+    DynamicPlanetMat->SetScalarParameterValue(FName("PlanetRadius"), PlanetRadius);
+
+    // 8 Analytical Whittaker Biome Colors
+    DynamicPlanetMat->SetVectorParameterValue(FName("BiomeColorPolarIce"), BiomeColorPolarIce);
+    DynamicPlanetMat->SetVectorParameterValue(FName("BiomeColorTundra"), BiomeColorTundra);
+    DynamicPlanetMat->SetVectorParameterValue(FName("BiomeColorTaiga"), BiomeColorTaiga);
+    DynamicPlanetMat->SetVectorParameterValue(FName("BiomeColorGrassland"), BiomeColorGrassland);
+    DynamicPlanetMat->SetVectorParameterValue(FName("BiomeColorForest"), BiomeColorForest);
+    DynamicPlanetMat->SetVectorParameterValue(FName("BiomeColorDesert"), BiomeColorDesert);
+    DynamicPlanetMat->SetVectorParameterValue(FName("BiomeColorSavannah"), BiomeColorSavannah);
+    DynamicPlanetMat->SetVectorParameterValue(FName("BiomeColorRainforest"), BiomeColorRainforest);
+
+    // Geological Sedimentary Strata
+    DynamicPlanetMat->SetVectorParameterValue(FName("StrataColor1"), StrataColor1);
+    DynamicPlanetMat->SetVectorParameterValue(FName("StrataColor2"), StrataColor2);
+    DynamicPlanetMat->SetVectorParameterValue(FName("StrataColor3"), StrataColor3);
+    DynamicPlanetMat->SetScalarParameterValue(FName("StrataFrequency"), StrataFrequency);
+    DynamicPlanetMat->SetScalarParameterValue(FName("StrataDistortion"), StrataDistortion);
+    DynamicPlanetMat->SetScalarParameterValue(FName("StrataNormalStrength"), StrataNormalStrength);
+
+    // Snow, Wetness & Magma
+    DynamicPlanetMat->SetScalarParameterValue(FName("EnableSnow"), bEnableSnow ? 1.0f : 0.0f);
+    DynamicPlanetMat->SetVectorParameterValue(FName("SnowColor"), SnowColor);
+    DynamicPlanetMat->SetScalarParameterValue(FName("SnowTemperatureThreshold"), SnowTemperatureThreshold);
+    DynamicPlanetMat->SetScalarParameterValue(FName("WetnessIntensity"), WetnessIntensity);
+    DynamicPlanetMat->SetScalarParameterValue(FName("MagmaIntensity"), MagmaIntensity);
+
+    // Terrain Relief & Cliffs
+    DynamicPlanetMat->SetScalarParameterValue(FName("MacroFrequency"), MacroFrequency);
+    DynamicPlanetMat->SetScalarParameterValue(FName("MicroFrequency"), MicroFrequency);
+    DynamicPlanetMat->SetScalarParameterValue(FName("NormalStrength"), NormalStrength);
+    DynamicPlanetMat->SetScalarParameterValue(FName("SlopeCliffThreshold"), SlopeCliffThreshold);
+    DynamicPlanetMat->SetScalarParameterValue(FName("SlopeCliffFallOff"), SlopeCliffFallOff);
 }
 
 void UCosmicClipmapComponent::BuildDynamicMaterial() 

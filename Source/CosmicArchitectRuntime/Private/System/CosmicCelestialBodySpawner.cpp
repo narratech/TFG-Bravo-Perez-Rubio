@@ -100,17 +100,10 @@ void FCosmicCelestialBodySpawner::InitializePlanetAppearance(
         return;
     }
 
-    // Encapsulate call to InitPlanet using both current archetype parameters and legacy fallbacks
     Planet->InitPlanet(
         RadiusKm,
         NoiseSettings,
-        Appearance.ArchetypeIndex,
-        Appearance.bUseCustomArchetype,
-        Appearance.TerrainColorLow,
-        Appearance.TerrainColorMid,
-        Appearance.TerrainColorHigh,
-        Appearance.RockColor,
-        Appearance.bEnableSnow,
+        Appearance,
         Material,
         bUseClipmap,
         ClipResolution,
