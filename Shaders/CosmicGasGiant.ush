@@ -1,0 +1,290 @@
+// Copyright Javier Bravo, David Rubio, Sergio Perez 2026 All Rights Reserved.
+// CosmicGasGiant.ush - Procedural Gas Giant Atmospheric Shader
+//
+// Evaluates a multi-layered procedural gas giant atmosphere on LWC-safe unit-sphere
+// coordinates with differential zonal jet streams, Kelvin-Helmholtz shear eddies,
+// anticyclonic storm vortices (Great Red Spot + secondary oval), polar storm hoods,
+// sun-masked Rayleigh atmospheric limb scattering, and terminator-safe world normals.
+#pragma once
+
+// Hash & 3D Procedural Noise Primitives (Texture-Free, 0 VRAM, Seam-Free)
+
+float3 GasGiantHash33(float3 p3)
+{
+    p3 = frac(p3 * float3(0.1031, 0.1030, 0.0973));
+    p3 += dot(p3, p3.yxz + 33.33);
+    return frac((p3.xxy + p3.yxx) * p3.zyx);
+}
+
+float GasGiantNoise3D(float3 p)
+{
+    float3 i = floor(p);
+    float3 f = frac(p);
+    float3 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+
+    float n000 = dot(GasGiantHash33(i + float3(0.0, 0.0, 0.0)) * 2.0 - 1.0, f - float3(0.0, 0.0, 0.0));
+    float n100 = dot(GasGiantHash33(i + float3(1.0, 0.0, 0.0)) * 2.0 - 1.0, f - float3(1.0, 0.0, 0.0));
+    float n010 = dot(GasGiantHash33(i + float3(0.0, 1.0, 0.0)) * 2.0 - 1.0, f - float3(0.0, 1.0, 0.0));
+    float n110 = dot(GasGiantHash33(i + float3(1.0, 1.0, 0.0)) * 2.0 - 1.0, f - float3(1.0, 1.0, 0.0));
+    float n001 = dot(GasGiantHash33(i + float3(0.0, 0.0, 1.0)) * 2.0 - 1.0, f - float3(0.0, 0.0, 1.0));
+    float n101 = dot(GasGiantHash33(i + float3(1.0, 0.0, 1.0)) * 2.0 - 1.0, f - float3(1.0, 0.0, 1.0));
+    float n011 = dot(GasGiantHash33(i + float3(0.0, 1.0, 1.0)) * 2.0 - 1.0, f - float3(0.0, 1.0, 1.0));
+    float n111 = dot(GasGiantHash33(i + float3(1.0, 1.0, 1.0)) * 2.0 - 1.0, f - float3(1.0, 1.0, 1.0));
+
+    float nx00 = lerp(n000, n100, u.x);
+    float nx10 = lerp(n010, n110, u.x);
+    float nx01 = lerp(n001, n101, u.x);
+    float nx11 = lerp(n011, n111, u.x);
+
+    float nxy0 = lerp(nx00, nx10, u.y);
+    float nxy1 = lerp(nx01, nx11, u.y);
+
+    return lerp(nxy0, nxy1, u.z) * 0.5 + 0.5;
+}
+
+float GasGiantFbm(float3 p, int octaves)
+{
+    float val = 0.0;
+    float amp = 0.5;
+    float freq = 1.0;
+    float norm = 0.0;
+    [unroll]
+    for (int k = 0; k < 5; k++)
+    {
+        if (k >= octaves) break;
+        val += amp * GasGiantNoise3D(p * freq);
+        norm += amp;
+        p = float3(
+            p.x * 0.80 - p.y * 0.60,
+            p.x * 0.60 + p.y * 0.80,
+            p.z
+        );
+        freq *= 2.07;
+        amp *= 0.5;
+    }
+    return val / max(norm, 1e-5);
+}
+
+float GasGiantRidgedFbm(float3 p, int octaves)
+{
+    float val = 0.0;
+    float amp = 0.5;
+    float freq = 1.0;
+    float norm = 0.0;
+    [unroll]
+    for (int k = 0; k < 4; k++)
+    {
+        if (k >= octaves) break;
+        float n = 1.0 - abs(GasGiantNoise3D(p * freq) * 2.0 - 1.0);
+        val += amp * n * n;
+        norm += amp;
+        p = float3(
+            p.x * 0.80 - p.y * 0.60,
+            p.x * 0.60 + p.y * 0.80,
+            p.z
+        );
+        freq *= 2.11;
+        amp *= 0.5;
+    }
+    return val / max(norm, 1e-5);
+}
+
+// Main Material Graph Entry Point
+
+float3 EvaluateCosmicGasGiant(
+    float3 LocalPos,
+    float  PlanetRadius,
+    float3 WorldNormal,
+    float3 CameraVector,
+    float  Time,
+    float  RotationSpeed,
+    float  CloudSize,
+    float  NoiseScale,
+    float  BandCount,
+    float  TurbulenceStrength,
+    float  StormIntensity,
+    float  AtmosphereRimStrength,
+    float  CloudNormalStrength,
+    float3 ColorLow,
+    float3 ColorMid,
+    float3 ColorHigh,
+    float3 StormColor,
+    float3 PolarColor,
+    float3 AtmosphereColor,
+    float3 SunOffset,
+    out float  RoughnessOut,
+    out float3 EmissiveOut,
+    out float3 SubsurfaceOut,
+    out float3 NormalOut)
+{
+    // Normalized unit-sphere coordinates (LWC-safe, radius-independent)
+    float3 P = normalize(LocalPos + float3(1e-6, 0.0, 0.0));
+    float3 N = normalize(WorldNormal);
+    float3 V = normalize(CameraVector);
+    float3 SunDir = normalize(SunOffset + float3(1e-6, 0.0, 0.0));
+
+    float lat = asin(clamp(P.z, -1.0, 1.0)); // [-PI/2, PI/2]
+    float absLat = abs(P.z);
+
+    float safeBandCount = max(BandCount, 2.0);
+    float scale = max(NoiseScale, 0.05) * (0.1 / max(CloudSize, 0.01));
+
+    // Differential zonal jet-stream rotation (equator faster + alternating counter-flowing jets)
+    float bandPhase = lat * safeBandCount * 1.85;
+    float jetProfile = sin(bandPhase) * 0.55 + sin(bandPhase * 2.0 + 0.7) * 0.28 + cos(bandPhase * 0.5 - 0.4) * 0.17;
+
+    float rotAngle = Time * RotationSpeed * (1.0 + 0.45 * cos(lat * 2.0) + 0.30 * jetProfile);
+    float sRot = sin(rotAngle);
+    float cRot = cos(rotAngle);
+    float3 Pr = float3(
+        P.x * cRot - P.y * sRot,
+        P.x * sRot + P.y * cRot,
+        P.z
+    );
+
+    // Anticyclonic Great Storm (Great Red Spot) & Secondary White Oval
+    float stormLon = -2.05 + Time * RotationSpeed * 1.12;
+    float stormLat = -0.34;
+    float cosSLat = cos(stormLat);
+    float3 stormCenter = float3(cosSLat * cos(stormLon), cosSLat * sin(stormLon), sin(stormLat));
+
+    float3 stormEast = normalize(float3(-sin(stormLon), cos(stormLon), 0.0));
+    float3 stormNorth = normalize(cross(stormCenter, stormEast));
+
+    float frontMask = smoothstep(-0.05, 0.35, dot(P, stormCenter));
+    float3 dStorm = P - stormCenter;
+    float sdx = dot(dStorm, stormEast) / 0.21;
+    float sdy = dot(dStorm, stormNorth) / 0.115;
+    float sDist = sqrt(sdx * sdx + sdy * sdy);
+
+    float stormCore = (1.0 - smoothstep(0.0, 1.0, sDist)) * frontMask * saturate(StormIntensity);
+    float stormCollar = smoothstep(0.62, 0.98, sDist) * (1.0 - smoothstep(0.98, 1.52, sDist)) * frontMask * saturate(StormIntensity);
+    float stormDeflect = (sdy >= 0.0 ? 1.0 : -1.0) * 0.125 * exp(-sDist * sDist * 1.45) * frontMask * saturate(StormIntensity);
+
+    // Secondary white oval storm in northern temperate belt
+    float ovalLon = stormLon - 0.55;
+    float ovalLat = 0.42;
+    float cosOLat = cos(ovalLat);
+    float3 ovalCenter = float3(cosOLat * cos(ovalLon), cosOLat * sin(ovalLon), sin(ovalLat));
+    float3 ovalEast = normalize(float3(-sin(ovalLon), cos(ovalLon), 0.0));
+    float3 ovalNorth = normalize(cross(ovalCenter, ovalEast));
+    float ovalFront = smoothstep(-0.05, 0.35, dot(P, ovalCenter));
+    float3 dOval = P - ovalCenter;
+    float odx = dot(dOval, ovalEast) / 0.11;
+    float ody = dot(dOval, ovalNorth) / 0.065;
+    float oDist = sqrt(odx * odx + ody * ody);
+    float ovalMask = (1.0 - smoothstep(0.0, 1.0, oDist)) * ovalFront * saturate(StormIntensity) * 0.90;
+
+    // Multi-Pass Anisotropic Domain Warping & Kelvin-Helmholtz Shear Eddies
+    float3 P_band = float3(Pr.x * 1.9, Pr.y * 1.9, Pr.z * (safeBandCount * 0.85)) * scale;
+
+    float3 q = float3(
+        GasGiantFbm(P_band * 1.25, 4),
+        GasGiantFbm(P_band * 1.25 + float3(5.2, 1.3, 2.8), 4),
+        GasGiantFbm(P_band * 1.25 + float3(2.1, 7.4, 4.1), 4)
+    );
+
+    float shearMask = pow(abs(cos(bandPhase)), 1.25);
+    float turb = TurbulenceStrength * (0.45 + 1.05 * shearMask);
+
+    float3 P_warp = P_band + float3((q.x - 0.5) * 2.1, (q.y - 0.5) * 2.1, (q.z - 0.5) * 0.72) * turb;
+
+    float3 r = float3(
+        GasGiantFbm(P_warp * 2.35 + float3(1.7, 9.2, 3.4), 4),
+        GasGiantFbm(P_warp * 2.35 + float3(8.3, 2.8, 6.1), 4),
+        GasGiantFbm(P_warp * 2.35 + float3(4.5, 5.1, 1.9), 4)
+    );
+
+    float fineClouds = GasGiantFbm(P_warp * 4.6 + (r - 0.5) * (1.85 * turb), 5);
+    float ridgedPlumes = GasGiantRidgedFbm(float3(Pr.x * 5.2, Pr.y * 5.2, Pr.z * safeBandCount * 1.75) * scale + (r - 0.5) * 2.4, 4);
+    float microStreaks = GasGiantFbm(float3(Pr.x * 9.0, Pr.y * 9.0, Pr.z * safeBandCount * 3.1) * scale + (r - 0.5) * 3.0, 3);
+
+    // Crisp Multi-Harmonic Zonal Bands (Belts & Zones)
+    float wLat = lat + ((q.z - 0.5) * 0.16 + (r.z - 0.5) * 0.095) * TurbulenceStrength + stormDeflect;
+    float wPhase = wLat * safeBandCount * 1.85;
+
+    float b1 = sin(wPhase);
+    float b2 = sin(wPhase * 2.0 + 0.9) * 0.42;
+    float b3 = cos(wPhase * 0.5 - 0.35) * 0.28;
+    float b4 = sin(wPhase * 3.8 + 1.9) * 0.18;
+
+    float bandRaw = 0.50 + 0.32 * b1 + 0.16 * b2 + 0.12 * b3 + 0.09 * b4;
+    float bandSignal = saturate(bandRaw + (fineClouds - 0.5) * 0.46 + (microStreaks - 0.5) * 0.20);
+    float eddyFilament = smoothstep(0.38, 0.82, ridgedPlumes) * shearMask * saturate(TurbulenceStrength);
+
+    float3 colDeep = ColorHigh;
+    float3 colMid  = ColorMid;
+    float3 colHigh = ColorLow;
+
+    float3 col = lerp(colDeep, colMid, smoothstep(0.14, 0.52, bandSignal));
+    col = lerp(col, colHigh, smoothstep(0.50, 0.84, bandSignal));
+
+    float wispHighlight = smoothstep(0.52, 0.86, ridgedPlumes) * (0.35 + 0.65 * bandSignal);
+    col = lerp(col, colHigh * 1.18, wispHighlight * 0.48);
+    col = lerp(col, colDeep * 0.62, eddyFilament * (1.0 - bandSignal * 0.7) * 0.55);
+    col *= lerp(0.90, 1.10, microStreaks);
+
+    // Great Red Spot Anticyclonic Spiral Vortex
+    if (stormCore > 0.001 || stormCollar > 0.001)
+    {
+        float swirlAngle = exp(-sDist * 1.85) * 5.2;
+        float cs = cos(swirlAngle);
+        float ss = sin(swirlAngle);
+        float2 swirled = float2(sdx * cs - sdy * ss, sdx * ss + sdy * cs);
+        float stormNoise = GasGiantFbm(float3(swirled * 3.6, Time * RotationSpeed * 0.6), 4);
+        float stormRidged = GasGiantRidgedFbm(float3(swirled * 5.0, 1.3), 3);
+        float spiralBands = 0.5 + 0.5 * sin(sDist * 16.0 - atan2(sdy, sdx) * 2.0 + stormNoise * 5.0);
+
+        float3 stormOuter = lerp(colHigh * 0.95, StormColor * 1.15, 0.65);
+        float3 stormInner = lerp(StormColor * 0.58, StormColor * 1.32, spiralBands * 0.55 + stormRidged * 0.45);
+        float eyeWall = smoothstep(0.15, 0.45, sDist) * (1.0 - smoothstep(0.45, 0.78, sDist));
+        stormInner = lerp(stormInner, lerp(StormColor, colHigh, 0.35), eyeWall * 0.32);
+
+        float3 stormCol = lerp(stormOuter, stormInner, smoothstep(0.08, 0.72, 1.0 - sDist));
+        col = lerp(col, colHigh * 1.12, stormCollar * 0.62);
+        col = lerp(col, stormCol, smoothstep(0.04, 0.82, stormCore));
+    }
+
+    if (ovalMask > 0.001)
+    {
+        float ovalSwirl = GasGiantFbm(float3(odx * 4.5, ody * 4.5, 2.5), 3);
+        float3 ovalCol = lerp(colMid, colHigh * 1.25, 0.72 + 0.28 * ovalSwirl);
+        col = lerp(col, ovalCol, smoothstep(0.05, 0.82, ovalMask));
+    }
+
+    // Polar Storm Hood
+    float polarNoise = GasGiantFbm(float3(Pr.x * 5.5, Pr.y * 5.5, Pr.z * 5.5) * scale + (r - 0.5) * 1.6, 4);
+    float polarMask = smoothstep(0.72, 0.96, absLat + (polarNoise - 0.5) * 0.14);
+    float3 polarSwirlCol = lerp(PolarColor * 0.68, PolarColor * 1.28, polarNoise);
+    col = lerp(col, polarSwirlCol, polarMask * 0.82);
+
+    // Physically Grounded Sun-Masked Atmospheric Limb Scattering
+    float NdotV = saturate(dot(N, V));
+    float NdotL = dot(N, SunDir);
+    float sunLitMask = smoothstep(-0.10, 0.35, NdotL);
+    float twilightMask = smoothstep(-0.16, 0.04, NdotL) * (1.0 - smoothstep(0.04, 0.26, NdotL));
+
+    float fresnelSoft = pow(1.0 - NdotV, 2.8);
+    float fresnelRim  = pow(1.0 - NdotV, 4.6);
+
+    col = lerp(col, AtmosphereColor, fresnelSoft * AtmosphereRimStrength * 0.45 * sunLitMask);
+
+    // Cloud Height, Roughness, Sun-Masked Emissive Rim, and Smooth Terminator-Safe Normal
+    float cloudHeight = saturate(bandSignal * 0.58 + ridgedPlumes * 0.28 + stormCore * 0.30 + ovalMask * 0.20);
+    RoughnessOut = saturate(lerp(0.90, 0.62, cloudHeight) + fresnelSoft * 0.10);
+
+    EmissiveOut = AtmosphereColor * fresnelRim * AtmosphereRimStrength * sunLitMask * 0.52
+                + AtmosphereColor * fresnelSoft * twilightMask * AtmosphereRimStrength * 0.14;
+    SubsurfaceOut = float3(0.0, 0.0, 0.0);
+
+    float normalLitFade = smoothstep(0.05, 0.35, NdotL);
+    float3 isoNoise = float3(
+        GasGiantNoise3D(Pr * (6.0 * scale) + float3(1.1, 2.3, 3.7)) - 0.5,
+        GasGiantNoise3D(Pr * (6.0 * scale) + float3(7.4, 1.9, 5.2)) - 0.5,
+        GasGiantNoise3D(Pr * (6.0 * scale) + float3(3.8, 8.6, 2.1)) - 0.5
+    );
+    float3 tangentPerturb = isoNoise - dot(isoNoise, N) * N;
+    NormalOut = normalize(N + tangentPerturb * (CloudNormalStrength * 0.16 * normalLitFade));
+
+    return col;
+}
