@@ -111,7 +111,6 @@ float3 EvaluateCosmicGasGiant(
     float3 StormColor,
     float3 PolarColor,
     float3 AtmosphereColor,
-    float3 SunOffset,
     out float  RoughnessOut,
     out float3 EmissiveOut,
     out float3 SubsurfaceOut,
@@ -120,8 +119,6 @@ float3 EvaluateCosmicGasGiant(
     // Normalized unit-sphere coordinates (LWC-safe, radius-independent)
     float3 P = normalize(LocalPos + float3(1e-6, 0.0, 0.0));
     float3 N = normalize(WorldNormal);
-    float3 V = normalize(CameraVector);
-    float3 SunDir = normalize(SunOffset + float3(1e-6, 0.0, 0.0));
 
     float lat = asin(clamp(P.z, -1.0, 1.0)); // [-PI/2, PI/2]
     float absLat = abs(P.z);
@@ -268,33 +265,20 @@ float3 EvaluateCosmicGasGiant(
     float3 polarSwirlCol = lerp(PolarColor * 0.68, PolarColor * 1.28, polarNoise);
     col = lerp(col, polarSwirlCol, polarMask * 0.82);
 
-    // Physically Grounded Sun-Masked Atmospheric Limb Scattering
-    float NdotV = saturate(dot(N, V));
-    float NdotL = dot(N, SunDir);
-    float sunLitMask = smoothstep(-0.10, 0.35, NdotL);
-    float twilightMask = smoothstep(-0.16, 0.04, NdotL) * (1.0 - smoothstep(0.04, 0.26, NdotL));
-
-    float fresnelSoft = pow(1.0 - NdotV, 2.8);
-    float fresnelRim  = pow(1.0 - NdotV, 4.6);
-
-    col = lerp(col, AtmosphereColor, fresnelSoft * AtmosphereRimStrength * 0.45 * sunLitMask);
-
-    // Cloud Height, Roughness, Sun-Masked Emissive Rim, and Smooth Terminator-Safe Normal
+    // Cloud Height, Roughness, and World-Space Normal (Pure Lit, no custom atmosphere or dark-side handling)
     float cloudHeight = saturate(bandSignal * 0.58 + ridgedPlumes * 0.28 + stormCore * 0.30 + ovalMask * 0.20);
-    RoughnessOut = saturate(lerp(0.90, 0.62, cloudHeight) + fresnelSoft * 0.10);
+    RoughnessOut = saturate(lerp(0.90, 0.62, cloudHeight));
 
-    EmissiveOut = AtmosphereColor * fresnelRim * AtmosphereRimStrength * sunLitMask * 0.52
-                + AtmosphereColor * fresnelSoft * twilightMask * AtmosphereRimStrength * 0.14;
+    EmissiveOut = float3(0.0, 0.0, 0.0);
     SubsurfaceOut = float3(0.0, 0.0, 0.0);
 
-    float normalLitFade = smoothstep(0.05, 0.35, NdotL);
     float3 isoNoise = float3(
         GasGiantNoise3D(Pr * (6.0 * scale) + float3(1.1, 2.3, 3.7)) - 0.5,
         GasGiantNoise3D(Pr * (6.0 * scale) + float3(7.4, 1.9, 5.2)) - 0.5,
         GasGiantNoise3D(Pr * (6.0 * scale) + float3(3.8, 8.6, 2.1)) - 0.5
     );
     float3 tangentPerturb = isoNoise - dot(isoNoise, N) * N;
-    NormalOut = normalize(N + tangentPerturb * (CloudNormalStrength * 0.16 * normalLitFade));
+    NormalOut = normalize(N + tangentPerturb * (CloudNormalStrength * 0.16));
 
     return col;
 }
