@@ -18,9 +18,8 @@
 //   - High-Performance Packed Custom Node Entry Points for Unreal Engine 5 Material Graph.
 #pragma once
 
-// ============================================================================
+
 // CONSTANTS & CONFIGURATION
-// ============================================================================
 #define PLANETARY_MAX_BIOMES 8
 #define PLANETARY_PI 3.14159265359f
 #define PLANETARY_TWO_PI 6.28318530718f
@@ -67,9 +66,7 @@
 #define PLANETARY_MICRO_FADE_END_CM   (PLANETARY_NEAR_DETAIL_DEFAULT_DIST_CM + PLANETARY_NEAR_DETAIL_DEFAULT_FADE_CM)
 #endif
 
-// ============================================================================
 // DATA STRUCTURES
-// ============================================================================
 
 /**
  * Biome specification in Whittaker climatological phase space (Temperature, Humidity).
@@ -143,9 +140,7 @@ struct FPlanetaryMasterOutput
     float  FarDetailWeight;      // Far surface detail blend factor [0..1]
 };
 
-// ============================================================================
 // GEOMETRY & MATHEMATICAL HELPER FUNCTIONS
-// ============================================================================
 
 /**
  * Computes Large World Coordinate (LWC) stable geometry context centered on the planet.
@@ -243,9 +238,7 @@ float3 ComputeMasterVolumeSurfaceGradient(
     return (T1 * dH_dT1 + T2 * dH_dT2);
 }
 
-// ============================================================================
-// SPHERICAL TRIPLANAR PROJECTION (2D PHOTOGRAPHIC TEXTURES & NORMAL MAPS)
-// ============================================================================
+// SPHERICAL TRIPLANAR PROJECTION (2D PHOTOGRAPHIC TEXTURES & NORMAL MAPS
 
 /**
  * Samples a 2D diffuse/albedo texture using seamless spherical triplanar projection in planet-local space.
@@ -327,9 +320,7 @@ float3 SampleMasterTriplanarNormal(
     return normalize(InGeometryNormal + BlendedDisplacement);
 }
 
-// ============================================================================
 // HEIGHT-BLENDED LAYER TRANSITIONS
-// ============================================================================
 
 /**
  * Two-layer height blend with contrast carving.
@@ -342,12 +333,7 @@ float3 SampleMasterTriplanarNormal(
  * @param BlendContrast - Contrast sharpness (lower = sharper transition)
  * @return              - Normalized weight of layer B [0..1]
  */
-float ComputeMasterHeightBlend2(
-    in float WeightA,
-    in float HeightA,
-    in float WeightB,
-    in float HeightB,
-    in float BlendContrast)
+float ComputeMasterHeightBlend2(in float WeightA, in float HeightA, in float WeightB, in float HeightB, in float BlendContrast)
 {
     float Contrast = max(BlendContrast, 0.001f);
     float ElevA = WeightA + HeightA * 0.5f;
@@ -406,9 +392,7 @@ void EvaluateMasterGeologicalStrata(
     OutStrataNormalOffset = cos(DistortedCoord) * StrataParams.NormalStrength;
 }
 
-// ============================================================================
 // WHITTAKER ANALYTICAL BIOME ENGINE
-// ============================================================================
 
 /**
  * Evaluates continuous analytical Whittaker biomes via Gaussian Radial
@@ -615,9 +599,7 @@ void InitManualPlanetaryBiomes(
     StrataParams.NormalStrength = max(InStrataNormalStrength, 0.0f);
 }
 
-// ============================================================================
 // MAIN UNIFIED PLANETARY SURFACE EVALUATION CORE
-// ============================================================================
 
 /**
  * Master evaluation core for procedural and triplanar planetary surfaces.
@@ -685,7 +667,7 @@ void EvaluatePlanetaryMasterSurfaceCore(
     out float OutTempWarped,
     out float OutHumidityWarped)
 {
-    // --- 1. LWC Geometric Basis & Tangent Frame ---
+    // LWC Geometric Basis & Tangent Frame 
     float3 LocalPos;
     float3 RadialNormal;
     float3 GeometryNormal;
@@ -700,7 +682,7 @@ void EvaluatePlanetaryMasterSurfaceCore(
     float3 T1, T2;
     GetPlanetaryMasterTangentFrame(RadialNormal, T1, T2);
 
-    // --- 2. Camera Distance Continuous LOD & Toksvig Anti-Aliasing ---
+    // Camera Distance Continuous LOD & Toksvig Anti-Aliasing 
     float MacroLOD = saturate(1.0f - (CameraDistance - PLANETARY_MACRO_FADE_START_CM) 
                             / max(PLANETARY_MACRO_FADE_END_CM - PLANETARY_MACRO_FADE_START_CM, 10000.0f));
 
@@ -728,7 +710,7 @@ void EvaluatePlanetaryMasterSurfaceCore(
     float ToksvigBias = saturate((CameraDistance - PLANETARY_MESO_FADE_START_CM) 
                                 / (PLANETARY_MESO_FADE_END_CM * 2.0f)) * 0.32f;
 
-    // --- 3. Climatological Inputs & 3D Domain Warping ---
+    // 3. Climatological Inputs & 3D Domain Warping 
     float AltitudeNorm = saturate(InVertexColor.r);
     float VisualTemp   = saturate(InVertexColor.g);
     float Humidity     = saturate(InVertexColor.b);
@@ -751,7 +733,7 @@ void EvaluatePlanetaryMasterSurfaceCore(
     OutTempWarped     = TempWarped;
     OutHumidityWarped = HumidityWarped;
 
-    // --- 4. Manual Biome & Strata Initialization ---
+    // Manual Biome & Strata Initialization 
     FPlanetaryBiomeDefinition Biomes[PLANETARY_MAX_BIOMES];
     FPlanetaryStrataParameters StrataParams;
     int BiomeCount = 8;
@@ -775,7 +757,7 @@ void EvaluatePlanetaryMasterSurfaceCore(
         BiomeCount,
         StrataParams);
 
-    // --- 5. Whittaker Evaluation (Analytical Gaussian RBF) ---
+    // 5. Whittaker Evaluation (Analytical Gaussian RBF)
     float3 BiomeColor;
     float  BiomeRoughness;
     float  BiomeMetallic;
@@ -797,7 +779,7 @@ void EvaluatePlanetaryMasterSurfaceCore(
         BiomeMicroTiling,
         BiomeNormalScale);
 
-    // --- 6. Secondary Procedural Noise Layer (Meso/Macro Relief) ---
+    // Secondary Procedural Noise Layer (Meso/Macro Relief) 
     // Evaluates secondary procedural 3D volume noise layer symmetrically to MacroFrequency
     float MesoH = 0.5f;
     float MesoFreq = max(InMicroFrequency, 0.000001f);
@@ -816,7 +798,7 @@ void EvaluatePlanetaryMasterSurfaceCore(
     float3 TangentPerturb = (T1 * dot(ProceduralGradient, T1) + T2 * dot(ProceduralGradient, T2)) * EffNormalStrength;
     float3 PerturbedNormal = normalize(GeometryNormal - TangentPerturb);
 
-    // --- 7. Slope Calculation & Geological Sedimentary Cliff Stratification ---
+    // Slope Calculation & Geological Sedimentary Cliff Stratification 
     float SlopeCos = saturate(dot(RadialNormal, PerturbedNormal));
     float RawSlope = 1.0f - SlopeCos; // 0 on flat ground, 1 on vertical cliffs
 
@@ -848,7 +830,7 @@ void EvaluatePlanetaryMasterSurfaceCore(
     float3 CliffAlbedo = StrataTint * 1.15f;
     float  CliffRoughness = saturate(0.88f + StrataRoughDelta);
 
-    // --- 7b. Coastal Beach Sand Layer (Altitude in km & Min Temperature) ---
+    // Coastal Beach Sand Layer (Altitude in km & Min Temperature) 
     // Below InSandMaxAltitudeKm and above InSandMinTemperature, flat terrain becomes beach sand.
     // Steep cliffs (CliffMask) always override sand so rock remains exposed on slopes.
     float SandBlended = 0.0f;
@@ -887,7 +869,7 @@ void EvaluatePlanetaryMasterSurfaceCore(
         PerturbedNormal = normalize(PerturbedNormal + RadialNormal * (StrataNormOffset * CliffMask * 0.4f));
     }
 
-    // --- 8. Dynamic Snowline & Glaciation (Gravity Slide-Off Physics) ---
+    // Dynamic Snowline & Glaciation (Gravity Slide-Off Physics) 
     float SnowMask = 0.0f;
     if (bEnableSnow > 0.5f && InSnowTemperatureThreshold > 0.001f)
     {
@@ -913,7 +895,7 @@ void EvaluatePlanetaryMasterSurfaceCore(
         }
     }
 
-    // --- 9. Multi-Tier 2D Photographic Triplanar Detail Layers (Near & Far) ---
+    // Multi-Tier 2D Photographic Triplanar Detail Layers (Near & Far) 
     float TotalDetailWeight = NearDetailWeight + FarDetailWeight;
     if (TotalDetailWeight > 0.001f)
     {
@@ -921,7 +903,7 @@ void EvaluatePlanetaryMasterSurfaceCore(
         float NearWeightNorm = NearDetailWeight / max(TotalDetailWeight, 0.0001f);
         float FarWeightNorm  = FarDetailWeight  / max(TotalDetailWeight, 0.0001f);
 
-        // 1. Composite Flat Surface, Rock, and Snow textures blending Near and Far tiers
+        // Composite Flat Surface, Rock, and Snow textures blending Near and Far tiers
         float3 BlendedSurfaceColor = InNearSurfaceTexColor * NearWeightNorm + InFarSurfaceTexColor * FarWeightNorm;
         float3 BlendedSurfaceNormal = normalize(InNearSurfaceTexNormal * NearWeightNorm + InFarSurfaceTexNormal * FarWeightNorm);
 
@@ -934,25 +916,25 @@ void EvaluatePlanetaryMasterSurfaceCore(
         float3 BlendedSandColor = InNearSandTexColor * NearWeightNorm + InFarSandTexColor * FarWeightNorm;
         float3 BlendedSandNormal = normalize(InNearSandTexNormal * NearWeightNorm + InFarSandTexNormal * FarWeightNorm);
 
-        // 2. Blend Surface with Beach Sand first, then override with Rock based on CliffMask
+        // Blend Surface with Beach Sand first, then override with Rock based on CliffMask
         float3 BlendedFlatAlbedo = lerp(BlendedSurfaceColor, BlendedSandColor, SandBlended);
         float3 BlendedFlatNormal = normalize(lerp(BlendedSurfaceNormal, BlendedSandNormal, SandBlended));
 
         float3 BlendedTexAlbedo = lerp(BlendedFlatAlbedo, BlendedRockColor, CliffMask);
         float3 BlendedTexNormal = normalize(lerp(BlendedFlatNormal, BlendedRockNormal, CliffMask));
 
-        // 3. Blend with Snow based on SnowMask
+        // Blend with Snow based on SnowMask
         if (SnowMask > 0.001f)
         {
             BlendedTexAlbedo = lerp(BlendedTexAlbedo, BlendedSnowColor, SnowMask);
             BlendedTexNormal = normalize(lerp(BlendedTexNormal, BlendedSnowNormal, SnowMask));
         }
 
-        // 4. Effective blend factors for color and normal strength
+        // Effective blend factors for color and normal strength
         float EffColorBlend = saturate(NearDetailParams.ColorBlend * NearWeightNorm + FarDetailParams.ColorBlend * FarWeightNorm);
         float EffNormalStr  = saturate(NearDetailParams.NormalStrength * NearWeightNorm + FarDetailParams.NormalStrength * FarWeightNorm);
 
-        // 5. Modulate Base Terrain Color with Photographic Detail
+        // Modulate Base Terrain Color with Photographic Detail
         float3 ModulatedAlbedo = BaseAlbedo * BlendedTexAlbedo * 2.0f;
         float3 DirectAlbedo    = BlendedTexAlbedo;
         float3 CompositeDetail = lerp(ModulatedAlbedo, DirectAlbedo, 0.35f);
@@ -960,11 +942,11 @@ void EvaluatePlanetaryMasterSurfaceCore(
         float FinalDetailWeight = saturate(TotalDetailWeight);
         BaseAlbedo = lerp(BaseAlbedo, CompositeDetail, FinalDetailWeight * EffColorBlend);
 
-        // 6. Perturb World Normal with High-Res Detail Normal Map
+        // Perturb World Normal with High-Res Detail Normal Map
         PerturbedNormal = normalize(lerp(PerturbedNormal, BlendedTexNormal, FinalDetailWeight * EffNormalStr));
     }
 
-    // --- 10. Moisture, Wetness & Water Puddle Physics ---
+    // Moisture, Wetness & Water Puddle Physics
     float WetnessMask = 0.0f;
     if (InWetnessIntensity > 0.01f)
     {
@@ -977,10 +959,10 @@ void EvaluatePlanetaryMasterSurfaceCore(
         BiomeSpecular = lerp(BiomeSpecular, 0.55f, WetnessMask);
     }
 
-    // --- 11. Toksvig Specular Anti-Aliasing Integration ---
+    // Toksvig Specular Anti-Aliasing Integration 
     float FinalRoughness = saturate(sqrt(EffRoughness * EffRoughness + ToksvigBias * ToksvigBias));
 
-    // --- 12. Volcanic / Thermal Emission ---
+    // Volcanic / Thermal Emission 
     float3 Emissive = float3(0.0f, 0.0f, 0.0f);
     if (InMagmaIntensity > 0.001f)
     {
@@ -992,7 +974,7 @@ void EvaluatePlanetaryMasterSurfaceCore(
         BaseAlbedo = lerp(BaseAlbedo, float3(0.04f, 0.02f, 0.01f), saturate(MagmaMask * InMagmaIntensity));
     }
 
-    // --- 13. Pack Output Struct ---
+    // Pack Output Struct
     OutSurface.BaseColor        = BaseAlbedo;
     OutSurface.WorldNormal      = PerturbedNormal;
     OutSurface.Roughness        = FinalRoughness;
@@ -1010,9 +992,7 @@ void EvaluatePlanetaryMasterSurfaceCore(
     OutSurface.FarDetailWeight  = FarDetailWeight;
 }
 
-// ============================================================================
 // CONVENIENCE EVALUATION INTERFACES (2D TRIPLANAR DETAIL FLOW: NEAR & FAR)
-// ============================================================================
 
 /**
  * Master Evaluation with In-Shader 2D Spherical Triplanar Textures & Normal Maps + Coastal Beach Sand.
@@ -1125,7 +1105,7 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanarSand(
     float FarExit = 1.0f - smoothstep(FarParams.Distance - FarParams.FadeRange, FarParams.Distance, CameraDistance);
     float FarWeight = FarEntrance * FarExit;
 
-    // 1. Near Triplanar Sampling
+    // Near Triplanar Sampling
     float3 NearSurfaceTexCol  = float3(1.0f, 1.0f, 1.0f);
     float3 NearSurfaceTexNorm = GeometryNormal;
     float3 NearRockTexCol     = float3(1.0f, 1.0f, 1.0f);
@@ -1156,7 +1136,7 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanarSand(
         }
     }
 
-    // 2. Far Triplanar Sampling
+    // Far Triplanar Sampling
     float3 FarSurfaceTexCol  = float3(1.0f, 1.0f, 1.0f);
     float3 FarSurfaceTexNorm = GeometryNormal;
     float3 FarRockTexCol     = float3(1.0f, 1.0f, 1.0f);
@@ -1212,11 +1192,9 @@ void EvaluatePlanetaryMasterSurfaceWithTriplanarSand(
         OutSurface, TempWarped, HumWarped);
 }
 
-// ============================================================================
-// UE5 MATERIAL GRAPH CUSTOM NODE ENTRY POINT
-// ============================================================================
-
-// 10. Beach Sand Extension (float3 InVertexColor, out float OutEmissive)
+// UE5 MATERIAL GRAPH CUSTOM NODE ENTRY POINT
+
+// Beach Sand Extension (float3 InVertexColor, out float OutEmissive)
 float4 EvaluatePlanetaryMasterFull(
     float3 InWorldPos,
     float3 InPlanetCenter,
