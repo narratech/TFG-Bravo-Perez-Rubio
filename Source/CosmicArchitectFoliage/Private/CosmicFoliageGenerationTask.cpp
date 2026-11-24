@@ -372,6 +372,7 @@ void FFoliageGenerationTask::CreateFoliageInstances(FRandomStream& Random)
         FCosmicFoliageInstance Instance;
         Instance.HISMKey.Mesh = SelectedMesh.Mesh;
         Instance.HISMKey.bHasCollision = SelectedMesh.bHasCollision;
+        Instance.HISMKey.bCastShadow = SelectedMesh.bCastShadow;
         Instance.Transform = Transform;
         ResultInstances.Add(Instance);
 

@@ -76,6 +76,9 @@ struct COSMICARCHITECTFOLIAGE_API FCosmicFoliageMesh
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings")
     bool bHasCollision = true;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Foliage Settings")
+    bool bCastShadow = true;
 };
 
 class UCosmicFoliageBiome;
@@ -157,15 +160,18 @@ struct FCosmicHISMKey
     UPROPERTY()
     bool         bHasCollision = true;
 
+    UPROPERTY()
+    bool         bCastShadow = true;
+
     bool operator==(const FCosmicHISMKey& Other) const
     {
-        return Mesh == Other.Mesh && bHasCollision == Other.bHasCollision;
+        return Mesh == Other.Mesh && bHasCollision == Other.bHasCollision && bCastShadow == Other.bCastShadow;
     }
 };
 
 FORCEINLINE uint32 GetTypeHash(const FCosmicHISMKey& Key)
 {
-    return HashCombine(GetTypeHash(Key.Mesh), GetTypeHash(Key.bHasCollision));
+    return HashCombine(HashCombine(GetTypeHash(Key.Mesh), GetTypeHash(Key.bHasCollision)), GetTypeHash(Key.bCastShadow));
 }
 
 USTRUCT()

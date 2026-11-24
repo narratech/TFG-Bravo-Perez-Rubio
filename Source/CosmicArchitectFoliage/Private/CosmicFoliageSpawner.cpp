@@ -790,6 +790,7 @@ UInstancedStaticMeshComponent* UCosmicFoliageSpawner::AcquireISMComponent(const 
 
     Comp->SetStaticMesh(Key.Mesh);
     Comp->SetCollisionEnabled(bEnableCollision ? ECollisionEnabled::QueryAndPhysics : ECollisionEnabled::NoCollision);
+    Comp->SetCastShadow(Key.bCastShadow);
 
     // Temporarily set mobility to Movable so SetRelativeLocation executes without static mobility warning
     Comp->Mobility = EComponentMobility::Movable;
