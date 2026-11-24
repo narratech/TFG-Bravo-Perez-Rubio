@@ -379,14 +379,16 @@ void ACosmicSystemGenerator::GenerateBodies()
 
         FString FolderId;
         FString BaseFolder;
+        bool bSaveAssets = false;
 #if WITH_EDITORONLY_DATA
         FolderId = GeneratedNoiseSettingsFolderId;
         BaseFolder = GeneratedNoiseSettingsAssetFolder;
+        bSaveAssets = bSaveGeneratedNoiseSettingsAssets;
 #endif
 
         UCosmicNoiseClass* PlanetNoise = bIsGasGiant ? nullptr : NoiseManager.CreateNoiseSettingsForArchetype(
             Stream, NewRadius, Classification.Archetype, Classification.bHasOcean,
-            World, FolderId, BaseFolder, bSaveGeneratedNoiseSettingsAssets);
+            World, FolderId, BaseFolder, bSaveAssets);
 
         FCosmicPlanetAppearanceParams Appearance = FCosmicPlanetAppearanceParams::MakeAppearanceForArchetype(
             Classification.Archetype, Stream);
@@ -450,7 +452,7 @@ void ACosmicSystemGenerator::GenerateBodies()
 
             UCosmicNoiseClass* MoonNoise = NoiseManager.CreateNoiseSettingsForArchetype(
                 Stream, MoonRadiusKm, ECosmicPlanetArchetype::Moon, false,
-                World, FolderId, BaseFolder, bSaveGeneratedNoiseSettingsAssets);
+                World, FolderId, BaseFolder, bSaveAssets);
 
             FCosmicPlanetAppearanceParams MoonAppearance = FCosmicPlanetAppearanceParams::MakeAppearanceForArchetype(
                 ECosmicPlanetArchetype::Moon, Stream);
