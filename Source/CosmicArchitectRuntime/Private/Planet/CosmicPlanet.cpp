@@ -6,6 +6,7 @@
 #include "Terrain/CosmicPlanetCollisionManager.h"
 #include "Terrain/CosmicClipmapComponent.h"
 #include "Terrain/CosmicOceanComponent.h"
+#include "Planet/CosmicCloudComponent.h"
 #include "CosmicDefaultNoiseStrategy.h"
 #include "CosmicFoliageCollection.h"
 #include "CosmicNoiseClass.h"
@@ -37,6 +38,8 @@ ACosmicPlanet::ACosmicPlanet()
     CollisionManager = CreateDefaultSubobject<UCosmicPlanetCollisionManager>(TEXT("CollisionManager"));
     ClipmapComponent = CreateDefaultSubobject<UCosmicClipmapComponent>(TEXT("ClipmapComponent"));
     OceanComponent = CreateDefaultSubobject<UCosmicOceanComponent>(TEXT("OceanComponent"));
+    CloudComponent = CreateDefaultSubobject<UCosmicCloudComponent>(TEXT("CloudComponent"));
+    CloudComponent->SetupAttachment(Root);
     FoliageSpawnerComponent = CreateDefaultSubobject<UCosmicFoliageSpawner>(TEXT("FoliageSpawnerComponent"));
 }
 
@@ -51,6 +54,7 @@ void ACosmicPlanet::PostInitializeComponents()
     UpdateNoiseSettings();
     InitClipmap();
     UpdateOcean();
+    UpdateClouds();
 
     if (FoliageSpawnerComponent)
     {
@@ -213,10 +217,16 @@ void ACosmicPlanet::PostDuplicate(EDuplicateMode::Type Mode)
             OceanComponent->ResetPointersAfterDuplicate(Root);
         }
 
+        if (CloudComponent)
+        {
+            CloudComponent->ResetPointersAfterDuplicate(Root);
+        }
+
         UpdateNoiseSettings();
         InitClipmap();
         UpdateFoliage();
         UpdateOcean();
+        UpdateClouds();
     }
 }
 #endif
@@ -277,6 +287,7 @@ void ACosmicPlanet::RebuildPlanet()
     InitClipmap();
     UpdateFoliage();
     UpdateOcean();
+    UpdateClouds();
 }
 
 
@@ -379,6 +390,14 @@ void ACosmicPlanet::UpdateOcean()
     }
 }
 
+void ACosmicPlanet::UpdateClouds()
+{
+    if (CloudComponent)
+    {
+        CloudComponent->InitClouds(RadiusKm, Root);
+    }
+}
+
 #if WITH_EDITOR
 /**
  * Construction logic for the editor. Ensures the planet is visible right after being dropped into the level.
@@ -393,6 +412,7 @@ void ACosmicPlanet::OnConstruction(const FTransform& Transform)
         InitClipmap();
         UpdateFoliage();
         UpdateOcean();
+        UpdateClouds();
     }
 }
 #endif
@@ -495,6 +515,7 @@ void ACosmicPlanet::InitPlanet(
     InitClipmap();
     UpdateFoliage();
     UpdateNoiseSettings();
+    UpdateClouds();
 }
 
 /**

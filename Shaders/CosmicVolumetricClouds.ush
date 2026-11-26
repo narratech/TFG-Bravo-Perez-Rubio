@@ -1,0 +1,561 @@
+// Copyright Javier Bravo, David Rubio, Sergio Perez 2026 All Rights Reserved.
+// CosmicVolumetricClouds.ush - Distance-Adaptive Planetary Volumetric Cloud Raymarcher
+//
+// Designed for CosmicArchitect multi-planet systems:
+//   - Close / In-Atmosphere: Full 3D Perlin-Worley + Worley detail erosion raymarching,
+//     dual-lobe Henyey-Greenstein phase, 3-octave multi-scattering (UE5/Hillaire model),
+//     exponential sun self-shadowing, soft SceneDepth terrain intersection, and sky/ground bounce.
+//   - Far / Orbital: Smooth distance-based LOD reducing primary steps, shadow steps,
+//     skipping sub-pixel 3D detail erosion, and empty-space skipping — rendered on a tight
+//     per-planet inward-facing bounding sphere for zero off-planet pixel cost.
+#pragma once
+
+static const float CLOUD_PI = 3.14159265359;
+
+// ---------------------------------------------------------------------------
+// Utility: Interleaved Gradient Noise (fast, banding-free per-pixel jitter)
+// ---------------------------------------------------------------------------
+float CosmicCloudIGN(float2 pixelPos)
+{
+    return frac(52.9829189 * frac(dot(pixelPos, float2(0.06711056, 0.00583715))));
+}
+
+// ---------------------------------------------------------------------------
+// Utility: Ray-Sphere Intersection (sphere centered at origin, radius r)
+// Returns float2(tNear, tFar); returns float2(-1, -1) on miss.
+// ---------------------------------------------------------------------------
+float2 CosmicCloudIntersectSphere(float3 ro, float3 rd, float r)
+{
+    float b = dot(ro, rd);
+    float c = dot(ro, ro) - r * r;
+    float disc = b * b - c;
+    if (disc < 0.0)
+    {
+        return float2(-1.0, -1.0);
+    }
+    float s = sqrt(disc);
+    return float2(-b - s, -b + s);
+}
+
+// ---------------------------------------------------------------------------
+// Utility: Rotate 3D unit-sphere vector around Z axis (planetary wind drift)
+// ---------------------------------------------------------------------------
+float3 CosmicCloudRotateZ(float3 v, float angle)
+{
+    float s = sin(angle);
+    float c = cos(angle);
+    return float3(v.x * c - v.y * s, v.x * s + v.y * c, v.z);
+}
+
+// ---------------------------------------------------------------------------
+// Utility: Dual-Lobe Henyey-Greenstein Phase Function (matches UE5 VolumetricCloud)
+// ---------------------------------------------------------------------------
+float CosmicCloudHG(float cosTheta, float g)
+{
+    float g2 = g * g;
+    float denom = max(1.0 + g2 - 2.0 * g * cosTheta, 1e-4);
+    return (1.0 - g2) / (4.0 * CLOUD_PI * denom * sqrt(denom));
+}
+
+float CosmicCloudDualHG(float cosTheta, float g1, float g2, float blend)
+{
+    return lerp(CosmicCloudHG(cosTheta, g1), CosmicCloudHG(cosTheta, g2), blend);
+}
+
+// ---------------------------------------------------------------------------
+// Utility: Planet Umbra / Penumbra Shadow on Cloud Sample
+// Returns [0..1] direct sunlight visibility (0 = night/shadow, 1 = sunlit).
+// ---------------------------------------------------------------------------
+float CosmicCloudPlanetShadow(float3 posKm, float3 sunDir, float planetRadiusKm)
+{
+    // Soft geometric planet shadow test along ray toward the sun
+    float proj = dot(posKm, sunDir);
+    if (proj >= 0.0)
+    {
+        // On sunlit hemisphere; add smooth twilight transition near terminator
+        float elev = proj / max(length(posKm), 1e-4);
+        return smoothstep(-0.04, 0.08, elev);
+    }
+
+    // Behind terminator plane: check perpendicular distance to planet shadow cylinder
+    float3 perp = posKm - sunDir * proj;
+    float perpDist = length(perp);
+    float shadowEdge = smoothstep(planetRadiusKm * 0.985, planetRadiusKm * 1.035, perpDist);
+    return shadowEdge;
+}
+
+// ---------------------------------------------------------------------------
+// Core 3D Spherical Cloud Density Field
+// Matches M_PlanetVolumetricCloud macro/shape/detail parameterization so orbital
+// and close-up appearances remain consistent with the editor reference look.
+// ---------------------------------------------------------------------------
+float CosmicCloudSampleDensity(
+    float3 posKm,
+    float planetRadiusKm,
+    float layerBottomKm,
+    float layerHeightKm,
+    float weatherScale,
+    float shapeScale,
+    float detailScale,
+    float swirlStrength,
+    float coverage,
+    float densityScale,
+    float erosionStrength,
+    float windAngle,
+    float detailWeight,
+    float mipBias,
+    Texture3D macroTex,
+    SamplerState macroSampler,
+    Texture3D detailTex,
+    SamplerState detailSampler,
+    out float outNormAlt)
+{
+    float distKm = length(posKm);
+    float safeHeight = max(layerHeightKm, 0.01);
+    float h = (distKm - (planetRadiusKm + layerBottomKm)) / safeHeight;
+    outNormAlt = saturate(h);
+
+    if (h <= 0.0 || h >= 1.0)
+    {
+        return 0.0;
+    }
+
+    // Height profile: flat-ish cumulus base, dense body, rounded billowing top
+    float heightGrad = smoothstep(0.0, 0.12, h) * smoothstep(1.0, 0.25, h);
+    if (heightGrad <= 1e-4)
+    {
+        return 0.0;
+    }
+
+    // Planet-normalized 3D coordinates (seam-free on full sphere, zero pole pinching)
+    float3 p = posKm / max(planetRadiusKm, 0.01);
+    if (abs(windAngle) > 1e-6)
+    {
+        p = CosmicCloudRotateZ(p, windAngle);
+    }
+
+    // 3D domain warp for swirling weather fronts / cyclones.
+    // Full swirl on macro weather continents; gentler warp on close-up cumulus shape/detail
+    // so clouds stay puffy and sculpted up close instead of looking sheared.
+    float3 warpSample = Texture3DSampleLevel(
+        macroTex, macroSampler,
+        p * (weatherScale * 0.55) + float3(0.13, 0.27, 0.41),
+        mipBias
+    ).rgb;
+    float3 warpOffset = (warpSample - 0.5) * swirlStrength;
+    float3 pWarped = p + warpOffset;
+    float3 pDetail = p + warpOffset * lerp(0.35, 1.0, 1.0 - detailWeight);
+
+    // Macro weather map: large-scale cloud continents & clear oceans
+    float4 weather = Texture3DSampleLevel(macroTex, macroSampler, pWarped * weatherScale, mipBias);
+    float macroCov = lerp(weather.r, weather.g, 0.35);
+
+    // Early empty-space skip before sampling medium shape & high-frequency detail
+    float coverageBias = (1.0 - coverage) * 1.18;
+    if (macroCov * 0.65 + 0.60 - coverageBias <= 0.0)
+    {
+        return 0.0;
+    }
+
+    // Medium cumulus / stratocumulus shape
+    float4 shape = Texture3DSampleLevel(
+        macroTex, macroSampler,
+        pDetail * shapeScale + float3(h * 0.14, 0.0, 0.0),
+        mipBias
+    );
+    float baseShape = saturate(macroCov * 0.65 + shape.r * 0.45 + shape.g * 0.15 - coverageBias);
+    if (baseShape <= 1e-4)
+    {
+        return 0.0;
+    }
+
+    // Fine 3D cumulus billow + edge erosion (skipped completely in far orbital LOD for performance)
+    float eroded = baseShape;
+    if (detailWeight > 0.01 && erosionStrength > 1e-4)
+    {
+        // High-frequency Worley wispy edge erosion
+        float3 detail = Texture3DSampleLevel(
+            detailTex, detailSampler,
+            pDetail * detailScale,
+            mipBias * 0.5
+        ).rgb;
+        float detailFbm = detail.r * 0.625 + detail.g * 0.25 + detail.b * 0.125;
+
+        // Medium 3D cumulus cauliflower billows (gives true 3D puffiness up close)
+        float3 billowSample = Texture3DSampleLevel(
+            detailTex, detailSampler,
+            pDetail * (detailScale * 0.38) + float3(0.0, 0.0, h * 0.55),
+            mipBias * 0.5
+        ).rgb;
+        float billowFbm = billowSample.r * 0.65 + billowSample.g * 0.35;
+
+        float combinedDetail = lerp(detailFbm, detailFbm * 0.55 + billowFbm * 0.45, detailWeight);
+        // Stronger erosion near cloud base and top for sculpted cumulus silhouettes
+        float heightErodeBoost = lerp(1.25, 0.85, heightGrad);
+        float effErosion = erosionStrength * detailWeight * heightErodeBoost;
+        eroded = saturate((baseShape - combinedDetail * effErosion * (1.0 - baseShape * 0.35)) * 2.5);
+    }
+    else
+    {
+        // Crisp, energy-matched cloud silhouettes from orbital altitudes (matches close-up coverage seamlessly)
+        eroded = saturate((baseShape - erosionStrength * 0.20 * (1.0 - baseShape * 0.35)) * 2.5);
+    }
+
+    // Crisp clear-sky separation: removes faint milky haze between weather fronts while keeping soft edges
+    eroded = smoothstep(0.06, 0.85, eroded);
+
+    return eroded * heightGrad * densityScale;
+}
+
+// ---------------------------------------------------------------------------
+// Main Entry Point called from M_CosmicVolumetricClouds Custom Material Node
+//
+// Returns float4(PremultipliedInScatteredRGB, Opacity) for BLEND_AlphaComposite.
+// All positions are planet-center-relative to remain 100% LWC-safe at any orbit.
+// ---------------------------------------------------------------------------
+float4 EvaluateCosmicVolumetricClouds(
+    float3 CamPosLocalCm,
+    float3 RayDir,
+    float3 CamForward,
+    float  SceneDepthCm,
+    float2 SvPositionXY,
+    float  Time,
+    // Planet & Layer Geometry (km)
+    float  PlanetRadiusKm,
+    float  LayerBottomKm,
+    float  LayerHeightKm,
+    // Cloud Shape & Weather (matches M_PlanetVolumetricCloud)
+    float  WeatherScale,
+    float  ShapeScale,
+    float  DetailScale,
+    float  SwirlStrength,
+    float  Coverage,
+    float  Density,
+    float  ErosionStrength,
+    float  WindSpeed,
+    // Lighting & Scattering (matches UE5 VolumetricAdvancedMaterialOutput)
+    float3 SunDir,
+    float3 SunColor,
+    float3 CloudAlbedo,
+    float  PhaseG,
+    float  PhaseG2,
+    float  PhaseBlend,
+    float  MultiScatterContribution,
+    float  MultiScatterOcclusion,
+    float  MultiScatterEccentricity,
+    float3 AmbientSkyColor,
+    float3 AmbientGroundColor,
+    float3 AtmosphereTintColor,
+    float  AtmosphereBlendStrength,
+    // Distance-Adaptive LOD Controls
+    float  NearMaxSteps,
+    float  FarMaxSteps,
+    float  NearShadowSteps,
+    float  FarShadowSteps,
+    float  LodNearAltitudeKm,
+    float  LodFarAltitudeKm,
+    float  DetailFadeAltitudeKm,
+    // Volume Noise Textures
+    Texture3D    MacroNoiseTex,
+    SamplerState MacroNoiseTexSampler,
+    Texture3D    DetailNoiseTex,
+    SamplerState DetailNoiseTexSampler)
+{
+    const float CM_TO_KM = 1e-5;
+    float3 ro = CamPosLocalCm * CM_TO_KM;
+    float3 rd = normalize(RayDir);
+    float3 L = normalize(SunDir);
+
+    float R_planet = max(PlanetRadiusKm, 0.1);
+    float R_bot = R_planet + max(LayerBottomKm, 0.0);
+    float R_top = R_bot + max(LayerHeightKm, 0.05);
+
+    // Intersect outer cloud shell first
+    float2 hitTop = CosmicCloudIntersectSphere(ro, rd, R_top);
+    if (hitTop.y <= 0.0)
+    {
+        return float4(0.0, 0.0, 0.0, 0.0);
+    }
+
+    float2 hitBot = CosmicCloudIntersectSphere(ro, rd, R_bot);
+
+    // Convert linear SceneDepth (along camera forward) to true radial distance along ray.
+    // From high orbit (> 40 km above cloud top), reversed-Z depth buffer precision can clamp
+    // far geometry, and the inner cloud shell hitBot.x already bounds the planet face cleanly.
+    float camDistKm = length(ro);
+    float viewDot = max(dot(rd, normalize(CamForward)), 1e-4);
+    float rawSceneRayDistKm = (SceneDepthCm / viewDot) * CM_TO_KM;
+    bool bUseSceneDepth = (camDistKm < R_top + 40.0);
+    float sceneRayDistKm = bUseSceneDepth ? rawSceneRayDistKm : 1e9;
+
+    // Determine ray march interval [tStart, tEnd] across all 3 camera altitude regimes
+    float tStart = 0.0;
+    float tEnd = 0.0;
+
+    if (camDistKm < R_bot)
+    {
+        // Camera is BELOW cloud base (on surface / low flight looking up)
+        if (hitBot.y <= 0.0)
+        {
+            return float4(0.0, 0.0, 0.0, 0.0);
+        }
+        tStart = max(0.0, hitBot.y);
+        tEnd = min(hitTop.y, sceneRayDistKm);
+    }
+    else if (camDistKm <= R_top)
+    {
+        // Camera is INSIDE the cloud layer (flying through clouds)
+        tStart = 0.0;
+        if (hitBot.x > 0.0)
+        {
+            // Looking downward toward planet surface
+            tEnd = min(hitBot.x, sceneRayDistKm);
+        }
+        else
+        {
+            // Looking outward/horizontally toward sky/space
+            tEnd = min(hitTop.y, sceneRayDistKm);
+        }
+    }
+    else
+    {
+        // Camera is ABOVE cloud top (high altitude / orbit / deep space)
+        tStart = max(0.0, hitTop.x);
+        if (hitBot.x > 0.0)
+        {
+            // Ray enters cloud shell and hits lower boundary (planet face)
+            tEnd = min(hitBot.x, sceneRayDistKm);
+        }
+        else
+        {
+            // Ray grazes the atmospheric limb without hitting inner boundary
+            tEnd = min(hitTop.y, sceneRayDistKm);
+        }
+    }
+
+    float marchDist = tEnd - tStart;
+    if (marchDist <= 1e-4)
+    {
+        return float4(0.0, 0.0, 0.0, 0.0);
+    }
+
+    // Clamp extreme grazing horizon paths to preserve close-up step resolution
+    float maxAllowedMarch = lerp(LayerHeightKm * 12.0, max(LayerHeightKm * 16.0, R_planet * 0.55), saturate((camDistKm - R_planet) / max(R_planet, 1.0)));
+    marchDist = min(marchDist, maxAllowedMarch);
+
+    // -----------------------------------------------------------------------
+    // Distance-Adaptive LOD Computation
+    // -----------------------------------------------------------------------
+    float camAltKm = max(0.0, camDistKm - R_planet);
+    float lodRange = max(LodFarAltitudeKm - LodNearAltitudeKm, 1.0);
+    float lodFactor = saturate((camAltKm - LodNearAltitudeKm) / lodRange);
+
+    // Smoothly scale primary step count and shadow step count with altitude
+    int numSteps = (int)round(lerp(NearMaxSteps, FarMaxSteps, lodFactor));
+    numSteps = clamp(numSteps, 4, 96);
+
+    int numShadowSteps = (int)round(lerp(NearShadowSteps, FarShadowSteps, lodFactor));
+    numShadowSteps = clamp(numShadowSteps, 1, 8);
+
+    // Detail erosion smoothly fades out at orbital altitudes (saves 3D texture fetches)
+    float detailWeight = 1.0 - smoothstep(DetailFadeAltitudeKm * 0.35, max(DetailFadeAltitudeKm, 1.0), camAltKm);
+
+    // Keep mipBias near zero on 3D volume macro noise so orbital views never blur out cloud peaks
+    float mipBias = lerp(0.0, 0.2, lodFactor);
+
+    // Maintain strong optical extinction at orbital altitudes so thin 3.5 km center paths stay crisp
+    float extinctionScale = lerp(42.0, 48.0, lodFactor);
+    float windAngle = Time * WindSpeed;
+
+    // Precompute phase angle between view ray and sun direction
+    float cosTheta = dot(rd, L);
+
+    // Precompute 3-octave multi-scattering phase weights (constant along ray)
+    float phaseOctave[3];
+    float contribOctave[3];
+    float occlOctave[3];
+    {
+        float a = 1.0;
+        float b = 1.0;
+        float c = 1.0;
+        [unroll]
+        for (int ms = 0; ms < 3; ms++)
+        {
+            phaseOctave[ms] = CosmicCloudDualHG(cosTheta, PhaseG * c, PhaseG2 * c, PhaseBlend);
+            contribOctave[ms] = a;
+            occlOctave[ms] = b;
+            a *= MultiScatterContribution;
+            b *= MultiScatterOcclusion;
+            c *= MultiScatterEccentricity;
+        }
+    }
+
+    // Per-pixel IGN jitter + adaptive step progression (finer steps near camera, wider far out)
+    float jitter = CosmicCloudIGN(SvPositionXY);
+    float baseStepKm = marchDist / (float)numSteps;
+    float t = tStart + jitter * baseStepKm * lerp(0.55, 0.9, lodFactor);
+
+    // Optical depth shadow march total span (~55% of layer thickness)
+    float shadowTotalDistKm = LayerHeightKm * 0.55;
+
+    float3 accumLight = float3(0.0, 0.0, 0.0);
+    float transmittance = 1.0;
+    float weightedDist = 0.0;
+    float weightSum = 0.0;
+
+    // -----------------------------------------------------------------------
+    // Primary Volumetric Raymarch Loop
+    // -----------------------------------------------------------------------
+    [loop]
+    for (int i = 0; i < numSteps; i++)
+    {
+        if (t >= tStart + marchDist || transmittance < 0.01)
+        {
+            break;
+        }
+
+        // Progressive step size when close (high precision near camera, smooth stretch toward horizon)
+        float progress = saturate((t - tStart) / max(marchDist, 1e-4));
+        float adaptiveScale = lerp(lerp(0.55, 1.55, progress), 1.0, lodFactor);
+        float stepLenKm = min(baseStepKm * adaptiveScale, (tStart + marchDist) - t);
+        float3 samplePosKm = ro + rd * t;
+
+        float normAlt = 0.0;
+        float sampleDensity = CosmicCloudSampleDensity(
+            samplePosKm,
+            R_planet, LayerBottomKm, LayerHeightKm,
+            WeatherScale, ShapeScale, DetailScale,
+            SwirlStrength, Coverage, Density, ErosionStrength,
+            windAngle, detailWeight, mipBias,
+            MacroNoiseTex, MacroNoiseTexSampler,
+            DetailNoiseTex, DetailNoiseTexSampler,
+            normAlt
+        );
+
+        if (sampleDensity > 1e-4)
+        {
+            float sigmaT = sampleDensity * extinctionScale;
+
+            // Soft terrain intersection fade only when close to opaque geometry
+            if (bUseSceneDepth)
+            {
+                float distToScene = sceneRayDistKm - t;
+                float depthFade = saturate(distToScene / 0.12);
+                sigmaT *= depthFade;
+            }
+
+            if (sigmaT > 1e-5)
+            {
+                // 1. Planet umbra / twilight terminator factor
+                float planetVis = CosmicCloudPlanetShadow(samplePosKm, L, R_planet);
+                float3 upDir = normalize(samplePosKm);
+                float sunElev = dot(upDir, L);
+
+                // 2. Sun self-shadowing optical depth march
+                float lightOpticalDepth = 0.0;
+                if (planetVis > 1e-3)
+                {
+                    float sDist = 0.0;
+                    float sStep = shadowTotalDistKm / (float)numShadowSteps;
+                    // Exponentially growing shadow steps for crisp near-edge + soft deep shadows
+                    [loop]
+                    for (int s = 0; s < numShadowSteps; s++)
+                    {
+                        float fracS = ((float)s + 0.5) / (float)numShadowSteps;
+                        float stepW = sStep * (0.5 + fracS);
+                        sDist += stepW;
+                        float3 shadowPos = samplePosKm + L * sDist;
+
+                        float sAlt = 0.0;
+                        // Shadow rays skip fine detail erosion (huge perf win, smoother shadows)
+                        float sDens = CosmicCloudSampleDensity(
+                            shadowPos,
+                            R_planet, LayerBottomKm, LayerHeightKm,
+                            WeatherScale, ShapeScale, DetailScale,
+                            SwirlStrength, Coverage, Density, ErosionStrength,
+                            windAngle, 0.0, mipBias + 0.75,
+                            MacroNoiseTex, MacroNoiseTexSampler,
+                            DetailNoiseTex, DetailNoiseTexSampler,
+                            sAlt
+                        );
+                        lightOpticalDepth += sDens * extinctionScale * stepW;
+                    }
+                }
+
+                // 3. Multi-scattering direct sunlight (3 octaves)
+                float directScatter = 0.0;
+                [unroll]
+                for (int ms = 0; ms < 3; ms++)
+                {
+                    float beer = exp(-lightOpticalDepth * occlOctave[ms]);
+                    directScatter += contribOctave[ms] * beer * phaseOctave[ms];
+                }
+
+                // Subtle Beer-Powder silver-lining effect up close (fades out from space)
+                float powder = 1.0 - exp(-sigmaT * stepLenKm * 2.2);
+                float powderBlend = lerp(1.0, lerp(0.55, 1.35, powder), (1.0 - lodFactor) * 0.45);
+                directScatter *= powderBlend;
+
+                // Warm sunset / terminator Rayleigh extinction on direct sunlight
+                float sunsetMask = saturate(1.0 - smoothstep(-0.02, 0.25, sunElev));
+                float3 warmTint = lerp(float3(1.0, 1.0, 1.0), float3(1.0, 0.52, 0.24), sunsetMask * 0.75);
+                float3 directLight = SunColor * warmTint * directScatter * planetVis;
+
+                // 4. Hemisphere Ambient Lighting (sky zenith + planetary ground bounce)
+                float dayMask = smoothstep(-0.18, 0.22, sunElev);
+                float3 ambient = lerp(AmbientGroundColor, AmbientSkyColor, saturate(normAlt * 0.85 + 0.15));
+                // Ambient self-occlusion inside dense cloud cores
+                float ambientAo = lerp(0.45, 1.0, exp(-lightOpticalDepth * 0.25));
+                float3 ambientLight = ambient * ambientAo * (0.04 + 0.96 * dayMask);
+
+                // Total in-scattered radiance at this sample
+                float3 sampleRadiance = (directLight + ambientLight) * CloudAlbedo;
+
+                // 5. Energy-conserving analytical integration (step-size invariant)
+                float stepTransmittance = exp(-sigmaT * stepLenKm);
+                float3 stepScatter = sampleRadiance * (1.0 - stepTransmittance);
+
+                accumLight += transmittance * stepScatter;
+                float weight = transmittance * (1.0 - stepTransmittance);
+                weightedDist += t * weight;
+                weightSum += weight;
+
+                transmittance *= stepTransmittance;
+            }
+
+            t += stepLenKm;
+        }
+        else
+        {
+            // Empty-space skipping up close where step count is high; keep uniform stride in orbital LOD
+            // so coarse 10-step rays never overshoot the thin 3.5 km cloud core at nadir angles.
+            t += stepLenKm * (1.0 + 0.45 * (1.0 - lodFactor));
+        }
+    }
+
+    float opacity = saturate(1.0 - transmittance);
+    if (opacity <= 1e-4)
+    {
+        return float4(0.0, 0.0, 0.0, 0.0);
+    }
+
+    // -----------------------------------------------------------------------
+    // Subtle Atmospheric Limb Scattering Blend (matches SkyAtmosphere halo)
+    // -----------------------------------------------------------------------
+    if (AtmosphereBlendStrength > 1e-4 && weightSum > 1e-5)
+    {
+        float avgT = weightedDist / weightSum;
+        float3 avgPosKm = ro + rd * avgT;
+        float3 avgUp = normalize(avgPosKm);
+        float limbView = 1.0 - abs(dot(avgUp, -rd));
+        float limbFactor = pow(saturate(limbView), 2.5);
+        float sunDay = smoothstep(-0.12, 0.28, dot(avgUp, L));
+        float distFade = saturate(avgT / max(R_planet * 0.6, 1.0));
+        float atmoMix = saturate(limbFactor * distFade * AtmosphereBlendStrength * 0.65) * sunDay;
+
+        // Blend premultiplied cloud color softly toward sunlit atmospheric Rayleigh tint
+        accumLight = lerp(accumLight, AtmosphereTintColor * opacity, atmoMix);
+    }
+
+    return float4(max(accumLight, 0.0), opacity);
+}

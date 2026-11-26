@@ -13,6 +13,7 @@ class UCosmicCollisionComponent;
 class UCosmicPlanetCollisionManager;
 class ICosmicNoiseStrategy;
 class UCosmicOceanComponent;
+class UCosmicCloudComponent;
 class UCosmicFoliageCollection;
 class UMaterialInstance;
 
@@ -61,6 +62,10 @@ public:
 	/** Component responsible for visual and physical representation of sea level. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Planet")
 	UCosmicOceanComponent* OceanComponent;
+
+	/** Component responsible for distance-adaptive planetary volumetric clouds. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Planet")
+	TObjectPtr<UCosmicCloudComponent> CloudComponent;
 
 	/** Asset defining noise algorithms for terrain relief. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Noise")
@@ -175,6 +180,9 @@ protected:
 
 	/** Synchronizes the ocean component with the current planet radius. */
 	void UpdateOcean();
+
+	/** Synchronizes the volumetric cloud component with the current planet radius. */
+	void UpdateClouds();
 
 
 	/** Cleans collisions and unbinds active delegates. */
