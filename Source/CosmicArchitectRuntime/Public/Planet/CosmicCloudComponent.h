@@ -22,7 +22,7 @@ class ADirectionalLight;
  *     detail fetches, and only shades pixels inside the planet's tight bounding sphere.
  */
 UCLASS(ClassGroup = (CosmicArchitect), meta = (BlueprintSpawnableComponent),
-	HideCategories = (Rendering, Lighting, Navigation, Replication, Physics, Collision,
+	HideCategories = (Rendering, Navigation, Replication, Physics, Collision,
 		Activation, AssetUserData, HLOD, Cooking, Tags, ComponentReplication))
 class COSMICARCHITECTRUNTIME_API UCosmicCloudComponent : public USceneComponent
 {
