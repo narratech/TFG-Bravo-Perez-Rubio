@@ -68,20 +68,11 @@ float CosmicCloudDualHG(float cosTheta, float g1, float g2, float blend)
 // ---------------------------------------------------------------------------
 float CosmicCloudPlanetShadow(float3 posKm, float3 sunDir, float planetRadiusKm)
 {
-    // Soft geometric planet shadow test along ray toward the sun
+    // Exact, C1-continuous minimum distance from planet center to the forward ray toward the sun (t >= 0).
+    // Avoids any discontinuity across the dot(posKm, sunDir) == 0 terminator plane.
     float proj = dot(posKm, sunDir);
-    if (proj >= 0.0)
-    {
-        // On sunlit hemisphere; add smooth twilight transition near terminator
-        float elev = proj / max(length(posKm), 1e-4);
-        return smoothstep(-0.04, 0.08, elev);
-    }
-
-    // Behind terminator plane: check perpendicular distance to planet shadow cylinder
-    float3 perp = posKm - sunDir * proj;
-    float perpDist = length(perp);
-    float shadowEdge = smoothstep(planetRadiusKm * 0.985, planetRadiusKm * 1.035, perpDist);
-    return shadowEdge;
+    float3 closest = posKm + sunDir * max(0.0, -proj);
+    return smoothstep(planetRadiusKm * 0.99, planetRadiusKm * 1.03, length(closest));
 }
 
 // ---------------------------------------------------------------------------

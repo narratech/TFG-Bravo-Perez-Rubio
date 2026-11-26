@@ -59,10 +59,6 @@ public:
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 
-	// -----------------------------------------------------------------------
-	// Enable & Material
-	// -----------------------------------------------------------------------
-
 	/** Enables or disables the volumetric cloud layer on this planet. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Clouds")
 	bool bHasClouds = false;
@@ -75,9 +71,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Clouds", meta = (EditCondition = "bHasClouds"))
 	TObjectPtr<UMaterialInterface> CloudMaterialInside = nullptr;
 
-	// -----------------------------------------------------------------------
-	// Layer Geometry (Kilometers)
-	// -----------------------------------------------------------------------
 
 	/** Planet radius in kilometers (automatically synchronized by ACosmicPlanet). */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Clouds|Layer")
@@ -91,9 +84,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Clouds|Layer", meta = (EditCondition = "bHasClouds", ClampMin = "0.1"))
 	float LayerHeightKm = 3.5f;
 
-	// -----------------------------------------------------------------------
-	// Shape & Weather (Matches MI_PlanetVolumetricCloud defaults)
-	// -----------------------------------------------------------------------
 
 	/** Macro weather pattern frequency across the planet sphere. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Clouds|Shape", meta = (EditCondition = "bHasClouds", ClampMin = "0.1"))
@@ -127,9 +117,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Clouds|Shape", meta = (EditCondition = "bHasClouds"))
 	float WindSpeed = 0.0015f;
 
-	// -----------------------------------------------------------------------
-	// Lighting & Scattering
-	// -----------------------------------------------------------------------
 
 	/** Automatically tracks the scene's primary ADirectionalLight for sun direction and color. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Clouds|Lighting", meta = (EditCondition = "bHasClouds"))
@@ -187,9 +174,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Clouds|Lighting", meta = (EditCondition = "bHasClouds", ClampMin = "0.0", ClampMax = "2.0"))
 	float AtmosphereBlendStrength = 0.65f;
 
-	// -----------------------------------------------------------------------
 	// Distance-Adaptive Performance / LOD
-	// -----------------------------------------------------------------------
 
 	/** Maximum raymarch steps when camera is close to or inside the cloud layer. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Clouds|Performance", meta = (EditCondition = "bHasClouds", ClampMin = "8", ClampMax = "96"))
