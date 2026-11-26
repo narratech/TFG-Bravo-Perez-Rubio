@@ -67,9 +67,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Clouds")
 	bool bHasClouds = false;
 
-	/** Master material or material instance using CosmicVolumetricClouds.ush. */
+	/** Exterior/orbital material (DisableDepthTest = false for hardware occlusion against moons/ships). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Clouds", meta = (EditCondition = "bHasClouds"))
 	TObjectPtr<UMaterialInterface> CloudMaterial = nullptr;
+
+	/** Interior/in-atmosphere material (DisableDepthTest = true for seamless cloud entry and surface view). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Clouds", meta = (EditCondition = "bHasClouds"))
+	TObjectPtr<UMaterialInterface> CloudMaterialInside = nullptr;
 
 	// -----------------------------------------------------------------------
 	// Layer Geometry (Kilometers)
@@ -223,8 +227,17 @@ private:
 	/** Ensures CloudShellMesh exists, is attached, and has its inward-facing sphere geometry built. */
 	void EnsureCloudShellMesh();
 
-	/** Generates an inward-facing unit sphere (radius 1 cm) with zero collision and zero overdraw. */
-	void BuildInvertedUnitSphere(UProceduralMeshComponent* MeshComp, int32 LongitudeSegments, int32 LatitudeSegments) const;
+	/** Generates both outward (section 0) and inward (section 1) unit spheres for zero-overdraw depth switching. */
+	void BuildDualWindingUnitSpheres(UProceduralMeshComponent* MeshComp, int32 LongitudeSegments, int32 LatitudeSegments) const;
+
+	/** Switches between exterior (hardware depth tested) and interior (depth-test disabled) shell sections. */
+	void UpdateCameraShellMode(bool bForce = false);
+
+	/** Resolves active camera world location in both Editor viewports and Game/PIE worlds. */
+	bool GetActiveCameraLocation(FVector& OutCameraLocation) const;
+
+	/** Applies all cloud parameters to a target dynamic material instance. */
+	void ApplyParametersToMID(UMaterialInstanceDynamic* MID, const FVector& SunDir, const FLinearColor& SunCol) const;
 
 	/** Updates the scale of CloudShellMesh to tightly enclose R_planet + LayerBottom + LayerHeight. */
 	void UpdateShellScale();
@@ -238,9 +251,14 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> DynamicCloudMaterial = nullptr;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> DynamicCloudMaterialInside = nullptr;
+
 	TWeakObjectPtr<ADirectionalLight> CachedDirectionalLight;
 
 	int32 BuiltSphereSegments = 0;
+	bool bUsingInsideShell = false;
+	bool bShellModeInitialized = false;
 	float LightRefreshTimer = 0.0f;
 	FVector LastSyncedSunDir = FVector::ZeroVector;
 	FLinearColor LastSyncedSunColor = FLinearColor::Black;
