@@ -296,7 +296,58 @@ namespace
         Crater.CraterLacunarity = Stream.FRandRange(2.0f, 2.6f);
         Crater.CraterPersistence = Stream.FRandRange(0.48f, 0.64f);
         Crater.CraterNoiseBreakup = Stream.FRandRange(0.45f, 0.75f);
-        Crater.MariaThreshold = Stream.FRandRange(0.32f, 0.42f);
+        Crater.MariaThreshold = Stream.FRandRange(0.32f, 0.44f);
+
+        // 3. Ridged Mountain Chains (Montes) & Wrinkle Ridges (Dorsa) - relative to BaseLayer.Amplitude
+        Settings->RidgeLayer.Frequency = Stream.FRandRange(6.0f, 11.0f);
+        Settings->RidgeLayer.Octaves = 6;
+        Settings->RidgeLayer.Lacunarity = Stream.FRandRange(2.05f, 2.20f);
+        Settings->RidgeLayer.Persistence = 0.52f;
+        Settings->RidgeLayer.Amplitude = (Archetype == ECosmicPlanetArchetype::VolcanicScorched)
+            ? Stream.FRandRange(0.75f, 1.05f)
+            : Stream.FRandRange(0.45f, 0.75f);
+
+        // 4. Heterogeneous Micro-Detail Layer - relative to BaseLayer.Amplitude
+        Settings->DetailLayer.Frequency = Stream.FRandRange(60.0f, 140.0f);
+        Settings->DetailLayer.Octaves = 4;
+        Settings->DetailLayer.Lacunarity = 2.0f;
+        Settings->DetailLayer.Persistence = 0.45f;
+        Settings->DetailLayer.Amplitude = Stream.FRandRange(0.08f, 0.16f);
+
+        // 5. Geological Terrain Shaping & Crater Weathering
+        Settings->TerrainParameters.RidgePeakSharpness = (Archetype == ECosmicPlanetArchetype::VolcanicScorched)
+            ? Stream.FRandRange(1.75f, 2.25f)
+            : Stream.FRandRange(1.45f, 1.85f);
+        Settings->TerrainParameters.RidgeWeightedStrength = Stream.FRandRange(0.72f, 0.88f);
+        Settings->TerrainParameters.MariaBasinDepthScale = bIsMoon
+            ? Stream.FRandRange(0.50f, 0.80f)
+            : Stream.FRandRange(0.40f, 0.65f);
+        Settings->TerrainParameters.MariaRoughnessFactor = Stream.FRandRange(0.16f, 0.30f);
+        Settings->TerrainParameters.MariaCraterFlooding = bIsMoon
+            ? Stream.FRandRange(0.40f, 0.65f)
+            : Stream.FRandRange(0.25f, 0.50f);
+        Settings->TerrainParameters.CraterFloorFlattening = Stream.FRandRange(0.55f, 0.78f);
+        Settings->TerrainParameters.CraterAgeVariation = Stream.FRandRange(0.35f, 0.60f);
+        Settings->TerrainParameters.InnerWallTerracing = Stream.FRandRange(0.18f, 0.38f);
+        Settings->TerrainParameters.EjectaRayBreakup = Stream.FRandRange(0.45f, 0.70f);
+        Settings->TerrainParameters.CraterBiomeInfluence = Stream.FRandRange(0.10f, 0.20f);
+
+        // 6. Crustal Domain Warping
+        Settings->DomainWarpParams.bUseDomainWarp = true;
+        Settings->DomainWarpParams.DomainWarpStrength = Stream.FRandRange(0.18f, 0.32f);
+        Settings->DomainWarpParams.DomainWarpFrequency = Stream.FRandRange(1.0f, 1.8f);
+        Settings->DomainWarpParams.DomainWarpOctaves = 3;
+
+        // 7. Planetary Climatology & Biomes (drives vertex color G = Temp, B = Humidity across the globe)
+        Settings->BiomeParameters.TemperatureFrequency = Stream.FRandRange(2.8f, 4.8f);
+        Settings->BiomeParameters.LatitudeEffect = Stream.FRandRange(0.42f, 0.68f);
+        Settings->BiomeParameters.AltitudeTemperaturePenalty = Stream.FRandRange(0.45f, 0.68f);
+        Settings->BiomeParameters.HumidityFrequency = Stream.FRandRange(8.0f, 20.0f);
+        Settings->BiomeParameters.HumidityOctaves = 4;
+        Settings->BiomeParameters.HumidityContrast = Stream.FRandRange(1.30f, 1.65f);
+        Settings->BiomeParameters.HumidityOffset = (Archetype == ECosmicPlanetArchetype::VolcanicScorched)
+            ? Stream.FRandRange(-0.20f, -0.05f)
+            : Stream.FRandRange(-0.10f, 0.10f);
     }
 }
 
