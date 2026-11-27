@@ -14,6 +14,7 @@ class UCosmicPlanetCollisionManager;
 class ICosmicNoiseStrategy;
 class UCosmicOceanComponent;
 class UCosmicCloudComponent;
+class UCosmicAtmosphereComponent;
 class UCosmicFoliageCollection;
 class UMaterialInstance;
 
@@ -66,6 +67,10 @@ public:
 	/** Component responsible for distance-adaptive planetary volumetric clouds. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Planet")
 	TObjectPtr<UCosmicCloudComponent> CloudComponent;
+
+	/** Component responsible for per-planet physically-based atmospheric scattering. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Planet")
+	TObjectPtr<UCosmicAtmosphereComponent> AtmosphereComponent;
 
 	/** Asset defining noise algorithms for terrain relief. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Noise")
@@ -183,6 +188,9 @@ protected:
 
 	/** Synchronizes the volumetric cloud component with the current planet radius. */
 	void UpdateClouds();
+
+	/** Synchronizes the planetary atmosphere component with the current planet radius. */
+	void UpdateAtmosphere();
 
 
 	/** Cleans collisions and unbinds active delegates. */

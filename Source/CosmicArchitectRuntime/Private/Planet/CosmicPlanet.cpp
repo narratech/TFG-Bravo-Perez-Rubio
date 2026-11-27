@@ -7,6 +7,7 @@
 #include "Terrain/CosmicClipmapComponent.h"
 #include "Terrain/CosmicOceanComponent.h"
 #include "Planet/CosmicCloudComponent.h"
+#include "Planet/CosmicAtmosphereComponent.h"
 #include "CosmicDefaultNoiseStrategy.h"
 #include "CosmicFoliageCollection.h"
 #include "CosmicNoiseClass.h"
@@ -40,6 +41,8 @@ ACosmicPlanet::ACosmicPlanet()
     OceanComponent = CreateDefaultSubobject<UCosmicOceanComponent>(TEXT("OceanComponent"));
     CloudComponent = CreateDefaultSubobject<UCosmicCloudComponent>(TEXT("CloudComponent"));
     CloudComponent->SetupAttachment(Root);
+    AtmosphereComponent = CreateDefaultSubobject<UCosmicAtmosphereComponent>(TEXT("AtmosphereComponent"));
+    AtmosphereComponent->SetupAttachment(Root);
     FoliageSpawnerComponent = CreateDefaultSubobject<UCosmicFoliageSpawner>(TEXT("FoliageSpawnerComponent"));
 }
 
@@ -55,6 +58,7 @@ void ACosmicPlanet::PostInitializeComponents()
     InitClipmap();
     UpdateOcean();
     UpdateClouds();
+    UpdateAtmosphere();
 
     if (FoliageSpawnerComponent)
     {
@@ -222,11 +226,17 @@ void ACosmicPlanet::PostDuplicate(EDuplicateMode::Type Mode)
             CloudComponent->ResetPointersAfterDuplicate(Root);
         }
 
+        if (AtmosphereComponent)
+        {
+            AtmosphereComponent->ResetPointersAfterDuplicate(Root);
+        }
+
         UpdateNoiseSettings();
         InitClipmap();
         UpdateFoliage();
         UpdateOcean();
         UpdateClouds();
+        UpdateAtmosphere();
     }
 }
 #endif
@@ -288,6 +298,7 @@ void ACosmicPlanet::RebuildPlanet()
     UpdateFoliage();
     UpdateOcean();
     UpdateClouds();
+    UpdateAtmosphere();
 }
 
 
@@ -398,6 +409,14 @@ void ACosmicPlanet::UpdateClouds()
     }
 }
 
+void ACosmicPlanet::UpdateAtmosphere()
+{
+    if (AtmosphereComponent)
+    {
+        AtmosphereComponent->InitAtmosphere(RadiusKm, Root);
+    }
+}
+
 #if WITH_EDITOR
 /**
  * Construction logic for the editor. Ensures the planet is visible right after being dropped into the level.
@@ -413,6 +432,7 @@ void ACosmicPlanet::OnConstruction(const FTransform& Transform)
         UpdateFoliage();
         UpdateOcean();
         UpdateClouds();
+        UpdateAtmosphere();
     }
 }
 #endif
@@ -516,6 +536,7 @@ void ACosmicPlanet::InitPlanet(
     UpdateFoliage();
     UpdateNoiseSettings();
     UpdateClouds();
+    UpdateAtmosphere();
 }
 
 /**

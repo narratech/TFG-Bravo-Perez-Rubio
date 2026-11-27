@@ -1,0 +1,406 @@
+// Copyright Javier Bravo, David Rubio, Sergio Perez 2026 All Rights Reserved.
+// CosmicAtmosphere.ush - Per-Planet Physically-Based Atmospheric Scattering (UE5 Hillaire Model)
+//
+// Designed for CosmicArchitect multi-planet systems:
+//   - Unlimited independent planetary atmospheres in the same world.
+//   - Zero lower planet radius limit (works from 50m moons to 10,000+ km gas giants).
+//   - Rayleigh scattering, Mie scattering/absorption (Henyey-Greenstein), Ozone tent absorption,
+//     multi-scattering + ground bounce approximation, SceneDepth aerial perspective, and sun disk.
+//   - 100% LWC-safe planet-center-relative kilometer math.
+#pragma once
+
+static const float ATMO_PI = 3.14159265359;
+
+// ---------------------------------------------------------------------------
+// Utility: Interleaved Gradient Noise (banding-free per-pixel raymarch jitter)
+// ---------------------------------------------------------------------------
+float CosmicAtmoIGN(float2 pixelPos)
+{
+    return frac(52.9829189 * frac(dot(pixelPos, float2(0.06711056, 0.00583715))));
+}
+
+// ---------------------------------------------------------------------------
+// Utility: Ray-Sphere Intersection (sphere centered at origin, radius r)
+// Returns float2(tNear, tFar); returns float2(-1, -1) on miss.
+// ---------------------------------------------------------------------------
+float2 CosmicAtmoIntersectSphere(float3 ro, float3 rd, float r)
+{
+    float b = dot(ro, rd);
+    float c = dot(ro, ro) - r * r;
+    float disc = b * b - c;
+    if (disc < 0.0)
+    {
+        return float2(-1.0, -1.0);
+    }
+    float s = sqrt(disc);
+    return float2(-b - s, -b + s);
+}
+
+// ---------------------------------------------------------------------------
+// Phase Functions (matching UE5 ParticipatingMediaCommon.ush)
+// cosTheta = dot(ViewDir, SunDir), where SunDir points toward the sun.
+// ---------------------------------------------------------------------------
+float CosmicAtmoRayleighPhase(float cosTheta)
+{
+    return (3.0 / (16.0 * ATMO_PI)) * (1.0 + cosTheta * cosTheta);
+}
+
+float CosmicAtmoMiePhase(float cosTheta, float g)
+{
+    float g2 = g * g;
+    float denom = max(1.0 + g2 - 2.0 * g * cosTheta, 1e-4);
+    return (1.0 - g2) / (4.0 * ATMO_PI * denom * sqrt(denom));
+}
+
+// ---------------------------------------------------------------------------
+// Participating Medium Sample (matching UE5 SkyAtmosphereCommon.ush)
+// ---------------------------------------------------------------------------
+struct FCosmicAtmoMedium
+{
+    float3 ScatteringRay;
+    float3 ScatteringMie;
+    float3 Scattering;
+    float3 Extinction;
+};
+
+FCosmicAtmoMedium CosmicAtmoSampleMedium(
+    float altitudeKm,
+    float3 rayleighScattering,
+    float  rayleighScaleHeightKm,
+    float3 mieScattering,
+    float3 mieAbsorption,
+    float  mieScaleHeightKm,
+    float3 ozoneAbsorption,
+    float  ozoneTipAltitudeKm,
+    float  ozoneTipValue,
+    float  ozoneWidthKm)
+{
+    float h = max(0.0, altitudeKm);
+
+    float densityRay = exp(-h / max(rayleighScaleHeightKm, 1e-4));
+    float densityMie = exp(-h / max(mieScaleHeightKm, 1e-4));
+    float densityOzo = saturate(1.0 - abs(h - ozoneTipAltitudeKm) / max(ozoneWidthKm, 1e-4)) * ozoneTipValue;
+
+    FCosmicAtmoMedium m;
+    m.ScatteringRay = densityRay * rayleighScattering;
+    m.ScatteringMie = densityMie * mieScattering;
+    float3 extinctionMie = densityMie * (mieScattering + mieAbsorption);
+    float3 extinctionOzo = densityOzo * ozoneAbsorption;
+
+    m.Scattering = m.ScatteringRay + m.ScatteringMie;
+    m.Extinction = m.ScatteringRay + extinctionMie + extinctionOzo;
+    return m;
+}
+
+// ---------------------------------------------------------------------------
+// Smooth Planet Shadow (umbra/penumbra for sun ray from sample point)
+// ---------------------------------------------------------------------------
+float CosmicAtmoPlanetShadow(float3 posKm, float3 sunDir, float bottomRadiusKm, float minElevCos)
+{
+    float r = length(posKm);
+    float3 up = posKm / max(r, 1e-5);
+    float sinHorizon = bottomRadiusKm / max(r, bottomRadiusKm);
+    float cosHorizon = -sqrt(max(0.0, 1.0 - sinHorizon * sinHorizon));
+    float sunZenithCos = dot(up, sunDir);
+
+    // Respect optional minimum light elevation angle (like UE5 TransmittanceMinLightElevationAngle)
+    float effHorizon = min(cosHorizon, minElevCos);
+    return smoothstep(effHorizon - 0.035, effHorizon + 0.025, sunZenithCos);
+}
+
+// ---------------------------------------------------------------------------
+// Optical Depth & Transmittance along ray from P toward SunDir up to TopRadius
+// ---------------------------------------------------------------------------
+float3 CosmicAtmoSunTransmittance(
+    float3 posKm,
+    float3 sunDir,
+    float  bottomRadiusKm,
+    float  topRadiusKm,
+    int    numSunSteps,
+    float3 rayleighScattering,
+    float  rayleighScaleHeightKm,
+    float3 mieScattering,
+    float3 mieAbsorption,
+    float  mieScaleHeightKm,
+    float3 ozoneAbsorption,
+    float  ozoneTipAltitudeKm,
+    float  ozoneTipValue,
+    float  ozoneWidthKm)
+{
+    float2 hitTop = CosmicAtmoIntersectSphere(posKm, sunDir, topRadiusKm);
+    float tMax = max(0.0, hitTop.y);
+    if (tMax <= 1e-5)
+    {
+        return float3(1.0, 1.0, 1.0);
+    }
+
+    float dt = tMax / (float)numSunSteps;
+    float3 opticalDepth = float3(0.0, 0.0, 0.0);
+
+    [loop]
+    for (int j = 0; j < numSunSteps; j++)
+    {
+        float t = ((float)j + 0.5) * dt;
+        float3 sp = posKm + sunDir * t;
+        float h = length(sp) - bottomRadiusKm;
+
+        FCosmicAtmoMedium m = CosmicAtmoSampleMedium(
+            h,
+            rayleighScattering, rayleighScaleHeightKm,
+            mieScattering, mieAbsorption, mieScaleHeightKm,
+            ozoneAbsorption, ozoneTipAltitudeKm, ozoneTipValue, ozoneWidthKm
+        );
+        opticalDepth += m.Extinction * dt;
+    }
+
+    return exp(-opticalDepth);
+}
+
+// ---------------------------------------------------------------------------
+// Main Entry Point called from M_CosmicAtmosphere Custom Material Node
+//
+// Returns float4(InScatteredLuminanceRGB, Opacity) for BLEND_AlphaComposite.
+// All positions are planet-center-relative to remain 100% LWC-safe at any orbit.
+// ---------------------------------------------------------------------------
+float4 EvaluateCosmicAtmosphere(
+    float3 CamPosLocalCm,
+    float3 RayDir,
+    float3 CamForward,
+    float  SceneDepthCm,
+    float2 SvPositionXY,
+    // Planet & Atmosphere Geometry (km)
+    float  BottomRadiusKm,
+    float  AtmosphereHeightKm,
+    // Rayleigh (1/km and km)
+    float3 RayleighScattering,
+    float  RayleighScaleHeightKm,
+    // Mie (1/km, km, anisotropy)
+    float3 MieScattering,
+    float3 MieAbsorption,
+    float  MieAnisotropy,
+    float  MieScaleHeightKm,
+    // Ozone / Other Absorption (1/km and km)
+    float3 OzoneAbsorption,
+    float  OzoneTipAltitudeKm,
+    float  OzoneTipValue,
+    float  OzoneWidthKm,
+    // Multi-Scattering & Art Direction
+    float3 GroundAlbedo,
+    float  MultiScatteringFactor,
+    float3 SkyLuminanceFactor,
+    float  AerialPerspectiveDistanceScale,
+    float  AerialPerspectiveStartDepthKm,
+    // Sun Lighting & Disk
+    float3 SunDir,
+    float3 SunColor,
+    float  SunDiskCosHalfAngle,
+    float  SunDiskIntensity,
+    // Distance-Adaptive LOD
+    float  NearViewSamples,
+    float  FarViewSamples,
+    float  SunTransmittanceSamples,
+    float  LodNearAltitudeKm,
+    float  LodFarAltitudeKm)
+{
+    const float CM_TO_KM = 1e-5;
+    float3 ro = CamPosLocalCm * CM_TO_KM;
+    float3 rd = normalize(RayDir);
+    float3 L  = normalize(SunDir);
+
+    float R_bot = max(BottomRadiusKm, 0.005);
+    float H_atmo = max(AtmosphereHeightKm, 0.005);
+    float R_top = R_bot + H_atmo;
+
+    // Intersect outer atmosphere sphere
+    float2 hitTop = CosmicAtmoIntersectSphere(ro, rd, R_top);
+    if (hitTop.y <= 0.0)
+    {
+        return float4(0.0, 0.0, 0.0, 0.0);
+    }
+
+    float camDistKm = length(ro);
+    // Keep camera slightly above BottomRadius to avoid numerical singularities if buried below terrain valleys
+    if (camDistKm < R_bot * 1.0001)
+    {
+        ro = normalize(ro + float3(0.0, 0.0, 1e-5)) * (R_bot * 1.0001);
+        camDistKm = length(ro);
+    }
+
+    float2 hitBot = CosmicAtmoIntersectSphere(ro, rd, R_bot);
+
+    // Ray entry and exit within the atmosphere shell
+    float tStart = max(0.0, hitTop.x);
+    float tEnd   = hitTop.y;
+    bool bHitsPlanetSphere = (hitBot.x > 0.0);
+    if (bHitsPlanetSphere)
+    {
+        tEnd = min(tEnd, hitBot.x);
+    }
+
+    // SceneDepth integration for Aerial Perspective & opaque mountain/ship occlusion
+    float viewDot = max(dot(rd, normalize(CamForward)), 1e-4);
+    float rawSceneRayDistKm = (SceneDepthCm / viewDot) * CM_TO_KM;
+
+    // Determine whether an opaque surface is hit inside the atmosphere path.
+    // Guard against far-plane / reversed-Z precision at extreme orbital distances.
+    bool bHitOpaqueSurface = false;
+    bool bValidSceneDepth = (SceneDepthCm > 1.0) && (rawSceneRayDistKm > tStart) && (rawSceneRayDistKm < tEnd);
+    if (bValidSceneDepth && (camDistKm < R_top + max(H_atmo * 8.0, 60.0) || bHitsPlanetSphere))
+    {
+        tEnd = rawSceneRayDistKm;
+        bHitOpaqueSurface = true;
+    }
+
+    // Apply AerialPerspectiveStartDepthKm only when looking at opaque geometry inside the atmosphere
+    float effectiveDist = tEnd - tStart;
+    if (effectiveDist <= 1e-5)
+    {
+        return float4(0.0, 0.0, 0.0, 0.0);
+    }
+
+    float aerialWeight = 1.0;
+    if (bHitOpaqueSurface && AerialPerspectiveStartDepthKm > 1e-5)
+    {
+        float distBeyondStart = max(0.0, tEnd - AerialPerspectiveStartDepthKm);
+        aerialWeight = saturate(distBeyondStart / max(AerialPerspectiveStartDepthKm * 0.5, 0.01));
+        if (aerialWeight <= 1e-4)
+        {
+            return float4(0.0, 0.0, 0.0, 0.0);
+        }
+    }
+
+    // Distance-adaptive sample count
+    float camAltKm = max(0.0, camDistKm - R_bot);
+    float lodRange = max(LodFarAltitudeKm - LodNearAltitudeKm, 0.1);
+    float lodFactor = saturate((camAltKm - LodNearAltitudeKm) / lodRange);
+
+    int numSteps = clamp((int)round(lerp(NearViewSamples, FarViewSamples, lodFactor)), 6, 64);
+    int numSunSteps = clamp((int)round(SunTransmittanceSamples), 2, 16);
+
+    // Phase functions (constant along ray)
+    float cosTheta = dot(rd, L);
+    float rayleighPhase = CosmicAtmoRayleighPhase(cosTheta);
+    float miePhase = CosmicAtmoMiePhase(cosTheta, clamp(MieAnisotropy, 0.0, 0.995));
+    const float uniformPhase = 1.0 / (4.0 * ATMO_PI);
+
+    // Distance scale for aerial perspective thickness on surfaces
+    float distScale = bHitOpaqueSurface ? max(AerialPerspectiveDistanceScale, 0.0) : 1.0;
+
+    // Non-linear sample distribution (more precision close to camera/horizon, like UE5 SkyAtmosphere.usf)
+    float jitter = CosmicAtmoIGN(SvPositionXY);
+    float3 accumLuminance = float3(0.0, 0.0, 0.0);
+    float3 throughput = float3(1.0, 1.0, 1.0);
+
+    // Precompute vertical optical depth scale for fast isotropic multi-scattering approximation
+    float3 verticalOptDepthApprox = RayleighScattering * RayleighScaleHeightKm
+                                  + (MieScattering + MieAbsorption) * MieScaleHeightKm;
+
+    [loop]
+    for (int i = 0; i < numSteps; i++)
+    {
+        float f0 = (float)i / (float)numSteps;
+        float f1 = (float)(i + 1) / (float)numSteps;
+
+        // Blend quadratic (near-camera precision) and linear (orbital uniformity) distribution
+        float s0 = lerp(f0 * f0, f0, lerp(0.35, 0.85, lodFactor));
+        float s1 = lerp(f1 * f1, f1, lerp(0.35, 0.85, lodFactor));
+
+        float t0 = tStart + effectiveDist * s0;
+        float t1 = tStart + effectiveDist * s1;
+        float dt = t1 - t0;
+        float t  = t0 + dt * jitter;
+
+        float3 P = ro + rd * t;
+        float rP = length(P);
+        float hP = rP - R_bot;
+
+        FCosmicAtmoMedium medium = CosmicAtmoSampleMedium(
+            hP,
+            RayleighScattering, RayleighScaleHeightKm,
+            MieScattering, MieAbsorption, MieScaleHeightKm,
+            OzoneAbsorption, OzoneTipAltitudeKm, OzoneTipValue, OzoneWidthKm
+        );
+
+        float3 sampleOpticalDepth = medium.Extinction * dt * distScale;
+        float3 sampleTransmittance = exp(-sampleOpticalDepth);
+
+        float3 upVec = P / max(rP, 1e-5);
+        float sunZenithCos = dot(upVec, L);
+        float planetShadow = CosmicAtmoPlanetShadow(P, L, R_bot, -0.15);
+
+        float3 transmittanceToSun = float3(0.0, 0.0, 0.0);
+        if (planetShadow > 1e-4)
+        {
+            transmittanceToSun = CosmicAtmoSunTransmittance(
+                P, L, R_bot, R_top, numSunSteps,
+                RayleighScattering, RayleighScaleHeightKm,
+                MieScattering, MieAbsorption, MieScaleHeightKm,
+                OzoneAbsorption, OzoneTipAltitudeKm, OzoneTipValue, OzoneWidthKm
+            );
+        }
+
+        // Single scattering (Rayleigh + Mie)
+        float3 phaseTimesScattering = medium.ScatteringRay * rayleighPhase
+                                    + medium.ScatteringMie * miePhase;
+        float3 S_single = planetShadow * transmittanceToSun * phaseTimesScattering;
+
+        // Multi-scattering + ground albedo bounce approximation (Hillaire 2020 inspired)
+        float3 S_multi = float3(0.0, 0.0, 0.0);
+        if (MultiScatteringFactor > 1e-4)
+        {
+            float dayFactor = smoothstep(-0.22, 0.35, sunZenithCos);
+            float heightFrac = saturate(hP / H_atmo);
+            float3 localAlbedo = medium.Scattering / max(medium.Extinction, float3(1e-5, 1e-5, 1e-5));
+            // Second-order & higher isotropic scatter energy factor: 1 / (1 - f_ms) - 1
+            float3 f_ms = clamp(localAlbedo * (1.0 - exp(-verticalOptDepthApprox * 1.35)) * 0.65, 0.0, 0.85);
+            float3 msTransfer = f_ms / max(float3(1.0, 1.0, 1.0) - f_ms, float3(0.15, 0.15, 0.15));
+
+            // Ground diffuse reflection bounce illuminating lower atmosphere
+            float3 groundBounce = (GroundAlbedo / ATMO_PI) * saturate(sunZenithCos) * (1.0 - heightFrac) * 0.45;
+            float3 msRadiance = (msTransfer * uniformPhase * 1.8 + groundBounce * uniformPhase) * dayFactor;
+
+            // Tint multi-scatter smoothly toward sunset warm hues near terminator
+            float3 approxSunTint = lerp(float3(1.0, 0.62, 0.38), float3(1.0, 1.0, 1.0), saturate(sunZenithCos * 2.5));
+            S_multi = MultiScatteringFactor * msRadiance * approxSunTint * medium.Scattering;
+        }
+
+        float3 S = SunColor * (S_single + S_multi);
+
+        // Energy-conserving analytical integration over step [t0, t1] (exact from UE5 SkyAtmosphere.usf)
+        float3 safeExtinction = max(medium.Extinction, float3(1e-7, 1e-7, 1e-7));
+        float3 Sint = (S - S * sampleTransmittance) / safeExtinction;
+
+        accumLuminance += throughput * Sint;
+        throughput *= sampleTransmittance;
+
+        if (max(throughput.r, max(throughput.g, throughput.b)) < 0.002)
+        {
+            break;
+        }
+    }
+
+    // Apply art-direction luminance factor
+    accumLuminance *= SkyLuminanceFactor;
+
+    // Optional physical solar disk (attenuated by atmospheric transmittance, only when not occluded by terrain)
+    if (!bHitOpaqueSurface && !bHitsPlanetSphere && SunDiskIntensity > 1e-4 && SunDiskCosHalfAngle < 0.999999)
+    {
+        if (cosTheta > SunDiskCosHalfAngle)
+        {
+            float softEdge = saturate(2.0 * (cosTheta - SunDiskCosHalfAngle) / max(1.0 - SunDiskCosHalfAngle, 1e-6));
+            float3 sunDiskLum = throughput * SunColor * SunDiskIntensity * softEdge;
+            accumLuminance += sunDiskLum;
+        }
+    }
+
+    // Scalar transmittance for BLEND_AlphaComposite:
+    // FinalColor = Emissive (accumLuminance) + SceneColor * (1 - Opacity)
+    float scalarTransmittance = saturate(dot(throughput, float3(0.2126, 0.7152, 0.0722)));
+    float opacity = saturate(1.0 - scalarTransmittance);
+
+    // Apply near-camera aerial perspective fade
+    accumLuminance *= aerialWeight;
+    opacity *= aerialWeight;
+
+    return float4(max(accumLuminance, 0.0), opacity);
+}
